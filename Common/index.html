@@ -1,0 +1,1171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <base href="./">
+    <meta charset="utf-8">
+    <meta name="google" content="notranslate" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
+    <meta name="description" content="Sports Trading Platform">
+    <meta name="keyword" content="sports trading, bet, betfair">
+    <title>Dashboard | BetPro</title>
+    <style>
+        .cricketEventList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.match-card {
+  /* background-color: #1a1a1a; */
+  color: white;
+  margin-bottom: 12px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 16px;
+  box-shadow: 0 2px 6px rgba(255, 255, 255, 0.05);
+  transition: background 0.3s ease;
+  cursor: pointer;
+}
+
+.match-card:hover {
+  background-color: #2a2a2a;
+}
+    </style>
+    <!-- Icons-->
+    <link rel="shortcut icon" href="/img/favicon/BetPro.ico">
+    <link rel="stylesheet" href="/css/all.css" />
+    <link href="/css/style.css" rel="stylesheet" />
+    <link href="/css/site.min.css" rel="stylesheet" />
+    <link href="/css/BetPro-style.css" rel="stylesheet" />
+    <script>
+        var pricesUrl = "https://1XBETBACKEND.WORK.GD/api/v1";
+        var ordersUrl = "https://1XBETBACKEND.WORK.GD/api/v1";
+        const SsocketUrl = "https://1XBETBACKEND.WORK.GD/signalr";
+        const LiquidityRate = 35;
+        let dealerSck = 1;
+    </script>
+</head>
+<body class="app header-fixed sidebar-fixed aside-menu-fixed sidebar-lg-show">
+    <header class="app-header navbar">
+        <button class="navbar-toggler sidebar-toggler d-lg-none mr-auto" type="button" data-toggle="sidebar-show">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="logo-bar">
+            <a href="/index">
+                <span class="green-logo-text d-sm-down-none">
+                    BetPro
+                </span>
+            </a>
+        </div>
+
+        <button class="navbar-toggler sidebar-toggler d-md-down-none" type="button" data-toggle="sidebar-lg-show">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        
+
+<ul class="nav navbar-nav d-md-down-none">
+        <li class="nav-item px-3">
+            <a class="nav-link" href="/index">Dashboard</a>
+        </li>
+        <li class="nav-item px-3">
+            <a class="nav-link" href="/Accounts/Chart">Users</a>
+        </li>
+        <li class="nav-item px-3">
+            <a class="nav-link" href="/Reports/BookDetail">Reports</a>
+        </li>
+</ul>
+
+        <ul class="nav navbar-nav ml-auto">
+            <li class="nav-item px-2">
+               <a class="nav-link" data-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false" id="navbar-user">
+    <!-- Username & Role will go here -->
+</a>
+
+                <div class="dropdown-menu dropdown-menu-right">
+                    <a class="dropdown-item" href="/Common/Profile">
+                        <i class="fa fa-user"></i> Profile
+                    </a>
+                    <a class="dropdown-item" id="btn-logout" href="/">
+                        <i class="fa fa-sign-out"></i> Logout
+                    </a>
+                </div>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/" role="button" aria-haspopup="true" aria-expanded="false">
+                    <strong>B:</strong> <span class="wallet-balance"> </span>
+                    <strong>Exp:</strong> <span class="wallet-exposure"></span>
+                </a>
+            </li>
+        </ul>
+    </header>
+    <div class="app-body">
+        <div class="sidebar">
+            <nav class="sidebar-nav">
+                
+
+<ul class="nav">
+        <li class="nav-item">
+            <a class="nav-link" href="/index">
+                <i class="nav-icon fas fa-tachometer-alt fa-inverse"></i> Dashboard
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="/Accounts/Chart">
+                <i class="nav-icon fas fa-users fa-inverse"></i> Users
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="/Markets/Liables">
+                <i class="nav-icon fas fa-funnel-dollar fa-inverse"></i> Current Position
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="/Reports/BookDetail">
+                <i class="nav-icon fas fa-money-check fa-inverse"></i> Reports
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="/Markets/BetLocker">
+                <i class="nav-icon fas fa-unlock-alt fa-inverse"></i> Bet Lock
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="/Markets/Games">
+                <i class="nav-icon fas fa-star fa-inverse"></i> Star Casino
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="/Markets/WorldCasino">
+                <i class="nav-icon fas fa-globe fa-inverse"></i> World Casino
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="/Markets/ExGames">
+                <i class="nav-icon fas fa-globe fa-inverse"></i> BetFair Games
+            </a>
+        </li>
+
+
+
+    <li class="nav-item nav-dropdown">
+        <a class="nav-link nav-dropdown-toggle" href="#">
+            <img src="/img/v2/soccer.svg" alt="C">
+            Soccer
+        </a>
+
+        <ul class="nav-dropdown-items footballEventList" href="#">
+   
+        </ul>
+    </li>
+    <li class="nav-item nav-dropdown">
+        <a class="nav-link nav-dropdown-toggle" href="#">
+            <img src="/img/v2/tennis.svg" alt="C">
+            Tennis
+        </a>
+
+        <ul class="nav-dropdown-items tennisEventList" href="#">
+          
+        </ul>
+    </li>
+    <li class="nav-item nav-dropdown">
+        <a class="nav-link nav-dropdown-toggle" href="#">
+            <img src="/img/v2/cricket.svg" alt="C">
+            Cricket
+        </a>
+
+        <ul class="nav-dropdown-items cricketEventList"   href="#">
+       
+        </ul>
+    </li>
+    <li class="nav-item nav-dropdown">
+        <a class="nav-link nav-dropdown-toggle" href="#">
+            <img src="/img/v2/horse.svg" alt="C">
+            Horse Race
+        </a>
+
+        <ul class="nav-dropdown-items horseEventList" href="#">
+                
+        </ul>
+    </li>
+    <li class="nav-item nav-dropdown">
+        <a class="nav-link nav-dropdown-toggle" href="#">
+            <img src="/img/v2/greyhound-racing.svg" alt="C">
+            Greyhound
+        </a>
+
+        <ul class="nav-dropdown-items greyhounditems" href="#">
+            
+        </ul>
+    </li>
+</ul>
+
+
+            </nav>
+
+            <button class="sidebar-minimizer brand-minimizer" type="button"></button>
+        </div>
+        <main class="main">
+            <div class="container-fluid">
+                <div class="animated fadeIn">
+                    <style>
+    .rightMenu {
+        position:absolute;
+        float:right;
+        top: 0;
+        left: 160px;
+    }
+    .bcicustom {
+        float: left;
+        margin: auto 0px;
+    }
+    .bccustom2 {
+        margin-top: -6px;
+    }
+    @media screen and (max-width: 635px) {
+        #breadcrumbcustom{
+            margin-top:-16px;
+        }
+    }
+    .blink_me {
+      animation: blinker 1s linear infinite;
+    }
+
+    @keyframes blinker {
+      50% {
+        opacity: 0.3;
+      }
+    }
+</style>
+
+<div>
+    <div class="modal fade modalCasinoToS" data-backdrop="static" data-keyboard="false" id="modalPasswordChange" tabindex="-10" role="dialog" aria-labelledby="modalPasswordChange" aria-hidden="true" data-backdrop="static">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Change Your Password</h5>
+                </div>
+                <div id="casino-tos-text" class="modal-body">
+                    <p>
+                        <center>
+                            <h3 class="text-danger blink_me">
+                                Change Your Password
+                                <i class='fa fa-warning'></i>
+                            </h3>
+                        </center>
+                    </p>
+                    <p>Password Checkup Detected that your password is no longer <b>safe!</b>.</p>
+                    <p>You should change your password now to use the Exchange .</p>
+                </div>
+
+                <div class="modal-body mx-3">
+                    <div class="md-form mb-5">
+                        <i class="fa fa-key" aria-hidden="true"></i>
+                        <input type="email" id="Newpasswordmodal" class="form-control validate">
+                        <label for="defaultForm-email">Enter Your New Password Here!</label>
+                    </div>
+                </div>
+                <h5 id="alertmodaltitle" style="color: red;background-color: black;" class="modal-title"></h5>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger ml-4" onclick="AcceptPassword();">
+                        <strong>Change Now</strong>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal fade modalCasinoToS" data-backdrop="static" data-keyboard="false" id="modalRedirectToLogout" tabindex="-11" role="dialog" aria-labelledby="modalPasswordChange" aria-hidden="true" data-backdrop="static">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Password Changed Successfully</h5>
+                </div>
+                <div id="casino-tos-text" class="modal-body">
+                    <p>
+                        <center>
+                            <h3 class="text-danger blink_me">
+                                Password Changed Successfully
+                                <i class="fa fa-check" style="font-size:48px;color:forestgreen"></i>
+                            </h3>
+                        </center>
+                    </p>
+                    <p>Your password is changed successfully. <b>Kindly Login Again </b>.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger ml-4" onclick="ReLogin();">
+                        <strong>Login Again</strong>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <link rel="stylesheet" href="/lib/ckeditor/ckeditor5.css">
+<style>
+    #news-flash p {
+        color: black;
+    }
+    .ck-content p {
+        font-size: 16px;
+    }
+</style>
+<div class="modal fade bd-example-modal-lg" id="news-flash" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+        <div class="modal-content ck-content">
+            <!--<div class="modal-header" style="padding:0px 15px;">
+                <button type="button" class="close btn-sm" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>-->
+            <div class="modal-body">
+                <p><span style="color:rgb(230,77,77);">Attention Dealers</span></p><ul><li>Apne settlements her month ke 5th&nbsp;tak clear kar lein. Jin accounts ka settlement pending hoga, unhe 5th k baad&nbsp; block kar diya jayega.</li><li>Please clear your settlements by&nbsp;5th of each month&nbsp;to avoid any issues. Accounts with pending settlement will be blocked on night of&nbsp;5th&nbsp;. Thank you for your cooperation</li></ul>
+            </div>
+            <div class="modal-footer" style="padding:5px 15px;">
+                <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    function showNewsFlash()
+    {
+        let isFlash = localStorage.getItem('news-flash');
+
+        let hasContent = document.querySelector("#news-flash .modal-body").innerText.trim() !== '';
+
+        if (isFlash && hasContent) {
+            $('#news-flash').modal('show');
+        }
+
+        localStorage.removeItem('news-flash');
+    }
+</script>
+
+    <div class="card col-12" id="Usersearchcustom">
+        <div class="card-header">
+            <i class="fa fa-filter"></i>
+            <strong>Search-Users</strong>
+        </div>
+        <div class="card-body" style="padding-bottom:0px; margin:0px;">
+            <div class="row" id="searchUsers">
+                <div class="col-md-6 col-12">
+                    <form class="form-horizontal" v-on:submit.prevent="search" autocomplete="off">
+                    <div class="form-group row">
+                        <div class="col-12 autocomplete">
+                            <div class="input-group">
+                                <div class="inputWithIcon" style="width:30vw;">
+                                    <input class="form-control" type="search" placeholder="Username" v-model="query" id="myInput">
+                                </div>
+                                <span class="input-group-prepend">
+                                    <button id="myBtn" class="btn btn-primary" type="button" v-on:click="search">
+                                        <i class="fa fa-search"></i> Search
+                                    </button>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+                </div>
+                
+                <div class="col-md-6 col-12" style="padding: 0px; height: 65px;">
+                    <img src="/img/preloader.gif" v-show="isLoading" style="height:20px;" />
+                    <nav aria-label="breadcrumb" class="col-12 bccustom2" id="breadcrumbcustom" v-show="!isLoading && users.length > 0">
+                        <ol class="breadcrumb" style="max-height:40px;">
+                            <li class="breadcrumb-item bcicustom" v-for="(user, index) in users">
+                                
+                                    <a target="_blank" :href="'/Accounts?MID=' + user.id" v-if="user.type !== 4">{{ user.username }}</a>
+                                    <a target="_blank" :href="'/Users/Edit?id=' + user.id" v-if="user.type === 4">{{ user.username }}</a>
+                                
+                                
+                                <div class="btn-group" v-if="index == Object.keys(users).length - 1">
+                                    <a onclick="POPUPWINDOW('/Accounts/Cash?id=' ,user.id)" v-on:click="POPUPWINDOW('/Accounts/Cash?id=' ,user.id)" v-if="index == Object.keys(users).length - 1"  class="btn btn-warning"><strong>C</strong></a>
+                                    <a v-if="index == Object.keys(users).length - 1" target="_blank" :href="'/Users/Edit?id='+user.id" class="btn btn-primary"><i class="fas fa-pencil-alt"></i></a>
+                                    <a onclick="POPUPWINDOW('/accounts/L2?id=' ,user.id)" v-on:click="POPUPWINDOW('/accounts/L2?id=' ,user.id)" v-if="index == Object.keys(users).length - 1" class="btn btn-info"> <strong>L</strong></a>
+                                </div>
+                            </li>
+                        
+                        </ol>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- <div id="Bookmarkets">
+   
+</div> -->
+<div id="Bookmarkets" bis_skin_checked="1"><div class="row" bis_skin_checked="1">
+    <div class="col-12" bis_skin_checked="1">
+        <div class="card" bis_skin_checked="1">
+            <div class="card-header" bis_skin_checked="1">
+                <strong>
+                    Sport Highlights
+                </strong>
+                <a class="btn btn-sm btn-primary" href="/index.html">
+                    <strong>Refresh</strong>
+                </a>
+            </div>
+            <div class="card-body" bis_skin_checked="1">
+                    <table class="table table-bordered table-striped table-sm">
+                        <thead>
+                            <tr>
+                                <th>Soccer</th>
+                                <th style="width: 20%">Amount</th>
+                            </tr>
+                        </thead>
+                     <tbody class="footballEventLis"></tbody>
+
+                    </table>
+                    <table class="table table-bordered table-striped table-sm">
+                        <thead>
+                            <tr>
+                                <th>Tennis</th>
+                                <th style="width: 20%">Amount</th>
+                            </tr>
+                        </thead>
+                       <tbody class="tennisEventLis"></tbody>
+
+                    </table>
+                    <table class="table table-bordered table-striped table-sm">
+                        <thead>
+                            <tr>
+                                <th>Cricket</th>
+                                <th style="width: 20%">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody class="cricketEventLis"></tbody>
+
+                    </table>
+            </div>
+        </div>
+    </div>
+</div></div>
+
+
+                </div>
+            </div>
+        </main>
+    </div>
+
+     <div class="modal fade" id="modalMarketRules" tabindex="-1" role="dialog" aria-labelledby="modalMarketRules" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">Market Rules</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div id="market-rules-text" class="modal-body">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="app-footer">
+    <ul id="news-ticker-foot">
+        <li data-update="item1">Welcome to BetPro</li>
+    </ul>
+</footer>
+<!-- CoreUI and necessary plugins-->
+
+<script type="text/javascript" src="https://wurfl.io/wurfl.js"></script>
+<script src="/js/signalr/dist/browser/signalr.js"></script>
+
+
+    <script src="/js/vue.min.js"></script>
+    <script src="https://unpkg.com/vuex@3.1.3/dist/vuex.min.js"></script>
+    <script src="/js/site.min.js"></script>
+    <script src="/js/bof.js"></script>
+
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-C1WVLP1K0K"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('set', { 'user_id': 'Check10' });
+        gtag('config', 'G-C1WVLP1K0K');
+    </script>
+
+
+<script type="text/javascript" src="/js/tempusdominus-bootstrap-4.min.js"></script>
+<script src="/js/src/client-locales.js"></script>
+
+    
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+    <script>
+document.addEventListener("DOMContentLoaded", () => {
+  const userInfo = localStorage.getItem("user");
+  if (userInfo) {
+    const user = JSON.parse(userInfo);
+    const navbarUser = document.getElementById("navbar-user");
+    navbarUser.innerHTML = `${user.username} (${user.role}) <i class="fas fa-caret-down"></i>`;
+  }
+});
+</script>
+
+    <script>
+  function slugify(text) {
+    return text
+      .toString()
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '') // remove special chars
+      .replace(/\s+/g, '-')        // space to hyphen
+      .trim();
+  }
+
+  async function loadCricketMatches() {
+    try {
+      const response = await fetch('https://1XBETBACKEND.WORK.GD/api/v1/markets/live/cricket');
+      const result = await response.json();
+
+      const ul = document.querySelector('.cricketEventList');
+      ul.innerHTML = '';
+
+      if (result.success) {
+        if (result.data.length === 0) {
+          ul.innerHTML = '<li>No live or upcoming cricket matches found</li>';
+          return;
+        }
+
+        result.data.forEach(event => {
+          const li = document.createElement('li');
+          li.classList.add('match-card');
+
+          const matchName = event.match || 'match';
+          const matchId = event.marketId || event.eventId || '0'; // fallback if id not found
+          const slug = slugify(matchName);
+
+          li.textContent = matchName;
+          li.style.cursor = 'pointer';
+
+          li.addEventListener('click', () => {
+            window.location.href = `/Common/Markets.html?id=${matchId}`;
+          });
+
+          ul.appendChild(li);
+        });
+      } else {
+        ul.innerHTML = '<li>Error loading matches</li>';
+      }
+    } catch (error) {
+      console.error('API Error:', error);
+      document.querySelector('.cricketEventList').innerHTML =
+        '<li>API Error: ' + error.message + '</li>';
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', loadCricketMatches);
+</script>
+<script>
+  let lastCricketMatches = []; // cache
+
+  function slugify(text) {
+    return text
+      .toString()
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '') // remove special chars
+      .replace(/\s+/g, '-')        // space -> hyphen
+      .trim();
+  }
+
+  async function loadCricketMatches() {
+    try {
+      const response = await fetch('https://1XBETBACKEND.WORK.GD/api/v1/markets/live/cricket');
+      const result = await response.json();
+
+      if (result.success && result.data.length > 0) {
+        lastCricketMatches = result.data;
+      }
+
+      renderCricketMatches(lastCricketMatches);
+
+    } catch (err) {
+      console.error('⚠️ Error loading cricket matches:', err.message);
+      renderCricketMatches(lastCricketMatches); // fallback to cache
+    }
+  }
+
+  function renderCricketMatches(matches) {
+    const tableBody = document.querySelector('.cricketEventLis');
+    tableBody.innerHTML = ''; // reset
+
+    if (!matches || matches.length === 0) {
+      tableBody.innerHTML = `<tr><td colspan="2" style="color:white;">No live cricket matches found.</td></tr>`;
+      return;
+    }
+
+    matches.forEach(match => {
+      const tr = document.createElement('tr');
+
+      // left column (match name + link)
+      const td1 = document.createElement('td');
+      const h5 = document.createElement('h5');
+      const a = document.createElement('a');
+
+      const matchName = match.match || 'Unknown Match';
+      const matchId = match.marketId || match.eventId || '0';
+
+      a.href = `/Common/Markets.html?id=${matchId}`;
+      a.textContent = `${matchName} / Match Odds`;
+
+      h5.appendChild(a);
+
+      // optional icon (same as football)
+      const i = document.createElement('i');
+      i.className = 'fa fa-circle position-plus';
+      h5.appendChild(i);
+
+      td1.appendChild(h5);
+
+      // right column (volume/totalMatched)
+      const td2 = document.createElement('td');
+      td2.classList.add('position-plus');
+      td2.textContent = match.totalMatched?.toLocaleString() || '0';
+
+      tr.appendChild(td1);
+      tr.appendChild(td2);
+
+      tableBody.appendChild(tr);
+    });
+  }
+
+  // Auto load on page load + refresh every 10 sec
+  document.addEventListener('DOMContentLoaded', () => {
+    loadCricketMatches();
+    setInterval(loadCricketMatches, 10000);
+  });
+</script>
+<script>
+  let lastFootballMatches = []; // cache last non-empty data
+
+  function slugify(text) {
+    return text
+      .toString()
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '') // remove special chars
+      .replace(/\s+/g, '-')        // space to hyphen
+      .trim();
+  }
+
+  async function loadFootballMatche() {
+    try {
+      const response = await fetch('https://1XBETBACKEND.WORK.GD/api/v1/markets/live/football');
+      const result = await response.json();
+
+      // ✅ Update cache only if API returns non-empty matches
+      if (result.success && result.data.length > 0) {
+        lastFootballMatches = result.data;
+      }
+
+      renderFootballMatche(lastFootballMatches);
+
+    } catch (err) {
+      console.error('⚠️ Error loading football matches:', err.message);
+      renderFootballMatche(lastFootballMatches); // fallback to cache
+    }
+  }
+
+  function renderFootballMatche(matches) {
+    const listContainer = document.querySelector('.footballEventList');
+    listContainer.innerHTML = ''; // clear only for re-render
+
+    if (!matches || matches.length === 0) {
+      listContainer.innerHTML = '<li style="color:white;">No live football matches found.</li>';
+      return;
+    }
+
+    matches.forEach(match => {
+      const li = document.createElement('li');
+      li.classList.add('match-card');
+
+      const matchName = match.match || 'match';
+      const matchId = match.marketId || match.eventId || '0';
+      const slug = slugify(matchName);
+
+      li.textContent = matchName;
+      li.style.cursor = 'pointer';
+
+      li.addEventListener('click', () => {
+        window.location.href = `/Common/Markets.html?id=${matchId}`;
+      });
+
+      listContainer.appendChild(li);
+    });
+  }
+
+  // Auto load on page load + refresh every 10 seconds
+  document.addEventListener('DOMContentLoaded', () => {
+    loadFootballMatche();
+    setInterval(loadFootballMatche, 10000);
+  });
+</script>
+<script>
+  let lastFootballMatche = []; // cache
+
+  function slugify(text) {
+    return text
+      .toString()
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '') // special chars hatado
+      .replace(/\s+/g, '-')        // space -> -
+      .trim();
+  }
+
+  async function loadFootballMatches() {
+    try {
+      const response = await fetch('https://1XBETBACKEND.WORK.GD/api/v1/markets/live/football');
+      const result = await response.json();
+
+      if (result.success && result.data.length > 0) {
+        lastFootballMatche = result.data;
+      }
+
+      renderFootballMatches(lastFootballMatche);
+
+    } catch (err) {
+      console.error('⚠️ Error loading football matches:', err.message);
+      renderFootballMatches(lastFootballMatche); // fallback
+    }
+  }
+
+  function renderFootballMatches(matches) {
+    const tableBody = document.querySelector('.footballEventLis');
+    tableBody.innerHTML = ''; // reset
+
+    if (!matches || matches.length === 0) {
+      tableBody.innerHTML = `<tr><td colspan="2" style="color:white;">No live football matches found.</td></tr>`;
+      return;
+    }
+
+    matches.forEach(match => {
+      const tr = document.createElement('tr');
+
+      // left column (match name + link)
+      const td1 = document.createElement('td');
+      const h5 = document.createElement('h5');
+      const a = document.createElement('a');
+
+      const matchName = match.match || 'Unknown Match';
+      const matchId = match.marketId || match.eventId || '0';
+
+      a.href = `/Common/Markets.html?id=${matchId}`;
+      a.textContent = `${matchName} / Match Odds`;
+
+      h5.appendChild(a);
+
+      // optional icon (if you want)
+      const i = document.createElement('i');
+      i.className = 'fa fa-circle position-plus';
+      h5.appendChild(i);
+
+      td1.appendChild(h5);
+
+      // right column (volume or traded amount)
+      const td2 = document.createElement('td');
+      td2.classList.add('position-plus');
+      td2.textContent = match.totalMatched.toLocaleString() || '0';
+
+      tr.appendChild(td1);
+      tr.appendChild(td2);
+
+      tableBody.appendChild(tr);
+    });
+  }
+
+  // Auto load on page load + refresh every 10 sec
+  document.addEventListener('DOMContentLoaded', () => {
+    loadFootballMatches();
+    setInterval(loadFootballMatches, 10000);
+  });
+</script>
+
+
+<script>
+  let lastTennisMatches = []; // cache last valid tennis data
+
+  function slugify(text) {
+    return text
+      .toString()
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '') // remove special chars
+      .replace(/\s+/g, '-')        // space to hyphen
+      .trim();
+  }
+
+  async function loadTennisMatche() {
+    try {
+      const response = await fetch('https://1XBETBACKEND.WORK.GD/api/v1/markets/live/tennis');
+      const result = await response.json();
+
+      if (result.success && result.data.length > 0) {
+        lastTennisMatches = result.data; // update cache only if data is valid
+      }
+
+      renderTennisMatche(lastTennisMatches);
+
+    } catch (err) {
+      console.error('⚠️ Error loading tennis matches:', err.message);
+      renderTennisMatche(lastTennisMatches); // fallback to old data
+    }
+  }
+
+  function renderTennisMatche(matches) {
+    const listContainer = document.querySelector('.tennisEventList');
+    listContainer.innerHTML = '';
+
+    if (!matches || matches.length === 0) {
+      listContainer.innerHTML = '<li style="color:white;">No live tennis matches found.</li>';
+      return;
+    }
+
+    matches.forEach(match => {
+      const li = document.createElement('li');
+      li.classList.add('match-card');
+
+      const matchName = match.match || 'match';
+      const matchId = match.marketId || match.eventId || '0';
+      const slug = slugify(matchName);
+
+      li.textContent = matchName;
+      li.style.cursor = 'pointer';
+
+      li.addEventListener('click', () => {
+        window.location.href = `/Common/Markets.html?id=${matchId}`;
+      });
+
+      listContainer.appendChild(li);
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    loadTennisMatche();
+    setInterval(loadTennisMatche, 10000); // refresh every 10s
+  });
+</script>
+
+<script>
+  let lastTennisMatche = []; // cache
+
+  function slugify(text) {
+    return text
+      .toString()
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '') // remove special chars
+      .replace(/\s+/g, '-')        // space -> hyphen
+      .trim();
+  }
+
+  async function loadTennisMatches() {
+    try {
+      const response = await fetch('https://1XBETBACKEND.WORK.GD/api/v1/markets/live/tennis');
+      const result = await response.json();
+
+      if (result.success && result.data.length > 0) {
+        lastTennisMatche = result.data; // update cache
+      }
+
+      renderTennisMatches(lastTennisMatche);
+
+    } catch (err) {
+      console.error('⚠️ Error loading tennis matches:', err.message);
+      renderTennisMatches(lastTennisMatche); // fallback to cache
+    }
+  }
+
+  function renderTennisMatches(matches) {
+    const tableBody = document.querySelector('.tennisEventLis');
+    tableBody.innerHTML = ''; // reset
+
+    if (!matches || matches.length === 0) {
+      tableBody.innerHTML = `<tr><td colspan="2" style="color:white;">No live tennis matches found.</td></tr>`;
+      return;
+    }
+
+    matches.forEach(match => {
+      const tr = document.createElement('tr');
+
+      // left column (match name + link)
+      const td1 = document.createElement('td');
+      const h5 = document.createElement('h5');
+      const a = document.createElement('a');
+
+      const matchName = match.match || 'Unknown Match';
+      const matchId = match.marketId || match.eventId || '0';
+
+      a.href = `/Common/Markets.html?id=${matchId}`;
+      a.textContent = `${matchName} / Match Odds`;
+
+      h5.appendChild(a);
+
+      // optional icon (same as football/cricket)
+      const i = document.createElement('i');
+      i.className = 'fa fa-circle position-plus';
+      h5.appendChild(i);
+
+      td1.appendChild(h5);
+
+      // right column (volume/totalMatched)
+      const td2 = document.createElement('td');
+      td2.classList.add('position-plus');
+      td2.textContent = match.totalMatched?.toLocaleString() || '0';
+
+      tr.appendChild(td1);
+      tr.appendChild(td2);
+
+      tableBody.appendChild(tr);
+    });
+  }
+
+  // Auto load on page load + refresh every 10 sec
+  document.addEventListener('DOMContentLoaded', () => {
+    loadTennisMatches();
+    setInterval(loadTennisMatches, 10000);
+  });
+</script>
+<script>
+  async function loadgreyhoundMatches() {
+    try {
+      const response = await fetch('https://1XBETBACKEND.WORK.GD/api/v1/markets/live/greyhound');
+      const result = await response.json();
+
+      const listContainer = document.querySelector('.greyhounditems');
+      listContainer.innerHTML = ''; // Clear existing
+
+      if (result.success && result.data.length > 0) {
+        result.data.forEach(match => {
+          const li = document.createElement('li');
+          li.classList.add('match-card'); // ✅ Custom style class
+
+          const startTime = new Date(match.startTime);
+          const timeStr = startTime.toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+          }).toLowerCase(); // e.g., "4:50 PM" → "4:50 pm"
+
+          li.textContent = `${timeStr} ${match.match}`;
+
+          // ✅ Redirect on click to market.html with marketId
+          li.style.cursor = 'pointer';
+          li.addEventListener('click', () => {
+            window.location.href = `/Common/Markets.html?id=${match.marketId}`;
+          });
+
+          listContainer.appendChild(li);
+        });
+      } else {
+        listContainer.innerHTML = '<li style="color:white;">No live horse matches found.</li>';
+      }
+    } catch (err) {
+      console.error('⚠️ Error loading horse matches:', err.message);
+    }
+  }
+
+  loadgreyhoundMatches(); // auto load on page load
+</script>
+
+
+
+
+      
+
+<script>
+  async function loadhorseMatches() {
+    try {
+      const response = await fetch('https://1XBETBACKEND.WORK.GD/api/v1/markets/live/horse');
+      const result = await response.json();
+
+      const listContainer = document.querySelector('.horseEventList');
+      listContainer.innerHTML = ''; // Clear existing
+
+      if (result.success && result.data.length > 0) {
+        result.data.forEach(match => {
+          const li = document.createElement('li');
+          li.classList.add('match-card'); // ✅ Custom style class
+
+          const startTime = new Date(match.startTime);
+          const timeStr = startTime.toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+          }).toLowerCase(); // e.g., "4:50 PM" → "4:50 pm"
+
+          li.textContent = `${timeStr} ${match.match}`;
+
+          // Click handler: Redirect to market.html with marketId or match info
+          // Assuming match.marketId exists; agar nahi hai toh backend mein bhi bhejna hoga
+          li.style.cursor = 'pointer';  // Cursor pointer for UX
+          li.addEventListener('click', () => {
+            // MarketId ko query param mein bhej rahe hain
+            window.location.href = `/Common/Markets.html?id=${match.marketId}`;
+          });
+
+          listContainer.appendChild(li);
+        });
+      } else {
+        listContainer.innerHTML = '<li style="color:white;">No live horse matches found.</li>';
+      }
+    } catch (err) {
+      console.error('⚠️ Error loading horse matches:', err.message);
+    }
+  }
+
+  loadhorseMatches(); // auto load on page load
+</script>
+
+    <script type="text/javascript">
+        $(document).ready(function () {
+
+
+            showNewsFlash();
+
+            myFunction2();
+            setInterval(myFunction2, 60000);
+        });
+
+        // function myFunction2() {
+        //     $.ajax({
+        //         type: "GET",
+        //         // url: "/Index?handler=Markets",
+        //         success: function (result) {
+        //             document.getElementById("Bookmarkets").innerHTML = result;
+        //             convertAllToClientTime();
+        //         },
+        //         error: function (jqXhr, textStatus, errorThrown) {
+        //             if (errorThrown == "Unauthorized") {
+        //                 document.location.href = "/Users/Login2";
+        //             }
+        //         }
+        //     });
+        // };
+
+        function AcceptPassword()
+        {
+            var newpass = document.getElementById("Newpasswordmodal").value;
+            $.ajax({
+                type: "GET",
+                url: "/Common/Profile?handler=UpdatePassword&NewPassword=" + newpass,
+                success: function (result) {
+                    if (result == 'PCS') {
+                    $('#modalPasswordChange').modal('hide');;
+                    $('#modalRedirectToLogout').modal('show');;
+                    } else {
+                        $('#alertmodaltitle').html(result);
+                    }
+                },
+                error: function (exception) {
+                    location.reload();
+                }
+            });
+        }
+
+        function ReLogin() {
+            location.href = "/Common/Logout";
+        }
+
+         $(function () {
+            $("#myInput")
+                .on("keydown", function (event) {
+                    if (event.keyCode != 13 && event.keyCode != 8) {
+                        // document.getElementById('smloading').style.display = 'block';
+                        if (event.keyCode === $.ui.keyCode.TAB &&
+                            $(this).autocomplete("instance").menu.active) {
+                            event.preventDefault();
+                        }
+                    } else {
+                        // document.getElementById('smloading').style.display = 'none';
+                    }
+                    var ib = document.getElementById("myInput").value;
+                    if (ib.length == 0) {
+                        //  document.getElementById('smloading').style.display = 'none';
+                    }
+
+                })
+                .autocomplete({
+                    source: function (request, response) {
+                        // /api/users/searchUsers
+                        $.getJSON("/api/v2/users", {
+                            q: request.term
+                        }, response);
+
+                    },
+                    search: function () {
+                        // custom minLength
+                        var term = this.value;
+                        if (term.length < 3) {
+                            return false;
+                        }
+                    },
+                    focus: function () {
+                        // document.getElementById('smloading').style.display = 'none';
+                        // prevent value inserted on focus
+                        // return false;
+                    },
+                    select: function (event, ui) {
+                        if (searchVM != "undefined") {
+                            searchVM.query = ui.item.value;
+                            //  document.getElementById('smloading').style.display = 'none';
+                        }
+                    }
+
+                });
+
+
+        });
+    </script>
+
+
+    <script>
+        const token = getCookie('wexscktoken');
+        const sess = getCookie('wex3authtoken');
+        const reft = getCookie('wex3reftoken');
+
+        $(document).ready(function () {
+            pollUserData();
+
+            pollRefreshToken();
+        });
+    </script>
+      <script>
+document.addEventListener("DOMContentLoaded", async () => {
+  const token = localStorage.getItem("token");
+  if (!token) return;
+
+  try {
+    const res = await fetch("https://1XBETBACKEND.WORK.GD/api/v1/users/me", {
+      headers: { "Authorization": "Bearer " + token }
+    });
+    const data = await res.json();
+
+    if (data.success && data.data && data.data.user) {
+      const user = data.data.user;
+
+      // update localStorage (optional)
+      localStorage.setItem("user", JSON.stringify(user));
+
+      // Username
+      document.getElementById("navbar-user").innerHTML =
+        `${user.username} (${user.role}) <i class="fas fa-caret-down"></i>`;
+
+      // Balance
+      const walletBalance = document.querySelector(".wallet-balance");
+      if (walletBalance) walletBalance.textContent = user.wallet_balance ?? "0";
+
+      // Exposure
+      const walletExposure = document.querySelector(".wallet-exposure");
+      if (walletExposure) walletExposure.textContent = user.wallet_exposure ?? "0";
+    }
+  } catch (err) {
+    console.error("Error loading latest user info:", err);
+  }
+});
+
+</script>
+</body>
+</html>

@@ -1,0 +1,101 @@
+
+<script>
+new Vue({
+  el: "#app",
+  data: {
+    UnMatched: [],
+    Matched: [],
+    _betsTimer: null,
+    isSignalRConnected: true // just placeholder for your disconnected UI
+  },
+  filters: {
+    format(v) {
+      if (v === undefined || v === null || v === "") return "";
+      return Number(v).toLocaleString();
+    }
+  },
+  methods: {
+    // ✅ Unmatched bets
+    fetchUnMatched() {
+      const token = localStorage.getItem("token");
+      return fetch(ordersUrl + "/orders/unmatched", {
+        headers: { Authorization: "Bearer " + token }
+      })
+        .then(r => r.json())
+        .then(list => {
+          this.UnMatched = (list || []).map(o => ({
+            orderId: o.requestId || o.orderId, // backend se requestId aata hai
+            rn: o.runnerName,
+            up: o.price,
+            us: o.size,
+            bs: (o.side || "").toUpperCase()
+          }));
+        })
+        .catch(err => console.error("Error fetching unmatched:", err));
+    },
+
+    // ✅ Matched bets
+    fetchMatched() {
+      const token = localStorage.getItem("token");
+      return fetch(ordersUrl + "/orders/matched", {
+        headers: { Authorization: "Bearer " + token }
+      })
+        .then(r => r.json())
+        .then(list => {
+          this.Matched = (list || []).map(o => ({
+            orderId: o.requestId || o.orderId,
+            rn: o.runnerName,
+            mp: o.price,
+            ms: o.size,
+            bs: (o.side || "").toUpperCase()
+          }));
+        })
+        .catch(err => console.error("Error fetching matched:", err));
+    },
+
+    // ✅ Refresh both
+    refreshBets() {
+      return Promise.all([this.fetchUnMatched(), this.fetchMatched()]);
+    },
+
+    // ✅ Cancel all unmatched bets
+    CancelAll() {
+      const token = localStorage.getItem("token");
+      fetch(ordersUrl + "/orders/cancel-all", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + token }
+      })
+        .then(r => r.json())
+        .then(resp => {
+          console.log("Cancel all response:", resp);
+          this.refreshBets();
+        })
+        .catch(err => console.error("Error cancelling all bets:", err));
+    },
+
+    // ✅ Cancel single bet
+    Cancel(order) {
+      const token = localStorage.getItem("token");
+      fetch(ordersUrl + "/orders/cancel/" + order.orderId, {
+        method: "POST",
+        headers: { Authorization: "Bearer " + token }
+      })
+        .then(r => r.json())
+        .then(resp => {
+          console.log("Cancel single response:", resp);
+          this.refreshBets();
+        })
+        .catch(err => console.error("Error cancelling bet:", err));
+    }
+  },
+
+  mounted() {
+    this.refreshBets();
+    this._betsTimer = setInterval(() => this.refreshBets(), 2000);
+  },
+
+  beforeDestroy() {
+    clearInterval(this._betsTimer);
+  }
+});
+</script>

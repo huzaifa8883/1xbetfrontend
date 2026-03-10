@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <base href="./">
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
+    <meta name="description" content="BetPro Exchange">
+    <meta name="author" content="BetPro">
+    <meta name="keyword" content="BetPro,Exchange,BetFair,Open,Source,jQuery,CSS,HTML,RWD,Dashboard">
+      <title>Hawala (Cash) | BetPro</title>
+    <!-- Icons-->
+     <link rel="stylesheet" href="/dist/lo2.min.css" />
+        <link href="/css/BetPro-style.css" rel="stylesheet" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tempusdominus-bootstrap-4/5.0.0-alpha14/css/tempusdominus-bootstrap-4.min.css" />
+</head>
+<body class="app">
+    <div>
+        <main class="main">
+            <div class="container-fluid" style="padding:0px 15px;">
+                <div class="animated fadeIn">
+                    <style>
+    @media screen and (max-width: 635px) {
+        .editsbmtbtn {
+            margin: auto;
+            margin-top: -30px;
+            margin-right: 15px;
+            background: transparent;
+            border: none;
+        }
+    }
+</style>
+       <div class="row">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-body">
+<ul class="nav nav-pills nav-fill" id="menu">
+  <li class="nav-item">
+    <a class="nav-link active" href="#"><b>Cash</b></a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" id="creditLink" href="#"><b>Credit</b></a>
+  </li>
+</ul>
+
+<table class="table">
+  <tbody id="downlineTableBody"></tbody>
+</table>
+
+                                    <hr />
+
+                                    <h5><strong id="targetUsername">Loading...</strong></h5>
+                                    <table class="table table-sm table-bordered">
+                                        <tr>
+                                            <td>Credit</td>
+                                            <td>Balance</td>
+                                            <td>Max Withdraw</td>
+                                        </tr>
+                                        <tr>
+                                            <th id="creditAmount">0 Rs.</th>
+                                            <th id="balanceAmount">0 Rs.</th>
+                                            <th id="maxWithdrawAmount">0 Rs.</th>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-9">
+                        <form id="depositForm" data-transaction-type="deposit">
+                            <div class="card">
+                                <div class="card-header text-white bg-primary">
+                                    <strong>Deposit</strong> Cash in <strong id="depositUsername">Loading...</strong> Account
+                                </div>
+                                <div class="card-body">
+                                    <div class="form-group row">
+                                        <label class="col-sm-3 col-form-label">Description</label>
+                                        <div class="col-sm-9">
+                                            <input class="form-control" type="text" id="depositDescription" name="IssueDescription" />
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group row">
+                                        <label class="col-sm-3 col-form-label">Amount</label>
+                                        <div class="col-sm-9">
+                                            <div class="input-group">
+                                                <div class="input-group-prepend">
+                                                    <span class="input-group-text">Rs.</span>
+                                                </div>
+                                                <input class="form-control" type="number" id="CreditAmount" name="CreditAmount" value="0" min="0">
+                                            </div>
+                                            <span class="help-block text-danger" id="depositError"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-footer editsbmtbtn">
+                                    <button class="btn btn-primary btn-submit" type="submit">
+                                        <strong>Submit</strong>
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="col-md-9">
+                        <form id="withdrawalForm" data-transaction-type="withdrawal">
+                            <div class="card">
+                                <div class="card-header text-white bg-danger">
+                                    <strong>Withdraw</strong> Cash from <strong id="withdrawUsername">Loading...</strong> Account
+                                </div>
+                                <div class="card-body">
+                                    <div class="form-group row">
+                                        <label class="col-sm-3 col-form-label">Description</label>
+                                        <div class="col-sm-9">
+                                            <input class="form-control" type="text" id="withdrawalDescription" name="IssueDescription" />
+
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group row">
+                                        <label class="col-sm-3 col-form-label">Amount</label>
+                                        <div class="col-sm-9">
+                                            <div class="input-group">
+                                                <div class="input-group-prepend">
+                                                    <span class="input-group-text">Rs.</span>
+                                                </div>
+                                                <input class="form-control" type="number" id="DebitAmount" name="DebitAmount" value="0" min="0">
+                                            </div>
+                                            <span class="help-block text-danger" id="withdrawalError"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-footer editsbmtbtn">
+                                    <button class="btn btn-danger btn-submit" type="submit">
+                                        <strong>Submit</strong>
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+
+<script>
+let currentUser = null;
+let targetUser = null;
+
+// Load current user
+async function loadCurrentUser() {
+  const token = localStorage.getItem("token");
+  try {
+    const res = await fetch('https://1XBETBACKEND.WORK.GD/api/v1/users/me', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const result = await res.json();
+    if (result.success && result.data?.user) {
+      currentUser = result.data.user;
+      await loadTargetUser();
+    } else {
+      console.error("Current user not found or not logged in");
+    }
+  } catch (err) {
+    console.error('Error loading current user:', err);
+  }
+}
+
+// Load target user
+async function loadTargetUser() {
+  const token = localStorage.getItem("token");
+  const userId = new URLSearchParams(window.location.search).get('id');
+  if (!userId) return;
+
+  try {
+    const res = await fetch(`https://1XBETBACKEND.WORK.GD/api/v1/users/${userId}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const result = await res.json();
+    if (result.success && result.data?.user) {
+      targetUser = result.data.user;
+      updateUserInterface();
+      setupCreditLink(); // ✅ Credit link setup after targetUser loaded
+    } else {
+      console.error("Target user not found");
+    }
+  } catch (err) {
+    console.error('Error loading target user:', err);
+  }
+}
+
+// Update UI
+function updateUserInterface() {
+  if (!targetUser || !currentUser) return;
+
+  document.querySelectorAll('#targetUsername, #depositUsername, #withdrawUsername')
+    .forEach(el => el.textContent = targetUser.username);
+
+  document.getElementById('creditAmount').textContent = `${targetUser.credit || 0} Rs.`;
+  document.getElementById('balanceAmount').textContent = `${targetUser.wallet_balance || 0} Rs.`;
+  document.getElementById('maxWithdrawAmount').textContent = `${targetUser.wallet_balance || 0} Rs.`;
+
+  document.getElementById('depositDescription').value =
+    `Cash deposit to ${targetUser.username} from ${currentUser.username} - ${getCurrentDateTime()}`;
+  document.getElementById('withdrawalDescription').value =
+    `Cash withdrawal from ${targetUser.username} to ${currentUser.username} - ${getCurrentDateTime()}`;
+
+  document.getElementById('currentUserBalance').textContent =
+    `Your Balance: ${currentUser.wallet_balance || 0} Rs.`;
+}
+
+// Setup Credit link
+
+// Transaction handler
+async function performTransaction(type) {
+  if (!currentUser || !targetUser) {
+    alert('User information not loaded properly');
+    return;
+  }
+
+  const form = document.querySelector(`form[data-transaction-type="${type}"]`);
+  const amount = parseFloat(type === 'deposit' ? 
+      document.getElementById('CreditAmount').value : 
+      document.getElementById('DebitAmount').value);
+
+  if (!amount || amount <= 0) {
+    document.getElementById(`${type}Error`).textContent = 'Please enter a valid amount';
+    return;
+  }
+
+  if (type === 'deposit' && currentUser.wallet_balance < amount) {
+    document.getElementById(`${type}Error`).textContent = 'Insufficient balance in your account';
+    return;
+  } else if (type === 'withdrawal' && targetUser.wallet_balance < amount) {
+    document.getElementById(`${type}Error`).textContent = 'Insufficient balance in target account';
+    return;
+  }
+
+  const roleHierarchy = {'superadmin': 5, 'admin': 4, 'supermaster': 3, 'master': 2, 'user': 1 };
+  if (roleHierarchy[currentUser.role.toLowerCase()] <= roleHierarchy[targetUser.role.toLowerCase()]) {
+    document.getElementById(`${type}Error`).textContent = 'You do not have permission to perform this transaction';
+    return;
+  }
+
+  try {
+    const token = localStorage.getItem("token");
+    const response = await fetch('https://1XBETBACKEND.WORK.GD/api/v1/users/transaction', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        type,
+        amount,
+        userId: targetUser.id,
+        fromUserId: currentUser.id,
+        description: form.querySelector(`#${type}Description`).value,
+        timestamp: getCurrentDateTime()
+      })
+    });
+
+    const result = await response.json();
+    if (result.success) {
+      currentUser.wallet_balance = result.data?.currentUserBalance ?? currentUser.wallet_balance;
+      targetUser.wallet_balance = result.data?.targetUserBalance ?? targetUser.wallet_balance;
+      updateUserInterface();
+      form.reset();
+      document.getElementById(`${type}Error`).textContent = '';
+      document.getElementById(`${type}Description`).value =
+        `Cash ${type} ${type === 'deposit' ? 'to' : 'from'} ${targetUser.username} ${type === 'deposit' ? 'from' : 'to'} ${currentUser.username} - ${getCurrentDateTime()}`;
+      alert(`${type === 'deposit' ? 'Deposit' : 'Withdrawal'} successful!`);
+    } else {
+      document.getElementById(`${type}Error`).textContent = result.message;
+    }
+  } catch (err) {
+    console.error('Transaction error:', err);
+    document.getElementById(`${type}Error`).textContent = '';
+  }
+}
+
+// Dummy timestamp
+function getCurrentDateTime() {
+  return "2025-08-27 20:32:09";
+}
+
+// Form submit handlers
+document.getElementById('depositForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  await performTransaction('deposit');
+});
+document.getElementById('withdrawalForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  await performTransaction('withdrawal');
+});
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+  loadCurrentUser();
+});
+</script>
+<script>
+let targetUserId = new URLSearchParams(window.location.search).get('id');
+
+// Setup Credit link immediately
+const creditLink = document.getElementById("creditLink");
+if (creditLink && targetUserId) {
+  creditLink.href = `/Accounts/Credit.html?id=${targetUserId}`;
+  creditLink.addEventListener('click', e => {
+    e.preventDefault();
+    window.location.href = `/Accounts/Credit.html?id=${targetUserId}`;
+  });
+}
+</script>
+    <script src="/js/vue.min.js"></script>
+    <script type="text/javascript" src="https://wurfl.io/wurfl.js"></script>
+    <script src="/js/site.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/tempusdominus-bootstrap-4/5.0.0-alpha14/js/tempusdominus-bootstrap-4.min.js"></script>
+    <script src="/js/src/client-locales.js"></script>
+    
+    <script>
+        $(".bindDId").val(GetDeviceIdentity());
+    </script>
+
+</body>
+</html>

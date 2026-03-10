@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <base href="./">
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
+    <meta name="description" content="BetPro Exchange">
+    <meta name="author" content="BetPro">
+    <meta name="keyword" content="BetPro,Exchange,BetFair,Open,Source,jQuery,CSS,HTML,RWD,Dashboard">
+    <title>Credit | BetPro</title>
+    <!-- Icons-->
+    <link rel="stylesheet" href="/dist/lo2.min.css" />
+    <link href="/css/BetPro-style.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tempusdominus-bootstrap-4/5.0.0-alpha14/css/tempusdominus-bootstrap-4.min.css" />
+</head>
+<body class="app">
+ <div>
+  <main class="main">
+    <div class="container-fluid" style="padding:0px 15px;">
+      <div class="animated fadeIn">
+        <style>
+          @media screen and (max-width: 635px) {
+            .editsbmtbtn {
+              margin: auto;
+              margin-top: -30px;
+              margin-right: 15px;
+              background: transparent;
+              border: none;
+            }
+          }
+        </style>
+
+        <!-- Current Date Time Display -->
+        <div class="row mb-3">
+          <div class="col-12">
+            <div class="card">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <strong>Current Date and Time (UTC):</strong>
+                    <span id="currentDateTime"></span>
+                  </div>
+                  <div>
+                    <strong>Logged in as:</strong>
+                    <span id="currentUser"></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <p id="currentUserBalance">Your Balance: 0 Rs.</p>
+
+        <div class="row">
+          <div class="col-12">
+            <div class="card">
+              <div class="card-body">
+                <ul class="nav nav-pills nav-fill">
+                  <li class="nav-item">
+                    <a class="nav-link" href="/cash"><b>Cash</b></a>
+                  </li>
+                  <li class="nav-item">
+                    <a class="nav-link active" href="/credit"><b>Credit</b></a>
+                  </li>
+                </ul>
+                <hr />
+
+                <h5><strong id="targetUsername">Loading...</strong></h5>
+                <table class="table table-sm table-bordered">
+                  <tr>
+                    <td>Credit limit</td>
+                    <td>Credit Balance</td>
+                    <td>Available Balance</td>
+                  </tr>
+                  <tr>
+                    <th id="creditLimit">0 Rs.</th>
+                    <th id="creditBalance">0 Rs.</th>
+                    <th id="availableBalance">0 Rs.</th>
+                  </tr>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Credit Deposit Form -->
+        <div class="col-md-12">
+          <form id="creditDepositForm" class="credit-form" data-transaction-type="credit-deposit">
+            <div class="card">
+              <div class="card-header bg-primary text-white">
+                <strong>Deposit Credit</strong>
+              </div>
+              <div class="card-body">
+                <div class="form-group row">
+                  <label class="col-sm-3 col-form-label">Description</label>
+                  <div class="col-sm-9">
+                    <input type="text" class="form-control" id="depositDescription" name="description" required />
+                  </div>
+                </div>
+
+                <div class="form-group row">
+                  <label class="col-sm-3 col-form-label">Amount</label>
+                  <div class="col-sm-9">
+                    <div class="input-group">
+                      <div class="input-group-prepend">
+                        <span class="input-group-text">Rs.</span>
+                      </div>
+                      <input class="form-control" type="number" id="depositAmount" name="amount" value="0" min="0" required />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="card-footer editsbmtbtn">
+                <button class="btn btn-primary btn-submit" type="submit">
+                  <strong>Deposit Credit</strong>
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <!-- Credit Withdrawal Form -->
+        <div class="col-md-12">
+          <form id="creditWithdrawalForm" class="credit-form" data-transaction-type="credit-withdrawal">
+            <div class="card">
+              <div class="card-header bg-danger text-white">
+                <strong>Withdraw Credit</strong>
+              </div>
+              <div class="card-body">
+                <div class="form-group row">
+                  <label class="col-sm-3 col-form-label">Description</label>
+                  <div class="col-sm-9">
+                    <input type="text" class="form-control" id="withdrawalDescription" name="description" required />
+                  </div>
+                </div>
+
+                <div class="form-group row">
+                  <label class="col-sm-3 col-form-label">Amount</label>
+                  <div class="col-sm-9">
+                    <div class="input-group">
+                      <div class="input-group-prepend">
+                        <span class="input-group-text">Rs.</span>
+                      </div>
+                      <input class="form-control" type="number" id="withdrawalAmount" name="amount" value="0" min="0" required />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="card-footer editsbmtbtn">
+                <button class="btn btn-danger btn-submit" type="submit">
+                  <strong>Withdraw Credit</strong>
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+
+      </div>
+    </div>
+  </main>
+</div>
+<div id="pageLoader" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); z-index: 9999;">
+    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+        <div class="spinner-border text-primary" role="status">
+            <span class="sr-only">Loading...</span>
+        </div>
+        <div class="mt-2">Loading user data...</div>
+    </div>
+</div>
+    <!-- Scripts -->
+    <script src="/js/vue.min.js"></script>
+    <script type="text/javascript" src="https://wurfl.io/wurfl.js"></script>
+    <script src="/js/site.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/tempusdominus-bootstrap-4/5.0.0-alpha14/js/tempusdominus-bootstrap-4.min.js"></script>
+    <script src="/js/src/client-locales.js"></script>
+<script>
+// Global variables
+// Credit.html script – fixed
+let currentUser = null;
+let targetUser = null;
+let isLoading = true;
+
+function formatDateTime() {
+  const now = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+}
+
+function formatCurrency(amount) {
+  return `${parseFloat(amount || 0).toFixed(2)} Rs.`;
+}
+
+function showPageLoading(message='Loading...') {
+  const loader = document.getElementById('pageLoader');
+  if(loader){ loader.style.display='block'; loader.querySelector('.mt-2').textContent=message; }
+  document.querySelectorAll('button[type="submit"]').forEach(b=>b.disabled=true);
+}
+function hidePageLoading() {
+  const loader = document.getElementById('pageLoader');
+  if(loader) loader.style.display='none';
+  document.querySelectorAll('button[type="submit"]').forEach(b=>b.disabled=false);
+}
+
+async function initializePage() {
+  showPageLoading('Loading user data...');
+  const token = localStorage.getItem('token');
+  if(!token){ alert('❌ You are not logged in'); hidePageLoading(); return; }
+
+  const params = new URLSearchParams(window.location.search);
+  const userId = params.get('id'); // Must match navigation query param
+  if(!userId){ alert('❌ Target user ID missing'); hidePageLoading(); return; }
+
+  try {
+    // Fetch current user and target user
+    const [meRes, targetRes] = await Promise.all([
+      fetch('https://1XBETBACKEND.WORK.GD/api/v1/users/me', { headers: { 'Authorization': `Bearer ${token}` } }),
+      fetch(`https://1XBETBACKEND.WORK.GD/api/v1/users/${userId}`, { headers: { 'Authorization': `Bearer ${token}` } })
+    ]);
+    
+    const [meData, targetData] = await Promise.all([meRes.json(), targetRes.json()]);
+    if(!meData.success){ alert('❌ Failed to load current user'); hidePageLoading(); return; }
+    if(!targetData.success){ alert('❌ Failed to load target user'); hidePageLoading(); return; }
+
+    currentUser = meData.data?.user || meData.user;
+    targetUser = targetData.data?.user || targetData.user;
+
+    // Update UI
+    document.getElementById('currentUser').textContent = currentUser.username;
+    document.getElementById('currentUserBalance').textContent = `Your Balance: ${formatCurrency(currentUser.wallet_balance)}`;
+    document.getElementById('targetUsername').textContent = targetUser.username;
+    document.getElementById('creditBalance').textContent = formatCurrency(targetUser.credit_balance);
+    document.getElementById('creditLimit').textContent = formatCurrency(targetUser.credit_limit);
+    document.getElementById('availableBalance').textContent = formatCurrency(targetUser.wallet_balance);
+
+    const ts = formatDateTime();
+    document.getElementById('depositDescription').value = `Credit deposit to ${targetUser.username} from ${currentUser.username} - ${ts}`;
+    document.getElementById('withdrawalDescription').value = `Credit withdrawal from ${targetUser.username} to ${currentUser.username} - ${ts}`;
+
+    hidePageLoading();
+    isLoading = false;
+
+  } catch(err) {
+    console.error('Initialization failed:', err);
+    alert('❌ Failed to fetch user data. Check your network or login.');
+    hidePageLoading();
+    isLoading = false;
+  }
+}
+
+async function performCreditTransaction(e,type){
+  e.preventDefault();
+  if(isLoading){ alert('Please wait until users are loaded'); return; }
+  if(!currentUser||!targetUser){ alert('❌ Missing user data'); return; }
+
+  const form = type==='credit-deposit'?document.getElementById('creditDepositForm'):document.getElementById('creditWithdrawalForm');
+  const amountInput = type==='credit-deposit'?document.getElementById('depositAmount'):document.getElementById('withdrawalAmount');
+  const descInput = type==='credit-deposit'?document.getElementById('depositDescription'):document.getElementById('withdrawalDescription');
+  const submitBtn = form.querySelector('.btn-submit');
+
+  const amount = parseFloat(amountInput.value);
+  if(!amount||amount<=0){ alert('❌ Enter a valid amount'); return; }
+
+  submitBtn.disabled=true;
+  submitBtn.innerHTML='<span class="spinner-border spinner-border-sm"></span> Processing...';
+
+  try{
+    const token = localStorage.getItem('token');
+    const res = await fetch('https://1XBETBACKEND.WORK.GD/api/v1/users/credit-transaction',{
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${token}` },
+      body: JSON.stringify({ type, amount, userId: targetUser.id, description: descInput.value })
+    });
+    const data = await res.json();
+    if(data.success){
+  targetUser.credit_balance = data.data?.newCreditBalance ?? data.newCreditBalance;
+  currentUser.wallet_balance = data.data?.currentUserBalance ?? data.currentUserBalance;
+
+  document.getElementById('creditBalance').textContent = formatCurrency(data.data?.newCreditBalance ?? data.newCreditBalance);
+  document.getElementById('currentUserBalance').textContent = `Your Balance: ${formatCurrency(data.data?.currentUserBalance ?? data.currentUserBalance)}`;
+
+
+      form.reset();
+      const ts = formatDateTime();
+      descInput.value = type==='credit-deposit'
+        ? `Credit deposit to ${targetUser.username} from ${currentUser.username} - ${ts}`
+        : `Credit withdrawal from ${targetUser.username} to ${currentUser.username} - ${ts}`;
+      alert(`✅ ${type==='credit-deposit'?'Deposit':'Withdrawal'} successful!`);
+    }else{
+      alert('❌ '+(data.message||'Transaction failed'));
+    }
+  }catch(err){
+    console.error('Transaction failed:', err);
+    alert('❌ Failed to process transaction. Check console.');
+  }finally{
+    submitBtn.disabled=false;
+    submitBtn.innerHTML=type==='credit-deposit'?'Deposit Credit':'Withdraw Credit';
+  }
+}
+
+// Handlers
+document.getElementById('creditDepositForm')?.addEventListener('submit', (e)=>performCreditTransaction(e,'credit-deposit'));
+document.getElementById('creditWithdrawalForm')?.addEventListener('submit', (e)=>performCreditTransaction(e,'credit-withdrawal'));
+
+document.addEventListener('DOMContentLoaded', ()=>{
+  showPageLoading();
+  initializePage();
+});
+
+</script>
+
+
+</body>
+</html>

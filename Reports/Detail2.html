@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    
+    <meta charset="utf-8">
+    <meta name="google" content="notranslate" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
+    <meta name="description" content="Sports Trading Platform">
+    <meta name="keyword" content="sports trading, bet, betfair">
+    <title>Detail2 | BetPro</title>
+    <!-- Icons-->
+    <link rel="shortcut icon" href="/BetPro.ico">
+    <link rel="stylesheet" href="/css/all.css" />
+    <link href="/css/style.css" rel="stylesheet" />
+    <link href="/css/site.min.css" rel="stylesheet" />
+    <link href="/css/BetPro-style.css" rel="stylesheet" />
+       <style>
+        .cricketEventList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.match-card {
+  /* background-color: #1a1a1a; */
+  color: white;
+  margin-bottom: 12px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 16px;
+  box-shadow: 0 2px 6px rgba(255, 255, 255, 0.05);
+  transition: background 0.3s ease;
+  cursor: pointer;
+}
+
+.match-card:hover {
+  background-color: #2a2a2a;
+}
+    </style>
+    <script>
+        var pricesUrl = "https://api.bfexch.com/api";
+        var ordersUrl = "https://api.bfexch.com/api";
+        const SsocketUrl = "https://orders-ws.mgs11.com/signalr";
+        const LiquidityRate = 35;
+        let dealerSck = 1;
+    </script>
+</head>
+<body class="app header-fixed sidebar-fixed aside-menu-fixed sidebar-lg-show">
+    <header class="app-header navbar">
+        <button class="navbar-toggler sidebar-toggler d-lg-none mr-auto" type="button" data-toggle="sidebar-show">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="logo-bar">
+            <a href="/index">
+                <span class="green-logo-text d-sm-down-none">
+                    BetPro
+                </span>
+            </a>
+        </div>
+
+        <button class="navbar-toggler sidebar-toggler d-md-down-none" type="button" data-toggle="sidebar-lg-show">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        
+
+<ul class="nav navbar-nav d-md-down-none">
+        <li class="nav-item px-3">
+            <a class="nav-link" href="/index">Dashboard</a>
+        </li>
+        <li class="nav-item px-3">
+            <a class="nav-link" href="/Accounts/Chart">Users</a>
+        </li>
+        <li class="nav-item px-3">
+            <a class="nav-link" href="/Reports/BookDetail">Reports</a>
+        </li>
+</ul>
+
+        <ul class="nav navbar-nav ml-auto">
+            <li class="nav-item px-2">
+                            <a class="nav-link" data-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false" id="navbar-user">
+    <!-- Username & Role will go here -->
+</a>
+
+                <div class="dropdown-menu dropdown-menu-right">
+                    <a class="dropdown-item" href="/Common/Profile">
+                        <i class="fa fa-user"></i> Profile
+                    </a>
+                    <a class="dropdown-item" id="btn-logout" href="/">
+                        <i class="fa fa-sign-out"></i> Logout
+                    </a>
+                </div>
+            </li>
+            <li class="nav-item">
+             <a class="nav-link" href="/" role="button" aria-haspopup="true" aria-expanded="false">
+                    <strong>B:</strong> <span class="wallet-balance"> </span>
+                    <strong>Exp:</strong> <span class="wallet-exposure"></span>
+                </a>
+            </li>
+        </ul>
+    </header>
+    <div class="app-body">
+        <div class="sidebar">
+            <nav class="sidebar-nav">
+                
+
+<ul class="nav">
+        <li class="nav-item">
+            <a class="nav-link" href="/index">
+                <i class="nav-icon fas fa-tachometer-alt fa-inverse"></i> Dashboard
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="/Accounts/Chart">
+                <i class="nav-icon fas fa-users fa-inverse"></i> Users
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="/Markets/Liables">
+                <i class="nav-icon fas fa-funnel-dollar fa-inverse"></i> Current Position
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="/Reports/BookDetail">
+                <i class="nav-icon fas fa-money-check fa-inverse"></i> Reports
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="/Markets/BetLocker">
+                <i class="nav-icon fas fa-unlock-alt fa-inverse"></i> Bet Lock
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="/Markets/Games">
+                <i class="nav-icon fas fa-star fa-inverse"></i> Star Casino
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="/Markets/WorldCasino">
+                <i class="nav-icon fas fa-globe fa-inverse"></i> World Casino
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="/Markets/ExGames">
+                <i class="nav-icon fas fa-globe fa-inverse"></i> BetFair Games
+            </a>
+        </li>
+
+
+
+     <li class="nav-item nav-dropdown">
+        <a class="nav-link nav-dropdown-toggle" href="#">
+            <img src="/img/v2/soccer.svg" alt="C">
+            Soccer
+        </a>
+
+        <ul class="nav-dropdown-items footballEventList" href="#">
+   
+        </ul>
+    </li>
+      <li class="nav-item nav-dropdown">
+        <a class="nav-link nav-dropdown-toggle" href="#">
+            <img src="/img/v2/tennis.svg" alt="C">
+            Tennis
+        </a>
+
+        <ul class="nav-dropdown-items tennisEventList" href="#">
+          
+        </ul>
+    </li>
+    <li class="nav-item nav-dropdown">
+        <a class="nav-link nav-dropdown-toggle" href="#">
+            <img src="/img/v2/cricket.svg" alt="C">
+            Cricket
+        </a>
+
+        <ul class="nav-dropdown-items cricketEventList"   href="#">
+       
+        </ul>
+    </li>
+    <li class="nav-item nav-dropdown">
+        <a class="nav-link nav-dropdown-toggle" href="#">
+            <img src="/img/v2/horse.svg" alt="C">
+            Horse Race
+        </a>
+
+        <ul class="nav-dropdown-items horseEventList" href="#">
+                
+        </ul>
+    </li>
+    <li class="nav-item nav-dropdown">
+        <a class="nav-link nav-dropdown-toggle" href="#">
+            <img src="/img/v2/greyhound-racing.svg" alt="C">
+            Greyhound
+        </a>
+
+        <ul class="nav-dropdown-items greyhounditems" href="#">
+            
+        </ul>
+    </li>
+</ul>
+            </nav>
+
+            <button class="sidebar-minimizer brand-minimizer" type="button"></button>
+        </div>
+        <main class="main">
+            <div class="container-fluid">
+                <div class="animated fadeIn">
+                    
+<style>
+    @media screen and (max-width: 635px) {
+        .reportmenubuttons {
+            text-align: center;
+        }
+    }
+    
+</style>
+<div class="row">
+    <div class="col-12 col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <i class="fa fa-filter"></i>
+                <strong>Report Type</strong>
+            </div>
+         <div class="card-body reportmenubuttons">
+                    <a href="/Reports/BookDetail"
+                       id="book-detail"
+                       class="btn btn-primary">
+                        Book Detail
+                    </a>
+                    <a href="/Reports/Detail2"
+                       id="book-detail-2"
+                       class="btn btn-outline-primary">
+                        Book Detail 2
+                    </a>
+                    <a href="/Reports/DailyPl"
+                       id="dailyPl"
+                       class="btn btn-outline-primary">
+                        Daily PL
+                    </a>
+                    <a href="/Reports/Daily"
+                       id="daily"
+                       class="btn btn-outline-primary">
+                        Daily Report
+                    </a>
+                    <a href="/Reports/FinalSheet"
+                       id="final-sheet"
+                       class="btn btn-outline-primary">
+                        Final Sheet
+                    </a>
+                    <a href="/Accounts/Chart?MID=0"
+                       id="ledger"
+                       class="btn btn-outline-primary">
+                        Accounts
+                    </a>
+                    <a href="/Reports/Commission"
+                       id="commission"
+                       class="btn btn-outline-primary">
+                        Commission Report
+                    </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <i class="fa fa-filter"></i>
+                <strong>Report Filter</strong>
+            </div>
+            <div class="card-body">
+                <form id="ReportFilterForm" class="form-inline" method="post">
+                    <div class="row" style="text-align-last:justify;">
+                        <div class="col-12 col-md-5">
+                            <div class="input-group date" id="ReportFrom" data-target-input="nearest">
+                                <input type="text"
+                                       class="form-control datetimepicker-input"
+                                       data-target="#ReportFrom"
+                                       id="DisplayFrom" />
+                                <div class="input-group-append" data-target="#ReportFrom" data-toggle="datetimepicker">
+                                    <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                                </div>
+                            </div>
+                            <span class="market-time d-none"></span>
+                            <span class="d-none utctime" data-nofirst="1" data-format="M/D/YYYY h:mm A">
+                                2025-06-19T19:00:00.0000000Z
+                            </span>
+                            <input type="hidden" name="From" id="From" value="2025-06-19T19:00:00.0000000Z" />
+                        </div>
+
+                        <strong style="margin:auto">&nbsp;-&nbsp;</strong>
+                        <div class="col-12 col-md-5">
+                            <div class="input-group date" id="ReportTo" data-target-input="nearest">
+                                <input type="text"
+                                       class="form-control datetimepicker-input"
+                                       data-target="#ReportTo"
+                                       id="DisplayTo" />
+                                <div class="input-group-append" data-target="#ReportTo" data-toggle="datetimepicker">
+                                    <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                                </div>
+                            </div>
+                            <span class="market-time d-none"></span>
+                            <span class="d-none utctime" data-nofirst="1" data-format="M/D/YYYY h:mm A">
+                                2025-06-20T18:59:59.0000000Z
+                            </span>
+                            <input type="hidden" name="To" id="To" value="2025-06-20T18:59:59.0000000Z" />
+                        </div>
+
+                        <div class="form-group" style="margin: auto;margin-top: 5px; margin-right:15px;">
+                            <button class="btn btn-sm btn-primary" type="submit" onclick="return updateDates();">
+                                <i class="fa fa-dot-circle-o"></i> Submit
+                            </button>
+                        </div>
+
+                        <input type="hidden" data-val="true" data-val-required="The CurrentAccountId field is required." id="CurrentAccountId" name="CurrentAccountId" value="0" />
+                        <input type="hidden" data-val="true" data-val-required="The ClientId field is required." id="ClientId" name="ClientId" value="0" />
+                        <input type="hidden" data-val="true" data-val-required="The EventTypeId field is required." id="EventTypeId" name="EventTypeId" value="0" />
+                        <input type="hidden" id="IsFirstVisit" value="True" />
+                    </div>
+                <input name="__RequestVerificationToken" type="hidden" value="CfDJ8CUby5dCA4FOi92-qO6U8YhSrS7ErmqudC2xClNr0Ry8i4-RaLKtx_9uFXxBP8ccks-s8ZwB36aXclfZW2tWyPmJFETT7vkIDdjOqvgMm0dYfYtGw06IGdC4jHbRPC1sLxgKgKEj-95yq1NA9hxylrUdgvTkcy5VvhW8Pn-wRBggZierUKyByNovEdahblaHrw" /></form>
+            </div>
+        </div>
+    </div>
+</div>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tempusdominus-bootstrap-4/5.0.0-alpha14/css/tempusdominus-bootstrap-4.min.css" />
+<link rel="stylesheet" href="https://cdn.datatables.net/1.10.20/css/jquery.dataTables.min.css" />
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/1.6.2/css/buttons.dataTables.min.css">
+
+<style media="screen">
+    .loader {
+        position: fixed;
+        z-index: 99;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: #ffffff;
+        opacity: 0.6;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .loader > img {
+        width: auto;
+        margin-bottom: 100px;
+        margin-top: 20%;
+        margin-left: 50%;
+    }
+
+    #loadinggif {
+        display: none;
+    }
+</style>
+
+<div class="loader" id="loadinggif">
+    <img src="/../img/loadinggif.gif" />
+</div>
+
+<div class="row">
+    <div class="col-md-6 report-left">
+        <div id="sportreportdiv">
+            
+
+<div class="card">
+    <div class="card-header">
+        <i class="fa fa-align-justify"></i>
+        <strong>Chek10</strong>
+    </div>
+    <div class="card-body">
+        <table class="table table-responsive-sm table-bordered table-striped table-sm" id="tblReport">
+            <thead>
+                <tr>
+                    <th>Event</th>
+                    <th>Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="bg-primary">
+                    <th>Total</th>
+                    <th>0</th>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+        </div>
+    </div>
+    <div class="col-md-6 report-Right">
+        <div class="container" id="marketreportsdiv" style="display: block;">
+        </div>
+
+        <div class="container" id="marketreportsdivdt2" style="display: block;">
+        </div>
+
+    </div>
+</div>
+
+                </div>
+            </div>
+        </main>
+    </div>
+
+     <div class="modal fade" id="modalMarketRules" tabindex="-1" role="dialog" aria-labelledby="modalMarketRules" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">Market Rules</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div id="market-rules-text" class="modal-body">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="app-footer">
+    <ul id="news-ticker-foot">
+        <li data-update="item1">Welcome to BetPro</li>
+    </ul>
+</footer>
+<!-- CoreUI and necessary plugins-->
+
+<script type="text/javascript" src="https://wurfl.io/wurfl.js"></script>
+<script src="/../js/signalr/dist/browser/signalr.js"></script>
+
+
+    <script src="/../js/vue.min.js"></script>
+    <script src="https://unpkg.com/vuex@3.1.3/dist/vuex.min.js"></script>
+    <script src="/../js/site.min.js"></script>
+    <script src="/../js/bof.js"></script>
+
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-C1WVLP1K0K"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('set', { 'user_id': 'Chek10' });
+        gtag('config', 'G-C1WVLP1K0K');
+    </script>
+  <script>
+document.addEventListener("DOMContentLoaded", () => {
+  const userInfo = localStorage.getItem("user");
+  if (userInfo) {
+    const user = JSON.parse(userInfo);
+    const navbarUser = document.getElementById("navbar-user");
+    navbarUser.innerHTML = `${user.username} (${user.role}) <i class="fas fa-caret-down"></i>`;
+  }
+});
+</script>
+
+    <script>
+  function slugify(text) {
+    return text
+      .toString()
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '') // remove special chars
+      .replace(/\s+/g, '-')        // space to hyphen
+      .trim();
+  }
+
+  async function loadCricketMatches() {
+    try {
+      const response = await fetch('https://1XBETBACKEND.WORK.GD/api/markets/live/cricket');
+      const result = await response.json();
+
+      const ul = document.querySelector('.cricketEventList');
+      ul.innerHTML = '';
+
+      if (result.status === 'success') {
+        if (result.data.length === 0) {
+          ul.innerHTML = '<li>No live or upcoming cricket matches found</li>';
+          return;
+        }
+
+        result.data.forEach(event => {
+          const li = document.createElement('li');
+          li.classList.add('match-card');
+
+          const matchName = event.match || 'match';
+          const matchId = event.marketId || event.eventId || '0'; // fallback if id not found
+          const slug = slugify(matchName);
+
+          li.textContent = matchName;
+          li.style.cursor = 'pointer';
+
+          li.addEventListener('click', () => {
+            window.location.href = `/Common/markets#!${matchId}`;
+          });
+
+          ul.appendChild(li);
+        });
+      } else {
+        ul.innerHTML = '<li>Error loading matches</li>';
+      }
+    } catch (error) {
+      console.error('API Error:', error);
+      document.querySelector('.cricketEventList').innerHTML =
+        '<li>API Error: ' + error.message + '</li>';
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', loadCricketMatches);
+</script>
+<script>
+  let lastCricketMatches = []; // cache
+
+  function slugify(text) {
+    return text
+      .toString()
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '') // remove special chars
+      .replace(/\s+/g, '-')        // space -> hyphen
+      .trim();
+  }
+
+  async function loadCricketMatches() {
+    try {
+      const response = await fetch('https://1XBETBACKEND.WORK.GD/api/markets/live/cricket');
+      const result = await response.json();
+
+      if (result.status === 'success' && result.data.length > 0) {
+        lastCricketMatches = result.data;
+      }
+
+      renderCricketMatches(lastCricketMatches);
+
+    } catch (err) {
+      console.error('⚠️ Error loading cricket matches:', err.message);
+      renderCricketMatches(lastCricketMatches); // fallback to cache
+    }
+  }
+
+  function renderCricketMatches(matches) {
+    const tableBody = document.querySelector('.cricketEventLis');
+    tableBody.innerHTML = ''; // reset
+
+    if (!matches || matches.length === 0) {
+      tableBody.innerHTML = `<tr><td colspan="2" style="color:white;">No live cricket matches found.</td></tr>`;
+      return;
+    }
+
+    matches.forEach(match => {
+      const tr = document.createElement('tr');
+
+      // left column (match name + link)
+      const td1 = document.createElement('td');
+      const h5 = document.createElement('h5');
+      const a = document.createElement('a');
+
+      const matchName = match.match || 'Unknown Match';
+      const matchId = match.marketId || match.eventId || '0';
+
+      a.href = `/Common/markets#!${matchId}`;
+      a.textContent = `${matchName} / Match Odds`;
+
+      h5.appendChild(a);
+
+      // optional icon (same as football)
+      const i = document.createElement('i');
+      i.className = 'fa fa-circle position-plus';
+      h5.appendChild(i);
+
+      td1.appendChild(h5);
+
+      // right column (volume/totalMatched)
+      const td2 = document.createElement('td');
+      td2.classList.add('position-plus');
+      td2.textContent = match.totalMatched?.toLocaleString() || '0';
+
+      tr.appendChild(td1);
+      tr.appendChild(td2);
+
+      tableBody.appendChild(tr);
+    });
+  }
+
+  // Auto load on page load + refresh every 10 sec
+  document.addEventListener('DOMContentLoaded', () => {
+    loadCricketMatches();
+    setInterval(loadCricketMatches, 10000);
+  });
+</script>
+<script>
+  let lastFootballMatches = []; // cache last non-empty data
+
+  function slugify(text) {
+    return text
+      .toString()
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '') // remove special chars
+      .replace(/\s+/g, '-')        // space to hyphen
+      .trim();
+  }
+
+  async function loadFootballMatche() {
+    try {
+      const response = await fetch('https://1XBETBACKEND.WORK.GD/api/markets/live/football');
+      const result = await response.json();
+
+      // ✅ Update cache only if API returns non-empty matches
+      if (result.status === 'success' && result.data.length > 0) {
+        lastFootballMatches = result.data;
+      }
+
+      renderFootballMatche(lastFootballMatches);
+
+    } catch (err) {
+      console.error('⚠️ Error loading football matches:', err.message);
+      renderFootballMatche(lastFootballMatches); // fallback to cache
+    }
+  }
+
+  function renderFootballMatche(matches) {
+    const listContainer = document.querySelector('.footballEventList');
+    listContainer.innerHTML = ''; // clear only for re-render
+
+    if (!matches || matches.length === 0) {
+      listContainer.innerHTML = '<li style="color:white;">No live football matches found.</li>';
+      return;
+    }
+
+    matches.forEach(match => {
+      const li = document.createElement('li');
+      li.classList.add('match-card');
+
+      const matchName = match.match || 'match';
+      const matchId = match.marketId || match.eventId || '0';
+      const slug = slugify(matchName);
+
+      li.textContent = matchName;
+      li.style.cursor = 'pointer';
+
+      li.addEventListener('click', () => {
+        window.location.href = `/Common/markets#!${matchId}`;
+      });
+
+      listContainer.appendChild(li);
+    });
+  }
+
+  // Auto load on page load + refresh every 10 seconds
+  document.addEventListener('DOMContentLoaded', () => {
+    loadFootballMatche();
+    setInterval(loadFootballMatche, 10000);
+  });
+</script>
+<script>
+  let lastFootballMatche = []; // cache
+
+  function slugify(text) {
+    return text
+      .toString()
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '') // special chars hatado
+      .replace(/\s+/g, '-')        // space -> -
+      .trim();
+  }
+
+  async function loadFootballMatches() {
+    try {
+      const response = await fetch('https://1XBETBACKEND.WORK.GD/api/markets/live/football');
+      const result = await response.json();
+
+      if (result.status === 'success' && result.data.length > 0) {
+        lastFootballMatche = result.data;
+      }
+
+      renderFootballMatches(lastFootballMatche);
+
+    } catch (err) {
+      console.error('⚠️ Error loading football matches:', err.message);
+      renderFootballMatches(lastFootballMatche); // fallback
+    }
+  }
+
+  function renderFootballMatches(matches) {
+    const tableBody = document.querySelector('.footballEventLis');
+    tableBody.innerHTML = ''; // reset
+
+    if (!matches || matches.length === 0) {
+      tableBody.innerHTML = `<tr><td colspan="2" style="color:white;">No live football matches found.</td></tr>`;
+      return;
+    }
+
+    matches.forEach(match => {
+      const tr = document.createElement('tr');
+
+      // left column (match name + link)
+      const td1 = document.createElement('td');
+      const h5 = document.createElement('h5');
+      const a = document.createElement('a');
+
+      const matchName = match.match || 'Unknown Match';
+      const matchId = match.marketId || match.eventId || '0';
+
+      a.href = `/Common/markets#!${matchId}`;
+      a.textContent = `${matchName} / Match Odds`;
+
+      h5.appendChild(a);
+
+      // optional icon (if you want)
+      const i = document.createElement('i');
+      i.className = 'fa fa-circle position-plus';
+      h5.appendChild(i);
+
+      td1.appendChild(h5);
+
+      // right column (volume or traded amount)
+      const td2 = document.createElement('td');
+      td2.classList.add('position-plus');
+      td2.textContent = match.totalMatched.toLocaleString() || '0';
+
+      tr.appendChild(td1);
+      tr.appendChild(td2);
+
+      tableBody.appendChild(tr);
+    });
+  }
+
+  // Auto load on page load + refresh every 10 sec
+  document.addEventListener('DOMContentLoaded', () => {
+    loadFootballMatches();
+    setInterval(loadFootballMatches, 10000);
+  });
+</script>
+
+
+<script>
+  let lastTennisMatches = []; // cache last valid tennis data
+
+  function slugify(text) {
+    return text
+      .toString()
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '') // remove special chars
+      .replace(/\s+/g, '-')        // space to hyphen
+      .trim();
+  }
+
+  async function loadTennisMatche() {
+    try {
+      const response = await fetch('https://1XBETBACKEND.WORK.GD/api/markets/live/tennis');
+      const result = await response.json();
+
+      if (result.status === 'success' && result.data.length > 0) {
+        lastTennisMatches = result.data; // update cache only if data is valid
+      }
+
+      renderTennisMatche(lastTennisMatches);
+
+    } catch (err) {
+      console.error('⚠️ Error loading tennis matches:', err.message);
+      renderTennisMatche(lastTennisMatches); // fallback to old data
+    }
+  }
+
+  function renderTennisMatche(matches) {
+    const listContainer = document.querySelector('.tennisEventList');
+    listContainer.innerHTML = '';
+
+    if (!matches || matches.length === 0) {
+      listContainer.innerHTML = '<li style="color:white;">No live tennis matches found.</li>';
+      return;
+    }
+
+    matches.forEach(match => {
+      const li = document.createElement('li');
+      li.classList.add('match-card');
+
+      const matchName = match.match || 'match';
+      const matchId = match.marketId || match.eventId || '0';
+      const slug = slugify(matchName);
+
+      li.textContent = matchName;
+      li.style.cursor = 'pointer';
+
+      li.addEventListener('click', () => {
+        window.location.href = `/Common/markets#!${matchId}`;
+      });
+
+      listContainer.appendChild(li);
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    loadTennisMatche();
+    setInterval(loadTennisMatche, 10000); // refresh every 10s
+  });
+</script>
+
+<script>
+  let lastTennisMatche = []; // cache
+
+  function slugify(text) {
+    return text
+      .toString()
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '') // remove special chars
+      .replace(/\s+/g, '-')        // space -> hyphen
+      .trim();
+  }
+
+  async function loadTennisMatches() {
+    try {
+      const response = await fetch('https://1XBETBACKEND.WORK.GD/api/markets/live/tennis');
+      const result = await response.json();
+
+      if (result.status === 'success' && result.data.length > 0) {
+        lastTennisMatche = result.data; // update cache
+      }
+
+      renderTennisMatches(lastTennisMatche);
+
+    } catch (err) {
+      console.error('⚠️ Error loading tennis matches:', err.message);
+      renderTennisMatches(lastTennisMatche); // fallback to cache
+    }
+  }
+
+  function renderTennisMatches(matches) {
+    const tableBody = document.querySelector('.tennisEventLis');
+    tableBody.innerHTML = ''; // reset
+
+    if (!matches || matches.length === 0) {
+      tableBody.innerHTML = `<tr><td colspan="2" style="color:white;">No live tennis matches found.</td></tr>`;
+      return;
+    }
+
+    matches.forEach(match => {
+      const tr = document.createElement('tr');
+
+      // left column (match name + link)
+      const td1 = document.createElement('td');
+      const h5 = document.createElement('h5');
+      const a = document.createElement('a');
+
+      const matchName = match.match || 'Unknown Match';
+      const matchId = match.marketId || match.eventId || '0';
+
+      a.href = `/Common/markets#!${matchId}`;
+      a.textContent = `${matchName} / Match Odds`;
+
+      h5.appendChild(a);
+
+      // optional icon (same as football/cricket)
+      const i = document.createElement('i');
+      i.className = 'fa fa-circle position-plus';
+      h5.appendChild(i);
+
+      td1.appendChild(h5);
+
+      // right column (volume/totalMatched)
+      const td2 = document.createElement('td');
+      td2.classList.add('position-plus');
+      td2.textContent = match.totalMatched?.toLocaleString() || '0';
+
+      tr.appendChild(td1);
+      tr.appendChild(td2);
+
+      tableBody.appendChild(tr);
+    });
+  }
+
+  // Auto load on page load + refresh every 10 sec
+  document.addEventListener('DOMContentLoaded', () => {
+    loadTennisMatches();
+    setInterval(loadTennisMatches, 10000);
+  });
+</script>
+<script>
+  async function loadgreyhoundMatches() {
+    try {
+      const response = await fetch('https://1XBETBACKEND.WORK.GD/api/markets/live/greyhound');
+      const result = await response.json();
+
+      const listContainer = document.querySelector('.greyhounditems');
+      listContainer.innerHTML = ''; // Clear existing
+
+      if (result.status === 'success' && result.data.length > 0) {
+        result.data.forEach(match => {
+          const li = document.createElement('li');
+          li.classList.add('match-card'); // ✅ Custom style class
+
+          const startTime = new Date(match.startTime);
+          const timeStr = startTime.toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+          }).toLowerCase(); // e.g., "4:50 PM" → "4:50 pm"
+
+          li.textContent = `${timeStr} ${match.match}`;
+
+          // ✅ Redirect on click to market.html with marketId
+          li.style.cursor = 'pointer';
+          li.addEventListener('click', () => {
+            window.location.href = `/Common/markets#!${match.marketId}`;
+          });
+
+          listContainer.appendChild(li);
+        });
+      } else {
+        listContainer.innerHTML = '<li style="color:white;">No live horse matches found.</li>';
+      }
+    } catch (err) {
+      console.error('⚠️ Error loading horse matches:', err.message);
+    }
+  }
+
+  loadgreyhoundMatches(); // auto load on page load
+</script>
+
+
+
+
+      
+
+<script>
+  async function loadhorseMatches() {
+    try {
+      const response = await fetch('https://1XBETBACKEND.WORK.GD/api/markets/live/horse');
+      const result = await response.json();
+
+      const listContainer = document.querySelector('.horseEventList');
+      listContainer.innerHTML = ''; // Clear existing
+
+      if (result.status === 'success' && result.data.length > 0) {
+        result.data.forEach(match => {
+          const li = document.createElement('li');
+          li.classList.add('match-card'); // ✅ Custom style class
+
+          const startTime = new Date(match.startTime);
+          const timeStr = startTime.toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+          }).toLowerCase(); // e.g., "4:50 PM" → "4:50 pm"
+
+          li.textContent = `${timeStr} ${match.match}`;
+
+          // Click handler: Redirect to market.html with marketId or match info
+          // Assuming match.marketId exists; agar nahi hai toh backend mein bhi bhejna hoga
+          li.style.cursor = 'pointer';  // Cursor pointer for UX
+          li.addEventListener('click', () => {
+            // MarketId ko query param mein bhej rahe hain
+            window.location.href = `/Common/markets#!${match.marketId}`;
+          });
+
+          listContainer.appendChild(li);
+        });
+      } else {
+        listContainer.innerHTML = '<li style="color:white;">No live horse matches found.</li>';
+      }
+    } catch (err) {
+      console.error('⚠️ Error loading horse matches:', err.message);
+    }
+  }
+
+  loadhorseMatches(); // auto load on page load
+</script>
+     <script>
+document.addEventListener("DOMContentLoaded", async () => {
+  const token = localStorage.getItem("token");
+  if (!token) return;
+
+  try {
+    const res = await fetch("https://1XBETBACKEND.WORK.GD/api/users/latest", {
+      headers: { "Authorization": "Bearer " + token }
+    });
+    const data = await res.json();
+
+    if (data.success && data.user) {
+      const user = data.user;
+
+      // update localStorage (optional)
+      localStorage.setItem("user", JSON.stringify(user));
+
+      // Username
+      document.getElementById("navbar-user").innerHTML =
+        `${user.username} (${user.role}) <i class="fas fa-caret-down"></i>`;
+
+      // Balance
+      const walletBalance = document.querySelector(".wallet-balance");
+      if (walletBalance) walletBalance.textContent = user.wallet_balance ?? "0";
+
+      // Exposure
+      const walletExposure = document.querySelector(".wallet-exposure");
+      if (walletExposure) walletExposure.textContent = user.wallet_exposure ?? "0";
+    }
+  } catch (err) {
+    console.error("Error loading latest user info:", err);
+  }
+});
+
+</script>
+
+
+<script type="text/javascript" src="/../js/tempusdominus-bootstrap-4.min.js"></script>
+<script src="/../js/src/client-locales.js"></script>
+
+    
+    <script type="text/javascript" src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.js"></script>
+    <script type="text/javascript" src="https://cdn.datatables.net/1.10.19/js/dataTables.bootstrap4.min.js"></script>
+    <script type="text/javascript" src="https://cdn.datatables.net/responsive/2.2.3/js/dataTables.responsive.min.js"></script>
+    <script type="text/javascript" src="https://cdn.datatables.net/buttons/1.6.2/js/buttons.print.min.js"></script>
+    <script type="text/javascript" src="https://cdn.datatables.net/buttons/1.6.2/js/dataTables.buttons.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script>
+    <script type="text/javascript" src="https://cdn.datatables.net/buttons/1.6.2/js/buttons.html5.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            $('#tblReport').DataTable({
+                "paging": false,
+                "info": false,
+                "searching": false,
+                "order": [[0, "asc"]],
+                dom: "<'row'<'col-sm-12'B>>" +
+                    "<'row'<'col-sm-12'tr>>" +
+                    "<'row'<'col-sm-5'i><'col-sm-7'p>>",
+                buttons: [
+                            {
+                                extend: 'print',
+                                text: '<i class=""> Print</i>',
+                                title: 'Chek10  Detail',
+                                titleAttr: 'Copy'
+                            },
+                            {
+                                extend: 'excelHtml5',
+                                text: '<i class=""> Excel</i>',
+                                title: 'Chek10  Detail',
+                                titleAttr: 'Excel'
+                            },
+                            {
+                                extend: 'pdfHtml5',
+                                text: '<i class=""> PDF</i>',
+                                title: 'Chek10  Detail',
+                                titleAttr: 'PDF'
+                            }
+                        ]
+            });
+        });
+
+
+        bindEventTypeLinks();
+        $("div.loader").hide();
+
+        function popup_report(id, Url) {
+            var url = Url + id;
+            newwindow = window.open(url, "Market Position", 'height=650,width=800');
+            if (window.focus) { newwindow.focus() }
+            return false;
+        }
+    </script>
+
+
+    <script>
+        const token = getCookie('wexscktoken');
+        const sess = getCookie('wex3authtoken');
+        const reft = getCookie('wex3reftoken');
+
+        $(document).ready(function () {
+            pollUserData();
+
+            pollRefreshToken();
+        });
+    </script>
+</body>
+</html>

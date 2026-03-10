@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SuperAdmin Login</title>
+  
+  <style>
+    /* Reset */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: linear-gradient(135deg, #4e54c8, #8f94fb);
+    }
+
+    .login-box {
+      background: #fff;
+      padding: 30px 25px;
+      border-radius: 15px;
+      box-shadow: 0px 8px 20px rgba(0,0,0,0.25);
+      width: 350px;
+      animation: fadeIn 0.8s ease-in-out;
+    }
+
+    .login-box h2 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 20px;
+    }
+
+    .input-group {
+      margin-bottom: 15px;
+      position: relative;
+    }
+
+    .input-group input {
+      width: 100%;
+      padding: 12px 40px 12px 12px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      outline: none;
+      transition: 0.3s;
+    }
+
+    .input-group input:focus {
+      border-color: #4e54c8;
+      box-shadow: 0 0 6px rgba(78, 84, 200, 0.5);
+    }
+
+    .input-group span {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 16px;
+      color: #666;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      background: #4e54c8;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    button:hover {
+      background: #3b41a1;
+    }
+
+    .error {
+      color: red;
+      text-align: center;
+      margin-top: 12px;
+      font-size: 14px;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <div class="login-box">
+    <h2>🔑 SuperAdmin Login</h2>
+    <div class="input-group">
+      <input type="text" id="username" placeholder="Enter Username">
+      <span>👤</span>
+    </div>
+    <div class="input-group">
+      <input type="password" id="password" placeholder="Enter Password">
+      <span>🔒</span>
+    </div>
+    <button onclick="superAdminLogin()">Login</button>
+    <div class="error" id="error"></div>
+  </div>
+
+  <script>
+    async function superAdminLogin() {
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value.trim();
+      const errorDiv = document.getElementById("error");
+      const btn = document.querySelector("button");
+
+      if (!username || !password) {
+        errorDiv.textContent = "⚠️ Please fill in all fields!";
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = "Logging in...";
+
+      try {
+        // POST /api/v1/auth/login
+        // Response: { success, data: { token, user: { role, ... } }, message }
+        const res = await fetch("https://1XBETBACKEND.WORK.GD/api/v1/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password })
+        });
+
+        const json = await res.json();
+
+        if (!json.success) {
+          errorDiv.textContent = "❌ " + (json.message || "Invalid credentials");
+          return;
+        }
+
+        const token = json.data.token;
+        const user  = json.data.user;
+
+        if (user.role !== "SuperAdmin") {
+          errorDiv.textContent = "🚫 Not authorized as SuperAdmin";
+          return;
+        }
+
+        localStorage.setItem("token", token);
+        localStorage.setItem("user",  JSON.stringify(user));
+        localStorage.setItem("role",  user.role);
+
+        window.location.href = "/Common/Admin.html";
+
+      } catch (err) {
+        console.error("SuperAdmin login error:", err);
+        errorDiv.textContent = "❌ Server error. Try again.";
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Login";
+      }
+    }
+  </script>
+</body>
+</html>

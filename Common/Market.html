@@ -831,6 +831,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       const matchName = data.eventName || data.marketName || data.match || 'Unknown Match';
       document.title = `${matchName} | BetPro`;
 
+      // Set global eventId for bundle0a.js
+      if (data.eventId && window._setEventId) window._setEventId(data.eventId);
+
       // sport name return karo taake related events load ho sakein
       return data.eventType || data.sport?.name || null;
 
@@ -4714,6 +4717,25 @@ document.addEventListener("DOMContentLoaded", async () => {
         </div>
     </footer>
     <script type="text/javascript" src="https://wurfl.io/wurfl.js"></script>
+
+    <!-- ✅ Global vars for bundle0a.js compatibility -->
+    <script>
+      (function() {
+        // token — bundle0a.js sends this as ?token= query param
+        var _tok = localStorage.getItem("token");
+        window.token    = _tok || undefined;
+
+        // marketId / eventId — read from current URL ?id=
+        var _params     = new URLSearchParams(window.location.search);
+        var _mid        = _params.get("id") || _params.get("marketId");
+        window.marketId = _mid || undefined;
+
+        // eventId will be filled once catalog2 resolves — expose a setter
+        window.eventId  = undefined;
+        window._setEventId = function(id) { window.eventId = id; };
+      })();
+    </script>
+
     <script type="text/javascript" src="/dist/bundle0a.js"></script>
 
     <script>

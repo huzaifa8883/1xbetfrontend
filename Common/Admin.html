@@ -621,7 +621,7 @@
 
 <script>
 /* ===================================================
-   CONFIG — change API base to your actual backend URL
+   CONFIG
    =================================================== */
 const API = 'https://PORTBACKEND.WORK.GD';
 
@@ -636,9 +636,39 @@ async function api(path, method = 'GET', body = null) {
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}` },
   };
   if (body) opts.body = JSON.stringify(body);
-  const r = await fetch(API + path, opts);
-  const data = await r.json();
-  return data;
+  try {
+    const r = await fetch(API + path, opts);
+    if (r.status === 401) { localStorage.removeItem('token'); window.location.href = '/Users/Login'; return { success: false, message: 'Session expired' }; }
+    const data = await r.json();
+    return data;
+  } catch (e) {
+    return { success: false, message: 'Network error: ' + e.message };
+  }
+}
+
+/* ===================================================
+   GLOBAL USER CACHE
+   Resolves parent_id → {username, role} even when
+   backend JOIN fails (BIGINT type mismatch on MySQL)
+   =================================================== */
+const userCache = {};
+
+function cacheUsers(arr) {
+  (arr || []).forEach(u => {
+    if (u && u.id) userCache[String(u.id)] = { username: u.username, role: u.role };
+    if (u && u.parent && u.parent.id) userCache[String(u.parent.id)] = { username: u.parent.username, role: u.parent.role };
+  });
+}
+
+async function ensureUserInCache(id) {
+  if (!id || userCache[String(id)]) return;
+  try {
+    const r = await api('/api/v1/users/' + id);
+    if (r.success && r.data && r.data.user) {
+      const u = r.data.user;
+      userCache[String(u.id)] = { username: u.username, role: u.role };
+    }
+  } catch (e) {}
 }
 
 function toast(msg, type = 'success') {
@@ -658,6 +688,11 @@ function fmtDate(d) { if (!d) return '—'; return new Date(d).toLocaleString('e
 function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
+/* Close modal on overlay click */
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
+});
+
 /* ===================================================
    NAVIGATION
    =================================================== */
@@ -676,15 +711,15 @@ function switchPage(page) {
   if (nav) nav.classList.add('active');
   document.getElementById('page-title').textContent = PAGE_TITLES[page] || page;
 
-  if (page === 'admins') loadList('Admin', 'admin', 'tb-admins', 'cnt-admins', 's-admins');
-  else if (page === 'supermasters') loadList('SuperMaster', 'sm', 'tb-sm', 'cnt-sm', 's-sm');
-  else if (page === 'masters') loadList('Master', 'm', 'tb-m', 'cnt-m', 's-m');
-  else if (page === 'users') loadList('User', 'u', 'tb-u', 'cnt-u', 's-u');
-  else if (page === 'balances') loadBalances();
+  if (page === 'admins')       loadList('Admin',       'admin', 'tb-admins', 'cnt-admins', 's-admins');
+  else if (page === 'supermasters') loadList('SuperMaster', 'sm',    'tb-sm',    'cnt-sm',    's-sm');
+  else if (page === 'masters')      loadList('Master',      'm',     'tb-m',     'cnt-m',     's-m');
+  else if (page === 'users')        loadList('User',        'u',     'tb-u',     'cnt-u',     's-u');
+  else if (page === 'balances')     loadBalances();
   else if (page === 'transactions') loadTransactions();
-  else if (page === 'sports') initSports();
-  else if (page === 'activity') loadActivity();
-  else if (page === 'dashboard') loadDashboard();
+  else if (page === 'sports')       initSports();
+  else if (page === 'activity')     loadActivity();
+  else if (page === 'dashboard')    loadDashboard();
 }
 
 document.querySelectorAll('.nav-item[data-page]').forEach(el => {
@@ -692,7 +727,7 @@ document.querySelectorAll('.nav-item[data-page]').forEach(el => {
 });
 
 /* ===================================================
-   CLOCK + USER INFO
+   CLOCK + SELF
    =================================================== */
 function tick() {
   document.getElementById('clock').textContent = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -704,37 +739,44 @@ async function loadSelf() {
     const r = await api('/api/v1/auth/me');
     if (r.success) {
       const u = r.data.user;
-      const initials = (u.username || 'SA').slice(0, 2).toUpperCase();
+      if (u && u.id) userCache[String(u.id)] = { username: u.username, role: u.role };
       document.getElementById('sidebar-username').textContent = u.username;
       document.getElementById('sidebar-role').textContent = u.role;
-      document.getElementById('sa-avatar').textContent = initials;
+      document.getElementById('sa-avatar').textContent = (u.username || 'SA').slice(0, 2).toUpperCase();
       document.getElementById('my-balance').textContent = fmt(u.wallet_balance);
     }
   } catch (e) {}
 }
 
 /* ===================================================
-   CREATOR BADGE — uses parent association from backend
+   CREATOR BADGE
+   Priority: 1) backend JOIN result  2) local cache  3) async fetch
    =================================================== */
+const ROLE_COLORS = { SuperAdmin: 'badge-green', Admin: 'badge-cyan', SuperMaster: 'badge-orange', Master: 'badge-purple', User: 'badge-gray' };
+
+function creatorBadgeHTML(username, role) {
+  return `<div class="creator-cell">
+    <span style="font-weight:600;font-size:13px;">${username}</span>
+    <span class="badge ${ROLE_COLORS[role] || 'badge-gray'}" style="font-size:10px;width:fit-content;">${role}</span>
+  </div>`;
+}
+
 function creatorCell(user) {
+  // 1. Backend JOIN returned parent object
   const p = user.parent;
-  const roleColors = { SuperAdmin: 'badge-green', Admin: 'badge-cyan', SuperMaster: 'badge-orange', Master: 'badge-purple', User: 'badge-gray' };
-  // parent object available from API include
-  if (p && p.username) {
-    return `<div class="creator-cell">
-    <span style="font-weight:600;font-size:13px;">${p.username}</span>
-    <span class="badge ${roleColors[p.role] || 'badge-gray'}" style="font-size:10px;width:fit-content;">${p.role}</span>
-  </div>`;
-  }
-  // parent_id set but parent object missing = creator was SuperAdmin (no parent_id on SuperAdmin row)
+  if (p && p.username) return creatorBadgeHTML(p.username, p.role);
+
+  // 2. Resolve from local cache
+  const cached = userCache[String(user.parent_id)];
+  if (user.parent_id && cached) return creatorBadgeHTML(cached.username, cached.role);
+
+  // 3. parent_id exists but not in cache — fetch async, show placeholder
   if (user.parent_id) {
-    // We don't know the parent's username from this data alone — show parent ID
-    return `<div class="creator-cell">
-    <span style="font-weight:600;font-size:13px;">ID: ${user.parent_id}</span>
-    <span class="badge badge-gray" style="font-size:10px;width:fit-content;">Unknown</span>
-  </div>`;
+    ensureUserInCache(user.parent_id);
+    return `<span style="color:var(--text-secondary);font-size:12px;">Loading...</span>`;
   }
-  // No parent at all = root / SuperAdmin themselves
+
+  // 4. No parent = root account
   return '<span style="color:var(--text-secondary);font-size:12px;">—</span>';
 }
 
@@ -742,8 +784,11 @@ function creatorCell(user) {
    USER ROW
    =================================================== */
 function userRow(u, i) {
-  const roleBadge = { Admin: 'badge-green', SuperMaster: 'badge-cyan', Master: 'badge-orange', User: 'badge-purple' };
   const statusBadge = u.status === 'Active' ? 'badge-green' : (u.status === 'Suspended' ? 'badge-orange' : 'badge-red');
+  // Safely encode user data for onclick
+  const uJson = JSON.stringify({ id: u.id, username: u.username, role: u.role, wallet_balance: u.wallet_balance }).replace(/'/g, "\'");
+  const uEditJson = JSON.stringify({ id: u.id, username: u.username, phone: u.phone, status: u.status }).replace(/'/g, "\'");
+  const uFullJson = JSON.stringify(u).replace(/'/g, "\'");
   return `<tr data-search="${(u.username || '').toLowerCase()}" data-status="${u.status || ''}" data-role="${u.role}">
     <td style="color:var(--text-secondary);font-size:12px;">${i + 1}</td>
     <td>
@@ -767,21 +812,32 @@ function userRow(u, i) {
 }
 
 /* ===================================================
-   LOAD LIST
+   LOAD LIST (Admins / SuperMasters / Masters / Users)
    =================================================== */
-const ENDPOINTS = { Admin: '/api/v1/users/admin', SuperMaster: '/api/v1/users/supermasters', Master: '/api/v1/users/masters', User: '/api/v1/users/user' };
+const ENDPOINTS = {
+  Admin: '/api/v1/users/admin',
+  SuperMaster: '/api/v1/users/supermasters',
+  Master: '/api/v1/users/masters',
+  User: '/api/v1/users/user',
+};
 
 async function loadList(role, key, tbodyId, cntId, statId) {
   const tbody = document.getElementById(tbodyId);
   tbody.innerHTML = `<tr><td colspan="8" class="loading-cell">Loading ${role}s...</td></tr>`;
   try {
     const r = await api(ENDPOINTS[role]);
-    if (!r.success) { tbody.innerHTML = `<tr><td colspan="8" class="loading-cell" style="color:var(--accent-red);">${r.message}</td></tr>`; return; }
-    // Backend returns { admins:[...] } or { masters:[...] } or { users:[...] }
+    if (!r.success) {
+      tbody.innerHTML = `<tr><td colspan="8" class="loading-cell" style="color:var(--accent-red);">${r.message}</td></tr>`;
+      return;
+    }
     const arr = r.data.admins || r.data.masters || r.data.users || [];
     if (document.getElementById(cntId)) document.getElementById(cntId).textContent = arr.length;
     if (document.getElementById(statId)) document.getElementById(statId).textContent = arr.length;
-    if (!arr.length) { tbody.innerHTML = `<tr><td colspan="8" class="loading-cell">No ${role}s found</td></tr>`; return; }
+    if (!arr.length) {
+      tbody.innerHTML = `<tr><td colspan="8" class="loading-cell">No ${role}s found</td></tr>`;
+      return;
+    }
+    cacheUsers(arr);
     tbody.innerHTML = arr.map((u, i) => userRow(u, i)).join('');
   } catch (e) {
     tbody.innerHTML = `<tr><td colspan="8" class="loading-cell" style="color:var(--accent-red);">Error: ${e.message}</td></tr>`;
@@ -796,9 +852,16 @@ async function loadBalances() {
   tbody.innerHTML = `<tr><td colspan="8" class="loading-cell">Loading...</td></tr>`;
   try {
     const r = await api('/api/v1/users/all-balances');
-    if (!r.success) { tbody.innerHTML = `<tr><td colspan="8" class="loading-cell" style="color:var(--accent-red);">${r.message}</td></tr>`; return; }
+    if (!r.success) {
+      tbody.innerHTML = `<tr><td colspan="8" class="loading-cell" style="color:var(--accent-red);">${r.message}</td></tr>`;
+      return;
+    }
     const arr = r.data.users || [];
-    if (!arr.length) { tbody.innerHTML = `<tr><td colspan="8" class="loading-cell">No users found</td></tr>`; return; }
+    if (!arr.length) {
+      tbody.innerHTML = `<tr><td colspan="8" class="loading-cell">No users found</td></tr>`;
+      return;
+    }
+    cacheUsers(arr);
     const roleB = { Admin: 'badge-green', SuperMaster: 'badge-cyan', Master: 'badge-orange', User: 'badge-purple' };
     const statusB = { Active: 'badge-green', Inactive: 'badge-red', Suspended: 'badge-orange' };
     tbody.innerHTML = arr.map((u, i) => `
@@ -829,21 +892,34 @@ async function loadTransactions() {
   const qs = typeFilter ? `?type=${typeFilter}` : '';
   try {
     const r = await api('/api/v1/users/all-transactions' + qs);
-    if (!r.success) { tbody.innerHTML = `<tr><td colspan="8" class="loading-cell" style="color:var(--accent-red);">${r.message}</td></tr>`; return; }
+    if (!r.success) {
+      tbody.innerHTML = `<tr><td colspan="8" class="loading-cell" style="color:var(--accent-red);">${r.message}</td></tr>`;
+      return;
+    }
     const arr = r.data.transactions || [];
-    if (!arr.length) { tbody.innerHTML = `<tr><td colspan="8" class="loading-cell">No transactions found</td></tr>`; return; }
-    const typeB = { deposit: 'badge-green', withdrawal: 'badge-red', 'credit-deposit': 'badge-cyan', 'credit-withdrawal': 'badge-orange', BET_PLACED: 'badge-purple' };
-    tbody.innerHTML = arr.map((tx, i) => `
+    if (!arr.length) {
+      tbody.innerHTML = `<tr><td colspan="8" class="loading-cell">No transactions found</td></tr>`;
+      return;
+    }
+    // Cache users from transaction results
+    arr.forEach(tx => { if (tx.user && tx.user.id) userCache[String(tx.user.id)] = { username: tx.user.username, role: tx.user.role }; });
+    const typeB = { deposit: 'badge-green', withdrawal: 'badge-red', 'credit-deposit': 'badge-cyan', 'credit-withdrawal': 'badge-orange', BET_PLACED: 'badge-purple', BET_SETTLEMENT: 'badge-cyan', BET_CANCELLED: 'badge-orange' };
+    tbody.innerHTML = arr.map((tx, i) => {
+      const u = tx.user || userCache[String(tx.user_id)] || null;
+      const fromU = userCache[String(tx.from_user_id)];
+      const toU   = userCache[String(tx.to_user_id)];
+      return `
       <tr>
         <td style="color:var(--text-secondary);font-size:12px;">${i + 1}</td>
-        <td style="font-weight:600;">${tx.user ? tx.user.username : ('ID:' + tx.user_id)}</td>
-        <td>${tx.user ? `<span class="badge badge-gray" style="font-size:10px;">${tx.user.role}</span>` : '—'}</td>
+        <td style="font-weight:600;">${u ? u.username : (tx.user_id ? 'ID:' + tx.user_id : '—')}</td>
+        <td>${u ? `<span class="badge ${ROLE_COLORS[u.role] || 'badge-gray'}" style="font-size:10px;">${u.role}</span>` : '—'}</td>
         <td><span class="badge ${typeB[tx.type] || 'badge-gray'}">${tx.type}</span></td>
         <td class="${tx.type === 'deposit' || tx.type === 'credit-deposit' ? 'amount-pos' : 'amount-neg'}">${fmt(tx.amount)}</td>
-        <td style="font-size:12px;color:var(--text-secondary);">${tx.from_user_id || '—'} → ${tx.to_user_id || '—'}</td>
+        <td style="font-size:12px;color:var(--text-secondary);">${fromU ? fromU.username : (tx.from_user_id || '—')} → ${toU ? toU.username : (tx.to_user_id || '—')}</td>
         <td style="font-size:12px;color:var(--text-secondary);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${tx.description || '—'}</td>
         <td style="font-size:12px;color:var(--text-secondary);white-space:nowrap;">${fmtDate(tx.created_at || tx.createdAt)}</td>
-      </tr>`).join('');
+      </tr>`;
+    }).join('');
   } catch (e) {
     tbody.innerHTML = `<tr><td colspan="8" class="loading-cell" style="color:var(--accent-red);">Error: ${e.message}</td></tr>`;
   }
@@ -859,21 +935,38 @@ async function loadActivity() {
   const qs = typeFilter ? `?type=${typeFilter}` : '';
   try {
     const r = await api('/api/v1/users/activity-log' + qs);
-    if (!r.success) { tbody.innerHTML = `<tr><td colspan="8" class="loading-cell" style="color:var(--accent-red);">${r.message}</td></tr>`; return; }
+    if (!r.success) {
+      tbody.innerHTML = `<tr><td colspan="8" class="loading-cell" style="color:var(--accent-red);">${r.message}</td></tr>`;
+      return;
+    }
     const arr = r.data.logs || [];
-    if (!arr.length) { tbody.innerHTML = `<tr><td colspan="8" class="loading-cell">No activity found</td></tr>`; return; }
-    const typeB = { deposit: 'badge-green', withdrawal: 'badge-red', 'credit-deposit': 'badge-cyan', 'credit-withdrawal': 'badge-orange', BET_PLACED: 'badge-purple', BET_SETTLEMENT: 'badge-cyan' };
-    tbody.innerHTML = arr.map(tx => `
+    if (!arr.length) {
+      tbody.innerHTML = `<tr><td colspan="8" class="loading-cell">No activity found</td></tr>`;
+      return;
+    }
+    // Cache users from log results
+    arr.forEach(tx => { if (tx.user && tx.user.id) userCache[String(tx.user.id)] = { username: tx.user.username, role: tx.user.role }; });
+
+    const typeB = { deposit: 'badge-green', withdrawal: 'badge-red', 'credit-deposit': 'badge-cyan', 'credit-withdrawal': 'badge-orange', BET_PLACED: 'badge-purple', BET_SETTLEMENT: 'badge-cyan', BET_CANCELLED: 'badge-orange' };
+
+    tbody.innerHTML = arr.map(tx => {
+      const u      = tx.user || userCache[String(tx.user_id)] || null;
+      const fromU  = userCache[String(tx.from_user_id)];
+      const toU    = userCache[String(tx.to_user_id)];
+      const uName  = u ? u.username : (tx.user_id ? `ID:${tx.user_id}` : '—');
+      const uRole  = u ? u.role : null;
+      return `
       <tr>
         <td style="font-size:12px;color:var(--text-secondary);white-space:nowrap;">${fmtDate(tx.created_at || tx.createdAt)}</td>
-        <td style="font-weight:600;">${tx.user ? tx.user.username : '<span style="color:var(--text-secondary);font-size:12px;">ID:' + tx.user_id + '</span>'}</td>
-        <td>${tx.user ? `<span class="badge badge-gray" style="font-size:10px;">${tx.user.role}</span>` : '<span style="color:var(--text-secondary);font-size:11px;">—</span>'}</td>
+        <td style="font-weight:600;">${uName}</td>
+        <td>${uRole ? `<span class="badge ${ROLE_COLORS[uRole] || 'badge-gray'}" style="font-size:10px;">${uRole}</span>` : '—'}</td>
         <td><span class="badge ${typeB[tx.type] || 'badge-gray'}">${tx.type}</span></td>
         <td class="${tx.type === 'deposit' || tx.type === 'credit-deposit' ? 'amount-pos' : 'amount-neg'}">${fmt(tx.amount)}</td>
         <td style="font-size:12px;color:var(--text-secondary);">${tx.description || '—'}</td>
-        <td style="font-size:12px;color:var(--text-secondary);">${tx.from_user_id || '—'}</td>
-        <td style="font-size:12px;color:var(--text-secondary);">${tx.to_user_id || '—'}</td>
-      </tr>`).join('');
+        <td style="font-size:12px;color:var(--text-secondary);">${fromU ? fromU.username : (tx.from_user_id || '—')}</td>
+        <td style="font-size:12px;color:var(--text-secondary);">${toU ? toU.username : (tx.to_user_id || '—')}</td>
+      </tr>`;
+    }).join('');
   } catch (e) {
     tbody.innerHTML = `<tr><td colspan="8" class="loading-cell" style="color:var(--accent-red);">Error: ${e.message}</td></tr>`;
   }
@@ -885,63 +978,80 @@ async function loadActivity() {
 async function loadDashboard() {
   try {
     const r = await api('/api/v1/users/dashboard');
-    if (r.success) {
-      const c = r.data.counts;
-      document.getElementById('s-admins').textContent = c.admins;
-      document.getElementById('s-sm').textContent = c.supermasters;
-      document.getElementById('s-m').textContent = c.masters;
-      document.getElementById('s-u').textContent = c.users;
-      document.getElementById('cnt-admins').textContent = c.admins;
-      document.getElementById('cnt-sm').textContent = c.supermasters;
-      document.getElementById('cnt-m').textContent = c.masters;
-      document.getElementById('cnt-u').textContent = c.users;
+    if (!r.success) return;
+    const c = r.data.counts;
+    document.getElementById('s-admins').textContent    = c.admins;
+    document.getElementById('s-sm').textContent        = c.supermasters;
+    document.getElementById('s-m').textContent         = c.masters;
+    document.getElementById('s-u').textContent         = c.users;
+    document.getElementById('cnt-admins').textContent  = c.admins;
+    document.getElementById('cnt-sm').textContent      = c.supermasters;
+    document.getElementById('cnt-m').textContent       = c.masters;
+    document.getElementById('cnt-u').textContent       = c.users;
 
-      const txArr = r.data.recentTransactions || [];
-      const el = document.getElementById('dash-recent');
-      if (!txArr.length) { el.innerHTML = '<div class="loading-cell">No recent transactions</div>'; return; }
-      const typeB = { deposit: 'badge-green', withdrawal: 'badge-red', 'credit-deposit': 'badge-cyan', 'credit-withdrawal': 'badge-orange' };
-      el.innerHTML = txArr.map(tx => `
+    const txArr = r.data.recentTransactions || [];
+    const el = document.getElementById('dash-recent');
+    if (!txArr.length) { el.innerHTML = '<div class="loading-cell">No recent transactions</div>'; return; }
+    const typeB = { deposit: 'badge-green', withdrawal: 'badge-red', 'credit-deposit': 'badge-cyan', 'credit-withdrawal': 'badge-orange', BET_PLACED: 'badge-purple' };
+    el.innerHTML = txArr.map(tx => {
+      const u = tx.user || userCache[String(tx.user_id)] || null;
+      return `
         <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);">
           <span class="badge ${typeB[tx.type] || 'badge-gray'}" style="font-size:10px;">${tx.type}</span>
           <div style="flex:1;font-size:12px;">
-            <span style="font-weight:600;">${tx.user ? tx.user.username : 'ID:' + tx.user_id}</span>
+            <span style="font-weight:600;">${u ? u.username : 'ID:' + tx.user_id}</span>
             <span style="color:var(--text-secondary);margin-left:6px;">${tx.description || ''}</span>
           </div>
           <span class="${tx.type === 'deposit' || tx.type === 'credit-deposit' ? 'amount-pos' : 'amount-neg'}" style="font-size:13px;">${fmt(tx.amount)}</span>
-        </div>`).join('');
-    }
+        </div>`;
+    }).join('');
   } catch (e) {}
 }
 
 /* ===================================================
    CREATE USER
    =================================================== */
+const CREATE_INFO = {
+  Admin:       'SuperAdmin only can create Admin accounts.',
+  SuperMaster: 'Admin or SuperAdmin can create SuperMaster accounts.',
+  Master:      'SuperMaster, Admin or SuperAdmin can create Master accounts.',
+  User:        'Master and above can create User accounts.',
+};
+
 function openCreate(role) {
   document.getElementById('create-role-input').value = role;
   document.getElementById('create-modal-title').textContent = `Create ${role}`;
-  document.getElementById('create-info-box').textContent = `Only SuperAdmin can create '${role}' accounts. parent_id will be set to your account automatically.`;
+  document.getElementById('create-info-box').textContent = CREATE_INFO[role] || '';
   document.getElementById('create-form').reset();
   openModal('createModal');
 }
 
 async function submitCreate() {
-  const role = document.getElementById('create-role-input').value;
-  const username = document.getElementById('cf-username').value.trim();
-  const password = document.getElementById('cf-password').value;
-  const phone = document.getElementById('cf-phone').value.trim();
+  const role           = document.getElementById('create-role-input').value;
+  const username       = document.getElementById('cf-username').value.trim();
+  const password       = document.getElementById('cf-password').value;
+  const phone          = document.getElementById('cf-phone').value.trim();
   const initial_balance = parseFloat(document.getElementById('cf-balance').value) || 0;
 
-  if (!username || username.length < 3) { toast('Username must be at least 3 chars', 'error'); return; }
-  if (!password || password.length < 6) { toast('Password must be at least 6 chars', 'error'); return; }
+  if (!username || username.length < 3) { toast('Username must be at least 3 characters', 'error'); return; }
+  if (!password || password.length < 6) { toast('Password must be at least 6 characters', 'error'); return; }
 
   try {
     const r = await api('/api/v1/users/create', 'POST', { username, password, phone: phone || undefined, role, initial_balance });
     if (r.success) {
-      toast(`✅ ${role} '${username}' created!`);
+      toast(`✅ ${role} '${username}' created successfully!`);
       closeModal('createModal');
-      // Refresh the relevant table
-      const pageMap = { Admin: 'admins', SuperMaster: 'supermasters', Master: 'masters', User: 'users' };
-      const tbMap = { Admin: ['Admin', 'admin', 'tb-admins', 'cnt-admins', 's-admins'], SuperMaster: ['SuperMaster', 'sm', 'tb-sm', 'cnt-sm', 's-sm'], Master: ['Master', 'm', 'tb-m', 'cnt-m', 's-m'], User: ['User', 'u', 'tb-u', 'cnt-u', 's-u'] };
+      // Cache newly created user
+      if (r.data && r.data.user) {
+        const nu = r.data.user;
+        userCache[String(nu.id)] = { username: nu.username, role: nu.role };
+      }
+      const tbMap = {
+        Admin:       ['Admin',       'admin', 'tb-admins', 'cnt-admins', 's-admins'],
+        SuperMaster: ['SuperMaster', 'sm',    'tb-sm',    'cnt-sm',    's-sm'],
+        Master:      ['Master',      'm',     'tb-m',     'cnt-m',     's-m'],
+        User:        ['User',        'u',     'tb-u',     'cnt-u',     's-u'],
+      };
       if (tbMap[role]) loadList(...tbMap[role]);
       loadDashboard();
     } else {
@@ -956,33 +1066,33 @@ async function submitCreate() {
    SEND MONEY
    =================================================== */
 function openSend(u) {
-  document.getElementById('send-user-id').value = u.id;
-  document.getElementById('send-to-name').textContent = u.username;
-  document.getElementById('send-to-role').textContent = u.role;
+  document.getElementById('send-user-id').value        = u.id;
+  document.getElementById('send-to-name').textContent  = u.username;
+  document.getElementById('send-to-role').textContent  = u.role;
   document.getElementById('send-to-balance').textContent = fmt(u.wallet_balance);
   document.getElementById('send-amount').value = '';
-  document.getElementById('send-desc').value = '';
+  document.getElementById('send-desc').value   = '';
   openModal('sendModal');
 }
 
 async function submitSend() {
-  const userId = parseInt(document.getElementById('send-user-id').value);
-  const type = document.getElementById('send-type').value;
-  const amount = parseFloat(document.getElementById('send-amount').value);
+  const userId      = parseInt(document.getElementById('send-user-id').value);
+  const type        = document.getElementById('send-type').value;
+  const amount      = parseFloat(document.getElementById('send-amount').value);
   const description = document.getElementById('send-desc').value.trim();
 
   if (!amount || amount <= 0) { toast('Enter a valid amount', 'error'); return; }
-  if (!description) { toast('Description is required', 'error'); return; }
+  if (!description)           { toast('Description is required', 'error'); return; }
 
   try {
     const r = await api('/api/v1/users/transaction', 'POST', { type, amount, userId, description });
     if (r.success) {
       toast(`✅ ${type === 'deposit' ? 'Deposit' : 'Withdrawal'} of ${fmt(amount)} successful!`);
       closeModal('sendModal');
-      // Update my balance display
-      document.getElementById('my-balance').textContent = fmt(r.data.senderBalance || r.data.currentUserBalance);
-      // Refresh balances if on that page
-      if (document.getElementById('page-balances').classList.contains('active')) loadBalances();
+      document.getElementById('my-balance').textContent = fmt(r.data.currentUserBalance);
+      // Refresh active page data
+      const active = document.querySelector('.page-content.active');
+      if (active) switchPage(active.id.replace('page-', ''));
     } else {
       toast('❌ ' + r.message, 'error');
     }
@@ -995,35 +1105,35 @@ async function submitSend() {
    EDIT USER
    =================================================== */
 function openEdit(u) {
-  document.getElementById('edit-user-id').value = u.id;
-  document.getElementById('edit-username').value = u.username || '';
-  document.getElementById('edit-phone').value = u.phone || '';
-  document.getElementById('edit-status').value = u.status || 'Active';
-  document.getElementById('edit-password').value = '';
+  document.getElementById('edit-user-id').value    = u.id;
+  document.getElementById('edit-username').value   = u.username || '';
+  document.getElementById('edit-phone').value      = u.phone || '';
+  document.getElementById('edit-status').value     = u.status || 'Active';
+  document.getElementById('edit-password').value   = '';
   openModal('editModal');
 }
 
 async function submitEdit() {
-  const id = document.getElementById('edit-user-id').value;
+  const id   = document.getElementById('edit-user-id').value;
   const body = {
     username: document.getElementById('edit-username').value.trim(),
-    phone: document.getElementById('edit-phone').value.trim() || null,
-    status: document.getElementById('edit-status').value,
+    phone:    document.getElementById('edit-phone').value.trim() || null,
+    status:   document.getElementById('edit-status').value,
   };
   const pw = document.getElementById('edit-password').value;
   if (pw) body.password = pw;
 
+  if (!body.username || body.username.length < 3) { toast('Username must be at least 3 characters', 'error'); return; }
+
   try {
     const r = await api(`/api/v1/users/${id}`, 'PUT', body);
     if (r.success) {
-      toast('✅ User updated!');
+      toast('✅ User updated successfully!');
       closeModal('editModal');
-      // Refresh current active table
+      // Update cache
+      userCache[String(id)] = { username: body.username, role: userCache[String(id)]?.role || '' };
       const active = document.querySelector('.page-content.active');
-      if (active) {
-        const p = active.id.replace('page-', '');
-        switchPage(p);
-      }
+      if (active) switchPage(active.id.replace('page-', ''));
     } else {
       toast('❌ ' + r.message, 'error');
     }
@@ -1036,11 +1146,12 @@ async function submitEdit() {
    DELETE USER
    =================================================== */
 async function deleteUser(id, name) {
-  if (!confirm(`Delete user '${name}'? This cannot be undone.`)) return;
+  if (!confirm(`Delete user '${name}'?\nThis action cannot be undone.`)) return;
   try {
     const r = await api(`/api/v1/users/${id}`, 'DELETE');
     if (r.success) {
       toast(`✅ User '${name}' deleted`);
+      delete userCache[String(id)];
       const active = document.querySelector('.page-content.active');
       if (active) switchPage(active.id.replace('page-', ''));
     } else {
@@ -1055,8 +1166,9 @@ async function deleteUser(id, name) {
    USER DETAIL MODAL
    =================================================== */
 function openDetail(u) {
-  const roleB = { Admin: 'badge-green', SuperMaster: 'badge-cyan', Master: 'badge-orange', User: 'badge-purple' };
-  const p = u.parent;
+  const roleB = { Admin: 'badge-green', SuperMaster: 'badge-cyan', Master: 'badge-orange', User: 'badge-purple', SuperAdmin: 'badge-green' };
+  // Resolve parent from cache if backend JOIN missed it
+  const p = u.parent || (u.parent_id && userCache[String(u.parent_id)] ? { ...userCache[String(u.parent_id)], id: u.parent_id } : null);
   document.getElementById('detail-body').innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
       <div style="background:var(--bg-primary);border:1px solid var(--border);border-radius:8px;padding:14px;">
@@ -1115,67 +1227,27 @@ function filterRole(tbodyId, role) {
 }
 
 /* ===================================================
-   SPORTS SETTINGS (client-side, Betfair-based)
+   SPORTS SETTINGS
    =================================================== */
 const SPORTS = {
-  cricket: { name: 'Cricket', icon: '🏏', markets: [
-    { id: 'match_odds', name: 'Match Odds', desc: 'Win/Draw/Win' },
-    { id: 'toss', name: 'Toss', desc: 'Who wins the toss' },
-    { id: 'innings_runs', name: 'Innings Runs', desc: 'Total runs in innings' },
-    { id: 'session_runs', name: 'Session Runs', desc: 'Runs per session' },
-    { id: 'top_batsman', name: 'Top Batsman', desc: 'Highest scorer' },
-    { id: 'top_bowler', name: 'Top Bowler', desc: 'Most wickets' },
-    { id: 'over_under', name: 'Over/Under Runs', desc: 'Total match runs O/U' },
-    { id: 'bookmaker', name: 'Bookmaker', desc: 'Bookmaker odds' },
-    { id: 'fancy', name: 'Fancy Bets', desc: 'Custom fancy markets' },
-  ], leagues: ['Indian Premier League', 'T20 World Cup', 'Asia Cup', 'The Ashes', 'Big Bash League', 'PSL', 'CPL'] },
-  football: { name: 'Football', icon: '⚽', markets: [
-    { id: 'match_odds', name: 'Match Odds', desc: 'Home/Draw/Away' },
-    { id: 'btts', name: 'Both Teams To Score', desc: 'BTTS Yes/No' },
-    { id: 'total_goals', name: 'Total Goals', desc: 'Over/Under' },
-    { id: 'correct_score', name: 'Correct Score', desc: 'Exact final score' },
-    { id: 'ht_result', name: 'Half Time Result', desc: 'HT winner' },
-    { id: 'double_chance', name: 'Double Chance', desc: '1X/12/X2' },
-    { id: 'asian_handicap', name: 'Asian Handicap', desc: 'AH market' },
-    { id: 'first_scorer', name: 'First Goal Scorer', desc: 'Who scores first' },
-  ], leagues: ['Premier League', 'La Liga', 'Serie A', 'Bundesliga', 'Ligue 1', 'UEFA Champions League', 'FIFA World Cup'] },
-  tennis: { name: 'Tennis', icon: '🎾', markets: [
-    { id: 'match_odds', name: 'Match Odds', desc: 'P1 vs P2' },
-    { id: 'set_winner', name: 'Set Winner', desc: 'Per set market' },
-    { id: 'total_sets', name: 'Total Sets', desc: 'O/U total sets' },
-    { id: 'total_games', name: 'Total Games', desc: 'O/U total games' },
-    { id: 'game_handicap', name: 'Game Handicap', desc: 'Game count handicap' },
-  ], leagues: ['Wimbledon', 'US Open', 'French Open', 'Australian Open', 'ATP Finals', 'Davis Cup'] },
-  horse_racing: { name: 'Horse Racing', icon: '🏇', markets: [
-    { id: 'win', name: 'Win', desc: 'Horse to win' },
-    { id: 'each_way', name: 'Each Way', desc: 'Win or place' },
-    { id: 'place', name: 'Place', desc: 'Top 3 finish' },
-    { id: 'forecast', name: 'Forecast', desc: '1st & 2nd in order' },
-  ], leagues: ['Royal Ascot', 'Cheltenham Festival', 'Grand National', 'Kentucky Derby'] },
-  basketball: { name: 'Basketball', icon: '🏀', markets: [
-    { id: 'match_odds', name: 'Match Odds', desc: 'Team 1 vs Team 2' },
-    { id: 'handicap', name: 'Handicap', desc: 'Point spread' },
-    { id: 'total_points', name: 'Total Points', desc: 'O/U total pts' },
-    { id: 'ht_result', name: 'Half Time', desc: 'HT winner' },
-  ], leagues: ['NBA', 'EuroLeague', 'FIBA World Cup', 'NCAA'] },
-  greyhounds: { name: 'Greyhound Racing', icon: '🐕', markets: [
-    { id: 'win', name: 'Win', desc: 'Dog to win' },
-    { id: 'each_way', name: 'Each Way', desc: 'Win or place' },
-    { id: 'forecast', name: 'Forecast', desc: '1st & 2nd' },
-  ], leagues: ['UK Greyhounds', 'Irish Greyhounds'] },
+  cricket:      { name: 'Cricket',          icon: '🏏', markets: [{ id: 'match_odds', name: 'Match Odds', desc: 'Win/Draw/Win' },{ id: 'toss', name: 'Toss', desc: 'Who wins the toss' },{ id: 'innings_runs', name: 'Innings Runs', desc: 'Total runs in innings' },{ id: 'session_runs', name: 'Session Runs', desc: 'Runs per session' },{ id: 'top_batsman', name: 'Top Batsman', desc: 'Highest scorer' },{ id: 'top_bowler', name: 'Top Bowler', desc: 'Most wickets' },{ id: 'over_under', name: 'Over/Under Runs', desc: 'Total match runs O/U' },{ id: 'bookmaker', name: 'Bookmaker', desc: 'Bookmaker odds' },{ id: 'fancy', name: 'Fancy Bets', desc: 'Custom fancy markets' }], leagues: ['Indian Premier League','T20 World Cup','Asia Cup','The Ashes','Big Bash League','PSL','CPL'] },
+  football:     { name: 'Football',         icon: '⚽', markets: [{ id: 'match_odds', name: 'Match Odds', desc: 'Home/Draw/Away' },{ id: 'btts', name: 'Both Teams To Score', desc: 'BTTS Yes/No' },{ id: 'total_goals', name: 'Total Goals', desc: 'Over/Under' },{ id: 'correct_score', name: 'Correct Score', desc: 'Exact final score' },{ id: 'ht_result', name: 'Half Time Result', desc: 'HT winner' },{ id: 'double_chance', name: 'Double Chance', desc: '1X/12/X2' },{ id: 'asian_handicap', name: 'Asian Handicap', desc: 'AH market' },{ id: 'first_scorer', name: 'First Goal Scorer', desc: 'Who scores first' }], leagues: ['Premier League','La Liga','Serie A','Bundesliga','Ligue 1','UEFA Champions League','FIFA World Cup'] },
+  tennis:       { name: 'Tennis',           icon: '🎾', markets: [{ id: 'match_odds', name: 'Match Odds', desc: 'P1 vs P2' },{ id: 'set_winner', name: 'Set Winner', desc: 'Per set market' },{ id: 'total_sets', name: 'Total Sets', desc: 'O/U total sets' },{ id: 'total_games', name: 'Total Games', desc: 'O/U total games' },{ id: 'game_handicap', name: 'Game Handicap', desc: 'Game count handicap' }], leagues: ['Wimbledon','US Open','French Open','Australian Open','ATP Finals','Davis Cup'] },
+  horse_racing: { name: 'Horse Racing',     icon: '🏇', markets: [{ id: 'win', name: 'Win', desc: 'Horse to win' },{ id: 'each_way', name: 'Each Way', desc: 'Win or place' },{ id: 'place', name: 'Place', desc: 'Top 3 finish' },{ id: 'forecast', name: 'Forecast', desc: '1st & 2nd in order' }], leagues: ['Royal Ascot','Cheltenham Festival','Grand National','Kentucky Derby'] },
+  basketball:   { name: 'Basketball',       icon: '🏀', markets: [{ id: 'match_odds', name: 'Match Odds', desc: 'Team 1 vs Team 2' },{ id: 'handicap', name: 'Handicap', desc: 'Point spread' },{ id: 'total_points', name: 'Total Points', desc: 'O/U total pts' },{ id: 'ht_result', name: 'Half Time', desc: 'HT winner' }], leagues: ['NBA','EuroLeague','FIBA World Cup','NCAA'] },
+  greyhounds:   { name: 'Greyhound Racing', icon: '🐕', markets: [{ id: 'win', name: 'Win', desc: 'Dog to win' },{ id: 'each_way', name: 'Each Way', desc: 'Win or place' },{ id: 'forecast', name: 'Forecast', desc: '1st & 2nd' }], leagues: ['UK Greyhounds','Irish Greyhounds'] },
 };
 
 let curSport = 'cricket';
-let selMarkets = {};
-let sportLeagues = {};
+const selMarkets  = {};
+const sportLeagues = {};
 Object.keys(SPORTS).forEach(k => {
-  selMarkets[k] = SPORTS[k].markets.map(m => m.id);
+  selMarkets[k]   = SPORTS[k].markets.map(m => m.id);
   sportLeagues[k] = [...SPORTS[k].leagues];
 });
 
 function initSports() {
-  const tabs = document.getElementById('sport-tabs');
-  tabs.innerHTML = Object.entries(SPORTS).map(([k, s]) =>
+  document.getElementById('sport-tabs').innerHTML = Object.entries(SPORTS).map(([k, s]) =>
     `<button class="sport-tab${k === curSport ? ' active' : ''}" onclick="selectSport('${k}')">${s.icon} ${s.name}</button>`
   ).join('');
   renderSport(curSport);
@@ -1190,10 +1262,10 @@ function selectSport(k) {
 }
 
 function renderSport(k) {
-  const s = SPORTS[k];
+  const s   = SPORTS[k];
+  const sel = selMarkets[k] || [];
   document.getElementById('market-card-title').textContent = `${s.icon} ${s.name} — Markets`;
   document.getElementById('league-card-title').textContent = `${s.icon} ${s.name} — Leagues`;
-  const sel = selMarkets[k] || [];
   document.getElementById('market-list').innerHTML = s.markets.map(m => `
     <div class="market-item">
       <div><div class="market-item-name">${m.name}</div><div class="market-item-desc">${m.desc}</div></div>
@@ -1211,11 +1283,10 @@ function toggleMarket(sport, id, checked) {
 }
 
 function renderLeagues(k) {
-  const el = document.getElementById('league-chips');
   const ls = sportLeagues[k] || [];
-  el.innerHTML = ls.length
+  document.getElementById('league-chips').innerHTML = ls.length
     ? ls.map((l, i) => `<div class="league-chip">${l}<span class="league-chip-remove" onclick="removeLeague('${k}',${i})">✕</span></div>`).join('')
-    : '<span style="color:var(--text-secondary);font-size:13px;">No leagues. Click + Add League.</span>';
+    : '<span style="color:var(--text-secondary);font-size:13px;">No leagues added. Click + Add League.</span>';
 }
 
 function addLeague() {
@@ -1236,14 +1307,13 @@ function removeLeague(sport, i) {
 function saveMarkets() {
   const count = (selMarkets[curSport] || []).length;
   toast(`✅ ${SPORTS[curSport].name} — ${count} markets saved`);
-  // TODO: persist to backend via a sports-settings API endpoint
 }
 
 /* ===================================================
    LOGOUT
    =================================================== */
 function logout() {
-  if (!confirm('Logout?')) return;
+  if (!confirm('Logout from admin panel?')) return;
   localStorage.removeItem('token');
   window.location.href = '/Users/Login';
 }
@@ -1255,15 +1325,15 @@ window.addEventListener('DOMContentLoaded', () => {
   const tk = token();
   if (!tk) { window.location.href = '/Users/Login'; return; }
 
-  // Decode JWT to get basic user info immediately (no API call needed)
   try {
     const payload = JSON.parse(atob(tk.split('.')[1]));
-    document.getElementById('sidebar-username').textContent = payload.username || 'SuperAdmin';
-    document.getElementById('sidebar-role').textContent = payload.role || 'Super Admin';
-    document.getElementById('sa-avatar').textContent = (payload.username || 'SA').slice(0, 2).toUpperCase();
+    document.getElementById('sidebar-username').textContent = payload.username || 'Admin';
+    document.getElementById('sidebar-role').textContent     = payload.role     || 'SuperAdmin';
+    document.getElementById('sa-avatar').textContent        = (payload.username || 'SA').slice(0, 2).toUpperCase();
+    // Cache self
+    if (payload.id) userCache[String(payload.id)] = { username: payload.username, role: payload.role };
   } catch (e) {}
 
-  // Then load real data
   loadSelf();
   loadDashboard();
 });

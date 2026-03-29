@@ -32,15 +32,29 @@
     </style>
 
     <script>
-        const pricesUrl = "https://PORTBACKEND.WORK.GD/api/v1";   // prefix for all API calls
-        const ordersUrl = "https://PORTBACKEND.WORK.GD/api/v1";   // prefix for all API calls
+        const pricesUrl = "https://PORTBACKEND.WORK.GD/api/v1";
+        const ordersUrl = "https://PORTBACKEND.WORK.GD/api/v1";
         const LiquidityRate = 35;
-        // const SsocketUrl = "http://localhost:5000/signalr";
-        // const uwsUrl = "https://orders-ws2.bfexch.com/usershub";
+        const SsocketUrl  = "https://PORTBACKEND.WORK.GD/signalr";
         const genSck = 1;
         const CasSck = 1;
-        // const casinoUrl = "https://casino-ws.bfexch.com/signalr";
-        // var SsocketEnable = 0;
+
+        // Override svc_prefix before bundle0a.js and mv2.min.js load
+        // bundle0a.js hardcodes "http://localhost:5000/api/" — we override it here
+        var svc_prefix = "https://PORTBACKEND.WORK.GD/api/v1/";
+
+        // marketId from URL — window-level so bundle can read it
+        var marketId = new URLSearchParams(window.location.search).get("id") || undefined;
+        var eventId  = undefined;
+
+        // Sync localStorage token to cookie (mv2.min.js + bundle0a.js read getCookie("wex3authtoken"))
+        (function syncTokenCookie() {
+            var tk = localStorage.getItem("token");
+            if (!tk) return;
+            var exp = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toUTCString();
+            document.cookie = "wex3authtoken=" + tk + "; path=/; expires=" + exp + "; SameSite=Lax";
+            document.cookie = "wexscktoken="   + tk + "; path=/; expires=" + exp + "; SameSite=Lax";
+        })();
     </script>
 </head>
 <body class="bg-gray d-flex flex-column">
@@ -788,31 +802,6 @@
   const API_BASE = "https://PORTBACKEND.WORK.GD/api/v1";
 </script>
 
-<!-- ✅ User Info Loader — /api/v1/auth/me -->
-<script>
-document.addEventListener("DOMContentLoaded", async () => {
-  const token = localStorage.getItem("token");
-  if (!token) return;
-  try {
-    const res = await fetch(`${API_BASE}/auth/me`, {
-      headers: { "Authorization": "Bearer " + token }
-    });
-    const data = await res.json();
-    if (data.success && data.data && data.data.user) {
-      const user = data.data.user;
-      const userBtn = document.getElementById("navbar-user");
-      if (userBtn) userBtn.innerHTML = `${user.username} (${user.role}) <i class="fas fa-caret-down"></i>`;
-      const walletBalance = document.querySelector(".wallet-balance");
-      if (walletBalance) walletBalance.textContent = `B: ${Math.floor(user.wallet_balance ?? 0)}`;
-      const walletExposure = document.querySelector(".wallet-exposure");
-      if (walletExposure) walletExposure.textContent = ` | L: -${Math.floor(user.liable ?? 0)}`;
-    }
-  } catch (err) {
-    console.error("⚠️ Error loading user info:", err);
-  }
-});
-</script>
-
 
 <!-- ============================================================
   SCRIPT 1: Market page init + Related Events
@@ -830,9 +819,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       const matchName = data.eventName || data.marketName || data.match || 'Unknown Match';
       document.title = `${matchName} | BetPro`;
-
-      // Set global eventId for bundle0a.js
-      if (data.eventId && window._setEventId) window._setEventId(data.eventId);
 
       // sport name return karo taake related events load ho sakein
       return data.eventType || data.sport?.name || null;
@@ -1371,7 +1357,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (!ul) return;
       ul.innerHTML = '';
 
-      if ((result.success || result.status === 'success') && result.data && result.data.length > 0) {
+      if ((result.success || result.status === 'success') && result.data.length > 0) {
         result.data.forEach(event => {
           const li = document.createElement('li');
           li.classList.add('match-card');
@@ -1387,8 +1373,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     } catch (error) {
       console.error('API Error:', error);
-      const ul = document.querySelector('.cricketEventList');
-      if (ul) ul.innerHTML = '<li>API Error: ' + error.message + '</li>';
+      var _ulErr = document.querySelector('.cricketEventList'); if (_ulErr) _ulErr.innerHTML = '<li>API Error: ' + error.message + '</li>';
     }
   }
   document.addEventListener('DOMContentLoaded', loadCricketSidebarMatches);
@@ -4718,22 +4703,99 @@ document.addEventListener("DOMContentLoaded", async () => {
     </footer>
     <script type="text/javascript" src="https://wurfl.io/wurfl.js"></script>
 
-    <!-- ✅ Global vars for bundle0a.js compatibility -->
+    <!-- ✅ Interceptors: must load BEFORE bundle0a.js and mv2.min.js -->
     <script>
-      (function() {
-        // token — bundle0a.js sends this as ?token= query param
-        var _tok = localStorage.getItem("token");
-        window.token    = _tok || undefined;
+    // 1. $.getJSON interceptor — unwraps {success,data} for catalog2 calls
+    //    mv2.min.js does $.getJSON(svc_prefix + "markets/catalog2/?id=...", cb)
+    //    Our backend returns { success:true, data:{...} } but mv2 expects the raw object
+    function _installInterceptors() {
+        if (typeof $ === "undefined") { setTimeout(_installInterceptors, 50); return; }
+        var _origGetJSON = $.getJSON.bind($);
+        $.getJSON = function(url, dataOrCb, cb) {
+            var isCatalog = typeof url === "string" && url.indexOf("catalog2") !== -1;
+            if (!isCatalog) return _origGetJSON.apply($, arguments);
 
-        // marketId / eventId — read from current URL ?id=
-        var _params     = new URLSearchParams(window.location.search);
-        var _mid        = _params.get("id") || _params.get("marketId");
-        window.marketId = _mid || undefined;
+            var token    = localStorage.getItem("token");
+            var callback = typeof dataOrCb === "function" ? dataOrCb : cb;
+            return $.ajax({
+                url: url,
+                method: "GET",
+                dataType: "json",
+                headers: token ? { "Authorization": "Bearer " + token } : {},
+                success: function(resp) {
+                    // Unwrap {success, data} wrapper if present
+                    var payload = (resp && resp.success && resp.data) ? resp.data : resp;
+                    // Patch field names mv2 expects
+                    if (payload.marketStartTime && !payload.marketStartTimeUtc)
+                        payload.marketStartTimeUtc = payload.marketStartTime;
+                    if (payload.eventType && !payload.sport)
+                        payload.sport = { name: payload.eventType };
+                    if (payload.runners) {
+                        payload.runners.forEach(function(r) {
+                            if (!r.selectionId && r.id) r.selectionId = r.id;
+                            if (!r.runnerName  && r.name) r.runnerName = r.name;
+                            if (!r.ex) r.ex = { availableToBack: [], availableToLay: [] };
+                        });
+                    }
+                    // Expose eventId globally for bundle
+                    if (payload.eventId) {
+                        eventId = payload.eventId;
+                        window.eventId = payload.eventId;
+                    }
+                    if (callback) callback(payload);
+                },
+                error: function(xhr) {
+                    console.error("[catalog2] fetch failed:", xhr.status, url);
+                }
+            });
+        };
 
-        // eventId will be filled once catalog2 resolves — expose a setter
-        window.eventId  = undefined;
-        window._setEventId = function(id) { window.eventId = id; };
-      })();
+        // 2. $.ajax interceptor — inject Authorization header for /Markets/Data calls
+        //    mv2 uses: getCookie("wex3authtoken") as ?token= in URL
+        //    but also needs Bearer header for our backend
+        var _origAjax = $.ajax.bind($);
+        $.ajax = function(urlOrOpts, opts) {
+            var options = (typeof urlOrOpts === "object") ? urlOrOpts : (opts || {});
+            if (typeof urlOrOpts === "string") options.url = urlOrOpts;
+            var url = options.url || "";
+            var isData    = url.indexOf("/Data") !== -1 || url.indexOf("/markets/Data") !== -1;
+            var isOrders  = url.indexOf("/orders") !== -1;
+            var isNews    = url.indexOf("/users/news") !== -1;
+            if (isData || isOrders || isNews) {
+                var token = localStorage.getItem("token");
+                if (token) {
+                    options.headers = options.headers || {};
+                    if (!options.headers["Authorization"])
+                        options.headers["Authorization"] = "Bearer " + token;
+                }
+            }
+            return _origAjax(options);
+        };
+
+        console.log("[BetPro] jQuery interceptors installed");
+    }
+    document.addEventListener("DOMContentLoaded", _installInterceptors);
+
+    // 3. Early user info loader — show username/wallet before Vue mounts
+    document.addEventListener("DOMContentLoaded", async function() {
+        var token = localStorage.getItem("token");
+        if (!token) return;
+        try {
+            var res  = await fetch("https://PORTBACKEND.WORK.GD/api/v1/auth/me", {
+                headers: { "Authorization": "Bearer " + token }
+            });
+            var data = await res.json();
+            if (data.success && data.data && data.data.user) {
+                var user = data.data.user;
+                var btn  = document.getElementById("navbar-user");
+                if (btn) btn.innerHTML = user.username + " (" + user.role + ") <i class='fas fa-caret-down'></i>";
+                var wb = document.querySelector(".wallet-balance");
+                if (wb) wb.textContent = "B: " + Math.floor(user.wallet_balance || 0);
+                var we = document.querySelector(".wallet-exposure");
+                if (we) we.textContent = " | L: -" + Math.floor(user.liable || 0);
+            }
+        } catch(e) { console.error("[BetPro] user load error:", e); }
+    });
     </script>
 
     <script type="text/javascript" src="/dist/bundle0a.js"></script>

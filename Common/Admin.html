@@ -718,12 +718,23 @@ async function loadSelf() {
    =================================================== */
 function creatorCell(user) {
   const p = user.parent;
-  if (!p) return '<span style="color:var(--text-secondary);font-size:12px;">—</span>';
-  const roleColors = { SuperAdmin: 'badge-green', Admin: 'badge-cyan', SuperMaster: 'badge-orange', Master: 'badge-purple', User: 'badge-gray' };
-  return `<div class="creator-cell">
+  // If parent object is present, show username + role badge
+  if (p) {
+    const roleColors = { SuperAdmin: 'badge-green', Admin: 'badge-cyan', SuperMaster: 'badge-orange', Master: 'badge-purple', User: 'badge-gray' };
+    return `<div class="creator-cell">
     <span style="font-weight:600;font-size:13px;">${p.username}</span>
     <span class="badge ${roleColors[p.role] || 'badge-gray'}" style="font-size:10px;width:fit-content;">${p.role}</span>
   </div>`;
+  }
+  // No parent object — if parent_id is set, the creator was SuperAdmin (or deleted)
+  if (user.parent_id) {
+    return `<div class="creator-cell">
+    <span style="font-weight:600;font-size:13px;">SuperAdmin</span>
+    <span class="badge badge-green" style="font-size:10px;width:fit-content;">SuperAdmin</span>
+  </div>`;
+  }
+  // No parent at all — this IS the SuperAdmin or a root account
+  return '<span style="color:var(--text-secondary);font-size:12px;">—</span>';
 }
 
 /* ===================================================
@@ -854,8 +865,8 @@ async function loadActivity() {
     tbody.innerHTML = arr.map(tx => `
       <tr>
         <td style="font-size:12px;color:var(--text-secondary);white-space:nowrap;">${fmtDate(tx.created_at || tx.createdAt)}</td>
-        <td style="font-weight:600;">${tx.user ? tx.user.username : ('ID:' + tx.user_id)}</td>
-        <td>${tx.user ? `<span class="badge badge-gray" style="font-size:10px;">${tx.user.role}</span>` : '—'}</td>
+        <td style="font-weight:600;">${tx.user ? tx.user.username : '<span style="color:var(--text-secondary);font-size:12px;">ID:' + tx.user_id + '</span>'}</td>
+        <td>${tx.user ? `<span class="badge badge-gray" style="font-size:10px;">${tx.user.role}</span>` : '<span style="color:var(--text-secondary);font-size:11px;">—</span>'}</td>
         <td><span class="badge ${typeB[tx.type] || 'badge-gray'}">${tx.type}</span></td>
         <td class="${tx.type === 'deposit' || tx.type === 'credit-deposit' ? 'amount-pos' : 'amount-neg'}">${fmt(tx.amount)}</td>
         <td style="font-size:12px;color:var(--text-secondary);">${tx.description || '—'}</td>

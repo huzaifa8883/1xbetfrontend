@@ -32,10 +32,10 @@
     </style>
 
     <script>
-        const pricesUrl = "https://1XBETBACKEND.WORK.GD/api/v1";   // prefix for all API calls
-        const ordersUrl = "https://1XBETBACKEND.WORK.GD/api/v1";   // prefix for all API calls
+        const pricesUrl = "https://PORTBACKEND.WORK.GD/api/v1";   // prefix for all API calls
+        const ordersUrl = "https://PORTBACKEND.WORK.GD/api/v1";   // prefix for all API calls
         const LiquidityRate = 35;
-        // const SsocketUrl = "https://1XBETBACKEND.WORK.GD/signalr";
+        // const SsocketUrl = "http://localhost:5000/signalr";
         // const uwsUrl = "https://orders-ws2.bfexch.com/usershub";
         const genSck = 1;
         const CasSck = 1;
@@ -781,11 +781,36 @@
 </style>
 <!-- ============================================================
   BASE URL — ek jagah change karo, sab jagah apply hoga
-  Local development ke liye: https://1XBETBACKEND.WORK.GD/api
+  Local development ke liye: http://localhost:5000/api
   Production ke liye: https://bettingbackending.work.gd/api
   ============================================================ -->
 <script>
-  const API_BASE = "https://1XBETBACKEND.WORK.GD/api/v1";
+  const API_BASE = "https://PORTBACKEND.WORK.GD/api/v1";
+</script>
+
+<!-- ✅ User Info Loader — /api/v1/auth/me -->
+<script>
+document.addEventListener("DOMContentLoaded", async () => {
+  const token = localStorage.getItem("token");
+  if (!token) return;
+  try {
+    const res = await fetch(`${API_BASE}/auth/me`, {
+      headers: { "Authorization": "Bearer " + token }
+    });
+    const data = await res.json();
+    if (data.success && data.data && data.data.user) {
+      const user = data.data.user;
+      const userBtn = document.getElementById("navbar-user");
+      if (userBtn) userBtn.innerHTML = `${user.username} (${user.role}) <i class="fas fa-caret-down"></i>`;
+      const walletBalance = document.querySelector(".wallet-balance");
+      if (walletBalance) walletBalance.textContent = `B: ${Math.floor(user.wallet_balance ?? 0)}`;
+      const walletExposure = document.querySelector(".wallet-exposure");
+      if (walletExposure) walletExposure.textContent = ` | L: -${Math.floor(user.liable ?? 0)}`;
+    }
+  } catch (err) {
+    console.error("⚠️ Error loading user info:", err);
+  }
+});
 </script>
 
 
@@ -831,6 +856,7 @@
       const res    = await fetch(`${API_BASE}/markets/live/${sport.toLowerCase()}`);
       const result = await res.json();
       const tbody  = document.getElementById('relatedEventsBody');
+      if (!tbody) return;
       tbody.innerHTML = '';
 
       if ((result.success || result.status === 'success') && Array.isArray(result.data) && result.data.length > 0) {
@@ -906,9 +932,10 @@
       const response = await fetch(`${API_BASE}/markets/live/greyhound`);
       const result   = await response.json();
       const listContainer = document.querySelector('.greyhounditems');
+      if (!listContainer) return;
       listContainer.innerHTML = '';
 
-      if (result.status === 'success' && result.data.length > 0) {
+      if ((result.success || result.status === 'success') && result.data.length > 0) {
         result.data.forEach(match => {
           const li      = document.createElement('li');
           li.classList.add('match-card');
@@ -943,9 +970,10 @@
       const response = await fetch(`${API_BASE}/markets/live/horse`);
       const result   = await response.json();
       const listContainer = document.querySelector('.horseEventList');
+      if (!listContainer) return;
       listContainer.innerHTML = '';
 
-      if (result.status === 'success' && result.data.length > 0) {
+      if ((result.success || result.status === 'success') && result.data.length > 0) {
         result.data.forEach(match => {
           const li      = document.createElement('li');
           li.classList.add('match-card');
@@ -980,11 +1008,11 @@
       const res  = await fetch(`${API_BASE}/markets/live/horse`);
       const data = await res.json();
       const container = document.getElementById('horseRaceContainer');
-
+      if (!container) return;
       if ($(container).hasClass('slick-initialized')) $(container).slick('unslick');
       container.innerHTML = '';
 
-      if (data.status === 'success' && Array.isArray(data.data) && data.data.length > 0) {
+      if ((data.success || data.status === 'success') && Array.isArray(data.data) && data.data.length > 0) {
         data.data.forEach(match => {
           const timeStr = new Date(match.startTime).toLocaleTimeString('en-US', {
             hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'UTC'
@@ -1032,11 +1060,11 @@
       const res  = await fetch(`${API_BASE}/markets/live/greyhound`);
       const data = await res.json();
       const container = document.getElementById('greyhoundRaceContainer');
-
+      if (!container) return;
       if ($(container).hasClass('slick-initialized')) $(container).slick('unslick');
       container.innerHTML = '';
 
-      if (data.status === 'success' && Array.isArray(data.data) && data.data.length > 0) {
+      if ((data.success || data.status === 'success') && Array.isArray(data.data) && data.data.length > 0) {
         data.data.forEach(match => {
           const timeStr = new Date(match.startTime).toLocaleTimeString('en-US', {
             hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'UTC'
@@ -1085,10 +1113,11 @@
       const result   = await response.json();
       const tbody    = document.getElementById('cricketMatchContainer');
       const matchCountElement = document.getElementById('cricketMatchCount');
+      if (!tbody) return;
       tbody.innerHTML = '';
 
-      if (result.status === 'success' && Array.isArray(result.data)) {
-        matchCountElement.textContent = result.data.length;
+      if ((result.success || result.status === 'success') && Array.isArray(result.data)) {
+        if (matchCountElement) matchCountElement.textContent = result.data.length;
         const today = new Date();
 
         result.data.forEach(match => {
@@ -1161,7 +1190,7 @@
         });
 
       } else {
-        matchCountElement.textContent = '0';
+        if (matchCountElement) matchCountElement.textContent = '0';
         tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color:white;">No live matches found.</td></tr>`;
       }
     } catch (err) {
@@ -1182,9 +1211,10 @@
       const response = await fetch(`${API_BASE}/markets/live/cricket`);
       const result   = await response.json();
       const tbody    = document.getElementById('inPlayMatchesContainer');
+      if (!tbody) return;
       tbody.innerHTML = '';
 
-      if (result.status === 'success' && Array.isArray(result.data)) {
+      if ((result.success || result.status === 'success') && Array.isArray(result.data)) {
         const inPlayMatches = result.data.filter(m => m.inPlay === true);
 
         if (inPlayMatches.length === 0) {
@@ -1265,9 +1295,10 @@
       const response = await fetch(`${API_BASE}/markets/live/tennis`);
       const result   = await response.json();
       const listContainer = document.querySelector('.tennisEventList');
+      if (!listContainer) return;
       listContainer.innerHTML = '';
 
-      if (result.status === 'success' && result.data.length > 0) {
+      if ((result.success || result.status === 'success') && result.data.length > 0) {
         result.data.forEach(match => {
           const li = document.createElement('li');
           li.classList.add('match-card');
@@ -1299,9 +1330,10 @@
       const response = await fetch(`${API_BASE}/markets/live/football`);
       const result   = await response.json();
       const listContainer = document.querySelector('.footballEventList');
+      if (!listContainer) return;
       listContainer.innerHTML = '';
 
-      if (result.status === 'success' && result.data.length > 0) {
+      if ((result.success || result.status === 'success') && result.data.length > 0) {
         result.data.forEach(match => {
           const li = document.createElement('li');
           li.classList.add('match-card');
@@ -1333,9 +1365,10 @@
       const response = await fetch(`${API_BASE}/markets/live/cricket`);
       const result   = await response.json();
       const ul = document.querySelector('.cricketEventList');
+      if (!ul) return;
       ul.innerHTML = '';
 
-      if (result.status === 'success' && result.data.length > 0) {
+      if ((result.success || result.status === 'success') && result.data && result.data.length > 0) {
         result.data.forEach(event => {
           const li = document.createElement('li');
           li.classList.add('match-card');
@@ -1351,7 +1384,8 @@
       }
     } catch (error) {
       console.error('API Error:', error);
-      document.querySelector('.cricketEventList').innerHTML = '<li>API Error: ' + error.message + '</li>';
+      const ul = document.querySelector('.cricketEventList');
+      if (ul) ul.innerHTML = '<li>API Error: ' + error.message + '</li>';
     }
   }
   document.addEventListener('DOMContentLoaded', loadCricketSidebarMatches);
@@ -4198,8 +4232,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 
 <!-- <script>
-const socket = io("https://1XBETBACKEND.WORK.GD");
-// const ordersUrl = "https://1XBETBACKEND.WORK.GD";
+const socket = io("http://localhost:5000");
+// const ordersUrl = "http://localhost:5000";
 
 new Vue({
   el: "#app",
@@ -4346,7 +4380,7 @@ new Vue({
 // const BASE_URL  = "https://bettingbackending.work.gd";
 // const ordersUrl = BASE_URL + "/api";   // prefix for all API calls
 
-const socket = io("https://1XBETBACKEND.WORK.GD");
+const socket = io("https://PORTBACKEND.WORK.GD");
 const matchId = new URLSearchParams(window.location.search).get("id");
 const token   = localStorage.getItem("token");
 

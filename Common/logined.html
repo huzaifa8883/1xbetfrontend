@@ -291,7 +291,7 @@ async function login() {
 
   try {
     // POST /api/v1/auth/login
-    const res = await fetch("https://1XBETBACKEND.WORK.GD/api/v1/auth/login", {
+    const res = await fetch("https://PORTBACKEND.WORK.GD/api/v1/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password })
@@ -310,6 +310,13 @@ async function login() {
 
     localStorage.setItem("token", token);
     localStorage.setItem("user",  JSON.stringify(user));
+
+    // mv2.min.js / site.min.js / bundle0a.js sab getCookie('wex3authtoken') use karte hain
+    // isiliye localStorage ke saath cookie bhi set karna zaroori hai
+    const cookieExpiry = 7 * 24 * 60 * 60; // 7 din seconds mein
+    document.cookie = `wex3authtoken=${token}; path=/; max-age=${cookieExpiry}; SameSite=Lax`;
+    // wexscktoken bhi set karo (Dashboard.html signalR ke liye use karta hai)
+    document.cookie = `wexscktoken=${token}; path=/; max-age=${cookieExpiry}; SameSite=Lax`;
 
     // Redirect by role
     const role = (user.role || "").toLowerCase();

@@ -35,6 +35,9 @@
         const pricesUrl = "https://PORTBACKEND.WORK.GD/api/v1";   // prefix for all API calls
         const ordersUrl = "https://PORTBACKEND.WORK.GD/api/v1";   // prefix for all API calls
         const LiquidityRate = 35;
+        // mv2.min.js svc_prefix use karta hai catalog2 / orders calls ke liye
+        // yahan define karo warna 'undefined' prepend ho jaata hai URLs mein
+        const svc_prefix = "https://PORTBACKEND.WORK.GD/api/v1/";
         // const SsocketUrl = "http://localhost:5000/signalr";
         // const uwsUrl = "https://orders-ws2.bfexch.com/usershub";
         const genSck = 1;
@@ -888,7 +891,10 @@
   // URL params (global, used by other scripts)
   const urlParams = new URLSearchParams(window.location.search);
   const marketId  = urlParams.get('id');
-  const eventId   = '34567355';
+  // eventId URL se lo — pehle 'eventId' param check karo, warna marketId use karo
+  // mv2.min.js Catalog.eventId use karta hai (jo catalog2 API se aata hai)
+  // lekin ListOrders function mein fallback ke liye ye global bhi rakho
+  const eventId   = urlParams.get('eventId') || urlParams.get('id') || '';
   const timeCode  = '';
   const CommentrySignalR = 1;
   const SsocketEnable    = 1;

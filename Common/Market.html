@@ -32,23 +32,16 @@
     </style>
 
     <script>
-        const pricesUrl = "https://PORTBACKEND.WORK.GD/api/v1";
-        const ordersUrl = "https://PORTBACKEND.WORK.GD/api/v1";
+        const pricesUrl    = "https://PORTBACKEND.WORK.GD/api/v1";
+        const ordersUrl    = "https://PORTBACKEND.WORK.GD/api/v1";
+        const SsocketUrl   = "https://PORTBACKEND.WORK.GD/signalr";
         const LiquidityRate = 35;
-        const SsocketUrl  = "https://PORTBACKEND.WORK.GD/signalr";
         const genSck = 1;
         const CasSck = 1;
 
-        // Override svc_prefix before bundle0a.js and mv2.min.js load
-        // bundle0a.js hardcodes "http://localhost:5000/api/" — we override it here
-        var svc_prefix = "https://PORTBACKEND.WORK.GD/api/v1/";
-
-        // marketId from URL — window-level so bundle can read it
-        var marketId = new URLSearchParams(window.location.search).get("id") || undefined;
-        var eventId  = undefined;
-
-        // Sync localStorage token to cookie (mv2.min.js + bundle0a.js read getCookie("wex3authtoken"))
-        (function syncTokenCookie() {
+        // Sync localStorage token → cookie BEFORE bundle loads
+        // bundle0a.js + mv2.min.js both use getCookie("wex3authtoken")
+        (function() {
             var tk = localStorage.getItem("token");
             if (!tk) return;
             var exp = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toUTCString();
@@ -4703,13 +4696,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     </footer>
     <script type="text/javascript" src="https://wurfl.io/wurfl.js"></script>
 
-    <!-- ✅ Interceptors: must load BEFORE bundle0a.js and mv2.min.js -->
+    <script type="text/javascript" src="/dist/bundle0a.js"></script>
+
+    <!-- ✅ Post-bundle interceptors: jQuery + getCookie + svc_prefix now available -->
     <script>
-    // 1. $.getJSON interceptor — unwraps {success,data} for catalog2 calls
-    //    mv2.min.js does $.getJSON(svc_prefix + "markets/catalog2/?id=...", cb)
-    //    Our backend returns { success:true, data:{...} } but mv2 expects the raw object
-    function _installInterceptors() {
-        if (typeof $ === "undefined") { setTimeout(_installInterceptors, 50); return; }
+    // Override svc_prefix — bundle0a.js declared it with `let`, we just reassign
+    svc_prefix = "https://PORTBACKEND.WORK.GD/api/v1/";
+
+    // $.getJSON interceptor for catalog2:
+    //   mv2.min.js calls: $.getJSON(svc_prefix + "markets/catalog2/?id=...", callback)
+    //   Our backend returns { success:true, data:{...} } — mv2 expects the raw object
+    (function() {
         var _origGetJSON = $.getJSON.bind($);
         $.getJSON = function(url, dataOrCb, cb) {
             var isCatalog = typeof url === "string" && url.indexOf("catalog2") !== -1;
@@ -4723,7 +4720,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 dataType: "json",
                 headers: token ? { "Authorization": "Bearer " + token } : {},
                 success: function(resp) {
-                    // Unwrap {success, data} wrapper if present
+                    // Unwrap {success, data} wrapper
                     var payload = (resp && resp.success && resp.data) ? resp.data : resp;
                     // Patch field names mv2 expects
                     if (payload.marketStartTime && !payload.marketStartTimeUtc)
@@ -4732,73 +4729,65 @@ document.addEventListener("DOMContentLoaded", async () => {
                         payload.sport = { name: payload.eventType };
                     if (payload.runners) {
                         payload.runners.forEach(function(r) {
-                            if (!r.selectionId && r.id) r.selectionId = r.id;
+                            if (!r.selectionId && r.id)  r.selectionId = r.id;
                             if (!r.runnerName  && r.name) r.runnerName = r.name;
                             if (!r.ex) r.ex = { availableToBack: [], availableToLay: [] };
                         });
                     }
-                    // Expose eventId globally for bundle
-                    if (payload.eventId) {
-                        eventId = payload.eventId;
-                        window.eventId = payload.eventId;
-                    }
+                    if (payload.eventId) window.eventId = payload.eventId;
                     if (callback) callback(payload);
                 },
                 error: function(xhr) {
-                    console.error("[catalog2] fetch failed:", xhr.status, url);
+                    console.error("[BetPro] catalog2 failed:", xhr.status, url);
                 }
             });
         };
 
-        // 2. $.ajax interceptor — inject Authorization header for /Markets/Data calls
-        //    mv2 uses: getCookie("wex3authtoken") as ?token= in URL
-        //    but also needs Bearer header for our backend
+        // $.ajax interceptor — inject Authorization header for /Data and /orders calls
         var _origAjax = $.ajax.bind($);
         $.ajax = function(urlOrOpts, opts) {
-            var options = (typeof urlOrOpts === "object") ? urlOrOpts : (opts || {});
-            if (typeof urlOrOpts === "string") options.url = urlOrOpts;
+            var options = typeof urlOrOpts === "string"
+                ? Object.assign({ url: urlOrOpts }, opts || {})
+                : Object.assign({}, urlOrOpts || {});
             var url = options.url || "";
-            var isData    = url.indexOf("/Data") !== -1 || url.indexOf("/markets/Data") !== -1;
-            var isOrders  = url.indexOf("/orders") !== -1;
-            var isNews    = url.indexOf("/users/news") !== -1;
-            if (isData || isOrders || isNews) {
-                var token = localStorage.getItem("token");
-                if (token) {
+            var needsAuth = url.indexOf("/Data") !== -1
+                         || url.indexOf("/orders") !== -1
+                         || url.indexOf("/users/news") !== -1
+                         || url.indexOf("/users/me") !== -1;
+            if (needsAuth) {
+                var tk = localStorage.getItem("token");
+                if (tk) {
                     options.headers = options.headers || {};
                     if (!options.headers["Authorization"])
-                        options.headers["Authorization"] = "Bearer " + token;
+                        options.headers["Authorization"] = "Bearer " + tk;
                 }
             }
-            return _origAjax(options);
+            return _origAjax.call($, options);
         };
 
-        console.log("[BetPro] jQuery interceptors installed");
-    }
-    document.addEventListener("DOMContentLoaded", _installInterceptors);
+        console.log("[BetPro] interceptors active, svc_prefix =", svc_prefix);
+    })();
 
-    // 3. Early user info loader — show username/wallet before Vue mounts
-    document.addEventListener("DOMContentLoaded", async function() {
+    // User info loader — show username/wallet in navbar
+    (async function() {
         var token = localStorage.getItem("token");
         if (!token) return;
         try {
-            var res  = await fetch("https://PORTBACKEND.WORK.GD/api/v1/auth/me", {
-                headers: { "Authorization": "Bearer " + token }
-            });
+            var res  = await fetch("https://PORTBACKEND.WORK.GD/api/v1/auth/me",
+                { headers: { "Authorization": "Bearer " + token } });
             var data = await res.json();
             if (data.success && data.data && data.data.user) {
-                var user = data.data.user;
-                var btn  = document.getElementById("navbar-user");
-                if (btn) btn.innerHTML = user.username + " (" + user.role + ") <i class='fas fa-caret-down'></i>";
+                var u = data.data.user;
+                var btn = document.getElementById("navbar-user");
+                if (btn) btn.innerHTML = u.username + " (" + u.role + ") <i class='fas fa-caret-down'></i>";
                 var wb = document.querySelector(".wallet-balance");
-                if (wb) wb.textContent = "B: " + Math.floor(user.wallet_balance || 0);
+                if (wb)  wb.textContent = "B: " + Math.floor(u.wallet_balance || 0);
                 var we = document.querySelector(".wallet-exposure");
-                if (we) we.textContent = " | L: -" + Math.floor(user.liable || 0);
+                if (we)  we.textContent = " | L: -" + Math.floor(u.liable || 0);
             }
-        } catch(e) { console.error("[BetPro] user load error:", e); }
-    });
+        } catch(e) { console.error("[BetPro] user load:", e); }
+    })();
     </script>
-
-    <script type="text/javascript" src="/dist/bundle0a.js"></script>
 
     <script>
         // const token = getCookie('wexscktoken');

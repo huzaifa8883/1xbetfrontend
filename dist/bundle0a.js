@@ -24348,7 +24348,7 @@ function SoundPlayer() {
 /*! E3 General 
  * 2019 BetPro
  */
-let svc_prefix = "https://1XBETBACKEND.WORK.GD/api/"
+let svc_prefix = "https://1XBETBACKEND.WORK.GD/api/v1"
   , cid = "";
 const LOGOUT_KEY = "logout-event"
   , LOGGED_OUT_URL = "/Common/LoggedOut";

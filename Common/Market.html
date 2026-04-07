@@ -983,50 +983,30 @@
   Route: GET /api/markets/live/horse
   ============================================================ -->
 <script>
-  async function loadHorseLiveData() {
-    try {
-      const res  = await fetch(`${API_BASE}/markets/live/horse`);
-      const data = await res.json();
-      const container = document.getElementById('horseRaceContainer');
+ async function loadHorseLiveData() {
+            try {
+                const res = await fetch(`${API_BASE}/markets/live/horse`);
+                const data = await res.json();
+                const container = document.getElementById('horseRaceContainer');
+                if (!container) return;
 
-      if ($(container).hasClass('slick-initialized')) $(container).slick('unslick');
-      container.innerHTML = '';
+                if ($(container).hasClass('slick-initialized')) $(container).slick('unslick');
+                container.innerHTML = '';
 
-      if (data.status === 'success' && Array.isArray(data.data) && data.data.length > 0) {
-        data.data.forEach(match => {
-          const timeStr = new Date(match.startTime).toLocaleTimeString('en-US', {
-            hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'UTC'
-          }).toLowerCase();
-
-          const div = document.createElement('div');
-          div.className = 'chk11';
-          div.style.cssText = 'text-align:center; margin:2px;';
-          div.innerHTML = `
-            <a href="/Common/Market.html?id=${match.marketId}" style="color:white; width:auto;">
-              <b class="chkmobile">
-                <span class="slidedate market-time">${timeStr}</span><br>
-                <span class="slidename">${match.match}</span>
-              </b>
-            </a>
-          `;
-          container.appendChild(div);
-        });
-
-        $(container).slick({
-          slidesToShow: 8, slidesToScroll: 1, infinite: false, arrows: true,
-          responsive: [
-            { breakpoint: 768, settings: { slidesToShow: 3 } },
-            { breakpoint: 480, settings: { slidesToShow: 2 } }
-          ]
-        });
-      } else {
-        container.innerHTML = `<div style="text-align:center; color:white;">No live races found.</div>`;
-      }
-    } catch (err) {
-      console.error('Error loading live horse data:', err.message);
-    }
-  }
-  loadHorseLiveData();
+                if (data.status === 'success' && data.data?.length > 0) {
+                    data.data.forEach(match => {
+                        const timeStr = new Date(match.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                        const div = document.createElement('div');
+                        div.className = 'chk11';
+                        div.innerHTML = `<a href="/Common/Market.html?id=${match.marketId}" style="color:white;"><b>${timeStr}<br>${match.match}</b></a>`;
+                        container.appendChild(div);
+                    });
+                    $(container).slick({ slidesToShow: 8, slidesToScroll: 1, infinite: false, arrows: true });
+                }
+            } catch (err) {
+                console.error('Horse load error:', err);
+            }
+        }
 </script>
 
 
@@ -4168,6 +4148,10 @@
 </div>
 <!-- Vue 2 CDN -->
 <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="/dist/bundle0a.js"></script>
+    <script src="/js/mv2.min.js"></script>
+    <script src="/js/unreal_html5_player_script_v2.js?00001"></script>
 <!-- <script>
 document.addEventListener("DOMContentLoaded", async () => {
   const token = localStorage.getItem("token");
@@ -4354,7 +4338,7 @@ new Vue({
 // const BASE_URL  = "https://bettingbackending.work.gd";
 // const ordersUrl = BASE_URL + "/api";   // prefix for all API calls
 
-const socket = io("https://PORTBACKEND.WORK.GD");
+const socket = io("https://1xbetbackend.work.gd");
 const matchId = new URLSearchParams(window.location.search).get("id");
 const token   = localStorage.getItem("token");
 

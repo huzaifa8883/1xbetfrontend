@@ -49,8 +49,8 @@
     </script>
 </head>
 <body class="bg-gray d-flex flex-column">
-    <div class="main-page">
-        <div class="row no-gutters">
+<div class="main-page" id="app">   <!-- ← id="app" important for Vue -->
+    <div class="row no-gutters">
             <div class="col-md-3 col-lg-2" id="sidebar">
                 <div class="logo-bar">
                     <a href="/Common/Dashboard">
@@ -4149,9 +4149,12 @@
 <!-- Vue 2 CDN -->
 <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+   <!-- Player script pehle -->
+    <script src="/js/unreal_html5_player_script_v2.js?00001"></script>
+
+    <!-- Bundle & mv2 (jo filters aur components define karta hai) -->
     <script src="/dist/bundle0a.js"></script>
     <script src="/js/mv2.min.js"></script>
-    <script src="/js/unreal_html5_player_script_v2.js?00001"></script>
 <!-- <script>
 document.addEventListener("DOMContentLoaded", async () => {
   const token = localStorage.getItem("token");
@@ -4325,8 +4328,7 @@ new Vue({
   }
 });
 </script> -->
-<script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
-<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
 
 <script>
 // ============================================================
@@ -5090,5 +5092,41 @@ Vue.component('runner-aggregate', {
             pollUserData();
         }
     </script>  
+    <script>
+        // Global filters (agar mv2.min.js mein nahi aa rahe)
+        Vue.filter('formatForiegn', function (value) {
+            return Number(value || 0).toLocaleString();
+        });
+        Vue.filter('formatForiegn2', function (value) {
+            return Number(value || 0).toLocaleString();
+        });
+        Vue.filter('format', function (value) {
+            return Number(value || 0).toLocaleString();
+        });
+
+        // Unreal component ko manually register karo (safety ke liye)
+        if (typeof UnrealHTML5VideoPlayer !== 'undefined') {
+            Vue.component('UnrealHTML5VideoPlayer', UnrealHTML5VideoPlayer);
+        }
+
+        // MarketFactory ko thoda delay dekar call karo taaki sab scripts load ho jayen
+        $(document).ready(function () {
+            setTimeout(() => {
+                if (typeof MarketFactory === "function") {
+                    MarketFactory();
+                } else {
+                    console.error("MarketFactory not found! Check mv2.min.js");
+                }
+
+                // Live score iframe
+                const ifr = document.getElementById("livesc");
+                if (ifr && window.marketId) {
+                    ifr.src = `https://bpexch.xyz/Common/LiveScoreCard?id=${window.marketId}`;
+                }
+
+                SHOWLIVE(window.marketId);
+            }, 800);
+        });
+    </script>
 </body>
 </html>

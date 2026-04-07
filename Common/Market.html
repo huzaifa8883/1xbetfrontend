@@ -15,6 +15,8 @@
     <link rel="stylesheet" type="text/css" href="/img/sprites/css/sprite.css" />
     <link rel="stylesheet" href="/dist/site.css" />
     <link href="/css/BetPro-style.css" rel="stylesheet" />
+    <!-- jQuery: ensure loaded early so $ is available -->
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
 
     <!-- <title>England v India | BetPro</title> -->
     <style>
@@ -4152,6 +4154,7 @@
     <script src="/js/unreal_html5_player_script_v2.js?00001"></script>
 
     <!-- Bundle & mv2 (jo filters aur components define karta hai) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/nosleep/0.12.0/NoSleep.min.js"></script>
     <script src="/dist/bundle0a.js"></script>
     <script src="/js/mv2.min.js"></script>
 <!-- <script>
@@ -4673,17 +4676,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         </div>
     </footer>
     <script type="text/javascript" src="https://wurfl.io/wurfl.js"></script>
-    <script type="text/javascript" src="/dist/bundle0a.js"></script>
-
     <script>
         // const token = getCookie('');
         // const sess = getCookie('wex3authtoken');
         // const reft = getCookie('wex3reftoken');
     </script>
 
-    
-    
-        <script src="/js/mv2.min.js"></script>
     <!-- <script>
 export default {
   data() {
@@ -5084,12 +5082,12 @@ Vue.component('runner-aggregate', {
         });
 
         // token aur sess: localStorage se lo (same as baaki Market.html scripts)
-        var token = localStorage.getItem("token") || getCookie('wexscktoken') || '';
+        var _authToken = localStorage.getItem("token") || getCookie('wexscktoken') || '';
         var sess  = getCookie('wex3authtoken') || localStorage.getItem("token") || '';
         var reft  = getCookie('wex3reftoken') || '';
 
         if (genSck === 1) {
-            const signalRConnection = new UWS(uwsUrl, token, sess);
+            const signalRConnection = new UWS(uwsUrl, _authToken, sess);
             signalRConnection.connect();
         }
         else {

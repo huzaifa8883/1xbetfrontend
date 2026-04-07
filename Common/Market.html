@@ -5092,40 +5092,43 @@ Vue.component('runner-aggregate', {
             pollUserData();
         }
     </script>  
-    <script>
-        // Global filters (agar mv2.min.js mein nahi aa rahe)
-        Vue.filter('formatForiegn', function (value) {
-            return Number(value || 0).toLocaleString();
-        });
-        Vue.filter('formatForiegn2', function (value) {
-            return Number(value || 0).toLocaleString();
-        });
-        Vue.filter('format', function (value) {
-            return Number(value || 0).toLocaleString();
-        });
+   <script>
+        // Global variables (mv2.min.js ke liye zaroori)
+        window.marketId = new URLSearchParams(window.location.search).get('id');
+        window.eventId  = window.marketId;
 
-        // Unreal component ko manually register karo (safety ke liye)
+        console.log("Market ID:", window.marketId);
+
+        // Vue Filters (backup)
+        Vue.filter('formatForiegn', v => Number(v||0).toLocaleString());
+        Vue.filter('formatForiegn2', v => Number(v||0).toLocaleString());
+        Vue.filter('format', v => Number(v||0).toLocaleString());
+
+        // Register Unreal Player
         if (typeof UnrealHTML5VideoPlayer !== 'undefined') {
             Vue.component('UnrealHTML5VideoPlayer', UnrealHTML5VideoPlayer);
         }
 
-        // MarketFactory ko thoda delay dekar call karo taaki sab scripts load ho jayen
+        // MarketFactory with proper delay
         $(document).ready(function () {
+            console.log("Document ready - waiting for mv2...");
+
             setTimeout(() => {
                 if (typeof MarketFactory === "function") {
-                    MarketFactory();
+                    console.log("Calling MarketFactory() now...");
+                    MarketFactory();                    // ← Yeh line sabse important
                 } else {
-                    console.error("MarketFactory not found! Check mv2.min.js");
+                    console.error("MarketFactory function not found!");
                 }
 
-                // Live score iframe
-                const ifr = document.getElementById("livesc");
-                if (ifr && window.marketId) {
-                    ifr.src = `https://bpexch.xyz/Common/LiveScoreCard?id=${window.marketId}`;
+                // Live Score iframe
+                const liveIframe = document.getElementById("livesc");
+                if (liveIframe && window.marketId) {
+                    liveIframe.src = `https://bpexch.xyz/Common/LiveScoreCard?id=${window.marketId}`;
                 }
 
                 SHOWLIVE(window.marketId);
-            }, 800);
+            }, 1800);   // 1.8 second delay (sab scripts load hone ke liye)
         });
     </script>
 </body>

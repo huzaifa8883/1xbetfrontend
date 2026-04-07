@@ -36,10 +36,9 @@
         const ordersUrl = "https://1xbetbackend.work.gd/api/v1";   // prefix for all API calls
         const LiquidityRate = 35;
         // mv2.min.js svc_prefix use karta hai catalog2 / orders calls ke liye
-        // yahan define karo warna 'undefined' prepend ho jaata hai URLs mein
-        // const svc_prefix = "https://PORTBACKEND.WORK.GD/api/v1/";
-        // const SsocketUrl = "http://localhost:5000/signalr";
-        // const uwsUrl = "https://orders-ws2.bfexch.com/usershub";
+        const svc_prefix = "https://1xbetbackend.work.gd/api/v1/";
+        const SsocketUrl = "https://1xbetbackend.work.gd/signalr";
+        const uwsUrl = "https://orders-ws2.bfexch.com/usershub";
 
 
         const genSck = 1;
@@ -4803,7 +4802,7 @@ Vue.component('runner-aggregate', {
 
 
         $(document).ready(function () {
-            MarketFactory();
+            // MarketFactory yahan nahi — neeche ek jagah call hoti hai
             $("#TVDIV").on("click", "#UnrealPlayer1_volume", function () {
                 displayDate();
             });
@@ -5084,6 +5083,11 @@ Vue.component('runner-aggregate', {
             pollRefreshToken();
         });
 
+        // token aur sess: localStorage se lo (same as baaki Market.html scripts)
+        var token = localStorage.getItem("token") || getCookie('wexscktoken') || '';
+        var sess  = getCookie('wex3authtoken') || localStorage.getItem("token") || '';
+        var reft  = getCookie('wex3reftoken') || '';
+
         if (genSck === 1) {
             const signalRConnection = new UWS(uwsUrl, token, sess);
             signalRConnection.connect();
@@ -5092,49 +5096,39 @@ Vue.component('runner-aggregate', {
             pollUserData();
         }
     </script>  
- <script>
-        // Globals
-        window.marketId = new URLSearchParams(window.location.search).get('id');
-        window.eventId  = window.marketId || '';
+    <script>
+        // Global filters (agar mv2.min.js mein nahi aa rahe)
+        Vue.filter('formatForiegn', function (value) {
+            return Number(value || 0).toLocaleString();
+        });
+        Vue.filter('formatForiegn2', function (value) {
+            return Number(value || 0).toLocaleString();
+        });
+        Vue.filter('format', function (value) {
+            return Number(value || 0).toLocaleString();
+        });
 
-        console.log("✅ Market ID set:", window.marketId);
-
-        // Vue Filters (safety)
-        Vue.filter('formatForiegn', function(v){ return Number(v||0).toLocaleString(); });
-        Vue.filter('formatForiegn2', function(v){ return Number(v||0).toLocaleString(); });
-        Vue.filter('format', function(v){ return Number(v||0).toLocaleString(); });
-
-        // Unreal component
+        // Unreal component ko manually register karo (safety ke liye)
         if (typeof UnrealHTML5VideoPlayer !== 'undefined') {
             Vue.component('UnrealHTML5VideoPlayer', UnrealHTML5VideoPlayer);
         }
 
-        // Runner Aggregate component (agar bundle mein nahi hai to yahan define)
-        // (Aapke code mein already hai, lekin safety ke liye)
-
+        // MarketFactory ko delay dekar call karo taaki sab scripts load ho jayen
         $(document).ready(function () {
-            console.log("📌 Document ready - waiting...");
-
             setTimeout(() => {
-                console.log("🚀 Calling MarketFactory()...");
-
                 if (typeof MarketFactory === "function") {
-                    try {
-                        MarketFactory();
-                        console.log("✅ MarketFactory called without error");
-                    } catch (e) {
-                        console.error("❌ MarketFactory crashed:", e);
-                    }
+                    MarketFactory();
                 } else {
-                    console.error("❌ MarketFactory function not found in window");
+                    console.error("MarketFactory not found! Check mv2.min.js");
                 }
 
-                // Live score
-                const liveIframe = document.getElementById("livesc");
-                if (liveIframe && window.marketId) {
-                    liveIframe.src = `https://bpexch.xyz/Common/LiveScoreCard?id=${window.marketId}`;
+                // Live score iframe
+                const ifr = document.getElementById("livesc");
+                if (ifr && marketId) {
+                    ifr.src = `https://bpexch.xyz/Common/LiveScoreCard?id=${marketId}`;
                 }
-            }, 2000);   // 2 second delay
+
+            }, 500);
         });
     </script>
 </body>

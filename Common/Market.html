@@ -5115,5 +5115,73 @@ Vue.component('runner-aggregate', {
             }, 500);
         });
     </script>
+    <!-- ==================== FINAL SAFE FIX FOR getRunnerAmounts ==================== -->
+<script>
+// Pehle saare variables aur functions define karo
+let allRunners = window.allRunners || [];
+let runnerPnL = window.runnerPnL || {};
+let Matched = window.Matched || [];
+
+// PNL Functions (safe version)
+function calculateRunnerPnL(runnerName) {
+    const normalized = (runnerName || "").trim().toLowerCase();
+    let pnlIfThisWins = 0;
+
+    Matched.forEach(order => {
+        const rn    = (order.rn || order.runnerName || "").trim().toLowerCase();
+        const odds  = Number(order.mp || order.price || 0);
+        const stake = Number(order.ms || order.size || 0);
+        const side  = (order.bs || order.side || "").toUpperCase();
+
+        if (!rn || odds <= 1 || stake <= 0) return;
+
+        if (rn === normalized) {
+            if (side === "B") pnlIfThisWins += (odds - 1) * stake;
+            else pnlIfThisWins -= (odds - 1) * stake;
+        } else {
+            if (side === "B") pnlIfThisWins -= stake;
+            else pnlIfThisWins += stake;
+        }
+    });
+    return Math.round(pnlIfThisWins);
+}
+
+function updateRunnerPnL() {
+    const matchedRunners = [...new Set(Matched.map(o => (o.rn || o.runnerName || "").trim()))].filter(Boolean);
+    allRunners = [...new Set([...allRunners, ...matchedRunners])];
+    runnerPnL = {};
+    allRunners.forEach(runner => {
+        runnerPnL[runner] = calculateRunnerPnL(runner);
+    });
+}
+
+// Main Global Function for Vue
+window.getRunnerAmounts = function(runnerName) {
+    if (!runnerName) return { ifWin: 0, ifLose: 0, net: 0 };
+
+    const normalized = (runnerName || "").trim().toLowerCase();
+
+    if (!allRunners.some(r => r.trim().toLowerCase() === normalized)) {
+        allRunners.push(runnerName);
+    }
+
+    updateRunnerPnL();
+
+    const key = Object.keys(runnerPnL).find(k => k.trim().toLowerCase() === normalized);
+    const pnl = (key && runnerPnL[key]) ? runnerPnL[key] : 0;
+
+    return { ifWin: pnl, ifLose: 0, net: pnl };
+};
+
+// Force re-define after delay (Vue ke render ke liye)
+setTimeout(() => {
+    window.getRunnerAmounts = window.getRunnerAmounts || function(runnerName) {
+        return { ifWin: 0, ifLose: 0, net: 0 };
+    };
+    console.log("✅ getRunnerAmounts safely defined for Vue");
+}, 800);
+
+console.log("🔧 Final getRunnerAmounts fix applied");
+</script>
 </body>
 </html>

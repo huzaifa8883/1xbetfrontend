@@ -4340,7 +4340,10 @@ new Vue({
 
 const socket = io("https://1xbetbackend.work.gd");
 const matchId = new URLSearchParams(window.location.search).get("id");
-const token   = localStorage.getItem("token");
+// token already declared above as var — reuse karo, redeclare mat karo
+if (typeof token === 'undefined' || !token) {
+    var token = localStorage.getItem("token");
+}
 
 let UnMatched = [];
 let Matched   = [];
@@ -4672,17 +4675,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         </div>
     </footer>
     <script type="text/javascript" src="https://wurfl.io/wurfl.js"></script>
-    <script type="text/javascript" src="/dist/bundle0a.js"></script>
 
     <script>
         // const token = getCookie('');
         // const sess = getCookie('wex3authtoken');
         // const reft = getCookie('wex3reftoken');
     </script>
-
-    
-    
-        <script src="/js/mv2.min.js"></script>
     <!-- <script>
 export default {
   data() {

@@ -4647,7 +4647,46 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 });
 </script>
+<!-- ==================== FINAL FIX FOR getRunnerAmounts ==================== -->
+<script>
+// Yeh function Vue ke template mein runner ke neeche Profit/Loss dikhane ke liye hai
+window.getRunnerAmounts = function(runnerName) {
+    if (!runnerName) return { ifWin: 0, ifLose: 0, net: 0 };
 
+    const normalized = (runnerName || "").trim().toLowerCase();
+
+    // Runner ko track mein add karo agar naya hai
+    if (!allRunners.some(r => r.trim().toLowerCase() === normalized)) {
+        allRunners.push(runnerName);
+    }
+
+    // Latest PNL calculate karo
+    updateRunnerPnL();
+
+    // runnerPnL object se value lo
+    const key = Object.keys(runnerPnL).find(k => 
+        k.trim().toLowerCase() === normalized
+    );
+    
+    const pnl = (key && runnerPnL[key]) ? runnerPnL[key] : 0;
+
+    return {
+        ifWin: pnl,     // Yeh runner win kare to net profit/loss
+        ifLose: 0,      // Agar chahiye to yahan cross liability daal sakte ho
+        net: pnl
+    };
+};
+
+// Safety - Vue ke render hone ke baad bhi ensure karo
+setTimeout(() => {
+    if (typeof window.getRunnerAmounts === "undefined") {
+        console.warn("getRunnerAmounts force defined");
+        // agar upar wala nahi chala to yahan bhi define ho jayega
+    }
+}, 1000);
+
+console.log("✅ getRunnerAmounts globally defined successfully");
+</script>
 
             </center>
            

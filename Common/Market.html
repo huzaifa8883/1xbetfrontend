@@ -4390,26 +4390,35 @@ async function updateUserWallet() {
 // ---------------------------
 function calculateRunnerPnL(runnerName) {
     const normalized = runnerName.trim().toLowerCase();
-    let profit = 0;
-    let liability = 0;
+    let pnlIfWin = 0;   // net profit/loss agar yeh runner win kare
 
+    // Matched orders se calculate (backend ke hisaab se cross-runner effect bhi)
     Matched.forEach(order => {
         const rn    = (order.rn || "").trim().toLowerCase();
         const odds  = Number(order.mp || 0);
         const stake = Number(order.ms || 0);
         const side  = (order.bs || "").toUpperCase();
+
         if (!rn || odds === 0 || stake === 0) return;
 
         if (rn === normalized) {
-            if (side === "B") profit    += (odds - 1) * stake;
-            else if (side === "L") liability += (odds - 1) * stake;
+            // Bet is runner pe hai
+            if (side === "B") {
+                pnlIfWin += (odds - 1) * stake;        // Back → win pe profit
+            } else if (side === "L") {
+                pnlIfWin -= (odds - 1) * stake;        // Lay → win pe loss (liability)
+            }
         } else {
-            if (side === "B") liability += stake;
-            else if (side === "L") profit += stake;
+            // Bet kisi aur runner pe hai
+            if (side === "B") {
+                pnlIfWin -= stake;                     // Back on other → yeh win kare to loss
+            } else if (side === "L") {
+                pnlIfWin += stake;                     // Lay on other → yeh win kare to profit
+            }
         }
     });
 
-    return { profit, liability, net: profit - liability };
+    return Math.round(pnlIfWin);   // clean number for display
 }
 
 function updateRunnerPnL() {

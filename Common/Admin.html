@@ -168,10 +168,18 @@
     .toggle-slider:before { content:''; position:absolute; width:16px; height:16px; background:white; border-radius:50%; left:3px; top:3px; transition:0.3s; }
     .toggle input:checked + .toggle-slider { background:var(--accent-green); }
     .toggle input:checked + .toggle-slider:before { transform:translateX(20px); }
-    .league-chips { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
-    .league-chip { background:rgba(0,212,255,0.1); border:1px solid rgba(0,212,255,0.25); color:var(--accent-cyan); padding:4px 12px; border-radius:20px; font-size:12px; font-weight:600; display:flex; align-items:center; gap:6px; }
-    .league-chip-remove { cursor:pointer; opacity:0.6; }
-    .league-chip-remove:hover { opacity:1; }
+    .league-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:8px; }
+    .league-item { background:var(--bg-primary); border:1px solid var(--border); border-radius:8px; padding:12px 16px; display:flex; align-items:center; gap:12px; transition:border-color 0.2s,background 0.2s; cursor:pointer; }
+    .league-item:hover { border-color:var(--border-bright); background:var(--bg-hover); }
+    .league-item.enabled { border-color:rgba(0,255,136,0.3); background:rgba(0,255,136,0.04); }
+    .league-item input[type=checkbox] { width:16px; height:16px; accent-color:var(--accent-green); cursor:pointer; flex-shrink:0; }
+    .league-item-info { flex:1; min-width:0; }
+    .league-item-name { font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .league-item-id { font-size:10px; color:var(--text-secondary); margin-top:2px; font-family:'Rajdhani',sans-serif; letter-spacing:0.5px; }
+    .league-enabled-dot { width:7px; height:7px; border-radius:50%; background:var(--accent-green); box-shadow:0 0 6px var(--accent-green); flex-shrink:0; display:none; }
+    .league-item.enabled .league-enabled-dot { display:block; }
+    .league-loading { text-align:center; padding:30px; color:var(--text-secondary); font-size:13px; }
+    .league-empty { text-align:center; padding:24px; color:var(--text-secondary); font-size:13px; border:1px dashed var(--border); border-radius:8px; }
 
     /* TOAST */
     #toast { position:fixed; bottom:24px; right:24px; z-index:9999; display:flex; flex-direction:column; gap:8px; }
@@ -446,9 +454,16 @@
     <div class="card">
       <div class="card-header">
         <div class="card-title" id="league-card-title">Leagues</div>
-        <button class="btn btn-cyan btn-sm" onclick="openModal('leagueModal')">+ Add League</button>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <span id="league-status" style="font-size:11px;color:var(--text-secondary);"></span>
+          <button class="btn btn-cyan btn-sm" onclick="fetchBetfairLeagues(curSport)" id="fetch-leagues-btn">🔄 Fetch from Betfair</button>
+          <button class="btn btn-primary btn-sm" onclick="saveLeagues()">💾 Save</button>
+        </div>
       </div>
-      <div class="card-body"><div class="league-chips" id="league-chips"></div></div>
+      <div class="card-body">
+        <p style="font-size:12px;color:var(--text-secondary);margin-bottom:16px;">Betfair se available leagues fetch karo — checked leagues frontend pe show hongi, unchecked hidden rahegi.</p>
+        <div class="league-grid" id="league-list"></div>
+      </div>
     </div>
   </div>
 
@@ -599,25 +614,7 @@
   </div>
 </div>
 
-<!-- Add League Modal -->
-<div class="modal-overlay" id="leagueModal">
-  <div class="modal">
-    <div class="modal-header">
-      <div class="modal-title">+ Add League</div>
-      <button class="modal-close" onclick="closeModal('leagueModal')">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label class="form-label">League Name</label>
-        <input type="text" id="new-league" class="form-input" placeholder="e.g. Indian Premier League">
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('leagueModal')">Cancel</button>
-      <button class="btn btn-primary" onclick="addLeague()">Add</button>
-    </div>
-  </div>
-</div>
+
 
 <script>
 /* ===================================================
@@ -1230,20 +1227,27 @@ function filterRole(tbodyId, role) {
    SPORTS SETTINGS
    =================================================== */
 const SPORTS = {
-  cricket:      { name: 'Cricket',          icon: '🏏', markets: [{ id: 'match_odds', name: 'Match Odds', desc: 'Win/Draw/Win' },{ id: 'toss', name: 'Toss', desc: 'Who wins the toss' },{ id: 'innings_runs', name: 'Innings Runs', desc: 'Total runs in innings' },{ id: 'session_runs', name: 'Session Runs', desc: 'Runs per session' },{ id: 'top_batsman', name: 'Top Batsman', desc: 'Highest scorer' },{ id: 'top_bowler', name: 'Top Bowler', desc: 'Most wickets' },{ id: 'over_under', name: 'Over/Under Runs', desc: 'Total match runs O/U' },{ id: 'bookmaker', name: 'Bookmaker', desc: 'Bookmaker odds' },{ id: 'fancy', name: 'Fancy Bets', desc: 'Custom fancy markets' }], leagues: ['Indian Premier League','T20 World Cup','Asia Cup','The Ashes','Big Bash League','PSL','CPL'] },
-  football:     { name: 'Football',         icon: '⚽', markets: [{ id: 'match_odds', name: 'Match Odds', desc: 'Home/Draw/Away' },{ id: 'btts', name: 'Both Teams To Score', desc: 'BTTS Yes/No' },{ id: 'total_goals', name: 'Total Goals', desc: 'Over/Under' },{ id: 'correct_score', name: 'Correct Score', desc: 'Exact final score' },{ id: 'ht_result', name: 'Half Time Result', desc: 'HT winner' },{ id: 'double_chance', name: 'Double Chance', desc: '1X/12/X2' },{ id: 'asian_handicap', name: 'Asian Handicap', desc: 'AH market' },{ id: 'first_scorer', name: 'First Goal Scorer', desc: 'Who scores first' }], leagues: ['Premier League','La Liga','Serie A','Bundesliga','Ligue 1','UEFA Champions League','FIFA World Cup'] },
-  tennis:       { name: 'Tennis',           icon: '🎾', markets: [{ id: 'match_odds', name: 'Match Odds', desc: 'P1 vs P2' },{ id: 'set_winner', name: 'Set Winner', desc: 'Per set market' },{ id: 'total_sets', name: 'Total Sets', desc: 'O/U total sets' },{ id: 'total_games', name: 'Total Games', desc: 'O/U total games' },{ id: 'game_handicap', name: 'Game Handicap', desc: 'Game count handicap' }], leagues: ['Wimbledon','US Open','French Open','Australian Open','ATP Finals','Davis Cup'] },
-  horse_racing: { name: 'Horse Racing',     icon: '🏇', markets: [{ id: 'win', name: 'Win', desc: 'Horse to win' },{ id: 'each_way', name: 'Each Way', desc: 'Win or place' },{ id: 'place', name: 'Place', desc: 'Top 3 finish' },{ id: 'forecast', name: 'Forecast', desc: '1st & 2nd in order' }], leagues: ['Royal Ascot','Cheltenham Festival','Grand National','Kentucky Derby'] },
-  basketball:   { name: 'Basketball',       icon: '🏀', markets: [{ id: 'match_odds', name: 'Match Odds', desc: 'Team 1 vs Team 2' },{ id: 'handicap', name: 'Handicap', desc: 'Point spread' },{ id: 'total_points', name: 'Total Points', desc: 'O/U total pts' },{ id: 'ht_result', name: 'Half Time', desc: 'HT winner' }], leagues: ['NBA','EuroLeague','FIBA World Cup','NCAA'] },
-  greyhounds:   { name: 'Greyhound Racing', icon: '🐕', markets: [{ id: 'win', name: 'Win', desc: 'Dog to win' },{ id: 'each_way', name: 'Each Way', desc: 'Win or place' },{ id: 'forecast', name: 'Forecast', desc: '1st & 2nd' }], leagues: ['UK Greyhounds','Irish Greyhounds'] },
+  cricket:      { name: 'Cricket',          icon: '🏏', betfairId: '4',    markets: [{ id: 'match_odds', name: 'Match Odds', desc: 'Win/Draw/Win' },{ id: 'toss', name: 'Toss', desc: 'Who wins the toss' },{ id: 'innings_runs', name: 'Innings Runs', desc: 'Total runs in innings' },{ id: 'session_runs', name: 'Session Runs', desc: 'Runs per session' },{ id: 'top_batsman', name: 'Top Batsman', desc: 'Highest scorer' },{ id: 'top_bowler', name: 'Top Bowler', desc: 'Most wickets' },{ id: 'over_under', name: 'Over/Under Runs', desc: 'Total match runs O/U' },{ id: 'bookmaker', name: 'Bookmaker', desc: 'Bookmaker odds' },{ id: 'fancy', name: 'Fancy Bets', desc: 'Custom fancy markets' }] },
+  football:     { name: 'Football',         icon: '⚽', betfairId: '1',    markets: [{ id: 'match_odds', name: 'Match Odds', desc: 'Home/Draw/Away' },{ id: 'btts', name: 'Both Teams To Score', desc: 'BTTS Yes/No' },{ id: 'total_goals', name: 'Total Goals', desc: 'Over/Under' },{ id: 'correct_score', name: 'Correct Score', desc: 'Exact final score' },{ id: 'ht_result', name: 'Half Time Result', desc: 'HT winner' },{ id: 'double_chance', name: 'Double Chance', desc: '1X/12/X2' },{ id: 'asian_handicap', name: 'Asian Handicap', desc: 'AH market' },{ id: 'first_scorer', name: 'First Goal Scorer', desc: 'Who scores first' }] },
+  tennis:       { name: 'Tennis',           icon: '🎾', betfairId: '2',    markets: [{ id: 'match_odds', name: 'Match Odds', desc: 'P1 vs P2' },{ id: 'set_winner', name: 'Set Winner', desc: 'Per set market' },{ id: 'total_sets', name: 'Total Sets', desc: 'O/U total sets' },{ id: 'total_games', name: 'Total Games', desc: 'O/U total games' },{ id: 'game_handicap', name: 'Game Handicap', desc: 'Game count handicap' }] },
+  horse_racing: { name: 'Horse Racing',     icon: '🏇', betfairId: '7',    markets: [{ id: 'win', name: 'Win', desc: 'Horse to win' },{ id: 'each_way', name: 'Each Way', desc: 'Win or place' },{ id: 'place', name: 'Place', desc: 'Top 3 finish' },{ id: 'forecast', name: 'Forecast', desc: '1st & 2nd in order' }] },
+  greyhounds:   { name: 'Greyhound Racing', icon: '🐕', betfairId: '4339', markets: [{ id: 'win', name: 'Win', desc: 'Dog to win' },{ id: 'each_way', name: 'Each Way', desc: 'Win or place' },{ id: 'forecast', name: 'Forecast', desc: '1st & 2nd' }] },
 };
 
 let curSport = 'cricket';
-const selMarkets  = {};
-const sportLeagues = {};
+const selMarkets    = {};   // { sport: [marketId, ...] }
+const betfairLeagues = {};  // { sport: [{id, name}, ...] } — from Betfair API
+const enabledLeagues = {};  // { sport: Set<leagueId> }    — user selection
+
 Object.keys(SPORTS).forEach(k => {
-  selMarkets[k]   = SPORTS[k].markets.map(m => m.id);
-  sportLeagues[k] = [...SPORTS[k].leagues];
+  selMarkets[k]     = SPORTS[k].markets.map(m => m.id);
+  betfairLeagues[k] = [];
+  enabledLeagues[k] = new Set();
+  // Restore saved selections from localStorage
+  try {
+    const saved = JSON.parse(localStorage.getItem('enabledLeagues_' + k) || '[]');
+    saved.forEach(id => enabledLeagues[k].add(String(id)));
+  } catch(e) {}
 });
 
 function initSports() {
@@ -1251,6 +1255,7 @@ function initSports() {
     `<button class="sport-tab${k === curSport ? ' active' : ''}" onclick="selectSport('${k}')">${s.icon} ${s.name}</button>`
   ).join('');
   renderSport(curSport);
+  fetchBetfairLeagues(curSport);
 }
 
 function selectSport(k) {
@@ -1259,6 +1264,11 @@ function selectSport(k) {
     t.classList.toggle('active', Object.keys(SPORTS)[i] === k);
   });
   renderSport(k);
+  if (!betfairLeagues[k] || betfairLeagues[k].length === 0) {
+    fetchBetfairLeagues(k);
+  } else {
+    renderLeagues(k);
+  }
 }
 
 function renderSport(k) {
@@ -1274,7 +1284,6 @@ function renderSport(k) {
         <span class="toggle-slider"></span>
       </label>
     </div>`).join('');
-  renderLeagues(k);
 }
 
 function toggleMarket(sport, id, checked) {
@@ -1282,26 +1291,101 @@ function toggleMarket(sport, id, checked) {
   else selMarkets[sport] = selMarkets[sport].filter(m => m !== id);
 }
 
+/* ---- Betfair Leagues ---- */
+async function fetchBetfairLeagues(k) {
+  const s   = SPORTS[k];
+  const btn = document.getElementById('fetch-leagues-btn');
+  const statusEl = document.getElementById('league-status');
+  document.getElementById('league-list').innerHTML = '<div class="league-loading">🔄 Fetching leagues from Betfair...</div>';
+  if (btn) btn.disabled = true;
+  statusEl.textContent = '';
+
+  try {
+    // Call backend which proxies to Betfair API
+    const res = await api(`/api/v1/betfair/competitions?eventTypeId=${s.betfairId}`);
+    if (res && res.success && Array.isArray(res.data) && res.data.length > 0) {
+      // Normalise: backend may return [{competition:{id,name}, marketCount}, ...] or [{id,name}, ...]
+      betfairLeagues[k] = res.data.map(item => {
+        if (item.competition) return { id: String(item.competition.id), name: item.competition.name };
+        return { id: String(item.id || item.competitionId || ''), name: item.name || item.competitionName || 'Unknown' };
+      }).filter(l => l.id && l.name);
+      statusEl.textContent = `${betfairLeagues[k].length} leagues found`;
+    } else {
+      // Fallback: show message, no hardcoded leagues
+      betfairLeagues[k] = [];
+      statusEl.style.color = 'var(--accent-orange)';
+      statusEl.textContent = res?.message || 'No leagues returned from Betfair';
+    }
+  } catch(e) {
+    betfairLeagues[k] = [];
+    statusEl.style.color = 'var(--accent-red)';
+    statusEl.textContent = 'Connection error';
+  }
+
+  if (btn) btn.disabled = false;
+  renderLeagues(k);
+}
+
 function renderLeagues(k) {
-  const ls = sportLeagues[k] || [];
-  document.getElementById('league-chips').innerHTML = ls.length
-    ? ls.map((l, i) => `<div class="league-chip">${l}<span class="league-chip-remove" onclick="removeLeague('${k}',${i})">✕</span></div>`).join('')
-    : '<span style="color:var(--text-secondary);font-size:13px;">No leagues added. Click + Add League.</span>';
+  const leagues  = betfairLeagues[k] || [];
+  const enabled  = enabledLeagues[k] || new Set();
+  const listEl   = document.getElementById('league-list');
+
+  if (leagues.length === 0) {
+    listEl.innerHTML = '<div class="league-empty">⚠️ Koi league nahi mili. "Fetch from Betfair" button dabao.</div>';
+    return;
+  }
+
+  // Sort: enabled first
+  const sorted = [...leagues].sort((a, b) => {
+    const ae = enabled.has(a.id) ? 0 : 1;
+    const be = enabled.has(b.id) ? 0 : 1;
+    return ae - be || a.name.localeCompare(b.name);
+  });
+
+  listEl.innerHTML = sorted.map(l => {
+    const checked = enabled.has(l.id);
+    return `<div class="league-item${checked ? ' enabled' : ''}" onclick="toggleLeague('${k}','${l.id}',this)" id="li-${k}-${l.id}">
+      <input type="checkbox" ${checked ? 'checked' : ''} onclick="event.stopPropagation();toggleLeague('${k}','${l.id}',document.getElementById('li-${k}-${l.id}'))">
+      <div class="league-item-info">
+        <div class="league-item-name">${l.name}</div>
+        <div class="league-item-id">ID: ${l.id}</div>
+      </div>
+      <div class="league-enabled-dot"></div>
+    </div>`;
+  }).join('');
 }
 
-function addLeague() {
-  const v = document.getElementById('new-league').value.trim();
-  if (!v) return;
-  sportLeagues[curSport].push(v);
-  document.getElementById('new-league').value = '';
-  renderLeagues(curSport);
-  closeModal('leagueModal');
-  toast(`✅ League '${v}' added`);
+function toggleLeague(sport, id, rowEl) {
+  const cb = rowEl.querySelector('input[type=checkbox]');
+  const enabled = enabledLeagues[sport];
+  if (enabled.has(id)) {
+    enabled.delete(id);
+    rowEl.classList.remove('enabled');
+    if (cb) cb.checked = false;
+  } else {
+    enabled.add(id);
+    rowEl.classList.add('enabled');
+    if (cb) cb.checked = true;
+  }
 }
 
-function removeLeague(sport, i) {
-  sportLeagues[sport].splice(i, 1);
-  renderLeagues(sport);
+function saveLeagues() {
+  // Persist to localStorage + send to backend
+  Object.keys(SPORTS).forEach(k => {
+    const arr = [...(enabledLeagues[k] || [])];
+    localStorage.setItem('enabledLeagues_' + k, JSON.stringify(arr));
+  });
+  // Also save to backend settings endpoint (fire-and-forget)
+  const payload = {};
+  Object.keys(SPORTS).forEach(k => {
+    const enabled = [...(enabledLeagues[k] || [])];
+    const leagues = (betfairLeagues[k] || []).filter(l => enabled.includes(l.id));
+    payload[k] = { enabledLeagueIds: enabled, leagues };
+  });
+  api('/api/v1/settings/leagues', 'POST', payload).catch(() => {});
+  const total = Object.values(enabledLeagues).reduce((s, set) => s + set.size, 0);
+  toast(`✅ Leagues saved — ${total} leagues enabled across all sports`);
 }
 
 function saveMarkets() {
@@ -1315,7 +1399,9 @@ function saveMarkets() {
 function logout() {
   if (!confirm('Logout from admin panel?')) return;
   localStorage.removeItem('token');
-  window.location.href = '/Users/Login';
+  sessionStorage.clear();
+  // Hard redirect — back button se wapas nahi aa sakta
+  window.location.replace('/Users/Login');
 }
 
 /* ===================================================

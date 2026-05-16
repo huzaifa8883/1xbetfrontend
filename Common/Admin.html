@@ -1291,38 +1291,188 @@ function toggleMarket(sport, id, checked) {
   else selMarkets[sport] = selMarkets[sport].filter(m => m !== id);
 }
 
-/* ---- Betfair Leagues ---- */
-async function fetchBetfairLeagues(k) {
-  const s   = SPORTS[k];
-  const btn = document.getElementById('fetch-leagues-btn');
+/* ---- Betfair Hardcoded Leagues (Real Betfair Competitions) ---- */
+const BETFAIR_LEAGUES = {
+  cricket: [
+    { id: 'c1',  name: 'Indian Premier League (IPL)' },
+    { id: 'c2',  name: 'T20 World Cup' },
+    { id: 'c3',  name: 'ICC Cricket World Cup (ODI)' },
+    { id: 'c4',  name: 'ICC Champions Trophy' },
+    { id: 'c5',  name: 'Asia Cup' },
+    { id: 'c6',  name: 'The Ashes' },
+    { id: 'c7',  name: 'Big Bash League (BBL)' },
+    { id: 'c8',  name: 'Pakistan Super League (PSL)' },
+    { id: 'c9',  name: 'Caribbean Premier League (CPL)' },
+    { id: 'c10', name: 'Bangladesh Premier League (BPL)' },
+    { id: 'c11', name: 'Lanka Premier League (LPL)' },
+    { id: 'c12', name: 'SA20 (South Africa)' },
+    { id: 'c13', name: 'The Hundred (England)' },
+    { id: 'c14', name: 'Vitality T20 Blast' },
+    { id: 'c15', name: 'One Day Internationals (ODI)' },
+    { id: 'c16', name: 'Test Matches' },
+    { id: 'c17', name: 'International T20' },
+    { id: 'c18', name: 'County Championship' },
+    { id: 'c19', name: 'Sheffield Shield' },
+    { id: 'c20', name: 'Ranji Trophy' },
+    { id: 'c21', name: 'New Zealand Super Smash' },
+    { id: 'c22', name: 'Zimbabwe T20I' },
+    { id: 'c23', name: 'Afghanistan Premier League' },
+    { id: 'c24', name: 'ICC U19 World Cup' },
+    { id: 'c25', name: 'Women\'s T20 World Cup' },
+  ],
+  football: [
+    { id: 'f1',  name: 'English Premier League' },
+    { id: 'f2',  name: 'English Championship' },
+    { id: 'f3',  name: 'English League One' },
+    { id: 'f4',  name: 'English League Two' },
+    { id: 'f5',  name: 'FA Cup' },
+    { id: 'f6',  name: 'EFL Cup (Carabao Cup)' },
+    { id: 'f7',  name: 'La Liga (Spain)' },
+    { id: 'f8',  name: 'Segunda Division (Spain)' },
+    { id: 'f9',  name: 'Copa del Rey' },
+    { id: 'f10', name: 'Serie A (Italy)' },
+    { id: 'f11', name: 'Serie B (Italy)' },
+    { id: 'f12', name: 'Coppa Italia' },
+    { id: 'f13', name: 'Bundesliga (Germany)' },
+    { id: 'f14', name: '2. Bundesliga (Germany)' },
+    { id: 'f15', name: 'DFB Pokal' },
+    { id: 'f16', name: 'Ligue 1 (France)' },
+    { id: 'f17', name: 'Ligue 2 (France)' },
+    { id: 'f18', name: 'Coupe de France' },
+    { id: 'f19', name: 'UEFA Champions League' },
+    { id: 'f20', name: 'UEFA Europa League' },
+    { id: 'f21', name: 'UEFA Conference League' },
+    { id: 'f22', name: 'FIFA World Cup' },
+    { id: 'f23', name: 'UEFA European Championship' },
+    { id: 'f24', name: 'Scottish Premiership' },
+    { id: 'f25', name: 'Scottish Championship' },
+    { id: 'f26', name: 'Eredivisie (Netherlands)' },
+    { id: 'f27', name: 'Primeira Liga (Portugal)' },
+    { id: 'f28', name: 'Belgian First Division A' },
+    { id: 'f29', name: 'Turkish Super Lig' },
+    { id: 'f30', name: 'Russian Premier League' },
+    { id: 'f31', name: 'Greek Super League' },
+    { id: 'f32', name: 'Danish Superliga' },
+    { id: 'f33', name: 'Swedish Allsvenskan' },
+    { id: 'f34', name: 'Norwegian Eliteserien' },
+    { id: 'f35', name: 'MLS (Major League Soccer)' },
+    { id: 'f36', name: 'Brazilian Série A' },
+    { id: 'f37', name: 'Argentine Primera División' },
+    { id: 'f38', name: 'Mexican Liga MX' },
+    { id: 'f39', name: 'Japanese J1 League' },
+    { id: 'f40', name: 'Australian A-League' },
+    { id: 'f41', name: 'Saudi Pro League' },
+    { id: 'f42', name: 'UAE Pro League' },
+    { id: 'f43', name: 'AFC Champions League' },
+    { id: 'f44', name: 'CONMEBOL Copa Libertadores' },
+    { id: 'f45', name: 'Africa Cup of Nations' },
+  ],
+  tennis: [
+    { id: 't1',  name: 'Australian Open' },
+    { id: 't2',  name: 'French Open (Roland Garros)' },
+    { id: 't3',  name: 'Wimbledon' },
+    { id: 't4',  name: 'US Open' },
+    { id: 't5',  name: 'ATP Finals' },
+    { id: 't6',  name: 'Davis Cup' },
+    { id: 't7',  name: 'Billie Jean King Cup' },
+    { id: 't8',  name: 'Laver Cup' },
+    { id: 't9',  name: 'Indian Wells Masters (BNP Paribas Open)' },
+    { id: 't10', name: 'Miami Open' },
+    { id: 't11', name: 'Monte-Carlo Masters' },
+    { id: 't12', name: 'Madrid Open' },
+    { id: 't13', name: 'Italian Open (Rome)' },
+    { id: 't14', name: 'Canada Masters (Rogers Cup)' },
+    { id: 't15', name: 'Western & Southern Open (Cincinnati)' },
+    { id: 't16', name: 'Shanghai Masters' },
+    { id: 't17', name: 'Paris Masters' },
+    { id: 't18', name: 'Vienna Open' },
+    { id: 't19', name: 'WTA Finals' },
+    { id: 't20', name: 'Qatar Open' },
+    { id: 't21', name: 'Dubai Duty Free Tennis' },
+    { id: 't22', name: 'Stuttgart Open' },
+    { id: 't23', name: 'Halle Open' },
+    { id: 't24', name: 'Queen\'s Club Championships' },
+    { id: 't25', name: 'ATP 250 Series' },
+    { id: 't26', name: 'WTA 1000 Events' },
+    { id: 't27', name: 'WTA 500 Events' },
+    { id: 't28', name: 'Next Gen ATP Finals' },
+  ],
+  horse_racing: [
+    { id: 'h1',  name: 'Cheltenham Festival' },
+    { id: 'h2',  name: 'Grand National (Aintree)' },
+    { id: 'h3',  name: 'Royal Ascot' },
+    { id: 'h4',  name: 'Epsom Derby' },
+    { id: 'h5',  name: 'Goodwood Festival' },
+    { id: 'h6',  name: 'York Ebor Festival' },
+    { id: 'h7',  name: 'Sandown Park' },
+    { id: 'h8',  name: 'Newmarket (Craven)' },
+    { id: 'h9',  name: 'Newmarket (July Course)' },
+    { id: 'h10', name: 'Kempton Park' },
+    { id: 'h11', name: 'Lingfield Park' },
+    { id: 'h12', name: 'Haydock Park' },
+    { id: 'h13', name: 'Doncaster (St Leger)' },
+    { id: 'h14', name: 'Chester Cup' },
+    { id: 'h15', name: 'Leopardstown' },
+    { id: 'h16', name: 'The Curragh' },
+    { id: 'h17', name: 'Punchestown Festival' },
+    { id: 'h18', name: 'Galway Races' },
+    { id: 'h19', name: 'Irish Champion Stakes' },
+    { id: 'h20', name: 'Kentucky Derby' },
+    { id: 'h21', name: 'Preakness Stakes' },
+    { id: 'h22', name: 'Belmont Stakes' },
+    { id: 'h23', name: 'Breeders\' Cup' },
+    { id: 'h24', name: 'Melbourne Cup' },
+    { id: 'h25', name: 'Cox Plate' },
+    { id: 'h26', name: 'Golden Eagle' },
+    { id: 'h27', name: 'Caulfield Cup' },
+    { id: 'h28', name: 'Dubai World Cup' },
+    { id: 'h29', name: 'Hong Kong Cup' },
+    { id: 'h30', name: 'Prix de l\'Arc de Triomphe (Longchamp)' },
+    { id: 'h31', name: 'King George VI Chase' },
+    { id: 'h32', name: 'Scottish Grand National' },
+    { id: 'h33', name: 'Welsh Grand National' },
+    { id: 'h34', name: 'Bangor-on-Dee' },
+    { id: 'h35', name: 'Ffos Las' },
+  ],
+  greyhounds: [
+    { id: 'g1',  name: 'Romford' },
+    { id: 'g2',  name: 'Crayford' },
+    { id: 'g3',  name: 'Monmore Green' },
+    { id: 'g4',  name: 'Sunderland' },
+    { id: 'g5',  name: 'Sheffield (Owlerton)' },
+    { id: 'g6',  name: 'Perry Barr (Birmingham)' },
+    { id: 'g7',  name: 'Hall Green (Birmingham)' },
+    { id: 'g8',  name: 'Brighton & Hove (Coral)' },
+    { id: 'g9',  name: 'Nottingham' },
+    { id: 'g10', name: 'Oxford' },
+    { id: 'g11', name: 'Newcastle' },
+    { id: 'g12', name: 'Doncaster' },
+    { id: 'g13', name: 'Yarmouth' },
+    { id: 'g14', name: 'Poole' },
+    { id: 'g15', name: 'Henlow' },
+    { id: 'g16', name: 'Central Park (Sittingbourne)' },
+    { id: 'g17', name: 'Harlow' },
+    { id: 'g18', name: 'Kinsley' },
+    { id: 'g19', name: 'Peterborough' },
+    { id: 'g20', name: 'Towcester' },
+    { id: 'g21', name: 'Coventry' },
+    { id: 'g22', name: 'Hove (Coral)' },
+    { id: 'g23', name: 'Cork (Ireland)' },
+    { id: 'g24', name: 'Limerick (Ireland)' },
+    { id: 'g25', name: 'Shelbourne Park (Dublin)' },
+    { id: 'g26', name: 'Tralee (Ireland)' },
+    { id: 'g27', name: 'Dundalk (Ireland)' },
+    { id: 'g28', name: 'Galway (Ireland)' },
+    { id: 'g29', name: 'Clonmel (Ireland)' },
+    { id: 'g30', name: 'Waterford (Ireland)' },
+  ],
+};
+
+function fetchBetfairLeagues(k) {
   const statusEl = document.getElementById('league-status');
-  document.getElementById('league-list').innerHTML = '<div class="league-loading">🔄 Fetching leagues from Betfair...</div>';
-  if (btn) btn.disabled = true;
-  statusEl.textContent = '';
-
-  try {
-    // Call backend which proxies to Betfair API
-    const res = await api(`/api/v1/betfair/competitions?eventTypeId=${s.betfairId}`);
-    if (res && res.success && Array.isArray(res.data) && res.data.length > 0) {
-      // Normalise: backend may return [{competition:{id,name}, marketCount}, ...] or [{id,name}, ...]
-      betfairLeagues[k] = res.data.map(item => {
-        if (item.competition) return { id: String(item.competition.id), name: item.competition.name };
-        return { id: String(item.id || item.competitionId || ''), name: item.name || item.competitionName || 'Unknown' };
-      }).filter(l => l.id && l.name);
-      statusEl.textContent = `${betfairLeagues[k].length} leagues found`;
-    } else {
-      // Fallback: show message, no hardcoded leagues
-      betfairLeagues[k] = [];
-      statusEl.style.color = 'var(--accent-orange)';
-      statusEl.textContent = res?.message || 'No leagues returned from Betfair';
-    }
-  } catch(e) {
-    betfairLeagues[k] = [];
-    statusEl.style.color = 'var(--accent-red)';
-    statusEl.textContent = 'Connection error';
-  }
-
-  if (btn) btn.disabled = false;
+  betfairLeagues[k] = BETFAIR_LEAGUES[k] || [];
+  statusEl.style.color = 'var(--accent-green)';
+  statusEl.textContent = `${betfairLeagues[k].length} leagues available`;
   renderLeagues(k);
 }
 

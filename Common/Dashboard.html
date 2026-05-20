@@ -839,14 +839,22 @@ document.addEventListener("DOMContentLoaded", async () => {
 <script>
   async function loadgreyhoundMatches() {
     try {
-      const response = await fetch('https://PORTBACKEND.WORK.GD/api/v1/markets/live/greyhound');
+      const [response, enabledIds] = await Promise.all([
+        fetch('https://PORTBACKEND.WORK.GD/api/v1/markets/live/greyhound'),
+        getEnabledLeagueIds('greyhound')
+      ]);
       const result = await response.json();
 
       const listContainer = document.querySelector('.greyhounditems');
       listContainer.innerHTML = '';
 
       if (result.success && result.data && result.data.length > 0) {
-        result.data.forEach(match => {
+        const filtered = applyLeagueFilter(result.data, enabledIds);
+        if (filtered.length === 0) {
+          listContainer.innerHTML = '<li style="color:white;">No live greyhound races found.</li>';
+          return;
+        }
+        filtered.forEach(match => {
           const li = document.createElement('li');
           li.classList.add('match-card');
 
@@ -880,14 +888,22 @@ document.addEventListener("DOMContentLoaded", async () => {
 <script>
   async function loadhorseMatches() {
     try {
-      const response = await fetch('https://PORTBACKEND.WORK.GD/api/v1/markets/live/horse');
+      const [response, enabledIds] = await Promise.all([
+        fetch('https://PORTBACKEND.WORK.GD/api/v1/markets/live/horse'),
+        getEnabledLeagueIds('horse')
+      ]);
       const result = await response.json();
 
       const listContainer = document.querySelector('.horseEventList');
       listContainer.innerHTML = '';
 
       if (result.success && result.data && result.data.length > 0) {
-        result.data.forEach(match => {
+        const filtered = applyLeagueFilter(result.data, enabledIds);
+        if (filtered.length === 0) {
+          listContainer.innerHTML = '<li style="color:white;">No live horse matches found.</li>';
+          return;
+        }
+        filtered.forEach(match => {
           const li = document.createElement('li');
           li.classList.add('match-card');
 
@@ -1065,11 +1081,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   async function loadTennisMatches() {
     try {
-      const response = await fetch('https://PORTBACKEND.WORK.GD/api/v1/markets/live/tennis');
+      const [response, enabledIds] = await Promise.all([
+        fetch('https://PORTBACKEND.WORK.GD/api/v1/markets/live/tennis'),
+        getEnabledLeagueIds('tennis')
+      ]);
       const result = await response.json();
 
       if (result.success && result.data && result.data.length > 0) {
-        lastTennisMatches = result.data;
+        lastTennisMatches = applyLeagueFilter(result.data, enabledIds);
       }
 
       renderTennisMatches(lastTennisMatches);
@@ -1113,11 +1132,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   async function loadFootballMatches() {
     try {
-      const response = await fetch('https://PORTBACKEND.WORK.GD/api/v1/markets/live/football');
+      const [response, enabledIds] = await Promise.all([
+        fetch('https://PORTBACKEND.WORK.GD/api/v1/markets/live/football'),
+        getEnabledLeagueIds('football')
+      ]);
       const result = await response.json();
 
       if (result.success && result.data && result.data.length > 0) {
-        lastFootballMatches = result.data;
+        lastFootballMatches = applyLeagueFilter(result.data, enabledIds);
       }
 
       renderFootballMatches(lastFootballMatches);
@@ -1155,23 +1177,62 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 </script>
 
+<!-- ✅ League Filter Helper — Admin settings se enabled leagues fetch karta hai -->
+<script>
+  // Cache: ek baar fetch, baar baar use karo
+  const _leagueFilterCache = {};
+
+  async function getEnabledLeagueIds(sport) {
+    if (_leagueFilterCache[sport] !== undefined) return _leagueFilterCache[sport];
+    try {
+      const res  = await fetch(`https://PORTBACKEND.WORK.GD/api/v1/settings/leagues/enabled/${sport}`, {
+        headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') }
+      });
+      const data = await res.json();
+      if (data.success && data.data && data.data.filterActive) {
+        _leagueFilterCache[sport] = data.data.enabledLeagueIds;
+        return data.data.enabledLeagueIds;
+      }
+    } catch (e) { /* settings fetch fail hoi → sab show karo */ }
+    _leagueFilterCache[sport] = null; // null = no filter
+    return null;
+  }
+
+  // Match ko enabled leagues ke against filter karo
+  // competitionId match se available nahi toh match.match naam se fuzzy nahi, sirf ID-based filter
+  function applyLeagueFilter(matches, enabledIds) {
+    if (!enabledIds || enabledIds.length === 0) return matches; // no filter
+    return matches.filter(m => {
+      // Betfair response mein competitionId hoga agar backend ne add kiya ho
+      // Warna: filter active hai but ID match nahi → show karo (graceful fallback)
+      if (m.competitionId) return enabledIds.includes(String(m.competitionId));
+      return true; // competitionId nahi toh filter nahi laga sakte
+    });
+  }
+</script>
+
 <!-- ✅ Cricket Sidebar List -->
 <script>
   async function loadCricketSidebarMatches() {
     try {
-      const response = await fetch('https://PORTBACKEND.WORK.GD/api/v1/markets/live/cricket');
+      const [response, enabledIds] = await Promise.all([
+        fetch('https://PORTBACKEND.WORK.GD/api/v1/markets/live/cricket'),
+        getEnabledLeagueIds('cricket')
+      ]);
       const result = await response.json();
 
       const ul = document.querySelector('.cricketEventList');
       ul.innerHTML = '';
 
       if (result.success && result.data) {
-        if (result.data.length === 0) {
+        const filtered = applyLeagueFilter(result.data, enabledIds);
+
+        if (filtered.length === 0) {
           ul.innerHTML = '<li>No live or upcoming cricket matches found</li>';
           return;
         }
 
-        result.data.forEach(event => {
+        filtered.forEach(event => {
           const li = document.createElement('li');
           li.classList.add('match-card');
           li.textContent = event.match || 'match';
@@ -1198,7 +1259,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 <script>
   async function loadCricketMatches() {
     try {
-      const response = await fetch('https://PORTBACKEND.WORK.GD/api/v1/markets/live/cricket');
+      const [response, enabledIds] = await Promise.all([
+        fetch('https://PORTBACKEND.WORK.GD/api/v1/markets/live/cricket'),
+        getEnabledLeagueIds('cricket')
+      ]);
       const result = await response.json();
 
       const tbody = document.getElementById('cricketMatchContainer');
@@ -1208,9 +1272,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       const matchCountElement = document.getElementById('cricketMatchCount');
 
       if (result.success && Array.isArray(result.data)) {
-        if (matchCountElement) matchCountElement.textContent = result.data.length;
+        const filtered = applyLeagueFilter(result.data, enabledIds);
+        if (matchCountElement) matchCountElement.textContent = filtered.length;
 
-        result.data.forEach(match => {
+        filtered.forEach(match => {
           const startTime = new Date(match.startTime);
           const localTime = startTime.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 
@@ -1232,7 +1297,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
           // ✅ New runners-based odds format
           const r = match.runners || [];
-          const back1 = r[0]?.back?.[0] || { price: '-', size: '-' };
           const lay1  = r[0]?.lay?.[0]  || { price: '-', size: '-' };
           const back2 = r[1]?.back?.[0] || { price: '-', size: '-' };
           const lay2  = r[1]?.lay?.[0]  || { price: '-', size: '-' };
@@ -1307,7 +1371,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 <script>
   async function loadInPlayCricketMatches() {
     try {
-      const response = await fetch('https://PORTBACKEND.WORK.GD/api/v1/markets/live/cricket');
+      const [response, enabledIds] = await Promise.all([
+        fetch('https://PORTBACKEND.WORK.GD/api/v1/markets/live/cricket'),
+        getEnabledLeagueIds('cricket')
+      ]);
       const result = await response.json();
 
       const tbody = document.getElementById('inPlayMatchesContainer');
@@ -1315,7 +1382,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       tbody.innerHTML = '';
 
       if (result.success && Array.isArray(result.data)) {
-        const inPlayMatches = result.data.filter(match => match.inPlay === true);
+        const allFiltered = applyLeagueFilter(result.data, enabledIds);
+        const inPlayMatches = allFiltered.filter(match => match.inPlay === true);
 
         if (inPlayMatches.length === 0) {
           setTimeout(() => {
@@ -1398,7 +1466,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 <script>
   async function loadfootballoddsMatches() {
     try {
-      const response = await fetch('https://PORTBACKEND.WORK.GD/api/v1/markets/live/football');
+      const [response, enabledIds] = await Promise.all([
+        fetch('https://PORTBACKEND.WORK.GD/api/v1/markets/live/football'),
+        getEnabledLeagueIds('football')
+      ]);
       const result = await response.json();
 
       const tbody = document.getElementById('footballMatchContainer');
@@ -1407,9 +1478,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       tbody.innerHTML = '';
 
       if (result.success && Array.isArray(result.data)) {
-        if (matchCountElement) matchCountElement.textContent = result.data.length;
+        const filtered = applyLeagueFilter(result.data, enabledIds);
+        if (matchCountElement) matchCountElement.textContent = filtered.length;
 
-        result.data.forEach(match => {
+        filtered.forEach(match => {
           const startTime = new Date(match.startTime);
           const localTime = startTime.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 
@@ -1511,7 +1583,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 <script>
   async function loadInPlayfootballMatches() {
     try {
-      const response = await fetch('https://PORTBACKEND.WORK.GD/api/v1/markets/live/football');
+      const [response, enabledIds] = await Promise.all([
+        fetch('https://PORTBACKEND.WORK.GD/api/v1/markets/live/football'),
+        getEnabledLeagueIds('football')
+      ]);
       const result = await response.json();
 
       const tbody = document.getElementById('inPlayfootballContainer');
@@ -1519,7 +1594,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       tbody.innerHTML = '';
 
       if (result.success && Array.isArray(result.data)) {
-        const inPlayMatches = result.data.filter(match => match.inPlay === true);
+        const allFiltered = applyLeagueFilter(result.data, enabledIds);
+        const inPlayMatches = allFiltered.filter(match => match.inPlay === true);
 
         if (inPlayMatches.length === 0) {
           setTimeout(() => {
@@ -1598,7 +1674,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 <script>
   async function loadtennisoddsMatches() {
     try {
-      const response = await fetch('https://PORTBACKEND.WORK.GD/api/v1/markets/live/tennis');
+      const [response, enabledIds] = await Promise.all([
+        fetch('https://PORTBACKEND.WORK.GD/api/v1/markets/live/tennis'),
+        getEnabledLeagueIds('tennis')
+      ]);
       const result = await response.json();
 
       const tbody = document.getElementById('tennisMatchContainer');
@@ -1607,9 +1686,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       tbody.innerHTML = '';
 
       if (result.success && Array.isArray(result.data)) {
-        if (countElement) countElement.textContent = result.data.length;
+        const filtered = applyLeagueFilter(result.data, enabledIds);
+        if (countElement) countElement.textContent = filtered.length;
 
-        result.data.forEach(match => {
+        filtered.forEach(match => {
           const startTime = new Date(match.startTime);
           const localTime = startTime.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 

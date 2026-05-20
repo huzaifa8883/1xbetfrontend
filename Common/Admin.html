@@ -443,10 +443,14 @@
     <div class="card" style="margin-bottom:20px;">
       <div class="card-header">
         <div class="card-title" id="market-card-title">Markets</div>
-        <button class="btn btn-primary btn-sm" onclick="saveMarkets()">Save Markets</button>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <span id="market-status" style="font-size:11px;color:var(--text-secondary);"></span>
+          <button class="btn btn-cyan btn-sm" onclick="fetchBetfairMarkets(curSport)" id="fetch-markets-btn">🔄 Fetch from Betfair</button>
+          <button class="btn btn-primary btn-sm" onclick="saveMarkets()">Save Markets</button>
+        </div>
       </div>
       <div class="card-body">
-        <p style="font-size:12px;color:var(--text-secondary);margin-bottom:16px;">Toggle which markets are active for this sport.</p>
+        <p style="font-size:12px;color:var(--text-secondary);margin-bottom:16px;">Betfair se available market types fetch karo — active markets frontend pe show honge.</p>
         <div class="market-list" id="market-list"></div>
       </div>
     </div>
@@ -1234,13 +1238,15 @@ const SPORTS = {
 };
 
 let curSport = 'cricket';
-const selMarkets    = {};   // { sport: [marketId, ...] }
-const betfairLeagues = {};  // { sport: [{id, name}, ...] } — from Betfair API
-const enabledLeagues = {};  // { sport: Set<leagueId> }    — user selection
+const selMarkets     = {};   // { sport: [marketId, ...] }
+const betfairLeagues = {};   // { sport: [{id, name}, ...] } — from Betfair API
+const betfairMarkets = {};   // { sport: [{id, name, desc}, ...] } — from Betfair API
+const enabledLeagues = {};   // { sport: Set<leagueId> }    — user selection
 
 Object.keys(SPORTS).forEach(k => {
   selMarkets[k]     = SPORTS[k].markets.map(m => m.id);
   betfairLeagues[k] = [];
+  betfairMarkets[k] = [];
   enabledLeagues[k] = new Set();
   // Restore saved selections from localStorage
   try {
@@ -1254,6 +1260,8 @@ function initSports() {
     `<button class="sport-tab${k === curSport ? ' active' : ''}" onclick="selectSport('${k}')">${s.icon} ${s.name}</button>`
   ).join('');
   renderSport(curSport);
+  // Fetch both markets and leagues from Betfair
+  fetchBetfairMarkets(curSport);
   fetchBetfairLeagues(curSport);
 }
 
@@ -1263,6 +1271,11 @@ function selectSport(k) {
     t.classList.toggle('active', Object.keys(SPORTS)[i] === k);
   });
   renderSport(k);
+  // Fetch markets from Betfair if not already loaded
+  if (!betfairMarkets[k] || betfairMarkets[k].length === 0) {
+    fetchBetfairMarkets(k);
+  }
+  // Fetch leagues from Betfair if not already loaded
   if (!betfairLeagues[k] || betfairLeagues[k].length === 0) {
     fetchBetfairLeagues(k);
   } else {
@@ -1272,12 +1285,19 @@ function selectSport(k) {
 
 function renderSport(k) {
   const s   = SPORTS[k];
-  const sel = selMarkets[k] || [];
   document.getElementById('market-card-title').textContent = `${s.icon} ${s.name} — Markets`;
   document.getElementById('league-card-title').textContent = `${s.icon} ${s.name} — Leagues`;
-  document.getElementById('market-list').innerHTML = s.markets.map(m => `
+  renderMarkets(k);
+}
+
+function renderMarkets(k) {
+  const s   = SPORTS[k];
+  const sel = selMarkets[k] || [];
+  // Use live fetched markets if available, otherwise fallback to static
+  const markets = (betfairMarkets[k] && betfairMarkets[k].length > 0) ? betfairMarkets[k] : s.markets;
+  document.getElementById('market-list').innerHTML = markets.map(m => `
     <div class="market-item">
-      <div><div class="market-item-name">${m.name}</div><div class="market-item-desc">${m.desc}</div></div>
+      <div><div class="market-item-name">${m.name}</div><div class="market-item-desc">${m.desc || m.description || ''}</div></div>
       <label class="toggle">
         <input type="checkbox" ${sel.includes(m.id) ? 'checked' : ''} onchange="toggleMarket('${k}','${m.id}',this.checked)">
         <span class="toggle-slider"></span>
@@ -1285,12 +1305,80 @@ function renderSport(k) {
     </div>`).join('');
 }
 
+async function fetchBetfairMarkets(k) {
+  const eventTypeId = SPORTS[k].betfairId;
+  const marketListEl  = document.getElementById('market-list');
+  const marketStatusEl = document.getElementById('market-status');
+  const fetchBtn = document.getElementById('fetch-markets-btn');
+
+  marketListEl.innerHTML = '<div class="league-loading">⏳ Betfair se markets aa rahe hain...</div>';
+  if (marketStatusEl) { marketStatusEl.style.color = 'var(--accent-cyan)'; marketStatusEl.textContent = 'Fetch ho raha hai...'; }
+  if (fetchBtn) fetchBtn.disabled = true;
+
+  try {
+    const r = await api(`/api/v1/betfair/market-types?eventTypeId=${eventTypeId}`);
+    if (r.success && r.data && r.data.marketTypes && r.data.marketTypes.length > 0) {
+      betfairMarkets[k] = r.data.marketTypes.map(mt => ({
+        id:   mt.marketType || mt.id,
+        name: mt.marketType ? marketTypeName(mt.marketType) : mt.name,
+        desc: mt.desc || '',
+      }));
+      // Preserve selections — add any new market ids as selected by default
+      betfairMarkets[k].forEach(m => {
+        if (!selMarkets[k].includes(m.id)) selMarkets[k].push(m.id);
+      });
+      if (marketStatusEl) { marketStatusEl.style.color = 'var(--accent-green)'; marketStatusEl.textContent = `✅ ${betfairMarkets[k].length} markets (Betfair Live)`; }
+      toast(`✅ ${betfairMarkets[k].length} markets loaded from Betfair`);
+    } else {
+      throw new Error(r.message || 'No market types returned');
+    }
+  } catch(e) {
+    console.warn('Market types fetch failed:', e.message);
+    betfairMarkets[k] = []; // fallback to static SPORTS[k].markets
+    if (marketStatusEl) { marketStatusEl.style.color = 'var(--accent-orange)'; marketStatusEl.textContent = `⚠️ Cached (API unavailable)`; }
+  } finally {
+    if (fetchBtn) fetchBtn.disabled = false;
+    renderMarkets(k);
+  }
+}
+
+// Formats Betfair raw market type strings to readable names
+function marketTypeName(t) {
+  const map = {
+    MATCH_ODDS: 'Match Odds', WINNER: 'Winner', NEXT_GOAL: 'Next Goal',
+    BOTH_TEAMS_TO_SCORE: 'Both Teams To Score', CORRECT_SCORE: 'Correct Score',
+    HALF_TIME: 'Half Time', HALF_TIME_SCORE: 'Half Time Score',
+    OVER_UNDER_25: 'Over/Under 2.5 Goals', OVER_UNDER_35: 'Over/Under 3.5 Goals',
+    OVER_UNDER_45: 'Over/Under 4.5 Goals', ASIAN_HANDICAP: 'Asian Handicap',
+    DOUBLE_CHANCE: 'Double Chance', FIRST_GOAL_SCORER: 'First Goal Scorer',
+    WIN: 'Win', PLACE: 'Place', EACH_WAY: 'Each Way', FORECAST: 'Forecast',
+    INNINGS_RUNS: 'Innings Runs', TOSS: 'Toss', TOP_BATSMAN: 'Top Batsman',
+    BOOKMAKER: 'Bookmaker', SET_WINNER: 'Set Winner', GAME_HANDICAP: 'Game Handicap',
+    TOTAL_SETS: 'Total Sets', TOTAL_GAMES: 'Total Games',
+  };
+  return map[t] || t.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
 function toggleMarket(sport, id, checked) {
   if (checked) { if (!selMarkets[sport].includes(id)) selMarkets[sport].push(id); }
   else selMarkets[sport] = selMarkets[sport].filter(m => m !== id);
 }
 
-/* ---- Betfair Hardcoded Leagues (Real Betfair Competitions) ---- */
+/* ---- Betfair Live Leagues (fetched from backend → Betfair API) ---- */
+// No hardcoded leagues — all fetched live from Betfair via backend proxy
+
+/*
+  Backend should expose:
+    GET /api/v1/betfair/competitions?eventTypeId=<id>
+  which calls Betfair listCompetitions and returns:
+    { success: true, data: { competitions: [{ id, name }, ...] } }
+
+  AND:
+    GET /api/v1/betfair/market-types?eventTypeId=<id>
+  which calls Betfair listMarketTypes and returns:
+    { success: true, data: { marketTypes: [{ id, name, desc }, ...] } }
+*/
+
 const BETFAIR_LEAGUES = {
   cricket: [
     { id: 'c1',  name: 'Indian Premier League (IPL)' },
@@ -1467,12 +1555,50 @@ const BETFAIR_LEAGUES = {
   ],
 };
 
-function fetchBetfairLeagues(k) {
-  const statusEl = document.getElementById('league-status');
-  betfairLeagues[k] = BETFAIR_LEAGUES[k] || [];
-  statusEl.style.color = 'var(--accent-green)';
-  statusEl.textContent = `${betfairLeagues[k].length} leagues available`;
-  renderLeagues(k);
+async function fetchBetfairLeagues(k) {
+  const statusEl  = document.getElementById('league-status');
+  const fetchBtn  = document.getElementById('fetch-leagues-btn');
+  const listEl    = document.getElementById('league-list');
+  const eventTypeId = SPORTS[k].betfairId;
+
+  // Show loading state
+  statusEl.style.color = 'var(--accent-cyan)';
+  statusEl.textContent = 'Betfair se fetch ho raha hai...';
+  listEl.innerHTML = '<div class="league-loading">⏳ Betfair se leagues aa rahi hain...</div>';
+  if (fetchBtn) fetchBtn.disabled = true;
+
+  try {
+    // Try backend proxy first: GET /api/v1/betfair/competitions?eventTypeId=<id>
+    const r = await api(`/api/v1/betfair/competitions?eventTypeId=${eventTypeId}`);
+
+    if (r.success && r.data && r.data.competitions && r.data.competitions.length > 0) {
+      // Backend returned live Betfair data
+      betfairLeagues[k] = r.data.competitions.map(c => ({
+        id:   String(c.competition ? c.competition.id : c.id),
+        name: c.competition ? c.competition.name : c.name,
+      }));
+      statusEl.style.color = 'var(--accent-green)';
+      statusEl.textContent = `✅ ${betfairLeagues[k].length} leagues (Betfair Live)`;
+    } else {
+      throw new Error(r.message || 'No competitions returned');
+    }
+  } catch (e) {
+    // Fallback to hardcoded if backend not ready or fails
+    console.warn('Betfair API fetch failed, using fallback:', e.message);
+    betfairLeagues[k] = BETFAIR_LEAGUES[k] || [];
+    if (betfairLeagues[k].length > 0) {
+      statusEl.style.color = 'var(--accent-orange)';
+      statusEl.textContent = `⚠️ ${betfairLeagues[k].length} leagues (Cached — API unavailable)`;
+      toast(`⚠️ Betfair API unavailable, cached leagues use ho rahe hain`, 'error');
+    } else {
+      statusEl.style.color = 'var(--accent-red)';
+      statusEl.textContent = '❌ Koi league nahi mili';
+      toast(`❌ Leagues fetch nahi hui: ${e.message}`, 'error');
+    }
+  } finally {
+    if (fetchBtn) fetchBtn.disabled = false;
+    renderLeagues(k);
+  }
 }
 
 function renderLeagues(k) {

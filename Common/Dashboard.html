@@ -885,11 +885,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   function applyLeagueFilter(matches, filter) {
     if (!filter || !filter.enabledIds || filter.enabledIds.length === 0) return matches;
     const { enabledIds, leagues } = filter;
+    // Normalize all enabled IDs to strings once
+    const enabledSet = new Set(enabledIds.map(id => String(id).trim()));
 
     return matches.filter(m => {
       // Best case: backend ne competitionId diya hai
-      if (m.competitionId && String(m.competitionId).trim()) {
-        return enabledIds.includes(String(m.competitionId));
+      if (m.competitionId !== null && m.competitionId !== undefined && String(m.competitionId).trim()) {
+        return enabledSet.has(String(m.competitionId).trim());
       }
       // Fallback: league name se match karo
       if (m.competitionName && leagues.length > 0) {

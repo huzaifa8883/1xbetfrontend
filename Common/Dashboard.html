@@ -837,33 +837,67 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 <!-- ✅ League Filter Helper — Admin settings se enabled leagues fetch karta hai -->
 <script>
-  const _leagueFilterCache = {};
+  // Admin sport keys: cricket, football, tennis, horse_racing, greyhounds
+  // Dashboard sport keys: cricket, football, tennis, horse, greyhound
+  const SPORT_KEY_MAP = {
+    'horse':     'horse_racing',
+    'greyhound': 'greyhounds',
+    'cricket':   'cricket',
+    'football':  'football',
+    'tennis':    'tennis',
+  };
 
-  async function getEnabledLeagueIds(sport) {
-    if (_leagueFilterCache[sport] !== undefined) return _leagueFilterCache[sport];
+  let _allLeagueSettings = null;  // ek baar fetch, saari sports ka data
+
+  async function loadAllLeagueSettings() {
+    if (_allLeagueSettings !== null) return _allLeagueSettings;
     try {
       const token = localStorage.getItem('token') || '';
       const res = await fetch(
-        `https://PORTBACKEND.WORK.GD/api/v1/settings/leagues/enabled/${sport}`,
+        'https://PORTBACKEND.WORK.GD/api/v1/settings/leagues',
         { headers: { 'Authorization': 'Bearer ' + token } }
       );
       const data = await res.json();
-      if (data.success && data.data && data.data.filterActive) {
-        _leagueFilterCache[sport] = data.data.enabledLeagueIds;
-        return data.data.enabledLeagueIds;
-      }
-    } catch (e) { /* settings fetch fail → sab show karo */ }
-    _leagueFilterCache[sport] = null;
-    return null;
+      _allLeagueSettings = (data.success && data.data) ? data.data : {};
+    } catch (e) {
+      _allLeagueSettings = {};
+    }
+    return _allLeagueSettings;
   }
 
-  // enabledIds = null → koi filter nahi, sab dikhao
-  // enabledIds = [...] → sirf in competition IDs wale matches dikhao
-  function applyLeagueFilter(matches, enabledIds) {
-    if (!enabledIds || enabledIds.length === 0) return matches;
+  // sport = dashboard key (cricket/football/tennis/horse/greyhound)
+  // returns: { enabledIds: ['id1',...] | null, leagues: [{id,name},...] }
+  async function getLeagueFilter(sport) {
+    const adminKey = SPORT_KEY_MAP[sport] || sport;
+    const settings = await loadAllLeagueSettings();
+    const sportData = settings[adminKey];
+    if (!sportData || !Array.isArray(sportData.enabledLeagueIds) || sportData.enabledLeagueIds.length === 0) {
+      return { enabledIds: null, leagues: [] };
+    }
+    return {
+      enabledIds: sportData.enabledLeagueIds,
+      leagues:    sportData.leagues || [],
+    };
+  }
+
+  // matches ko league filter se guzaro
+  // Filter order: competitionId (exact) → competitionName (partial) → fallback show all
+  function applyLeagueFilter(matches, filter) {
+    if (!filter || !filter.enabledIds || filter.enabledIds.length === 0) return matches;
+    const { enabledIds, leagues } = filter;
+
     return matches.filter(m => {
-      if (m.competitionId) return enabledIds.includes(String(m.competitionId));
-      return true; // competitionId nahi → filter nahi laga sakte, show karo
+      // Best case: backend ne competitionId diya hai
+      if (m.competitionId && String(m.competitionId).trim()) {
+        return enabledIds.includes(String(m.competitionId));
+      }
+      // Fallback: league name se match karo
+      if (m.competitionName && leagues.length > 0) {
+        const mName = m.competitionName.toLowerCase();
+        return leagues.some(l => l.name && mName.includes(l.name.toLowerCase()));
+      }
+      // competitionId aur name dono nahi → show karo (safe fallback)
+      return true;
     });
   }
 </script>
@@ -872,9 +906,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 <script>
   async function loadgreyhoundMatches() {
     try {
-      const [response, enabledIds] = await Promise.all([
+      const [response, filter] = await Promise.all([
         fetch('https://PORTBACKEND.WORK.GD/api/v1/markets/live/greyhound'),
-        getEnabledLeagueIds('greyhound')
+        getLeagueFilter('greyhound')
       ]);
       const result = await response.json();
 
@@ -882,7 +916,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       listContainer.innerHTML = '';
 
       if (result.success && result.data && result.data.length > 0) {
-        const filtered = applyLeagueFilter(result.data, enabledIds);
+        const filtered = applyLeagueFilter(result.data, filter);
         if (filtered.length === 0) {
           listContainer.innerHTML = '<li style="color:white;">No live greyhound races found.</li>';
           return;
@@ -921,9 +955,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 <script>
   async function loadhorseMatches() {
     try {
-      const [response, enabledIds] = await Promise.all([
+      const [response, filter] = await Promise.all([
         fetch('https://PORTBACKEND.WORK.GD/api/v1/markets/live/horse'),
-        getEnabledLeagueIds('horse')
+        getLeagueFilter('horse')
       ]);
       const result = await response.json();
 
@@ -931,7 +965,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       listContainer.innerHTML = '';
 
       if (result.success && result.data && result.data.length > 0) {
-        const filtered = applyLeagueFilter(result.data, enabledIds);
+        const filtered = applyLeagueFilter(result.data, filter);
         if (filtered.length === 0) {
           listContainer.innerHTML = '<li style="color:white;">No live horse matches found.</li>';
           return;
@@ -1114,14 +1148,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   async function loadTennisMatches() {
     try {
-      const [response, enabledIds] = await Promise.all([
+      const [response, filter] = await Promise.all([
         fetch('https://PORTBACKEND.WORK.GD/api/v1/markets/live/tennis'),
-        getEnabledLeagueIds('tennis')
+        getLeagueFilter('tennis')
       ]);
       const result = await response.json();
 
       if (result.success && result.data && result.data.length > 0) {
-        lastTennisMatches = applyLeagueFilter(result.data, enabledIds);
+        lastTennisMatches = applyLeagueFilter(result.data, filter);
       }
 
       renderTennisMatches(lastTennisMatches);
@@ -1165,14 +1199,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   async function loadFootballMatches() {
     try {
-      const [response, enabledIds] = await Promise.all([
+      const [response, filter] = await Promise.all([
         fetch('https://PORTBACKEND.WORK.GD/api/v1/markets/live/football'),
-        getEnabledLeagueIds('football')
+        getLeagueFilter('football')
       ]);
       const result = await response.json();
 
       if (result.success && result.data && result.data.length > 0) {
-        lastFootballMatches = applyLeagueFilter(result.data, enabledIds);
+        lastFootballMatches = applyLeagueFilter(result.data, filter);
       }
 
       renderFootballMatches(lastFootballMatches);
@@ -1214,9 +1248,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 <script>
   async function loadCricketSidebarMatches() {
     try {
-      const [response, enabledIds] = await Promise.all([
+      const [response, filter] = await Promise.all([
         fetch('https://PORTBACKEND.WORK.GD/api/v1/markets/live/cricket'),
-        getEnabledLeagueIds('cricket')
+        getLeagueFilter('cricket')
       ]);
       const result = await response.json();
 
@@ -1224,7 +1258,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       ul.innerHTML = '';
 
       if (result.success && result.data) {
-        const filtered = applyLeagueFilter(result.data, enabledIds);
+        const filtered = applyLeagueFilter(result.data, filter);
         if (filtered.length === 0) {
           ul.innerHTML = '<li>No live or upcoming cricket matches found</li>';
           return;
@@ -1256,9 +1290,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 <script>
   async function loadCricketMatches() {
     try {
-      const [response, enabledIds] = await Promise.all([
+      const [response, filter] = await Promise.all([
         fetch('https://PORTBACKEND.WORK.GD/api/v1/markets/live/cricket'),
-        getEnabledLeagueIds('cricket')
+        getLeagueFilter('cricket')
       ]);
       const result = await response.json();
 
@@ -1269,7 +1303,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const matchCountElement = document.getElementById('cricketMatchCount');
 
       if (result.success && Array.isArray(result.data)) {
-        const filtered = applyLeagueFilter(result.data, enabledIds);
+        const filtered = applyLeagueFilter(result.data, filter);
         if (matchCountElement) matchCountElement.textContent = filtered.length;
 
         filtered.forEach(match => {
@@ -1369,9 +1403,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 <script>
   async function loadInPlayCricketMatches() {
     try {
-      const [response, enabledIds] = await Promise.all([
+      const [response, filter] = await Promise.all([
         fetch('https://PORTBACKEND.WORK.GD/api/v1/markets/live/cricket'),
-        getEnabledLeagueIds('cricket')
+        getLeagueFilter('cricket')
       ]);
       const result = await response.json();
 
@@ -1380,7 +1414,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       tbody.innerHTML = '';
 
       if (result.success && Array.isArray(result.data)) {
-        const allFiltered = applyLeagueFilter(result.data, enabledIds);
+        const allFiltered = applyLeagueFilter(result.data, filter);
         const inPlayMatches = allFiltered.filter(match => match.inPlay === true);
 
         if (inPlayMatches.length === 0) {
@@ -1464,9 +1498,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 <script>
   async function loadfootballoddsMatches() {
     try {
-      const [response, enabledIds] = await Promise.all([
+      const [response, filter] = await Promise.all([
         fetch('https://PORTBACKEND.WORK.GD/api/v1/markets/live/football'),
-        getEnabledLeagueIds('football')
+        getLeagueFilter('football')
       ]);
       const result = await response.json();
 
@@ -1476,7 +1510,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       tbody.innerHTML = '';
 
       if (result.success && Array.isArray(result.data)) {
-        const filtered = applyLeagueFilter(result.data, enabledIds);
+        const filtered = applyLeagueFilter(result.data, filter);
         if (matchCountElement) matchCountElement.textContent = filtered.length;
 
         filtered.forEach(match => {
@@ -1581,9 +1615,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 <script>
   async function loadInPlayfootballMatches() {
     try {
-      const [response, enabledIds] = await Promise.all([
+      const [response, filter] = await Promise.all([
         fetch('https://PORTBACKEND.WORK.GD/api/v1/markets/live/football'),
-        getEnabledLeagueIds('football')
+        getLeagueFilter('football')
       ]);
       const result = await response.json();
 
@@ -1592,7 +1626,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       tbody.innerHTML = '';
 
       if (result.success && Array.isArray(result.data)) {
-        const allFiltered = applyLeagueFilter(result.data, enabledIds);
+        const allFiltered = applyLeagueFilter(result.data, filter);
         const inPlayMatches = allFiltered.filter(match => match.inPlay === true);
 
         if (inPlayMatches.length === 0) {
@@ -1672,9 +1706,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 <script>
   async function loadtennisoddsMatches() {
     try {
-      const [response, enabledIds] = await Promise.all([
+      const [response, filter] = await Promise.all([
         fetch('https://PORTBACKEND.WORK.GD/api/v1/markets/live/tennis'),
-        getEnabledLeagueIds('tennis')
+        getLeagueFilter('tennis')
       ]);
       const result = await response.json();
 
@@ -1684,7 +1718,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       tbody.innerHTML = '';
 
       if (result.success && Array.isArray(result.data)) {
-        const filtered = applyLeagueFilter(result.data, enabledIds);
+        const filtered = applyLeagueFilter(result.data, filter);
         if (countElement) countElement.textContent = filtered.length;
 
         filtered.forEach(match => {

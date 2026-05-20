@@ -1316,7 +1316,7 @@ async function fetchBetfairMarkets(k) {
   if (fetchBtn) fetchBtn.disabled = true;
 
   try {
-    const r = await api(`/api/v1/betfair/market-types?eventTypeId=${eventTypeId}`);
+    const r = await api(`/api/v1/markets/betfair/market-types?eventTypeId=${eventTypeId}`);
     if (r.success && r.data && r.data.marketTypes && r.data.marketTypes.length > 0) {
       betfairMarkets[k] = r.data.marketTypes.map(mt => ({
         id:   mt.marketType || mt.id,
@@ -1369,12 +1369,12 @@ function toggleMarket(sport, id, checked) {
 
 /*
   Backend should expose:
-    GET /api/v1/betfair/competitions?eventTypeId=<id>
+    GET /api/v1/markets/betfair/competitions?eventTypeId=<id>
   which calls Betfair listCompetitions and returns:
     { success: true, data: { competitions: [{ id, name }, ...] } }
 
   AND:
-    GET /api/v1/betfair/market-types?eventTypeId=<id>
+    GET /api/v1/markets/betfair/market-types?eventTypeId=<id>
   which calls Betfair listMarketTypes and returns:
     { success: true, data: { marketTypes: [{ id, name, desc }, ...] } }
 */
@@ -1568,8 +1568,8 @@ async function fetchBetfairLeagues(k) {
   if (fetchBtn) fetchBtn.disabled = true;
 
   try {
-    // Try backend proxy first: GET /api/v1/betfair/competitions?eventTypeId=<id>
-    const r = await api(`/api/v1/betfair/competitions?eventTypeId=${eventTypeId}`);
+    // Try backend proxy first: GET /api/v1/markets/betfair/competitions?eventTypeId=<id>
+    const r = await api(`/api/v1/markets/betfair/competitions?eventTypeId=${eventTypeId}`);
 
     if (r.success && r.data && r.data.competitions && r.data.competitions.length > 0) {
       // Backend returned live Betfair data

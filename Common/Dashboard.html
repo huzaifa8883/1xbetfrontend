@@ -835,6 +835,39 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 </script>
 
+<!-- ✅ League Filter Helper — Admin settings se enabled leagues fetch karta hai -->
+<script>
+  const _leagueFilterCache = {};
+
+  async function getEnabledLeagueIds(sport) {
+    if (_leagueFilterCache[sport] !== undefined) return _leagueFilterCache[sport];
+    try {
+      const token = localStorage.getItem('token') || '';
+      const res = await fetch(
+        `https://PORTBACKEND.WORK.GD/api/v1/settings/leagues/enabled/${sport}`,
+        { headers: { 'Authorization': 'Bearer ' + token } }
+      );
+      const data = await res.json();
+      if (data.success && data.data && data.data.filterActive) {
+        _leagueFilterCache[sport] = data.data.enabledLeagueIds;
+        return data.data.enabledLeagueIds;
+      }
+    } catch (e) { /* settings fetch fail → sab show karo */ }
+    _leagueFilterCache[sport] = null;
+    return null;
+  }
+
+  // enabledIds = null → koi filter nahi, sab dikhao
+  // enabledIds = [...] → sirf in competition IDs wale matches dikhao
+  function applyLeagueFilter(matches, enabledIds) {
+    if (!enabledIds || enabledIds.length === 0) return matches;
+    return matches.filter(m => {
+      if (m.competitionId) return enabledIds.includes(String(m.competitionId));
+      return true; // competitionId nahi → filter nahi laga sakte, show karo
+    });
+  }
+</script>
+
 <!-- ✅ Greyhound Sidebar List -->
 <script>
   async function loadgreyhoundMatches() {
@@ -1177,40 +1210,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 </script>
 
-<!-- ✅ League Filter Helper — Admin settings se enabled leagues fetch karta hai -->
-<script>
-  // Cache: ek baar fetch, baar baar use karo
-  const _leagueFilterCache = {};
-
-  async function getEnabledLeagueIds(sport) {
-    if (_leagueFilterCache[sport] !== undefined) return _leagueFilterCache[sport];
-    try {
-      const res  = await fetch(`https://PORTBACKEND.WORK.GD/api/v1/settings/leagues/enabled/${sport}`, {
-        headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') }
-      });
-      const data = await res.json();
-      if (data.success && data.data && data.data.filterActive) {
-        _leagueFilterCache[sport] = data.data.enabledLeagueIds;
-        return data.data.enabledLeagueIds;
-      }
-    } catch (e) { /* settings fetch fail hoi → sab show karo */ }
-    _leagueFilterCache[sport] = null; // null = no filter
-    return null;
-  }
-
-  // Match ko enabled leagues ke against filter karo
-  // competitionId match se available nahi toh match.match naam se fuzzy nahi, sirf ID-based filter
-  function applyLeagueFilter(matches, enabledIds) {
-    if (!enabledIds || enabledIds.length === 0) return matches; // no filter
-    return matches.filter(m => {
-      // Betfair response mein competitionId hoga agar backend ne add kiya ho
-      // Warna: filter active hai but ID match nahi → show karo (graceful fallback)
-      if (m.competitionId) return enabledIds.includes(String(m.competitionId));
-      return true; // competitionId nahi toh filter nahi laga sakte
-    });
-  }
-</script>
-
 <!-- ✅ Cricket Sidebar List -->
 <script>
   async function loadCricketSidebarMatches() {
@@ -1226,12 +1225,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       if (result.success && result.data) {
         const filtered = applyLeagueFilter(result.data, enabledIds);
-
         if (filtered.length === 0) {
           ul.innerHTML = '<li>No live or upcoming cricket matches found</li>';
           return;
         }
-
         filtered.forEach(event => {
           const li = document.createElement('li');
           li.classList.add('match-card');
@@ -1297,6 +1294,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
           // ✅ New runners-based odds format
           const r = match.runners || [];
+          const back1 = r[0]?.back?.[0] || { price: '-', size: '-' };
           const lay1  = r[0]?.lay?.[0]  || { price: '-', size: '-' };
           const back2 = r[1]?.back?.[0] || { price: '-', size: '-' };
           const lay2  = r[1]?.lay?.[0]  || { price: '-', size: '-' };

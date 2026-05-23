@@ -5150,13 +5150,44 @@ Vue.component('runner-aggregate', {
     return el ? el.__vue__ : null;
   }
 
-  function getEventId() {
-    // 1. Vue Catalog.eventId (most reliable)
+  /**
+   * eventId resolve karo:
+   * 1. Vue Catalog.eventId (most reliable — mv2 ke load hone ke baad)
+   * 2. URL ?eventId= param
+   * 3. null — caller retry karega ya catalog2 se fetch karega
+   *
+   * NOTE: URL ?id= mein marketId hoti hai (1.XXXXXXX format), eventId nahi.
+   *       Isliye hum use directly USE nahi karte — catalog2 se resolve karte hain.
+   */
+  function getEventIdFromVueOrUrl() {
     const vm = getVm();
     if (vm && vm.Catalog && vm.Catalog.eventId) return String(vm.Catalog.eventId);
-    // 2. URL param
     const p = new URLSearchParams(window.location.search);
-    return p.get('eventId') || p.get('id') || null;
+    const explicit = p.get('eventId');
+    if (explicit) return explicit;
+    return null;
+  }
+
+  /**
+   * marketId se eventId resolve karo via catalog2 API.
+   * catalog2 response mein eventId field hoti hai.
+   */
+  async function resolveEventIdFromMarketId(marketId, token) {
+    try {
+      const res = await fetch(`${API_BASE}/markets/catalog2?id=${encodeURIComponent(marketId)}`, {
+        headers: token ? { 'Authorization': 'Bearer ' + token } : {}
+      });
+      if (!res.ok) return null;
+      const json = await res.json();
+      const data = json.data || json;
+      // catalog2 returns eventId field directly
+      const eid = data.eventId || data.event?.id || null;
+      if (eid) console.log(`[Markets] Resolved eventId=${eid} from marketId=${marketId}`);
+      return eid ? String(eid) : null;
+    } catch (e) {
+      console.warn('[Markets] catalog2 lookup failed:', e.message);
+      return null;
+    }
   }
 
   /* ── runner normalizer ──
@@ -5243,21 +5274,40 @@ Vue.component('runner-aggregate', {
   /* ── main fetch function ── */
   async function loadAllAvailableMarkets() {
     let retries = 0;
-    const maxRetries = 15;
+    const maxRetries = 20;  // Vue mount ke liye zyada wait karo
 
     async function tryFetch() {
-      const eventId = getEventId();
+      const token    = localStorage.getItem('token') || '';
+      const urlParams = new URLSearchParams(window.location.search);
+      const marketId  = urlParams.get('id') || null;  // e.g. "1.245405948"
+
+      // ── Step 1: eventId dhundo ──
+      let eventId = getEventIdFromVueOrUrl();
+
       if (!eventId) {
-        if (retries++ < maxRetries) { setTimeout(tryFetch, 400); return; }
-        console.warn('[Markets] Could not determine eventId after retries');
-        return;
+        // Vue abhi load nahi hua — retry karo
+        if (retries++ < maxRetries) {
+          setTimeout(tryFetch, 400);
+          return;
+        }
+
+        // Retries khatam — marketId se catalog2 ke zariye eventId resolve karo
+        if (marketId) {
+          console.log('[Markets] Vue timeout — resolving eventId via catalog2...');
+          eventId = await resolveEventIdFromMarketId(marketId, token);
+        }
+
+        if (!eventId) {
+          console.warn('[Markets] ❌ Could not determine eventId. Markets will not load.');
+          return;
+        }
       }
 
-      const token = localStorage.getItem('token') || '';
+      console.log(`[Markets] Using eventId=${eventId} to fetch all markets`);
 
+      // ── Step 2: event-markets endpoint se sab markets lo ──
       try {
-        // ── Primary endpoint: backend event-markets proxy ──
-        const res = await fetch(`${API_BASE}/markets/event-markets?eventId=${eventId}`, {
+        const res = await fetch(`${API_BASE}/markets/event-markets?eventId=${encodeURIComponent(eventId)}`, {
           headers: token ? { 'Authorization': 'Bearer ' + token } : {}
         });
 
@@ -5265,56 +5315,44 @@ Vue.component('runner-aggregate', {
         const json = await res.json();
 
         if (json.success && json.data) {
-          injectMarkets(json.data);
-          console.log('[Markets] ✅ Loaded from event-markets endpoint');
+          const d = json.data;
+          // Koi bhi category mein markets hain?
+          const total = (d.bookmaker?.length||0) + (d.toss?.length||0) + (d.fancy?.length||0)
+                      + (d.fancy2?.length||0) + (d.figure?.length||0) + (d.oddFigure?.length||0)
+                      + (d.other?.length||0);
+          console.log(`[Markets] ✅ event-markets returned ${total} extra markets (bm:${d.bookmaker?.length} toss:${d.toss?.length} fancy:${d.fancy?.length} etc.)`);
+          if (total > 0) {
+            injectMarkets(d);
+          } else {
+            console.log('[Markets] No extra markets found for this event (only Match Odds).');
+          }
           return;
         }
-
-        // ── Fallback: try catalog2 with eventId to get sub-markets ──
-        throw new Error(json.message || 'No data returned');
+        throw new Error(json.message || 'success=false or no data');
 
       } catch (err) {
         console.warn('[Markets] event-markets failed:', err.message);
 
-        // ── Fallback 2: fetch all sub-markets by marketId pattern ──
-        // Many backends expose: /markets/by-event?eventId=xxx
-        try {
-          const res2 = await fetch(`${API_BASE}/markets/by-event?eventId=${eventId}`, {
-            headers: token ? { 'Authorization': 'Bearer ' + token } : {}
-          });
-          if (res2.ok) {
-            const json2 = await res2.json();
-            if ((json2.success || json2.status === 'success') && json2.data) {
-              injectMarkets(json2.data);
-              console.log('[Markets] ✅ Loaded from by-event fallback');
-              return;
-            }
-          }
-        } catch(e2) {
-          console.warn('[Markets] by-event fallback also failed:', e2.message);
-        }
-
-        // ── Fallback 3: catalog2 ke sath sub-markets try karo ──
-        try {
-          const res3 = await fetch(`${API_BASE}/markets/catalog2?id=${eventId}&includeAll=true`, {
-            headers: token ? { 'Authorization': 'Bearer ' + token } : {}
-          });
-          if (res3.ok) {
-            const json3 = await res3.json();
-            const d = json3.data || json3;
-            if (d) {
-              // catalog2 normally returns subMarkets array
+        // ── Fallback: marketId se saare markets catalog2 ke zariye ──
+        if (marketId) {
+          console.log('[Markets] Trying catalog2 fallback for sub-markets...');
+          try {
+            const res3 = await fetch(`${API_BASE}/markets/catalog2?id=${encodeURIComponent(marketId)}`, {
+              headers: token ? { 'Authorization': 'Bearer ' + token } : {}
+            });
+            if (res3.ok) {
+              const json3 = await res3.json();
+              const d = json3.data || json3;
               const subMkts = d.subMarkets || d.markets || [];
               if (subMkts.length > 0) {
-                // Categorize by marketType
                 const categorized = categorizeMkts(subMkts);
                 injectMarkets(categorized);
-                console.log('[Markets] ✅ Loaded from catalog2 subMarkets');
+                console.log('[Markets] ✅ Loaded from catalog2 subMarkets fallback');
               }
             }
+          } catch(e3) {
+            console.warn('[Markets] catalog2 fallback also failed:', e3.message);
           }
-        } catch(e3) {
-          console.warn('[Markets] catalog2 subMarkets fallback failed:', e3.message);
         }
       }
     }
@@ -5342,9 +5380,35 @@ Vue.component('runner-aggregate', {
     return result;
   }
 
-  // Start after small delay (Vue needs time to mount)
+  // Public karo taake mv2 ke baad bhi call ho sake
   window.loadAllAvailableMarkets = loadAllAvailableMarkets;
+
+  // ── Trigger 1: page load ke 1.2s baad (Vue mount ke liye time) ──
   setTimeout(loadAllAvailableMarkets, 1200);
+
+  // ── Trigger 2: Vue Catalog load hone ke baad (polling via MutationObserver) ──
+  // Agar eventId Vue se milta hai toh ye zyada reliable hai
+  let _catalogWatched = false;
+  function watchForCatalog() {
+    if (_catalogWatched) return;
+    const vm = getVm();
+    if (vm) {
+      // Vue instance mila — Catalog.eventId ka wait karo
+      let _pollCount = 0;
+      const _poll = setInterval(() => {
+        _pollCount++;
+        const eid = vm.Catalog && vm.Catalog.eventId;
+        if (eid) {
+          clearInterval(_poll);
+          _catalogWatched = true;
+          console.log('[Markets] Vue Catalog.eventId detected, reloading markets...');
+          loadAllAvailableMarkets();
+        }
+        if (_pollCount > 40) clearInterval(_poll); // 40 × 250ms = 10s max
+      }, 250);
+    }
+  }
+  setTimeout(watchForCatalog, 300);
 
 })();
 </script>

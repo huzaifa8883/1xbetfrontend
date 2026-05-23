@@ -5345,9 +5345,25 @@ Vue.component('runner-aggregate', {
               const d = json3.data || json3;
               const subMkts = d.subMarkets || d.markets || [];
               if (subMkts.length > 0) {
-                const categorized = categorizeMkts(subMkts);
-                injectMarkets(categorized);
-                console.log('[Markets] ✅ Loaded from catalog2 subMarkets fallback');
+                // Backend already ne category field set ki hai — use karo
+                const pre = { bookmaker:[], toss:[], fancy:[], fancy2:[], figure:[], oddFigure:[], other:[] };
+                const hasCategoryField = subMkts.some(m => m.category);
+                if (hasCategoryField) {
+                  subMkts.forEach(m => {
+                    const cat = m.category || 'other';
+                    if (pre[cat]) pre[cat].push(m);
+                    else pre.other.push(m);
+                  });
+                  injectMarkets(pre);
+                  console.log(`[Markets] ✅ catalog2 subMarkets: bm=${pre.bookmaker.length} toss=${pre.toss.length} fancy=${pre.fancy.length}`);
+                } else {
+                  // Old response format — manually categorize karo
+                  const categorized = categorizeMkts(subMkts);
+                  injectMarkets(categorized);
+                  console.log('[Markets] ✅ catalog2 subMarkets (auto-categorized)');
+                }
+              } else {
+                console.log('[Markets] catalog2 returned empty subMarkets — server restart needed?');
               }
             }
           } catch(e3) {

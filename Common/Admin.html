@@ -1244,11 +1244,21 @@ const betfairMarkets = {};   // { sport: [{id, name, desc}, ...] } — from Betf
 const enabledLeagues = {};   // { sport: Set<leagueId> }    — user selection
 
 Object.keys(SPORTS).forEach(k => {
-  selMarkets[k]     = SPORTS[k].markets.map(m => m.id);
   betfairLeagues[k] = [];
   betfairMarkets[k] = [];
   enabledLeagues[k] = new Set();
-  // Restore saved selections from localStorage
+
+  // Restore saved MARKET selections from localStorage (set by saveMarkets)
+  try {
+    const savedMarkets = JSON.parse(localStorage.getItem('enabledMarkets_' + k) || 'null');
+    selMarkets[k] = (savedMarkets && Array.isArray(savedMarkets) && savedMarkets.length > 0)
+      ? savedMarkets
+      : SPORTS[k].markets.map(m => m.id); // default: all enabled
+  } catch(e) {
+    selMarkets[k] = SPORTS[k].markets.map(m => m.id);
+  }
+
+  // Restore saved LEAGUE selections from localStorage
   try {
     const saved = JSON.parse(localStorage.getItem('enabledLeagues_' + k) || '[]');
     saved.forEach(id => enabledLeagues[k].add(String(id)));
@@ -1664,8 +1674,21 @@ function saveLeagues() {
 }
 
 function saveMarkets() {
+  // Save ALL sports markets to localStorage so market.html can read them
+  Object.keys(SPORTS).forEach(k => {
+    const enabled = selMarkets[k] || [];
+    localStorage.setItem('enabledMarkets_' + k, JSON.stringify(enabled));
+  });
+
+  // Also persist to backend (fire-and-forget)
+  const payload = {};
+  Object.keys(SPORTS).forEach(k => {
+    payload[k] = { enabledMarketIds: selMarkets[k] || [] };
+  });
+  api('/api/v1/settings/markets', 'POST', payload).catch(() => {});
+
   const count = (selMarkets[curSport] || []).length;
-  toast(`✅ ${SPORTS[curSport].name} — ${count} markets saved`);
+  toast(`✅ ${SPORTS[curSport].name} — ${count} markets saved. Market.html pe apply ho jayenge.`);
 }
 
 /* ===================================================

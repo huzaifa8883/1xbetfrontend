@@ -822,7 +822,9 @@
     const urlParams = new URLSearchParams(window.location.search);
     const marketId  = urlParams.get('id');
     if (!marketId) return;
-    await getSportByMarketId(marketId);
+    const sport = await getSportByMarketId(marketId);
+    // ✅ Store detected sport globally so applyAdminMarketSettings can use it as fallback
+    if (sport) window._detectedSportKey = sport.toLowerCase().replace(/\s/g,'_');
   }
 
   document.addEventListener('DOMContentLoaded', initMarketPage);
@@ -5112,8 +5114,207 @@ Vue.component('runner-aggregate', {
                     ifr.src = `https://bpexch.xyz/Common/LiveScoreCard?id=${marketId}`;
                 }
 
+                // ✅ Admin Market Settings — Apply enabled markets from localStorage
+                applyAdminMarketSettings();
+
             }, 500);
         });
+    </script>
+
+    <!-- ✅ ADMIN MARKET SETTINGS ENFORCER
+         Admin.html se jo markets select/save hain, sirf wahi market.html pe show honge.
+         
+         Market ID  → Vue data property mapping:
+           match_odds  → isRenderTopMarket  (Main Match Odds tab)
+           bookmaker   → BookmakerMarkets   (Bookmaker tab + section)
+           toss        → TossMarkets        (Toss tab + section)
+           fancy       → FancyMarkets       (BetFair-Fancy tab + section)
+           fancy2      → Fancy2Markets      (Fancy-2 tab + section)
+           figure      → FigureMarkets      (Figure tab + section)
+           odd_figure  → OddFigureMarkets   (Even-Odd tab + section)
+           other       → OtherMarkets       (Others tab + section)
+    -->
+    <script>
+    /* -------------------------------------------------------
+       Sport detection from Betfair eventTypeId
+       -------------------------------------------------------- */
+    const BETFAIR_SPORT_MAP = {
+      '4':    'cricket',
+      '1':    'football',
+      '2':    'tennis',
+      '7':    'horse_racing',
+      '4339': 'greyhounds',
+    };
+
+    /* Admin market ID → Vue data key mapping */
+    const MARKET_ID_TO_VUE = {
+      match_odds:  'isRenderTopMarket',   // boolean flag
+      bookmaker:   'BookmakerMarkets',    // array
+      toss:        'TossMarkets',         // array
+      fancy:       'FancyMarkets',        // array
+      fancy2:      'Fancy2Markets',       // array
+      figure:      'FigureMarkets',       // array
+      odd_figure:  'OddFigureMarkets',    // array
+      other:       'OtherMarkets',        // array
+    };
+
+    /* Tab button IDs corresponding to each market */
+    const MARKET_ID_TO_TAB = {
+      match_odds:  null,          // Always visible (no separate tab, part of All)
+      bookmaker:   'BMtab',
+      toss:        'TOSStab',
+      fancy:       'Fancytab',
+      fancy2:      'Fancy2tab',
+      figure:      'Figuretab',
+      odd_figure:  'OddFiguretab',
+      other:       'Othertab',
+    };
+
+    function getVueInstance() {
+      // Try to find Vue instance on #MarketView or #app
+      const el = document.getElementById('MarketView') || document.getElementById('app');
+      if (!el) return null;
+      return el.__vue__ || null;
+    }
+
+    function getSportKeyFromVue(vm) {
+      // 1. Try from Vue Catalog.eventTypeId
+      if (vm && vm.Catalog && vm.Catalog.eventTypeId) {
+        const key = BETFAIR_SPORT_MAP[String(vm.Catalog.eventTypeId)];
+        if (key) return key;
+      }
+      // 2. Fallback: use sport detected from catalog2 API call
+      if (window._detectedSportKey) return window._detectedSportKey;
+      return null;
+    }
+
+    function getEnabledMarkets(sportKey) {
+      if (!sportKey) return null; // null = no restriction
+      try {
+        const saved = localStorage.getItem('enabledMarkets_' + sportKey);
+        if (!saved) return null;
+        const arr = JSON.parse(saved);
+        if (!Array.isArray(arr) || arr.length === 0) return null;
+        return arr;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function applyAdminMarketSettings() {
+      // Retry mechanism — Vue might not be mounted yet
+      let retries = 0;
+      const maxRetries = 20;
+
+      function tryApply() {
+        const vm = getVueInstance();
+        if (!vm) {
+          if (retries++ < maxRetries) { setTimeout(tryApply, 300); return; }
+          console.warn('AdminMarkets: Vue instance not found after retries');
+          return;
+        }
+
+        const sportKey = getSportKeyFromVue(vm);
+        if (!sportKey) {
+          // Sport not detected yet — retry
+          if (retries++ < maxRetries) { setTimeout(tryApply, 300); return; }
+          console.warn('AdminMarkets: Sport not detected from Vue Catalog');
+          return;
+        }
+
+        const enabledMarkets = getEnabledMarkets(sportKey);
+        if (!enabledMarkets) {
+          console.log('AdminMarkets: No saved market settings for', sportKey, '— showing all');
+          return; // No restriction, show everything
+        }
+
+        console.log('AdminMarkets: Sport =', sportKey, '| Enabled =', enabledMarkets);
+
+        // Apply restrictions to each market type
+        Object.entries(MARKET_ID_TO_VUE).forEach(([marketId, vueProp]) => {
+          const isEnabled = enabledMarkets.includes(marketId);
+
+          if (vueProp === 'isRenderTopMarket') {
+            // Boolean flag — directly set on Vue instance
+            if (!isEnabled && vm[vueProp] !== undefined) {
+              vm[vueProp] = false;
+              console.log('AdminMarkets: Hiding Match Odds (isRenderTopMarket = false)');
+            }
+          } else {
+            // Array property — clear it if market is disabled
+            if (!isEnabled && vm[vueProp] !== undefined && Array.isArray(vm[vueProp])) {
+              vm[vueProp] = [];
+              console.log(`AdminMarkets: Clearing ${vueProp} (${marketId} disabled)`);
+            }
+          }
+
+          // Also hide tab button directly (belt + suspenders)
+          const tabId = MARKET_ID_TO_TAB[marketId];
+          if (tabId && !isEnabled) {
+            const tabEl = document.getElementById(tabId);
+            if (tabEl) {
+              tabEl.style.display = 'none';
+              console.log('AdminMarkets: Hiding tab', tabId);
+            }
+          }
+        });
+
+        console.log('✅ AdminMarkets: Settings applied for', sportKey);
+
+        // Watch for Vue re-renders and re-apply (market data loads async)
+        setupReapplyWatcher(vm, sportKey, enabledMarkets);
+      }
+
+      tryApply();
+    }
+
+    function setupReapplyWatcher(vm, sportKey, enabledMarkets) {
+      // Re-apply whenever Catalog changes (market data loads from API)
+      if (vm && vm.$watch) {
+        vm.$watch('Catalog', function(newVal) {
+          if (newVal && newVal.eventTypeId) {
+            setTimeout(() => reapplySettings(vm, enabledMarkets), 200);
+          }
+        }, { deep: false });
+
+        // Also watch individual market arrays in case they get re-populated
+        ['BookmakerMarkets','TossMarkets','FancyMarkets','Fancy2Markets','FigureMarkets','OddFigureMarkets','OtherMarkets'].forEach(prop => {
+          vm.$watch(prop, function(newArr) {
+            if (newArr && newArr.length > 0) {
+              const marketId = Object.keys(MARKET_ID_TO_VUE).find(k => MARKET_ID_TO_VUE[k] === prop);
+              if (marketId && !enabledMarkets.includes(marketId)) {
+                vm[prop] = [];
+                // Also hide tab
+                const tabId = MARKET_ID_TO_TAB[marketId];
+                if (tabId) { const el = document.getElementById(tabId); if (el) el.style.display = 'none'; }
+                console.log('AdminMarkets: Re-cleared', prop, 'after Vue update');
+              }
+            }
+          });
+        });
+
+        // Watch isRenderTopMarket
+        vm.$watch('isRenderTopMarket', function(newVal) {
+          if (newVal && !enabledMarkets.includes('match_odds')) {
+            vm['isRenderTopMarket'] = false;
+            console.log('AdminMarkets: Re-cleared isRenderTopMarket after Vue update');
+          }
+        });
+      }
+    }
+
+    function reapplySettings(vm, enabledMarkets) {
+      Object.entries(MARKET_ID_TO_VUE).forEach(([marketId, vueProp]) => {
+        const isEnabled = enabledMarkets.includes(marketId);
+        if (vueProp === 'isRenderTopMarket') {
+          if (!isEnabled && vm[vueProp]) vm[vueProp] = false;
+        } else {
+          if (!isEnabled && vm[vueProp] && vm[vueProp].length > 0) vm[vueProp] = [];
+        }
+        const tabId = MARKET_ID_TO_TAB[marketId];
+        if (tabId && !isEnabled) { const el = document.getElementById(tabId); if (el) el.style.display = 'none'; }
+      });
+    }
     </script>
     <!-- ==================== FINAL SAFE FIX FOR getRunnerAmounts ==================== -->
 <script>

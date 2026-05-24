@@ -5257,7 +5257,7 @@ Vue.component('runner-aggregate', {
 
     // Admin panel ki market settings apply karo
     setTimeout(function() {
-      if (window.applyAdminMarketFilter) window.applyAdminMarketFilter();
+      if (window.startAdminMarketWatcher) window.startAdminMarketWatcher();
     }, 200);
   }
 
@@ -5361,46 +5361,29 @@ Vue.component('runner-aggregate', {
   window.loadAllAvailableMarkets = loadAllAvailableMarkets;
 
   /* ── ADMIN MARKET FILTER ────────────────────────────────────────
-     Admin panel se jo markets enable hain (localStorage mein save),
-     wohi markets match page pe show honge.
-     
-     Admin SPORTS keys → Betfair eventTypeId mapping:
-       cricket      → 4
-       football     → 1
-       tennis       → 2
-       horse_racing → 7
-       greyhounds   → 4339
+     Admin panel (Sports Settings) se jo markets SELECT hain,
+     wohi tabs/sections market.html pe show honge.
+
+     Kaam kaise karta hai:
+     - Admin 'enabledMarkets_{sportKey}' localStorage mein save karta hai
+     - Ye watcher page load ke baad 20 sekond tak har 300ms pe check karta hai
+     - Jab bhi mv2.min.js ya koi aur code TossMarkets/BookmakerMarkets etc set kare,
+       watcher turant disabled ones ko clear kar deta hai
+     - Isse mv2 ka late loading bhi handle ho jaata hai
 
      Admin market IDs → Vue property mapping:
-       toss         → TossMarkets
-       bookmaker    → BookmakerMarkets
-       fancy        → FancyMarkets
-       fancy2       → Fancy2Markets
-       figure       → FigureMarkets
-       over_under   → FancyMarkets  (over/under cricket mein fancy ke andar aata hai)
-       innings_runs → FancyMarkets
-       session_runs → FancyMarkets
-       top_batsman  → FancyMarkets
-       top_bowler   → FancyMarkets
-       btts         → OtherMarkets  (football)
-       total_goals  → OtherMarkets
-       correct_score→ OtherMarkets
-       ht_result    → OtherMarkets
-       double_chance→ OtherMarkets
-       asian_handicap → OtherMarkets
-       first_scorer → OtherMarkets
-       set_winner   → OtherMarkets  (tennis)
-       total_sets   → OtherMarkets
-       total_games  → OtherMarkets
-       game_handicap→ OtherMarkets
-       win          → (main match odds for horse/greyhound)
-       each_way     → OtherMarkets
-       place        → OtherMarkets
-       forecast     → OtherMarkets
+       toss, innings_runs, session_runs, top_batsman, top_bowler,
+       over_under, fancy  → FancyMarkets + TossMarkets
+       bookmaker          → BookmakerMarkets
+       fancy2             → Fancy2Markets
+       figure             → FigureMarkets
+       btts, total_goals, correct_score, ht_result, double_chance,
+       asian_handicap, first_scorer, set_winner, total_sets,
+       total_games, game_handicap, each_way, place, forecast → OtherMarkets
   ─────────────────────────────────────────────────────────────── */
 
-  // eventTypeId se sport key determine karo
-  const EVENT_TYPE_TO_SPORT = {
+  // Betfair eventTypeId → admin sport key
+  const EID_TO_SPORT = {
     '4':    'cricket',
     '1':    'football',
     '2':    'tennis',
@@ -5408,102 +5391,114 @@ Vue.component('runner-aggregate', {
     '4339': 'greyhounds',
   };
 
-  // Admin market ID se Vue property name ka map
-  const ADMIN_MARKET_TO_VUE_PROP = {
-    'toss':          'TossMarkets',
-    'bookmaker':     'BookmakerMarkets',
-    'fancy':         'FancyMarkets',
-    'fancy2':        'Fancy2Markets',
-    'figure':        'FigureMarkets',
-    'over_under':    'FancyMarkets',
-    'innings_runs':  'FancyMarkets',
-    'session_runs':  'FancyMarkets',
-    'top_batsman':   'FancyMarkets',
-    'top_bowler':    'FancyMarkets',
-    'btts':          'OtherMarkets',
-    'total_goals':   'OtherMarkets',
-    'correct_score': 'OtherMarkets',
-    'ht_result':     'OtherMarkets',
-    'double_chance': 'OtherMarkets',
-    'asian_handicap':'OtherMarkets',
-    'first_scorer':  'OtherMarkets',
-    'set_winner':    'OtherMarkets',
-    'total_sets':    'OtherMarkets',
-    'total_games':   'OtherMarkets',
-    'game_handicap': 'OtherMarkets',
-    'each_way':      'OtherMarkets',
-    'place':         'OtherMarkets',
-    'forecast':      'OtherMarkets',
+  // Admin market id → kaunsi Vue property disable hogi agar ye OFF hai
+  // (match_odds/win = main market, usse hum filter nahi karte)
+  const MKTID_TO_VUEPROP = {
+    'toss':           'TossMarkets',
+    'bookmaker':      'BookmakerMarkets',
+    'fancy':          'FancyMarkets',
+    'fancy2':         'Fancy2Markets',
+    'figure':         'FigureMarkets',
+    'over_under':     'FancyMarkets',
+    'innings_runs':   'FancyMarkets',
+    'session_runs':   'FancyMarkets',
+    'top_batsman':    'FancyMarkets',
+    'top_bowler':     'FancyMarkets',
+    'btts':           'OtherMarkets',
+    'total_goals':    'OtherMarkets',
+    'correct_score':  'OtherMarkets',
+    'ht_result':      'OtherMarkets',
+    'double_chance':  'OtherMarkets',
+    'asian_handicap': 'OtherMarkets',
+    'first_scorer':   'OtherMarkets',
+    'set_winner':     'OtherMarkets',
+    'total_sets':     'OtherMarkets',
+    'total_games':    'OtherMarkets',
+    'game_handicap':  'OtherMarkets',
+    'each_way':       'OtherMarkets',
+    'place':          'OtherMarkets',
+    'forecast':       'OtherMarkets',
   };
 
-  // Ye Vue properties ko admin settings se filter karta hai
-  function applyAdminMarketFilter() {
-    const vm = getVm();
-    if (!vm) return;
+  const ALL_VUE_MARKET_PROPS = [
+    'TossMarkets','BookmakerMarkets','FancyMarkets','Fancy2Markets',
+    'FigureMarkets','OddFigureMarkets','OtherMarkets'
+  ];
 
-    // Current match ka eventTypeId lo (Catalog se)
-    const eventTypeId = vm.Catalog && vm.Catalog.eventTypeId
-      ? String(vm.Catalog.eventTypeId)
-      : null;
-
-    if (!eventTypeId) {
-      console.log('[AdminFilter] eventTypeId nahi mila, filter skip');
-      return;
-    }
-
-    const sportKey = EVENT_TYPE_TO_SPORT[eventTypeId];
-    if (!sportKey) {
-      console.log(`[AdminFilter] Unknown eventTypeId: ${eventTypeId}, filter skip`);
-      return;
-    }
-
-    // Admin se saved markets lo
-    let enabledMarkets;
-    try {
-      enabledMarkets = JSON.parse(localStorage.getItem('enabledMarkets_' + sportKey) || 'null');
-    } catch (e) {
-      enabledMarkets = null;
-    }
-
-    // Agar admin ne kuch save nahi kiya to sab show karo (default behavior)
-    if (!enabledMarkets || !Array.isArray(enabledMarkets) || enabledMarkets.length === 0) {
-      console.log(`[AdminFilter] ${sportKey} ke liye koi filter nahi (sab show)`);
-      return;
-    }
-
-    console.log(`[AdminFilter] Sport: ${sportKey}, Enabled markets:`, enabledMarkets);
-
-    // Ye determine karo ke kaunse Vue properties DISABLE honi chahiyen
-    // (matlab admin ne unhe select nahi kiya)
-    const allVueProps = ['TossMarkets','BookmakerMarkets','FancyMarkets','Fancy2Markets',
-                         'FigureMarkets','OddFigureMarkets','OtherMarkets'];
-
-    // Kaunse Vue props ENABLED hain (admin selection se)
-    const enabledVueProps = new Set();
-    enabledMarkets.forEach(adminMarketId => {
-      const vueProp = ADMIN_MARKET_TO_VUE_PROP[adminMarketId];
-      if (vueProp) enabledVueProps.add(vueProp);
-    });
-
-    // match_odds / win / each_way admin mein main market hai — usse filter nahi karte
-    // Sirf extra markets (toss, bookmaker, fancy etc) filter hoti hain
-
-    // Disabled Vue props ko clear karo
-    allVueProps.forEach(prop => {
-      if (!enabledVueProps.has(prop) && vm[prop] && vm[prop].length > 0) {
-        console.log(`[AdminFilter] ❌ ${prop} hide kiya (admin ne disable kiya)`);
-        vm[prop] = [];
+  // Ek baar filter logic — returns true agar kuch clear kiya
+  function runFilter(vm, enabledVueProps) {
+    let changed = false;
+    ALL_VUE_MARKET_PROPS.forEach(function(prop) {
+      if (!enabledVueProps.has(prop)) {
+        if (vm[prop] && vm[prop].length > 0) {
+          vm[prop].splice(0); // Vue 2 reactive splice — [] assignment se zyada safe
+          console.log('[AdminFilter] ❌ Cleared:', prop);
+          changed = true;
+        }
       }
     });
-
-    console.log(`[AdminFilter] ✅ Filter apply hua — enabled:`, [...enabledVueProps]);
+    return changed;
   }
 
-  // Admin filter ko markets load hone ke baad lagao
-  window.applyAdminMarketFilter = applyAdminMarketFilter;
+  // Persistent watcher: 20 sekond tak har 300ms check karta hai
+  function startAdminMarketWatcher() {
+    const vm = getVm();
+    if (!vm) {
+      setTimeout(startAdminMarketWatcher, 400);
+      return;
+    }
+
+    let elapsed = 0;
+    const CHECK_INTERVAL = 300;   // ms
+    const MAX_WATCH_TIME = 20000; // 20 sekond
+
+    const timer = setInterval(function() {
+      elapsed += CHECK_INTERVAL;
+      if (elapsed > MAX_WATCH_TIME) {
+        clearInterval(timer);
+        console.log('[AdminFilter] Watcher stopped (20s timeout)');
+        return;
+      }
+
+      // eventTypeId wait karo
+      const eid = vm.Catalog && vm.Catalog.eventTypeId
+        ? String(vm.Catalog.eventTypeId) : null;
+      if (!eid) return; // abhi Catalog nahi aaya, wait karo
+
+      const sportKey = EID_TO_SPORT[eid];
+      if (!sportKey) return; // unknown sport
+
+      // Admin ki saved list lo
+      let enabled;
+      try {
+        enabled = JSON.parse(localStorage.getItem('enabledMarkets_' + sportKey) || 'null');
+      } catch(e) { enabled = null; }
+
+      // Agar admin ne koi setting save nahi ki — sab dikhao (filter mat lagao)
+      if (!enabled || !Array.isArray(enabled) || enabled.length === 0) {
+        clearInterval(timer);
+        console.log('[AdminFilter] No admin filter for', sportKey, '— showing all');
+        return;
+      }
+
+      // Kaunse Vue props allowed hain?
+      const enabledVueProps = new Set();
+      enabled.forEach(function(id) {
+        if (MKTID_TO_VUEPROP[id]) enabledVueProps.add(MKTID_TO_VUEPROP[id]);
+      });
+
+      runFilter(vm, enabledVueProps);
+
+    }, CHECK_INTERVAL);
+  }
+
+  window.startAdminMarketWatcher = startAdminMarketWatcher;
 
   // Trigger 1: page load
   setTimeout(loadAllAvailableMarkets, 800);
+
+  // Admin Market Filter — page load pe start karo (mv2 se pehle bhi kaam kare)
+  setTimeout(startAdminMarketWatcher, 1000);
 
   // Trigger 2: jab Vue Catalog.eventId set ho (mv2.min.js ke baad)
   (function watchCatalog() {
@@ -5518,7 +5513,7 @@ Vue.component('runner-aggregate', {
         loadAllAvailableMarkets();
         // Admin filter bhi lagao jab Catalog mil jaye
         setTimeout(function() {
-          if (window.applyAdminMarketFilter) window.applyAdminMarketFilter();
+          if (window.startAdminMarketWatcher) window.startAdminMarketWatcher();
         }, 500);
       }
     }, 200);

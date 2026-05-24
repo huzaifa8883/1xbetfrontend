@@ -4153,188 +4153,156 @@
     <!-- Bundle & mv2 (jo filters aur components define karta hai) -->
     <script src="/dist/bundle0a.js"></script>
 
-    <!-- ===== ADMIN MARKET FILTER — mv2.min.js se PEHLE load hona zaroori hai ===== -->
+    <!-- ===== ADMIN MARKET FILTER — mv2.min.js se PEHLE settings load karke phir mv2 load karo ===== -->
     <script>
-    /*
-      Yeh function mv2_min.js mein subMarkets assign hone se PEHLE define hota hai.
-      mv2_min.js mein 3 jagah hook laga hai:
-        1. self.subMarkets = window._adminFilterSubMarkets(catalog.subMarkets || [])
-        2. if (window._adminFilterSubMarkets([catalog]).length > 0) self.subMarkets.push(catalog)
-        3. same as 2
-
-      Yeh function:
-        - Pehli call par backend se settings fetch karta hai (async, ek baar)
-        - Jab tak settings nahi aati, sab markets allow karta hai (safe default)
-        - Settings aa jane ke baad subMarkets se disallowed market types filter karta hai
-    */
     (function() {
       'use strict';
 
       const API_BASE = 'https://1xbetbackend.work.gd/api/v1';
 
-      // EID → admin sport key
       const EID_TO_SPORT = {
         '4': 'cricket', '1': 'football', '2': 'tennis',
         '7': 'horse_racing', '4339': 'greyhounds',
       };
 
-      // Admin market ID → marketType / bettingType patterns jo block honge
-      // Yeh patterns mv2_min.js ke computed properties se match karte hain
-      const ADMIN_ID_TO_FILTER = {
-        // Har entry: { test: function(item) → true agar yeh item is market se belong karta hai }
-        'toss':          function(item) { return item.marketType && item.marketType.toUpperCase().includes('TOSS'); },
-        'bookmaker':     function(item) { return item.marketName && (item.marketName.toLowerCase().includes('bookmaker') || item.marketName === 'BOOKMAKER'); },
-        'fancy':         function(item) { return item.bettingType === 'FANCY' && item.marketType !== 'FANCY2'; },
-        'fancy2':        function(item) { return item.marketType === 'FANCY2'; },
-        'figure':        function(item) { return item.marketType === 'FIGURE'; },
-        'over_under':    function(item) { return item.bettingType === 'FANCY' && item.marketType !== 'FANCY2'; },
-        'innings_runs':  function(item) { return item.bettingType === 'FANCY' && item.marketType !== 'FANCY2'; },
-        'session_runs':  function(item) { return item.bettingType === 'FANCY' && item.marketType !== 'FANCY2'; },
-        'top_batsman':   function(item) { return item.bettingType === 'FANCY' && item.marketType !== 'FANCY2'; },
-        'top_bowler':    function(item) { return item.bettingType === 'FANCY' && item.marketType !== 'FANCY2'; },
-        'match_odds':    function(item) { return item.marketType === 'MATCH_ODDS' || item.marketType === 'WINNER'; },
-        'win':           function(item) { return item.marketType === 'MATCH_ODDS' || item.marketType === 'WINNER'; },
-      };
-
-      // "Other" markets — koi specific type nahi — yeh sab kuch hai jo baaki nahi
-      // OtherMarkets computed: figure nahi, oddFigure nahi, toss nahi, fancy nahi, bookmaker nahi
-      const OTHER_TEST = function(item) {
-        if (!item.marketName) return false;
-        if (item.marketType === 'FIGURE') return false;
-        if (item.marketType === 'ODD_FIGURE') return false;
-        if (item.marketType && item.marketType.toUpperCase().includes('TOSS')) return false;
-        if (item.bettingType === 'FANCY') return false;
-        if (item.marketName.toLowerCase().includes('bookmaker')) return false;
-        if (item.marketType === 'MATCH_ODDS' || item.marketType === 'WINNER') return false;
-        return true;
-      };
-
-      // State
-      var state = {
+      // State — globally accessible
+      window._adminFilter = {
         ready: false,
         filterActive: false,
-        enabledIds: null,   // ['match_odds', 'toss', ...]
-        sportKey: null,
+        enabledIds: [],
       };
 
-      // Sport key detect karo URL ya Catalog se
-      function detectSportFromUrl() {
-        // URL mein eventTypeId param?
+      // THE FILTER FUNCTION — mv2_min.js call karta hai (SortSubMarkets + line695)
+      window._adminFilterSubMarkets = function(markets) {
+        var f = window._adminFilter;
+        if (!f.ready || !f.filterActive || !f.enabledIds || f.enabledIds.length === 0) {
+          return markets; // filter nahi — sab wapas karo
+        }
+
+        var enabled = f.enabledIds.map(function(id) { return id.toLowerCase(); });
+
+        return markets.filter(function(item) {
+          var mType = (item.marketType || '').toUpperCase();
+          var mName = (item.marketName || '').toLowerCase();
+          var bType = (item.bettingType || '').toUpperCase();
+
+          // MATCH_ODDS / WINNER (main market)
+          if (mType === 'MATCH_ODDS' || mType === 'WINNER') {
+            return enabled.indexOf('match_odds') !== -1 || enabled.indexOf('win') !== -1;
+          }
+          // TOSS
+          if (mType.includes('TOSS') || mName.includes('toss')) {
+            return enabled.indexOf('toss') !== -1;
+          }
+          // BOOKMAKER
+          if (mType === 'BOOKMAKER' || mType === 'BOOKMAKER2' || mName.includes('bookmaker')) {
+            return enabled.indexOf('bookmaker') !== -1;
+          }
+          // FANCY2
+          if (mType === 'FANCY2') {
+            return enabled.indexOf('fancy2') !== -1;
+          }
+          // FIGURE
+          if (mType === 'FIGURE') {
+            return enabled.indexOf('figure') !== -1;
+          }
+          // ODD_FIGURE / EVEN_ODD
+          if (mType === 'ODD_FIGURE' || mType === 'EVEN_ODD') {
+            return enabled.indexOf('odd_figure') !== -1;
+          }
+          // FANCY / LINE bettingType (session runs, innings runs, etc.)
+          if (bType === 'FANCY' || bType === 'LINE') {
+            return enabled.indexOf('fancy') !== -1 ||
+                   enabled.indexOf('innings_runs') !== -1 ||
+                   enabled.indexOf('session_runs') !== -1 ||
+                   enabled.indexOf('over_under') !== -1 ||
+                   enabled.indexOf('top_batsman') !== -1 ||
+                   enabled.indexOf('top_bowler') !== -1;
+          }
+          // Baaki sab (OtherMarkets)
+          return true;
+        });
+      };
+
+      // Sport key detect from URL or catalog2 API
+      async function detectSport() {
         var params = new URLSearchParams(window.location.search);
+        // Direct eventTypeId param
         var eid = params.get('eventTypeId');
         if (eid && EID_TO_SPORT[eid]) return EID_TO_SPORT[eid];
-        return null;
+
+        // catalog2 se pata karo
+        var marketId = params.get('id');
+        if (!marketId) return null;
+        try {
+          var token = localStorage.getItem('token') || '';
+          var res = await fetch(API_BASE + '/markets/catalog2?id=' + marketId,
+            token ? { headers: { Authorization: 'Bearer ' + token } } : {});
+          var json = await res.json();
+          var data = (json.success && json.data) ? json.data : json;
+          var eid2 = String(data.eventTypeId || '');
+          return EID_TO_SPORT[eid2] || null;
+        } catch(e) { return null; }
       }
 
-      // Backend se settings fetch karo
+      // Settings fetch
       async function fetchSettings(sportKey) {
         try {
           var token = localStorage.getItem('token') || '';
-          var headers = token ? { 'Authorization': 'Bearer ' + token } : {};
-          var res = await fetch(API_BASE + '/settings/markets/' + sportKey, { headers: headers });
+          var res = await fetch(API_BASE + '/settings/markets/' + sportKey,
+            token ? { headers: { Authorization: 'Bearer ' + token } } : {});
           if (!res.ok) throw new Error('HTTP ' + res.status);
           var json = await res.json();
           console.log('[AdminFilter] Settings for', sportKey, ':', JSON.stringify(json));
 
-          if (!json.data || !json.data.filterActive) {
-            state.filterActive = false;
-            console.log('[AdminFilter] No filter — show all');
+          if (json.data && json.data.filterActive && json.data.enabledMarketIds) {
+            window._adminFilter.filterActive = true;
+            // Sab IDs lowercase mein store karo for consistent comparison
+            window._adminFilter.enabledIds = json.data.enabledMarketIds.map(function(id){ return id.toLowerCase(); });
+            console.log('[AdminFilter] Filter ACTIVE. Enabled:', window._adminFilter.enabledIds);
           } else {
-            state.filterActive = true;
-            state.enabledIds = json.data.enabledMarketIds || [];
-            console.log('[AdminFilter] Filter active. Enabled:', state.enabledIds);
+            window._adminFilter.filterActive = false;
+            console.log('[AdminFilter] No filter — show all');
           }
         } catch(e) {
-          state.filterActive = false;
-          console.warn('[AdminFilter] Fetch failed, show all:', e.message);
+          window._adminFilter.filterActive = false;
+          console.warn('[AdminFilter] Fetch error — show all:', e.message);
         }
-        state.ready = true;
+        window._adminFilter.ready = true;
       }
 
-      // Sport detect + settings load — page load par start
-      async function init() {
-        // URL se pehle try karo
-        var sportKey = detectSportFromUrl();
-
-        // Nahi mila to catalog2 se try karo
-        if (!sportKey) {
-          var params = new URLSearchParams(window.location.search);
-          var marketId = params.get('id');
-          if (marketId) {
-            try {
-              var res2 = await fetch(API_BASE + '/markets/catalog2?id=' + marketId);
-              var json2 = await res2.json();
-              var eid2 = String(((json2.data || json2).eventTypeId) || '');
-              if (eid2 && EID_TO_SPORT[eid2]) sportKey = EID_TO_SPORT[eid2];
-            } catch(_) {}
-          }
-        }
-
-        if (!sportKey) {
-          console.warn('[AdminFilter] Sport detect nahi hua — sab show karo');
-          state.ready = true;
-          return;
-        }
-
-        state.sportKey = sportKey;
-        console.log('[AdminFilter] Sport:', sportKey);
-        await fetchSettings(sportKey);
+      // mv2.min.js dynamically load karo — settings ready hone KE BAAD
+      function loadMv2() {
+        var s = document.createElement('script');
+        s.src = '/js/mv2.min.js';
+        s.onerror = function() { console.error('[AdminFilter] mv2.min.js load failed'); };
+        document.currentScript
+          ? document.currentScript.parentNode.appendChild(s)
+          : document.body.appendChild(s);
+        console.log('[AdminFilter] mv2.min.js loading...');
       }
 
-      // THE MAIN FILTER FUNCTION — mv2_min.js call karta hai
-      window._adminFilterSubMarkets = function(markets) {
-        if (!state.ready || !state.filterActive || !state.enabledIds) {
-          return markets; // filter nahi — sab wapas karo
+      // MAIN — settings fetch karo PEHLE, phir mv2 load karo
+      (async function main() {
+        try {
+          var sportKey = await detectSport();
+          if (sportKey) {
+            await fetchSettings(sportKey);
+          } else {
+            console.warn('[AdminFilter] Sport detect nahi hua — sab show karo');
+            window._adminFilter.ready = true;
+          }
+        } catch(e) {
+          window._adminFilter.ready = true;
+          console.warn('[AdminFilter] Init error:', e.message);
         }
-
-        var enabled = state.enabledIds;
-
-        return markets.filter(function(item) {
-          // Match Odds / Winner
-          if (item.marketType === 'MATCH_ODDS' || item.marketType === 'WINNER') {
-            return enabled.indexOf('match_odds') !== -1 || enabled.indexOf('win') !== -1;
-          }
-          // Toss
-          if (item.marketType && item.marketType.toUpperCase().includes('TOSS')) {
-            return enabled.indexOf('toss') !== -1;
-          }
-          // Bookmaker
-          if (item.marketName && (item.marketName.toLowerCase().includes('bookmaker') || item.marketName === 'BOOKMAKER')) {
-            return enabled.indexOf('bookmaker') !== -1;
-          }
-          // Fancy2
-          if (item.marketType === 'FANCY2') {
-            return enabled.indexOf('fancy2') !== -1;
-          }
-          // Figure
-          if (item.marketType === 'FIGURE') {
-            return enabled.indexOf('figure') !== -1;
-          }
-          // OddFigure
-          if (item.marketType === 'ODD_FIGURE') {
-            return true; // OddFigure ka admin ID nahi — hamesha show karo
-          }
-          // Fancy (LINE bettingType)
-          if (item.bettingType === 'FANCY' || item.bettingType === 'LINE') {
-            return enabled.indexOf('fancy') !== -1 ||
-                   enabled.indexOf('over_under') !== -1 ||
-                   enabled.indexOf('innings_runs') !== -1 ||
-                   enabled.indexOf('session_runs') !== -1;
-          }
-          // Other
-          return enabled.indexOf('other_markets') !== -1 || true;
-          // Note: "other" ko hamesha show karo jab tak admin panel mein explicit option na ho
-        });
-      };
-
-      // Init start karo
-      init();
+        // Ab mv2 load karo — filter ready hai
+        loadMv2();
+      })();
 
     })();
     </script>
     <!-- ===== END ADMIN MARKET FILTER ===== -->
-
-    <script src="/js/mv2.min.js"></script>
 <!-- <script>
 document.addEventListener("DOMContentLoaded", async () => {
   const token = localStorage.getItem("token");

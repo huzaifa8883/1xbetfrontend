@@ -4152,6 +4152,188 @@
 
     <!-- Bundle & mv2 (jo filters aur components define karta hai) -->
     <script src="/dist/bundle0a.js"></script>
+
+    <!-- ===== ADMIN MARKET FILTER — mv2.min.js se PEHLE load hona zaroori hai ===== -->
+    <script>
+    /*
+      Yeh function mv2_min.js mein subMarkets assign hone se PEHLE define hota hai.
+      mv2_min.js mein 3 jagah hook laga hai:
+        1. self.subMarkets = window._adminFilterSubMarkets(catalog.subMarkets || [])
+        2. if (window._adminFilterSubMarkets([catalog]).length > 0) self.subMarkets.push(catalog)
+        3. same as 2
+
+      Yeh function:
+        - Pehli call par backend se settings fetch karta hai (async, ek baar)
+        - Jab tak settings nahi aati, sab markets allow karta hai (safe default)
+        - Settings aa jane ke baad subMarkets se disallowed market types filter karta hai
+    */
+    (function() {
+      'use strict';
+
+      const API_BASE = 'https://1xbetbackend.work.gd/api/v1';
+
+      // EID → admin sport key
+      const EID_TO_SPORT = {
+        '4': 'cricket', '1': 'football', '2': 'tennis',
+        '7': 'horse_racing', '4339': 'greyhounds',
+      };
+
+      // Admin market ID → marketType / bettingType patterns jo block honge
+      // Yeh patterns mv2_min.js ke computed properties se match karte hain
+      const ADMIN_ID_TO_FILTER = {
+        // Har entry: { test: function(item) → true agar yeh item is market se belong karta hai }
+        'toss':          function(item) { return item.marketType && item.marketType.toUpperCase().includes('TOSS'); },
+        'bookmaker':     function(item) { return item.marketName && (item.marketName.toLowerCase().includes('bookmaker') || item.marketName === 'BOOKMAKER'); },
+        'fancy':         function(item) { return item.bettingType === 'FANCY' && item.marketType !== 'FANCY2'; },
+        'fancy2':        function(item) { return item.marketType === 'FANCY2'; },
+        'figure':        function(item) { return item.marketType === 'FIGURE'; },
+        'over_under':    function(item) { return item.bettingType === 'FANCY' && item.marketType !== 'FANCY2'; },
+        'innings_runs':  function(item) { return item.bettingType === 'FANCY' && item.marketType !== 'FANCY2'; },
+        'session_runs':  function(item) { return item.bettingType === 'FANCY' && item.marketType !== 'FANCY2'; },
+        'top_batsman':   function(item) { return item.bettingType === 'FANCY' && item.marketType !== 'FANCY2'; },
+        'top_bowler':    function(item) { return item.bettingType === 'FANCY' && item.marketType !== 'FANCY2'; },
+        'match_odds':    function(item) { return item.marketType === 'MATCH_ODDS' || item.marketType === 'WINNER'; },
+        'win':           function(item) { return item.marketType === 'MATCH_ODDS' || item.marketType === 'WINNER'; },
+      };
+
+      // "Other" markets — koi specific type nahi — yeh sab kuch hai jo baaki nahi
+      // OtherMarkets computed: figure nahi, oddFigure nahi, toss nahi, fancy nahi, bookmaker nahi
+      const OTHER_TEST = function(item) {
+        if (!item.marketName) return false;
+        if (item.marketType === 'FIGURE') return false;
+        if (item.marketType === 'ODD_FIGURE') return false;
+        if (item.marketType && item.marketType.toUpperCase().includes('TOSS')) return false;
+        if (item.bettingType === 'FANCY') return false;
+        if (item.marketName.toLowerCase().includes('bookmaker')) return false;
+        if (item.marketType === 'MATCH_ODDS' || item.marketType === 'WINNER') return false;
+        return true;
+      };
+
+      // State
+      var state = {
+        ready: false,
+        filterActive: false,
+        enabledIds: null,   // ['match_odds', 'toss', ...]
+        sportKey: null,
+      };
+
+      // Sport key detect karo URL ya Catalog se
+      function detectSportFromUrl() {
+        // URL mein eventTypeId param?
+        var params = new URLSearchParams(window.location.search);
+        var eid = params.get('eventTypeId');
+        if (eid && EID_TO_SPORT[eid]) return EID_TO_SPORT[eid];
+        return null;
+      }
+
+      // Backend se settings fetch karo
+      async function fetchSettings(sportKey) {
+        try {
+          var token = localStorage.getItem('token') || '';
+          var headers = token ? { 'Authorization': 'Bearer ' + token } : {};
+          var res = await fetch(API_BASE + '/settings/markets/' + sportKey, { headers: headers });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          var json = await res.json();
+          console.log('[AdminFilter] Settings for', sportKey, ':', JSON.stringify(json));
+
+          if (!json.data || !json.data.filterActive) {
+            state.filterActive = false;
+            console.log('[AdminFilter] No filter — show all');
+          } else {
+            state.filterActive = true;
+            state.enabledIds = json.data.enabledMarketIds || [];
+            console.log('[AdminFilter] Filter active. Enabled:', state.enabledIds);
+          }
+        } catch(e) {
+          state.filterActive = false;
+          console.warn('[AdminFilter] Fetch failed, show all:', e.message);
+        }
+        state.ready = true;
+      }
+
+      // Sport detect + settings load — page load par start
+      async function init() {
+        // URL se pehle try karo
+        var sportKey = detectSportFromUrl();
+
+        // Nahi mila to catalog2 se try karo
+        if (!sportKey) {
+          var params = new URLSearchParams(window.location.search);
+          var marketId = params.get('id');
+          if (marketId) {
+            try {
+              var res2 = await fetch(API_BASE + '/markets/catalog2?id=' + marketId);
+              var json2 = await res2.json();
+              var eid2 = String(((json2.data || json2).eventTypeId) || '');
+              if (eid2 && EID_TO_SPORT[eid2]) sportKey = EID_TO_SPORT[eid2];
+            } catch(_) {}
+          }
+        }
+
+        if (!sportKey) {
+          console.warn('[AdminFilter] Sport detect nahi hua — sab show karo');
+          state.ready = true;
+          return;
+        }
+
+        state.sportKey = sportKey;
+        console.log('[AdminFilter] Sport:', sportKey);
+        await fetchSettings(sportKey);
+      }
+
+      // THE MAIN FILTER FUNCTION — mv2_min.js call karta hai
+      window._adminFilterSubMarkets = function(markets) {
+        if (!state.ready || !state.filterActive || !state.enabledIds) {
+          return markets; // filter nahi — sab wapas karo
+        }
+
+        var enabled = state.enabledIds;
+
+        return markets.filter(function(item) {
+          // Match Odds / Winner
+          if (item.marketType === 'MATCH_ODDS' || item.marketType === 'WINNER') {
+            return enabled.indexOf('match_odds') !== -1 || enabled.indexOf('win') !== -1;
+          }
+          // Toss
+          if (item.marketType && item.marketType.toUpperCase().includes('TOSS')) {
+            return enabled.indexOf('toss') !== -1;
+          }
+          // Bookmaker
+          if (item.marketName && (item.marketName.toLowerCase().includes('bookmaker') || item.marketName === 'BOOKMAKER')) {
+            return enabled.indexOf('bookmaker') !== -1;
+          }
+          // Fancy2
+          if (item.marketType === 'FANCY2') {
+            return enabled.indexOf('fancy2') !== -1;
+          }
+          // Figure
+          if (item.marketType === 'FIGURE') {
+            return enabled.indexOf('figure') !== -1;
+          }
+          // OddFigure
+          if (item.marketType === 'ODD_FIGURE') {
+            return true; // OddFigure ka admin ID nahi — hamesha show karo
+          }
+          // Fancy (LINE bettingType)
+          if (item.bettingType === 'FANCY' || item.bettingType === 'LINE') {
+            return enabled.indexOf('fancy') !== -1 ||
+                   enabled.indexOf('over_under') !== -1 ||
+                   enabled.indexOf('innings_runs') !== -1 ||
+                   enabled.indexOf('session_runs') !== -1;
+          }
+          // Other
+          return enabled.indexOf('other_markets') !== -1 || true;
+          // Note: "other" ko hamesha show karo jab tak admin panel mein explicit option na ho
+        });
+      };
+
+      // Init start karo
+      init();
+
+    })();
+    </script>
+    <!-- ===== END ADMIN MARKET FILTER ===== -->
+
     <script src="/js/mv2.min.js"></script>
 <!-- <script>
 document.addEventListener("DOMContentLoaded", async () => {
@@ -5231,20 +5413,7 @@ Vue.component('runner-aggregate', {
     const vm = getVm();
     if (!vm) { console.warn('[Markets] Vue not found'); return; }
 
-    // Admin filter check — agar filter active hai to blocked props inject mat karo
-    const f = window.adminMarketFilter || { ready: false, filterActive: false };
-
-    const isAllowed = (prop) => {
-      if (!f.ready || !f.filterActive) return true; // filter nahi = sab allow
-      if (prop === 'MatchOdds') return f.matchOddsAllowed !== false;
-      return f.allowedProps ? f.allowedProps.has(prop) : true;
-    };
-
     const inject = (prop, arr) => {
-      if (!isAllowed(prop)) {
-        console.log(`[Markets] 🚫 Blocked by admin filter: ${prop}`);
-        return; // inject hi mat karo
-      }
       if (!Array.isArray(arr) || !arr.length) return;
       const norm = arr.map(normalizeMarket);
       if (!vm[prop] || vm[prop].length === 0) {
@@ -5389,248 +5558,7 @@ Vue.component('runner-aggregate', {
 })();
 </script>
 
-<!-- ==================== ADMIN MARKET FILTER ==================== -->
-<script>
-/*
-  SAHI APPROACH:
-  ──────────────
-  Pehle wala code Vue props ko "baad mein clear" karta tha — race condition.
-  mv2.min.js bar bar inject karta tha, filter clear karta tha, phir inject hota tha.
-
-  NAI APPROACH:
-  ─────────────
-  1. Page load par PEHLE admin settings fetch karo (1 baar, cache rakho)
-  2. window.adminMarketFilter.allowedCategories set karo
-  3. Existing injectMarkets function ko wrap karo —
-     inject karte waqt hi disallowed categories ko block karo
-  4. Ek cleanup interval bhi rakho backup ke liye (agar koi aur script inject kare)
-
-  Admin market IDs → Vue prop / category mapping:
-  ─────────────────────────────────────────────────
-  match_odds  → main match odds (isRenderTopMarket / Catalog) — HAMESHA ON rehta hai jab tak admin ne explicitly off na kiya ho
-  toss        → TossMarkets
-  bookmaker   → BookmakerMarkets
-  fancy       → FancyMarkets
-  fancy2      → Fancy2Markets
-  figure      → FigureMarkets
-  over_under / innings_runs / session_runs / top_batsman / top_bowler → FancyMarkets
-  btts / total_goals / correct_score / ht_result / double_chance / asian_handicap
-  first_scorer / set_winner / total_sets / total_games / game_handicap
-  each_way / place / forecast → OtherMarkets
-*/
-(function () {
-  'use strict';
-
-  const API_BASE = 'https://1xbetbackend.work.gd/api/v1';
-
-  // Betfair eventTypeId → admin sport key
-  const EID_TO_SPORT = {
-    '4':    'cricket',
-    '1':    'football',
-    '2':    'tennis',
-    '7':    'horse_racing',
-    '4339': 'greyhounds',
-  };
-
-  // Admin market ID → Vue prop name
-  // (sab IDs jo ek hi Vue prop se map hain unhe wahan group kiya)
-  const ADMIN_ID_TO_PROP = {
-    'match_odds':     'MatchOdds',       // special — isRenderTopMarket controls this
-    'win':            'MatchOdds',       // horse/greyhound main market
-    'toss':           'TossMarkets',
-    'bookmaker':      'BookmakerMarkets',
-    'fancy':          'FancyMarkets',
-    'fancy2':         'Fancy2Markets',
-    'figure':         'FigureMarkets',
-    'over_under':     'FancyMarkets',
-    'innings_runs':   'FancyMarkets',
-    'session_runs':   'FancyMarkets',
-    'top_batsman':    'FancyMarkets',
-    'top_bowler':     'FancyMarkets',
-    'btts':           'OtherMarkets',
-    'total_goals':    'OtherMarkets',
-    'correct_score':  'OtherMarkets',
-    'ht_result':      'OtherMarkets',
-    'double_chance':  'OtherMarkets',
-    'asian_handicap': 'OtherMarkets',
-    'first_scorer':   'OtherMarkets',
-    'set_winner':     'OtherMarkets',
-    'total_sets':     'OtherMarkets',
-    'total_games':    'OtherMarkets',
-    'game_handicap':  'OtherMarkets',
-    'each_way':       'OtherMarkets',
-    'place':          'OtherMarkets',
-    'forecast':       'OtherMarkets',
-  };
-
-  // Sab Vue array props jo clear ho sakti hain
-  const ALL_ARRAY_PROPS = [
-    'TossMarkets', 'BookmakerMarkets', 'FancyMarkets', 'Fancy2Markets',
-    'FigureMarkets', 'OddFigureMarkets', 'OtherMarkets'
-  ];
-
-  // Global state — baaki scripts bhi read kar sakein
-  window.adminMarketFilter = {
-    ready: false,         // settings load hui?
-    filterActive: false,  // admin ne koi filter set kiya?
-    allowedProps: null,   // Set of allowed Vue prop names (null = sab allow)
-    matchOddsAllowed: true, // match odds dikhane hain?
-  };
-
-  // ── Vue instance getter ──
-  function getVm() {
-    const el = document.getElementById('MarketView') || document.getElementById('app');
-    return el ? el.__vue__ : null;
-  }
-
-  // ── Vue array ko safely clear karo ──
-  function clearProp(vm, prop) {
-    if (vm[prop] && vm[prop].length > 0) {
-      vm[prop].splice(0, vm[prop].length);
-      console.log('[AdminFilter] ❌ Cleared:', prop);
-    }
-  }
-
-  // ── Filter apply: sirf allowed props rakho, baaki clear ──
-  function applyFilter(vm) {
-    const f = window.adminMarketFilter;
-    if (!f.ready || !f.filterActive) return; // filter active nahi — kuch mat karo
-
-    ALL_ARRAY_PROPS.forEach(function (prop) {
-      if (!f.allowedProps.has(prop)) {
-        clearProp(vm, prop);
-      }
-    });
-
-    // Match Odds (isRenderTopMarket) — agar admin ne OFF kiya ho
-    if (!f.matchOddsAllowed && vm.isRenderTopMarket) {
-      vm.isRenderTopMarket = false;
-      console.log('[AdminFilter] ❌ isRenderTopMarket = false');
-    }
-  }
-
-  // ── Backend se settings fetch karo ──
-  async function loadAdminSettings(sportKey) {
-    try {
-      const token = localStorage.getItem('token') || '';
-      const headers = token ? { Authorization: 'Bearer ' + token } : {};
-      const res  = await fetch(API_BASE + '/settings/markets/' + sportKey, { headers });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const json = await res.json();
-      console.log('[AdminFilter] Settings response:', JSON.stringify(json));
-
-      if (!json.data || !json.data.filterActive) {
-        // Admin ne koi filter set nahi kiya — sab dikhao
-        window.adminMarketFilter.ready        = true;
-        window.adminMarketFilter.filterActive = false;
-        console.log('[AdminFilter] No filter set for', sportKey, '— showing all');
-        return;
-      }
-
-      const enabledIds = json.data.enabledMarketIds || [];
-      console.log('[AdminFilter] Enabled market IDs:', enabledIds);
-
-      // Enabled IDs → allowed Vue props
-      const allowedProps = new Set();
-      let matchOddsAllowed = false;
-
-      enabledIds.forEach(function (id) {
-        const prop = ADMIN_ID_TO_PROP[id];
-        if (!prop) return;
-        if (prop === 'MatchOdds') {
-          matchOddsAllowed = true;
-        } else {
-          allowedProps.add(prop);
-        }
-      });
-
-      window.adminMarketFilter.ready            = true;
-      window.adminMarketFilter.filterActive     = true;
-      window.adminMarketFilter.allowedProps     = allowedProps;
-      window.adminMarketFilter.matchOddsAllowed = matchOddsAllowed;
-
-      console.log('[AdminFilter] Allowed Vue props:', [...allowedProps]);
-      console.log('[AdminFilter] Match Odds allowed:', matchOddsAllowed);
-
-    } catch (e) {
-      // Network error ya backend down — filter mat lagao
-      window.adminMarketFilter.ready        = true;
-      window.adminMarketFilter.filterActive = false;
-      console.warn('[AdminFilter] Settings fetch failed, showing all:', e.message);
-    }
-  }
-
-  // ── Sport key detect karo ──
-  async function detectSportKey() {
-    // 1. URL se eventTypeId milta hai kya?
-    const urlParams = new URLSearchParams(window.location.search);
-    const urlEid    = urlParams.get('eventTypeId');
-    if (urlEid && EID_TO_SPORT[urlEid]) return EID_TO_SPORT[urlEid];
-
-    // 2. Vue Catalog.eventTypeId
-    let tries = 0;
-    while (tries++ < 40) {
-      const vm = getVm();
-      if (vm && vm.Catalog && vm.Catalog.eventTypeId) {
-        return EID_TO_SPORT[String(vm.Catalog.eventTypeId)] || null;
-      }
-      await new Promise(r => setTimeout(r, 200));
-    }
-
-    // 3. catalog2 API se pata karo
-    const marketId = urlParams.get('id');
-    if (marketId) {
-      try {
-        const res  = await fetch(API_BASE + '/markets/catalog2?id=' + marketId);
-        const json = await res.json();
-        const eid  = String((json.data || json).eventTypeId || '');
-        if (eid && EID_TO_SPORT[eid]) return EID_TO_SPORT[eid];
-      } catch (_) {}
-    }
-
-    return null;
-  }
-
-  // ── MAIN ──
-  async function startAdminFilter() {
-    // 1. Vue mount ka wait karo
-    let w = 0;
-    while (!getVm() && w < 8000) {
-      await new Promise(r => setTimeout(r, 300));
-      w += 300;
-    }
-    const vm = getVm();
-    if (!vm) { console.warn('[AdminFilter] Vue not found'); return; }
-
-    // 2. Sport detect karo
-    const sportKey = await detectSportKey();
-    if (!sportKey) {
-      console.warn('[AdminFilter] Sport detect nahi hua');
-      window.adminMarketFilter.ready = true; // fail-safe: sab show karo
-      return;
-    }
-    console.log('[AdminFilter] Sport detected:', sportKey);
-
-    // 3. Admin settings load karo
-    await loadAdminSettings(sportKey);
-
-    // 4. Ek baar turant filter lagao
-    applyFilter(vm);
-
-    // 5. Permanent guard — har 600ms check karo
-    //    (mv2.min.js ya koi aur script markets dobara inject kare to clear karo)
-    setInterval(function () {
-      const v = getVm();
-      if (v) applyFilter(v);
-    }, 600);
-  }
-
-  // Page load hone ke 500ms baad start karo
-  setTimeout(startAdminFilter, 500);
-
-})();
-</script>
-    <!-- ==================== FINAL SAFE FIX FOR getRunnerAmounts ==================== -->
+<!-- ==================== FINAL SAFE FIX FOR getRunnerAmounts ==================== -->
 <script>
 // Pehle saare variables aur functions define karo
 let allRunners = window.allRunners || [];

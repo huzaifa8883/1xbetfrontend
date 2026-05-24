@@ -5120,80 +5120,64 @@ Vue.component('runner-aggregate', {
     </script>
 
 <!-- ================================================================
-  ✅ ALL AVAILABLE MARKETS LOADER
-  Ye script same event ke saare Betfair markets fetch karti hai
-  aur Vue instance mein inject karti hai taake Bookmaker, Toss,
-  Fancy, Fancy2 etc. sab tabs show hon — sirf Match Odds nahi.
-
-  Backend endpoint required:
-    GET /api/v1/markets/event-markets?eventId=<eventId>
-  Response format:
-    {
-      success: true,
-      data: {
-        bookmaker: [ { marketId, marketName, runners:[...], ... } ],
-        toss:      [ { marketId, marketName, runners:[...], ... } ],
-        fancy:     [ { marketId, marketName, runners:[...], ... } ],
-        fancy2:    [ { marketId, marketName, runners:[...], ... } ],
-        figure:    [ { marketId, marketName, runners:[...], ... } ],
-        oddFigure: [ { marketId, marketName, runners:[...], ... } ],
-        other:     [ { marketId, marketName, runners:[...], ... } ],
-      }
-    }
+  ✅ ALL AVAILABLE MARKETS LOADER  (FIXED v3)
+  ─────────────────────────────────────────────────────────────────
+  Problem 1: getEventId() URL se ?id= (marketId) uthata tha,
+             eventId nahi — catalog2 se resolve karo.
+  Problem 2: event-markets server pe register nahi tha — ab hai.
+  Problem 3: Betfair listMarketCatalogue default sirf MATCH_ODDS
+             deta hai — ab saare market types explicitly maange hain.
 ================================================================ -->
 <script>
-(function() {
+(function () {
 
-  /* ── helpers ── */
+  /* ─── Constants ─── */
+  const MARKET_ID = new URLSearchParams(window.location.search).get('id'); // "1.258326097"
+
+  /* ─── Vue instance ─── */
   function getVm() {
     const el = document.getElementById('MarketView') || document.getElementById('app');
     return el ? el.__vue__ : null;
   }
 
-  /**
-   * eventId resolve karo:
-   * 1. Vue Catalog.eventId (most reliable — mv2 ke load hone ke baad)
-   * 2. URL ?eventId= param
-   * 3. null — caller retry karega ya catalog2 se fetch karega
-   *
-   * NOTE: URL ?id= mein marketId hoti hai (1.XXXXXXX format), eventId nahi.
-   *       Isliye hum use directly USE nahi karte — catalog2 se resolve karte hain.
-   */
-  function getEventIdFromVueOrUrl() {
+  /* ─── EventId resolution ───────────────────────────────────────
+     Priority:
+       1. Vue vm.Catalog.eventId   (most reliable, set by mv2.min.js)
+       2. URL ?eventId= param      (manually passed)
+       3. catalog2 API             (fetch from backend using marketId)
+  ─────────────────────────────────────────────────────────────── */
+  async function resolveEventId() {
+    // 1. Vue
     const vm = getVm();
-    if (vm && vm.Catalog && vm.Catalog.eventId) return String(vm.Catalog.eventId);
-    const p = new URLSearchParams(window.location.search);
-    const explicit = p.get('eventId');
-    if (explicit) return explicit;
-    return null;
-  }
+    if (vm && vm.Catalog && vm.Catalog.eventId) {
+      return String(vm.Catalog.eventId);
+    }
 
-  /**
-   * marketId se eventId resolve karo via catalog2 API.
-   * catalog2 response mein eventId field hoti hai.
-   */
-  async function resolveEventIdFromMarketId(marketId, token) {
+    // 2. URL explicit eventId
+    const urlEid = new URLSearchParams(window.location.search).get('eventId');
+    if (urlEid) return urlEid;
+
+    // 3. catalog2 se resolve karo (MARKET_ID use karo, eventId nahi)
+    if (!MARKET_ID) return null;
     try {
-      const res = await fetch(`${API_BASE}/markets/catalog2?id=${encodeURIComponent(marketId)}`, {
-        headers: token ? { 'Authorization': 'Bearer ' + token } : {}
-      });
-      if (!res.ok) return null;
-      const json = await res.json();
-      const data = json.data || json;
-      // catalog2 returns eventId field directly
-      const eid = data.eventId || data.event?.id || null;
-      if (eid) console.log(`[Markets] Resolved eventId=${eid} from marketId=${marketId}`);
+      const token = localStorage.getItem('token') || '';
+      const r = await fetch(
+        `${API_BASE}/markets/catalog2?id=${encodeURIComponent(MARKET_ID)}`,
+        { headers: token ? { Authorization: 'Bearer ' + token } : {} }
+      );
+      if (!r.ok) return null;
+      const j  = await r.json();
+      const d  = j.data || j;
+      const eid = d.eventId || d.event?.id || null;
+      if (eid) console.log(`[Markets] eventId resolved from catalog2: ${eid}`);
       return eid ? String(eid) : null;
     } catch (e) {
-      console.warn('[Markets] catalog2 lookup failed:', e.message);
+      console.warn('[Markets] catalog2 resolve failed:', e.message);
       return null;
     }
   }
 
-  /* ── runner normalizer ──
-     Vue mv2.min.js expects runners in a specific shape.
-     We map whatever the backend sends to that shape.
-  */
+  /* ─── Runner normalizer ─── */
   function normalizeRunners(runners) {
     if (!Array.isArray(runners)) return [];
     return runners.map(r => ({
@@ -5214,17 +5198,10 @@ Vue.component('runner-aggregate', {
       ls3:    r.lay?.[2]?.size   ?? r.ls3    ?? '-',
       ifWin:  r.ifWin  || 0,
       ifLose: r.ifLose || 0,
-      jockeyName:   r.jockeyName  || null,
-      silkColor:    r.silkColor   || null,
-      clothNumber:  r.clothNumber || null,
-      metadataDict: r.metadataDict || null,
-      indB1: r.indB1 || '',
-      indL1: r.indL1 || '',
-      marketId:     r.marketId    || null,
     }));
   }
 
-  /* ── market normalizer ── */
+  /* ─── Market normalizer ─── */
   function normalizeMarket(m) {
     return {
       marketId:    m.marketId   || m.id   || '',
@@ -5239,194 +5216,156 @@ Vue.component('runner-aggregate', {
     };
   }
 
-  /* ── inject into Vue ── */
+  /* ─── Inject into Vue ─── */
   function injectMarkets(data) {
     const vm = getVm();
-    if (!vm) { console.warn('[Markets] Vue instance not found'); return; }
+    if (!vm) { console.warn('[Markets] Vue not found, cannot inject'); return; }
 
-    const inject = (vmProp, arr) => {
-      if (!Array.isArray(arr) || arr.length === 0) return;
+    const inject = (prop, arr) => {
+      if (!Array.isArray(arr) || !arr.length) return;
       const normalized = arr.map(normalizeMarket);
-      // Only inject if Vue array is currently empty or shorter
-      if (!vm[vmProp] || vm[vmProp].length === 0) {
-        vm[vmProp] = normalized;
-        console.log(`[Markets] Injected ${normalized.length} into ${vmProp}`);
+      if (!vm[prop] || vm[prop].length === 0) {
+        vm[prop] = normalized;
+        console.log(`[Markets] ✅ ${prop} = ${normalized.length} markets`);
       } else {
-        // Merge — add markets not already present
-        const existingIds = new Set(vm[vmProp].map(m => m.marketId));
-        const toAdd = normalized.filter(m => !existingIds.has(m.marketId));
-        if (toAdd.length > 0) {
-          vm[vmProp] = [...vm[vmProp], ...toAdd];
-          console.log(`[Markets] Merged ${toAdd.length} new into ${vmProp}`);
+        const ids    = new Set(vm[prop].map(m => m.marketId));
+        const toAdd  = normalized.filter(m => !ids.has(m.marketId));
+        if (toAdd.length) {
+          vm[prop] = [...vm[prop], ...toAdd];
+          console.log(`[Markets] ➕ ${prop} += ${toAdd.length} markets`);
         }
       }
     };
 
-    inject('BookmakerMarkets', data.bookmaker  || data.BookmakerMarkets  || []);
-    inject('TossMarkets',      data.toss        || data.TossMarkets        || []);
-    inject('FancyMarkets',     data.fancy       || data.FancyMarkets       || []);
-    inject('Fancy2Markets',    data.fancy2      || data.Fancy2Markets      || []);
-    inject('FigureMarkets',    data.figure      || data.FigureMarkets      || []);
-    inject('OddFigureMarkets', data.oddFigure   || data.OddFigureMarkets   || []);
-    inject('OtherMarkets',     data.other       || data.OtherMarkets       || []);
+    inject('BookmakerMarkets', data.bookmaker  || []);
+    inject('TossMarkets',      data.toss        || []);
+    inject('FancyMarkets',     data.fancy       || []);
+    inject('Fancy2Markets',    data.fancy2      || []);
+    inject('FigureMarkets',    data.figure      || []);
+    inject('OddFigureMarkets', data.oddFigure   || []);
+    inject('OtherMarkets',     data.other       || []);
   }
 
-  /* ── main fetch function ── */
+  /* ─── Categorize flat list ─── */
+  function categorizeMkts(markets) {
+    const out = { bookmaker:[], toss:[], fancy:[], fancy2:[], figure:[], oddFigure:[], other:[] };
+    markets.forEach(m => {
+      const t = (m.marketType || m.category || '').toUpperCase();
+      const n = (m.marketName || '').toLowerCase();
+      if      (t === 'BOOKMAKER' || t === 'BOOKMAKER2' || n.includes('bookmaker'))          out.bookmaker.push(m);
+      else if (t === 'TOSS'      || n.includes('toss'))                                     out.toss.push(m);
+      else if (t === 'FANCY2'    || n.includes('fancy 2') || n.includes('fancy-2'))         out.fancy2.push(m);
+      else if (t === 'FANCY' || t === 'INNINGS_RUNS' || t === 'SESSION_RUNS' ||
+               t === 'OVER_UNDER_RUNS' || n.includes('fancy') || n.includes('session') ||
+               n.includes('innings')   || n.includes('over'))                               out.fancy.push(m);
+      else if (t === 'FIGURE' || n.includes('figure'))                                      out.figure.push(m);
+      else if (t === 'ODD_FIGURE' || t === 'EVEN_ODD' || n.includes('even') || n.includes('odd figure')) out.oddFigure.push(m);
+      else if (t !== 'MATCH_ODDS' && t !== 'WINNER')                                        out.other.push(m);
+    });
+    return out;
+  }
+
+  /* ─── Main loader ──────────────────────────────────────────────
+     Strategy:
+       1. Wait for Vue to mount (poll up to 6 s)
+       2. Resolve eventId (Vue → URL → catalog2)
+       3. Call event-markets endpoint  ← PRIMARY
+       4. Fallback: catalog2 subMarkets ← uses MARKET_ID, not eventId
+  ─────────────────────────────────────────────────────────────── */
   async function loadAllAvailableMarkets() {
-    let retries = 0;
-    const maxRetries = 20;  // Vue mount ke liye zyada wait karo
-
-    async function tryFetch() {
-      const token    = localStorage.getItem('token') || '';
-      const urlParams = new URLSearchParams(window.location.search);
-      const marketId  = urlParams.get('id') || null;  // e.g. "1.245405948"
-
-      // ── Step 1: eventId dhundo ──
-      let eventId = getEventIdFromVueOrUrl();
-
-      if (!eventId) {
-        // Vue abhi load nahi hua — retry karo
-        if (retries++ < maxRetries) {
-          setTimeout(tryFetch, 400);
-          return;
-        }
-
-        // Retries khatam — marketId se catalog2 ke zariye eventId resolve karo
-        if (marketId) {
-          console.log('[Markets] Vue timeout — resolving eventId via catalog2...');
-          eventId = await resolveEventIdFromMarketId(marketId, token);
-        }
-
-        if (!eventId) {
-          console.warn('[Markets] ❌ Could not determine eventId. Markets will not load.');
-          return;
-        }
-      }
-
-      console.log(`[Markets] Using eventId=${eventId} to fetch all markets`);
-
-      // ── Step 2: event-markets endpoint se sab markets lo ──
-      try {
-        const res = await fetch(`${API_BASE}/markets/event-markets?eventId=${encodeURIComponent(eventId)}`, {
-          headers: token ? { 'Authorization': 'Bearer ' + token } : {}
-        });
-
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const json = await res.json();
-
-        if (json.success && json.data) {
-          const d = json.data;
-          // Koi bhi category mein markets hain?
-          const total = (d.bookmaker?.length||0) + (d.toss?.length||0) + (d.fancy?.length||0)
-                      + (d.fancy2?.length||0) + (d.figure?.length||0) + (d.oddFigure?.length||0)
-                      + (d.other?.length||0);
-          console.log(`[Markets] ✅ event-markets returned ${total} extra markets (bm:${d.bookmaker?.length} toss:${d.toss?.length} fancy:${d.fancy?.length} etc.)`);
-          if (total > 0) {
-            injectMarkets(d);
-          } else {
-            console.log('[Markets] No extra markets found for this event (only Match Odds).');
-          }
-          return;
-        }
-        throw new Error(json.message || 'success=false or no data');
-
-      } catch (err) {
-        console.warn('[Markets] event-markets failed:', err.message);
-
-        // ── Fallback: marketId se saare markets catalog2 ke zariye ──
-        if (marketId) {
-          console.log('[Markets] Trying catalog2 fallback for sub-markets...');
-          try {
-            const res3 = await fetch(`${API_BASE}/markets/catalog2?id=${encodeURIComponent(marketId)}`, {
-              headers: token ? { 'Authorization': 'Bearer ' + token } : {}
-            });
-            if (res3.ok) {
-              const json3 = await res3.json();
-              const d = json3.data || json3;
-              const subMkts = d.subMarkets || d.markets || [];
-              if (subMkts.length > 0) {
-                // Backend already ne category field set ki hai — use karo
-                const pre = { bookmaker:[], toss:[], fancy:[], fancy2:[], figure:[], oddFigure:[], other:[] };
-                const hasCategoryField = subMkts.some(m => m.category);
-                if (hasCategoryField) {
-                  subMkts.forEach(m => {
-                    const cat = m.category || 'other';
-                    if (pre[cat]) pre[cat].push(m);
-                    else pre.other.push(m);
-                  });
-                  injectMarkets(pre);
-                  console.log(`[Markets] ✅ catalog2 subMarkets: bm=${pre.bookmaker.length} toss=${pre.toss.length} fancy=${pre.fancy.length}`);
-                } else {
-                  // Old response format — manually categorize karo
-                  const categorized = categorizeMkts(subMkts);
-                  injectMarkets(categorized);
-                  console.log('[Markets] ✅ catalog2 subMarkets (auto-categorized)');
-                }
-              } else {
-                console.log('[Markets] catalog2 returned empty subMarkets — server restart needed?');
-              }
-            }
-          } catch(e3) {
-            console.warn('[Markets] catalog2 fallback also failed:', e3.message);
-          }
-        }
-      }
+    // Step 1: Vue mount ka wait karo
+    let waited = 0;
+    while (!getVm() && waited < 6000) {
+      await new Promise(r => setTimeout(r, 300));
+      waited += 300;
     }
 
-    tryFetch();
+    // Step 2: eventId resolve karo
+    const eventId = await resolveEventId();
+    if (!eventId) {
+      console.warn('[Markets] ❌ eventId resolve nahi hua — markets load nahi honge');
+      return;
+    }
+    console.log(`[Markets] Using eventId=${eventId}`);
+
+    const token = localStorage.getItem('token') || '';
+    const headers = token ? { Authorization: 'Bearer ' + token } : {};
+
+    // Step 3: PRIMARY — event-markets endpoint
+    try {
+      const res  = await fetch(`${API_BASE}/markets/event-markets?eventId=${encodeURIComponent(eventId)}`, { headers });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+
+      if (json.success && json.data) {
+        const d = json.data;
+        const total = (d.bookmaker?.length||0)+(d.toss?.length||0)+(d.fancy?.length||0)
+                    + (d.fancy2?.length||0)+(d.figure?.length||0)+(d.oddFigure?.length||0)+(d.other?.length||0);
+        console.log(`[Markets] event-markets: ${total} extra markets (bm:${d.bookmaker?.length} toss:${d.toss?.length} fancy:${d.fancy?.length})`);
+        if (total > 0) { injectMarkets(d); return; }
+        // total=0 means Betfair pe koi extra market nahi — fallback try karo
+        console.log('[Markets] event-markets returned 0 extra markets');
+      }
+      throw new Error(json.message || 'empty response');
+
+    } catch (err) {
+      console.warn('[Markets] event-markets failed:', err.message, '— trying catalog2 fallback');
+    }
+
+    // Step 4: FALLBACK — catalog2 subMarkets (MARKET_ID use karo, eventId nahi)
+    if (!MARKET_ID) return;
+    try {
+      const res  = await fetch(`${API_BASE}/markets/catalog2?id=${encodeURIComponent(MARKET_ID)}`, { headers });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      const d    = json.data || json;
+      const subs = d.subMarkets || [];
+
+      if (subs.length > 0) {
+        // Backend already sent category field — use it directly
+        const hasCat = subs.some(m => m.category);
+        if (hasCat) {
+          const out = { bookmaker:[], toss:[], fancy:[], fancy2:[], figure:[], oddFigure:[], other:[] };
+          subs.forEach(m => { const c = m.category || 'other'; (out[c] || out.other).push(m); });
+          injectMarkets(out);
+        } else {
+          injectMarkets(categorizeMkts(subs));
+        }
+        console.log(`[Markets] ✅ Loaded ${subs.length} markets from catalog2 subMarkets`);
+      } else {
+        console.log('[Markets] catalog2 subMarkets bhi empty — is event pe extra markets nahi hain');
+      }
+    } catch (e2) {
+      console.warn('[Markets] catalog2 fallback bhi fail:', e2.message);
+    }
   }
 
-  /* ── categorize raw market list into Vue-expected buckets ── */
-  function categorizeMkts(markets) {
-    const result = {
-      bookmaker: [], toss: [], fancy: [], fancy2: [],
-      figure: [], oddFigure: [], other: []
-    };
-    markets.forEach(m => {
-      const type = (m.marketType || m.type || '').toUpperCase();
-      const name = (m.marketName || m.name || '').toLowerCase();
-      if      (type.includes('BOOKMAKER') || name.includes('bookmaker'))    result.bookmaker.push(m);
-      else if (type.includes('TOSS')      || name.includes('toss'))          result.toss.push(m);
-      else if (type.includes('FIGURE')    || name.includes('figure'))        result.figure.push(m);
-      else if (type.includes('ODD')       || name.includes('even'))          result.oddFigure.push(m);
-      else if (type.includes('FANCY2')    || name.includes('fancy 2') || name.includes('fancy-2')) result.fancy2.push(m);
-      else if (type.includes('FANCY')     || name.includes('fancy'))         result.fancy.push(m);
-      else if (!type.includes('MATCH_ODDS') && !type.includes('WINNER'))     result.other.push(m);
-    });
-    return result;
-  }
-
-  // Public karo taake mv2 ke baad bhi call ho sake
   window.loadAllAvailableMarkets = loadAllAvailableMarkets;
 
-  // ── Trigger 1: page load ke 1.2s baad (Vue mount ke liye time) ──
-  setTimeout(loadAllAvailableMarkets, 1200);
+  // Trigger 1: page load ke baad
+  setTimeout(loadAllAvailableMarkets, 1000);
 
-  // ── Trigger 2: Vue Catalog load hone ke baad (polling via MutationObserver) ──
-  // Agar eventId Vue se milta hai toh ye zyada reliable hai
-  let _catalogWatched = false;
-  function watchForCatalog() {
-    if (_catalogWatched) return;
+  // Trigger 2: mv2.min.js jab catalog2 load kare aur Vue mein Catalog.eventId set ho
+  let _watched = false;
+  function watchCatalog() {
+    if (_watched) return;
     const vm = getVm();
-    if (vm) {
-      // Vue instance mila — Catalog.eventId ka wait karo
-      let _pollCount = 0;
-      const _poll = setInterval(() => {
-        _pollCount++;
-        const eid = vm.Catalog && vm.Catalog.eventId;
-        if (eid) {
-          clearInterval(_poll);
-          _catalogWatched = true;
-          console.log('[Markets] Vue Catalog.eventId detected, reloading markets...');
-          loadAllAvailableMarkets();
-        }
-        if (_pollCount > 40) clearInterval(_poll); // 40 × 250ms = 10s max
-      }, 250);
-    }
+    if (!vm) { setTimeout(watchCatalog, 400); return; }
+    let _polls = 0;
+    const _t = setInterval(() => {
+      if (++_polls > 50) { clearInterval(_t); return; }
+      if (vm.Catalog && vm.Catalog.eventId && !_watched) {
+        _watched = true;
+        clearInterval(_t);
+        console.log('[Markets] Catalog.eventId ready — loading markets...');
+        loadAllAvailableMarkets();
+      }
+    }, 200);
   }
-  setTimeout(watchForCatalog, 300);
+  setTimeout(watchCatalog, 400);
 
 })();
+</script>
 </script>
     <!-- ==================== FINAL SAFE FIX FOR getRunnerAmounts ==================== -->
 <script>

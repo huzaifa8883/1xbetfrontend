@@ -32,14 +32,11 @@
     </style>
 
     <script>
-        const pricesUrl = "https://1xbetbackend.work.gd/api/v1";   // prefix for all API calls
-        const ordersUrl = "https://1xbetbackend.work.gd/api/v1";   // prefix for all API calls
+        const pricesUrl = "https://bettingbackending.work.gd/api";
+        const ordersUrl = "https://bettingbackending.work.gd/api";
         const LiquidityRate = 35;
-        // mv2.min.js svc_prefix use karta hai catalog2 / orders calls ke liye
-        const SsocketUrl = "https://1xbetbackend.work.gd/signalr";
-        const uwsUrl = "https://orders-ws2.bfexch.com/usershub";
-
-
+        // const SsocketUrl = "http://localhost:5000/signalr";
+        // const uwsUrl = "https://orders-ws2.bfexch.com/usershub";
         const genSck = 1;
         const CasSck = 1;
         // const casinoUrl = "https://casino-ws.bfexch.com/signalr";
@@ -47,8 +44,8 @@
     </script>
 </head>
 <body class="bg-gray d-flex flex-column">
-<div class="main-page" id="app">   <!-- ← id="app" important for Vue -->
-    <div class="row no-gutters">
+    <div class="main-page">
+        <div class="row no-gutters">
             <div class="col-md-3 col-lg-2" id="sidebar">
                 <div class="logo-bar">
                     <a href="/Common/Dashboard">
@@ -782,91 +779,99 @@
         border-top-right-radius: 10px;
     }
 </style>
-<!-- ============================================================
-  BASE URL — ek jagah change karo, sab jagah apply hoga
-  Local development ke liye: http://localhost:5000/api
-  Production ke liye: https://bettingbackending.work.gd/api
-  ============================================================ -->
-<script>
-  const API_BASE = "https://1xbetbackend.work.gd/api/v1";
-</script>
-
-
-<!-- ============================================================
-  SCRIPT 1: Market page init + Related Events
-  Routes used:
-    GET /api/markets/catalog2?id=xxx
-    GET /api/markets/live/:sport
-  ============================================================ -->
 <script>
   async function getSportByMarketId(marketId) {
-    try {
-      const res  = await fetch(`${API_BASE}/markets/catalog2?id=${marketId}`);
-      const json = await res.json();
-      console.log("Catalog2 API response:", json);
-      const data = json.data || json;
+  try {
+    const res = await fetch(`https://bettingbackending.work.gd/api/markets/catalog2?id=${marketId}`);
+    const data = await res.json();
 
-      const matchName = data.eventName || data.marketName || data.match || 'Unknown Match';
-      document.title = `${matchName} | BetPro`;
+    console.log("Catalog2 API response:", data);
 
-      // sport name return karo taake related events load ho sakein
-      return data.eventType || data.sport?.name || null;
+    const urlParams = new URLSearchParams(window.location.search);
+    const fromParam = urlParams.get('from'); // 'inplay' ya null
 
-    } catch (error) {
-      console.error("Error fetching sport by marketId:", error);
-      return null;
-    }
+  
+
+    // document.querySelector('.green-upper-text').textContent = displayStatus;
+
+    const matchName = data.eventName || data.match || 'Unknown Match';
+    document.title = `${matchName} | BetPro`;
+
+  } catch (error) {
+    console.error("Error fetching sport by marketId:", error);
   }
+}
+
 
   async function initMarketPage() {
     const urlParams = new URLSearchParams(window.location.search);
-    const marketId  = urlParams.get('id');
+    const marketId = urlParams.get('id');
     if (!marketId) return;
     await getSportByMarketId(marketId);
   }
 
   document.addEventListener('DOMContentLoaded', initMarketPage);
 
-  // Related Events loader
-  async function loadRelatedEventsBySport(sport) {
-    if (!sport) return;
-    try {
-      const res    = await fetch(`${API_BASE}/markets/live/${sport.toLowerCase()}`);
-      const result = await res.json();
-      const tbody  = document.getElementById('relatedEventsBody');
-      tbody.innerHTML = '';
+  async function initMarketPage() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const marketId = urlParams.get('id');
+    if (!marketId) return;
+    await getSportByMarketId(marketId);
+  }
 
-      if ((result.success || result.status === 'success') && Array.isArray(result.data) && result.data.length > 0) {
-        const events = result.data.slice(0, 5);
-        const today  = new Date();
+  document.addEventListener('DOMContentLoaded', initMarketPage);
+  // 2. Us sport ke related 5 live matches fetch kar ke show karne wali function
+  async function loadRelatedEventsBySport(sport) {
+    try {
+      const normalizedSport = sport.toLowerCase();
+
+      const res = await fetch(`https://bettingbackending.work.gd/api/markets/live/${sport}`);
+      const result = await res.json();
+
+      const tbody = document.getElementById('relatedEventsBody');
+      tbody.innerHTML = '';  // Purane events clear karo
+
+      if (result.status === 'success' && Array.isArray(result.data) && result.data.length > 0) {
+        const events = result.data.slice(0, 5);  // Sirf 5 latest events
 
         events.forEach(event => {
           const startTime = new Date(event.marketStartTime || event.startTime);
           const localTime = startTime.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 
+          const today = new Date();
+          const eventDate = new Date(event.marketStartTime || event.startTime);
+
           let dayLabel = 'Upcoming';
-          if (startTime.toDateString() === today.toDateString()) {
+          if (eventDate.toDateString() === today.toDateString()) {
             dayLabel = 'Today';
           } else {
             const tomorrow = new Date();
             tomorrow.setDate(today.getDate() + 1);
-            if (startTime.toDateString() === tomorrow.toDateString()) dayLabel = 'Tomorrow';
+            if (eventDate.toDateString() === tomorrow.toDateString()) {
+              dayLabel = 'Tomorrow';
+            }
           }
 
           const tr = document.createElement('tr');
-          tr.className   = 'relatedtr';
+          tr.className = 'relatedtr';
           tr.style.cursor = 'pointer';
-          tr.onclick = () => { window.location.href = `/Common/Market.html?id=${event.marketId}`; };
+          tr.onclick = () => {
+            window.location.href = `/Common/Market.html?id=${event.marketId}`;
+          };
+
           tr.innerHTML = `
             <td class="sport-date" style="font-size:14px; padding:0 20px;">
               <div>
                 <span class="day">${dayLabel}</span>
                 <span class="market-time">${localTime}</span>
-                <span class="d-none utctime" data-format="H:mm">${event.marketStartTime || event.startTime}</span>
+                <span class="d-none utctime" data-format="H:mm" data-target="time">${event.marketStartTime || event.startTime}</span>
               </div>
             </td>
-            <td><div>${event.marketName || event.match || 'Unknown Match'}</div></td>
+            <td>
+              <div>${event.marketName || event.match || 'Unknown Match'}</div>
+            </td>
           `;
+
           tbody.appendChild(tr);
         });
 
@@ -874,278 +879,383 @@
         tbody.innerHTML = `<tr><td colspan="2" style="text-align:center; color:white;">No ${sport} matches found.</td></tr>`;
       }
     } catch (error) {
-      console.error(`Error loading ${sport} related events:`, error);
+      console.error(`Error loading ${sport} matches:`, error);
     }
   }
 
+  // 3. Page load pe ye init hoga
   async function initRelatedEvents() {
-    const marketId = new URLSearchParams(window.location.search).get('id');
-    if (!marketId) return;
+    const urlParams = new URLSearchParams(window.location.search);
+    const marketId = urlParams.get('id');
+    console.log(marketId)
+
+    if (!marketId) {
+      console.warn('No market ID found in URL');
+      return;
+    }
+
     const sport = await getSportByMarketId(marketId);
-    console.log("Sport name:", sport);
+    console.log("Sport name:", sport); // Add this to verify
     loadRelatedEventsBySport(sport);
   }
 
   initRelatedEvents();
 
-  // URL params (global, used by other scripts)
   const urlParams = new URLSearchParams(window.location.search);
-  const marketId  = urlParams.get('id');
-  // eventId URL se lo — pehle 'eventId' param check karo, warna marketId use karo
-  // mv2.min.js Catalog.eventId use karta hai (jo catalog2 API se aata hai)
-  // lekin ListOrders function mein fallback ke liye ye global bhi rakho
-  const eventId   = urlParams.get('eventId') || urlParams.get('id') || '';
-  const timeCode  = '';
+  const marketId = urlParams.get('id');
+  // const marketId = "3484884"
+
+  const eventId = '34567355';
+  const timeCode = '';
+
   const CommentrySignalR = 1;
-  const SsocketEnable    = 1;
-  const CatalogSignalR   = 0;
+  const SsocketEnable = 1;
+  const CatalogSignalR = 0; //1;
 </script>
 
 
-<!-- ============================================================
-  SCRIPT 2: Greyhound sidebar list
-  Route: GET /api/markets/live/greyhound
-  ============================================================ -->
 <script>
-  async function loadGreyhoundMatches() {
-    try {
-      const response = await fetch(`${API_BASE}/markets/live/greyhound`);
-      const result   = await response.json();
-      const listContainer = document.querySelector('.greyhounditems');
-      listContainer.innerHTML = '';
+async function loadGreyhoundMatches() {
+  try {
+    const response = await fetch('https://bettingbackending.work.gd/api/markets/live/greyhound');
+    const result = await response.json();
 
-      if (result.status === 'success' && result.data.length > 0) {
-        result.data.forEach(match => {
-          const li      = document.createElement('li');
-          li.classList.add('match-card');
-          const timeStr = new Date(match.startTime).toLocaleTimeString('en-US', {
-            hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'UTC'
-          }).toLowerCase();
-          li.textContent  = `${timeStr} ${match.match}`;
-          li.style.cursor = 'pointer';
-          li.addEventListener('click', () => {
-            window.location.href = `/Common/Market.html?id=${match.marketId}`;
-          });
-          listContainer.appendChild(li);
+    const listContainer = document.querySelector('.greyhounditems');
+    listContainer.innerHTML = ''; // Clear existing
+
+    if (result.status === 'success' && result.data.length > 0) {
+      result.data.forEach(match => {
+        const li = document.createElement('li');
+        li.classList.add('match-card'); // ✅ Custom style class
+
+        const startTimeUTC = new Date(match.startTime);
+
+        // ✅ Show UTC time exactly as backend provides in 12-hour format
+        const timeStr = startTimeUTC.toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
+          timeZone: 'UTC' // Force UTC
+        }).toLowerCase(); // e.g., "3:00 am"
+
+        li.textContent = `${timeStr} ${match.match}`;
+
+        // ✅ Redirect on click to market.html with marketId
+        li.style.cursor = 'pointer';
+        li.addEventListener('click', () => {
+          window.location.href = `/Common/Market.html?id=${match.marketId}`;
         });
-      } else {
-        listContainer.innerHTML = '<li style="color:white;">No live greyhound matches found.</li>';
-      }
-    } catch (err) {
-      console.error('Error loading greyhound matches:', err.message);
+
+        listContainer.appendChild(li);
+      });
+    } else {
+      listContainer.innerHTML = '<li style="color:white;">No live greyhound matches found.</li>';
     }
+  } catch (err) {
+    console.error('⚠️ Error loading greyhound matches:', err.message);
   }
-  loadGreyhoundMatches();
+}
+
+// Auto load on page load
+loadGreyhoundMatches();
 </script>
 
+      
 
-<!-- ============================================================
-  SCRIPT 3: Horse sidebar list
-  Route: GET /api/markets/live/horse
-  ============================================================ -->
 <script>
-  async function loadhorseMatches() {
-    try {
-      const response = await fetch(`${API_BASE}/markets/live/horse`);
-      const result   = await response.json();
-      const listContainer = document.querySelector('.horseEventList');
-      listContainer.innerHTML = '';
+async function loadhorseMatches() {
+  try {
+    const response = await fetch('https://bettingbackending.work.gd/api/markets/live/horse');
+    const result = await response.json();
 
-      if (result.status === 'success' && result.data.length > 0) {
-        result.data.forEach(match => {
-          const li      = document.createElement('li');
-          li.classList.add('match-card');
-          const timeStr = new Date(match.startTime).toLocaleTimeString('en-US', {
-            hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'UTC'
-          }).toLowerCase();
-          li.textContent  = `${timeStr} ${match.match}`;
-          li.style.cursor = 'pointer';
-          li.addEventListener('click', () => {
-            window.location.href = `/Common/Market.html?id=${encodeURIComponent(match.marketId)}`;
-          });
-          listContainer.appendChild(li);
+    const listContainer = document.querySelector('.horseEventList');
+    listContainer.innerHTML = ''; // Clear existing
+
+    if (result.status === 'success' && result.data.length > 0) {
+      result.data.forEach(match => {
+        const li = document.createElement('li');
+        li.classList.add('match-card');
+
+        const startTimeUTC = new Date(match.startTime);
+
+        // ✅ Convert to 12-hour UTC format with AM/PM
+        const timeStr = startTimeUTC.toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
+          timeZone: 'UTC' // Ensures we stay in UTC
+        }).toLowerCase(); // e.g., "3:00 am"
+
+        li.textContent = `${timeStr} ${match.match}`;
+
+        li.style.cursor = 'pointer';
+        li.addEventListener('click', () => {
+          window.location.href = `/Common/Market.html?id=${encodeURIComponent(match.marketId)}`;
         });
-      } else {
-        listContainer.innerHTML = '<li style="color:white;">No live horse matches found.</li>';
-      }
-    } catch (err) {
-      console.error('Error loading horse matches:', err.message);
+
+        listContainer.appendChild(li);
+      });
+    } else {
+      listContainer.innerHTML = '<li style="color:white;">No live horse matches found.</li>';
     }
+  } catch (err) {
+    console.error('⚠️ Error loading horse matches:', err.message);
   }
-  loadhorseMatches();
+}
+
+// Auto load on page load
+loadhorseMatches();
 </script>
 
 
-<!-- ============================================================
-  SCRIPT 4: Horse slick slider (top banner)
-  Route: GET /api/markets/live/horse
-  ============================================================ -->
+
 <script>
- async function loadHorseLiveData() {
-            try {
-                const res = await fetch(`${API_BASE}/markets/live/horse`);
-                const data = await res.json();
-                const container = document.getElementById('horseRaceContainer');
-                if (!container) return;
+async function loadHorseLiveData() {
+  try {
+    const res = await fetch('https://bettingbackending.work.gd/api/markets/live/horse');
+    const data = await res.json();
 
-                if ($(container).hasClass('slick-initialized')) $(container).slick('unslick');
-                container.innerHTML = '';
+    const container = document.getElementById('horseRaceContainer');
 
-                if (data.status === 'success' && data.data?.length > 0) {
-                    data.data.forEach(match => {
-                        const timeStr = new Date(match.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-                        const div = document.createElement('div');
-                        div.className = 'chk11';
-                        div.innerHTML = `<a href="/Common/Market.html?id=${match.marketId}" style="color:white;"><b>${timeStr}<br>${match.match}</b></a>`;
-                        container.appendChild(div);
-                    });
-                    $(container).slick({ slidesToShow: 8, slidesToScroll: 1, infinite: false, arrows: true });
-                }
-            } catch (err) {
-                console.error('Horse load error:', err);
-            }
-        }
-</script>
-
-
-<!-- ============================================================
-  SCRIPT 5: Greyhound slick slider (top banner)
-  Route: GET /api/markets/live/greyhound
-  ============================================================ -->
-<script>
-  async function loadGreyhoundLiveData() {
-    try {
-      const res  = await fetch(`${API_BASE}/markets/live/greyhound`);
-      const data = await res.json();
-      const container = document.getElementById('greyhoundRaceContainer');
-
-      if ($(container).hasClass('slick-initialized')) $(container).slick('unslick');
-      container.innerHTML = '';
-
-      if (data.status === 'success' && Array.isArray(data.data) && data.data.length > 0) {
-        data.data.forEach(match => {
-          const timeStr = new Date(match.startTime).toLocaleTimeString('en-US', {
-            hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'UTC'
-          }).toLowerCase();
-
-          const div = document.createElement('div');
-          div.className = 'chk11';
-          div.style.cssText = 'text-align:center; margin:2px;';
-          div.innerHTML = `
-            <a href="/Common/Market.html?id=${match.marketId}" style="color:white; width:auto;">
-              <b class="chkmobile">
-                <span class="slidedate market-time">${timeStr}</span><br>
-                <span class="slidename">${match.match}</span>
-              </b>
-            </a>
-          `;
-          container.appendChild(div);
-        });
-
-        $(container).slick({
-          slidesToShow: 8, slidesToScroll: 1, infinite: false, arrows: true,
-          responsive: [
-            { breakpoint: 768, settings: { slidesToShow: 3 } },
-            { breakpoint: 480, settings: { slidesToShow: 2 } }
-          ]
-        });
-      } else {
-        container.innerHTML = `<div style="text-align:center; color:white;">No live races found.</div>`;
-      }
-    } catch (err) {
-      console.error('Error loading live greyhound data:', err.message);
+    // Destroy previous slick instance if exists
+    if ($(container).hasClass('slick-initialized')) {
+      $(container).slick('unslick');
     }
+
+    container.innerHTML = ''; // Clear old content
+
+    if (data.status === 'success' && Array.isArray(data.data) && data.data.length > 0) {
+      data.data.forEach(match => {
+        const startTimeUTC = new Date(match.startTime);
+
+        // ✅ Convert UTC to 12-hour format with AM/PM (no timezone conversion)
+        const utcTimeStr = startTimeUTC.toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
+          timeZone: 'UTC' // Ensures it stays in UTC
+        }).toLowerCase(); // e.g., "3:00 am"
+
+        const div = document.createElement('div');
+        div.className = 'chk11';
+        div.style.textAlign = 'center';
+        div.style.margin = '2px';
+
+        div.innerHTML = `
+          <a href="/Common/Market.html?id=${match.marketId}" style="color:white; width:auto;">
+            <b class="chkmobile">
+              <span class="slidedate market-time">${utcTimeStr}</span>
+              <br>
+              <span class='slidename'>${match.match}</span>
+            </b>
+          </a>
+        `;
+
+        container.appendChild(div);
+      });
+
+      // Reinitialize slick
+      $(container).slick({
+        slidesToShow: 8,
+        slidesToScroll: 1,
+        infinite: false,
+        arrows: true,
+        responsive: [
+          { breakpoint: 768, settings: { slidesToShow: 3 }},
+          { breakpoint: 480, settings: { slidesToShow: 2 }}
+        ]
+      });
+
+    } else {
+      container.innerHTML = `<div style="text-align:center; color:white;">No live races found.</div>`;
+    }
+  } catch (err) {
+    console.error('Error loading live horse data:', err.message);
   }
-  loadGreyhoundLiveData();
+}
+
+// First load
+loadHorseLiveData();
+
+// Optional: Auto refresh every 30 seconds
+// setInterval(loadHorseLiveData, 30000);
 </script>
 
+<script>
+async function loadGreyhoundLiveData() {
+  try {
+    const res = await fetch('https://bettingbackending.work.gd/api/markets/live/greyhound');
+    const data = await res.json();
 
-<!-- ============================================================
-  SCRIPT 6: Cricket main table
-  Route: GET /api/markets/live/cricket
-  ============================================================ -->
+    const container = document.getElementById('greyhoundRaceContainer');
+
+    // Destroy previous slick instance if exists
+    if ($(container).hasClass('slick-initialized')) {
+      $(container).slick('unslick');
+    }
+
+    container.innerHTML = ''; // Clear old content
+
+    if (data.status === 'success' && Array.isArray(data.data) && data.data.length > 0) {
+      data.data.forEach(match => {
+        const startTimeUTC = new Date(match.startTime);
+
+        // ✅ Convert UTC to 12-hour format with AM/PM (no timezone conversion)
+        const utcTimeStr = startTimeUTC.toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
+          timeZone: 'UTC' // Ensures it stays in UTC
+        }).toLowerCase(); // e.g., "3:00 am"
+
+        const div = document.createElement('div');
+        div.className = 'chk11';
+        div.style.textAlign = 'center';
+        div.style.margin = '2px';
+
+        div.innerHTML = `
+          <a href="/Common/Market.html?id=${match.marketId}" style="color:white; width:auto;">
+            <b class="chkmobile">
+              <span class="slidedate market-time">${utcTimeStr}</span>
+              <br>
+              <span class='slidename'>${match.match}</span>
+            </b>
+          </a>
+        `;
+
+        container.appendChild(div);
+      });
+
+      // Reinitialize slick
+      $(container).slick({
+        slidesToShow: 8,
+        slidesToScroll: 1,
+        infinite: false,
+        arrows: true,
+        responsive: [
+          { breakpoint: 768, settings: { slidesToShow: 3 }},
+          { breakpoint: 480, settings: { slidesToShow: 2 }}
+        ]
+      });
+
+    } else {
+      container.innerHTML = `<div style="text-align:center; color:white;">No live races found.</div>`;
+    }
+  } catch (err) {
+    console.error('Error loading live greyhound data:', err.message);
+  }
+}
+
+// First load
+loadGreyhoundLiveData();
+
+// Optional: Auto refresh every 30 seconds
+// setInterval(loadGreyhoundLiveData, 30000);
+</script>
+
 <script>
   async function loadCricketMatches() {
     try {
-      const response = await fetch(`${API_BASE}/markets/live/cricket`);
-      const result   = await response.json();
-      const tbody    = document.getElementById('cricketMatchContainer');
+      const response = await fetch('https://bettingbackending.work.gd/api/markets/live/cricket');
+      const result = await response.json();
+
+      const tbody = document.getElementById('cricketMatchContainer');
+      tbody.innerHTML = ''; // Clear old rows
+
       const matchCountElement = document.getElementById('cricketMatchCount');
-      tbody.innerHTML = '';
 
       if (result.status === 'success' && Array.isArray(result.data)) {
         matchCountElement.textContent = result.data.length;
-        const today = new Date();
 
         result.data.forEach(match => {
           const startTime = new Date(match.startTime);
-          const localTime = startTime.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+          const localTime = startTime.toLocaleTimeString('en-GB', {
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+
+          const today = new Date();
+          const matchDate = new Date(match.startTime);
 
           let dayLabel = match.inPlay ? 'InPlay' : 'Upcoming';
           if (!match.inPlay) {
-            if (startTime.toDateString() === today.toDateString()) {
+            if (matchDate.toDateString() === today.toDateString()) {
               dayLabel = 'Today';
             } else {
               const tomorrow = new Date();
               tomorrow.setDate(today.getDate() + 1);
-              if (startTime.toDateString() === tomorrow.toDateString()) dayLabel = 'Tomorrow';
+              if (matchDate.toDateString() === tomorrow.toDateString()) {
+                dayLabel = 'Tomorrow';
+              }
             }
           }
 
-          const bgClass   = match.inPlay ? 'bg-primary' : '';
+          const bgClass = match.inPlay ? 'bg-primary' : 'bg-rgb(255, 255, 255)';
           const textColor = match.inPlay ? 'white' : 'black';
-          const icons     = `<span class="svg-DBM svg-DBM-dims svg-span" role="img" aria-label="bm"></span>`;
 
-          const row = document.createElement('tr');
-          row.id        = `m_${match.marketId}`;
-          row.className = `m_${match.marketId} McomCustom`;
-          row.innerHTML = `
-            <td class="sport-date ${bgClass}" style="color:${textColor};">
-              <div>
-                <span class="day">${dayLabel}</span>
-                <span class="market-time">${localTime}</span>
-                <span class="d-none utctime" data-format="H:mm">${match.startTime}</span>
-              </div>
-            </td>
-            <td>
-              <div class="teams">
-                <strong class="team-1 match-link" style="cursor:pointer;"
-                  onmouseover="this.style.textDecoration='underline'"
-                  onmouseout="this.style.textDecoration='none'">
-                  ${match.match}
-                </strong>
-                <strong class="team-2"><a href=""></a></strong>
-              </div>
-            </td>
-            <td>
-              <div class="matched">
-                ${icons}
-                <span class="TMFORDESK">${match.totalMatched}</span>
-              </div>
-              <span class="TMFORMOB">${match.totalMatched}</span>
-            </td>
-            <td><div class="box -blue"><strong>${match.odds.back1.price}</strong><span>${match.odds.back1.size}</span></div></td>
-            <td><div class="box -pink"><strong>${match.odds.lay1.price}</strong><span>${match.odds.lay1.size}</span></div></td>
-            <td><div class="box -blue m-left"><strong>${match.odds.back2.price}</strong><span>${match.odds.back2.size}</span></div></td>
-            <td><div class="box -pink m-right"><strong>${match.odds.lay2.price}</strong><span>${match.odds.lay2.size}</span></div></td>
-            <td><div class="box -blue"><strong>${match.odds.backX.price}</strong><span>${match.odds.backX.size}</span></div></td>
-            <td><div class="box -pink"><strong>${match.odds.layX.price}</strong><span>${match.odds.layX.size}</span></div></td>
-            <td class="action"><a href="#"><i class="fa fa-info-circle"></i></a></td>
+          const icons = `
+            <span class="svg-DBM svg-DBM-dims svg-span" role="img" aria-label="bm"></span>
           `;
 
-          setTimeout(() => {
-            const matchLink = row.querySelector('.match-link');
-            if (matchLink) {
-              matchLink.addEventListener('click', (e) => {
-                e.stopPropagation();
-                window.location.href = `/Common/Market.html?id=${match.marketId}`;
-              });
-            }
-          }, 0);
+        // ... [SAME CODE ABOVE]
 
-          tbody.appendChild(row);
+const row = document.createElement('tr');
+row.id = `m_${match.marketId}`;
+row.className = `m_${match.marketId} McomCustom`;
+
+row.innerHTML = `
+  <td class="sport-date ${bgClass}" style="color:${textColor};">
+    <div>
+      <span class="day">${dayLabel}</span>
+      <span class="market-time">${localTime}</span>
+      <span class="d-none utctime" data-format="H:mm">${match.startTime}</span>
+    </div>
+  </td>
+
+  <td>
+    <div class="teams">
+    <strong class="team-1 match-link" style="cursor: pointer;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">
+        ${match.match}
+      </strong>
+      <strong class="team-2"><a href=""></a></strong>
+    </div>
+  </td>
+
+  <td>
+    <div class="matched">
+      ${icons}
+      <span class="TMFORDESK">${match.totalMatched}</span>
+    </div>
+    <span class="TMFORMOB">${match.totalMatched}</span>
+  </td>
+
+  <td><div class="box -blue"><strong>${match.odds.back1.price}</strong><span>${match.odds.back1.size}</span></div></td>
+  <td><div class="box -pink"><strong>${match.odds.lay1.price}</strong><span>${match.odds.lay1.size}</span></div></td>
+
+  <td><div class="box -blue m-left"><strong>${match.odds.back2.price}</strong><span>${match.odds.back2.size}</span></div></td>
+  <td><div class="box -pink m-right"><strong>${match.odds.lay2.price}</strong><span>${match.odds.lay2.size}</span></div></td>
+
+  <td><div class="box -blue"><strong>${match.odds.backX.price}</strong><span>${match.odds.backX.size}</span></div></td>
+  <td><div class="box -pink"><strong>${match.odds.layX.price}</strong><span>${match.odds.layX.size}</span></div></td>
+
+  <td class="action"><a href="#"><i class="fa fa-info-circle"></i></a></td>
+`;
+
+// ✅ Add click event ONLY on match name
+// Wait until it's in the DOM
+setTimeout(() => {
+  const matchLink = row.querySelector('.match-link');
+  if (matchLink) {
+    matchLink.addEventListener('click', (e) => {
+      e.stopPropagation(); // prevent parent events
+      window.location.href = `/Common/Market.html?id=${match.marketId}`;
+    });
+  }
+}, 0);
+
+tbody.appendChild(row);
+
         });
-
       } else {
         matchCountElement.textContent = '0';
         tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color:white;">No live matches found.</td></tr>`;
@@ -1154,42 +1264,43 @@
       console.error('Error loading cricket matches:', err);
     }
   }
-  document.addEventListener('DOMContentLoaded', loadCricketMatches);
+
+  document.addEventListener('DOMContentLoaded', () => {
+    loadCricketMatches();
+    // setInterval(loadCricketMatches, 30000); // auto-refresh every 30 sec
+  });
 </script>
-
-
-<!-- ============================================================
-  SCRIPT 7: InPlay Cricket table
-  Route: GET /api/markets/live/cricket  (filter inPlay===true)
-  ============================================================ -->
 <script>
   async function loadInPlayCricketMatches() {
     try {
-      const response = await fetch(`${API_BASE}/markets/live/cricket`);
-      const result   = await response.json();
-      const tbody    = document.getElementById('inPlayMatchesContainer');
-      tbody.innerHTML = '';
+      const response = await fetch('https://bettingbackending.work.gd/api/markets/live/cricket');
+      const result = await response.json();
+
+      const tbody = document.getElementById('inPlayMatchesContainer');
+      tbody.innerHTML = ''; // Clear previous rows
 
       if (result.status === 'success' && Array.isArray(result.data)) {
-        const inPlayMatches = result.data.filter(m => m.inPlay === true);
+        const inPlayMatches = result.data.filter(match => match.inPlay === true);
 
-        if (inPlayMatches.length === 0) {
+       if (inPlayMatches.length === 0) {
           setTimeout(() => {
-            tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color:white;"></td></tr>`;
+            if (document.getElementById('inPlayMatchesContainer')) {
+              tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color:white;"></td></tr>`;
+            }
           }, 100);
           return;
         }
 
         inPlayMatches.forEach(match => {
-          const localTime = new Date(match.startTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+          const startTime = new Date(match.startTime);
+          const localTime = startTime.toLocaleTimeString('en-GB', {
+            hour: '2-digit',
+            minute: '2-digit'
+          });
 
           const row = document.createElement('tr');
-          row.id        = `m_${match.marketId}`;
+          row.id = `m_${match.marketId}`;
           row.className = `m_${match.marketId} McomCustom`;
-          row.style.cursor = 'pointer';
-          row.addEventListener('click', () => {
-            window.location.href = `/Common/Market.html?id=${match.marketId}`;
-          });
 
           row.innerHTML = `
             <td class="sport-date bg-primary" style="color:white;">
@@ -1199,14 +1310,18 @@
                 <span class="d-none utctime" data-format="H:mm">${match.startTime}</span>
               </div>
             </td>
+
             <td>
               <div class="teams">
                 <strong class="team-1">
-                  <a href="/Common/Market.html?id=${match.marketId}">${match.match}</a>
+                  <a href="/Common/Market?id=${match.marketId}">
+                    ${match.match}
+                  </a>
                 </strong>
                 <strong class="team-2"><a href=""></a></strong>
               </div>
             </td>
+
             <td>
               <div class="matched">
                 <span class="svg-DBM svg-DBM-dims svg-span" role="img" aria-label="bm"></span>
@@ -1214,17 +1329,23 @@
               </div>
               <span class="TMFORMOB">${match.totalMatched}</span>
             </td>
+
             <td><div class="box -blue"><strong>${match.odds.back1.price}</strong><span>${match.odds.back1.size}</span></div></td>
             <td><div class="box -pink"><strong>${match.odds.lay1.price}</strong><span>${match.odds.lay1.size}</span></div></td>
+
             <td><div class="box -blue m-left"><strong>${match.odds.backX.price}</strong><span>${match.odds.backX.size}</span></div></td>
             <td><div class="box -pink m-right"><strong>${match.odds.layX.price}</strong><span>${match.odds.layX.size}</span></div></td>
+
             <td><div class="box -blue"><strong>${match.odds.back2.price}</strong><span>${match.odds.back2.size}</span></div></td>
             <td><div class="box -pink"><strong>${match.odds.lay2.price}</strong><span>${match.odds.lay2.size}</span></div></td>
+
             <td class="action"><a href="#"><i class="fa fa-info-circle"></i></a></td>
           `;
+           row.addEventListener('click', function() {
+              window.location.href = `Market.html?id=${match.marketId}`;
+            });
           tbody.appendChild(row);
         });
-
       } else {
         tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color:white;">Error loading matches.</td></tr>`;
       }
@@ -1232,116 +1353,170 @@
       console.error('Error loading InPlay cricket matches:', err);
     }
   }
-  document.addEventListener('DOMContentLoaded', loadInPlayCricketMatches);
+
+  document.addEventListener('DOMContentLoaded', () => {
+    loadInPlayCricketMatches();
+    // setInterval(loadInPlayCricketMatches, 30000);
+  });
 </script>
-
-
-<!-- ============================================================
-  SCRIPT 8: Tennis sidebar list
-  Route: GET /api/markets/live/tennis
-  ============================================================ -->
 <script>
   function slugify(text) {
-    return text.toString().toLowerCase()
-      .replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, '-').trim();
+    return text
+      .toString()
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '') // remove special chars
+      .replace(/\s+/g, '-')        // space to hyphen
+      .trim();
   }
 
   async function loadTennisMatches() {
     try {
-      const response = await fetch(`${API_BASE}/markets/live/tennis`);
-      const result   = await response.json();
+      const response = await fetch('https://bettingbackending.work.gd/api/markets/live/tennis');
+      const result = await response.json();
+
       const listContainer = document.querySelector('.tennisEventList');
-      listContainer.innerHTML = '';
+      listContainer.innerHTML = ''; // Clear existing
 
       if (result.status === 'success' && result.data.length > 0) {
         result.data.forEach(match => {
           const li = document.createElement('li');
           li.classList.add('match-card');
-          li.textContent  = match.match || 'Unknown Match';
+
+          const matchName = match.match || 'match';
+          const matchId = match.marketId || match.eventId || '0';
+          const slug = slugify(matchName);
+
+          li.textContent = matchName;
           li.style.cursor = 'pointer';
+
+          // ✅ Underline on hover
+          // li.addEventListener('mouseover', () => {
+          //   li.style.textDecoration = 'underline';
+          // });
+          // li.addEventListener('mouseout', () => {
+          //   li.style.textDecoration = 'none';
+          // });
+
+          // ✅ Redirect on click
           li.addEventListener('click', () => {
-            window.location.href = `/Common/Market.html?id=${match.marketId || match.eventId || '0'}`;
+            window.location.href = `/Common/Market.html?id=${matchId}`;
           });
+
           listContainer.appendChild(li);
         });
       } else {
         listContainer.innerHTML = '<li style="color:white;">No live tennis matches found.</li>';
       }
     } catch (err) {
-      console.error('Error loading tennis matches:', err.message);
+      console.error('⚠️ Error loading tennis matches:', err.message);
     }
   }
-  loadTennisMatches();
+
+  loadTennisMatches(); // auto load on page load
 </script>
 
 
-<!-- ============================================================
-  SCRIPT 9: Football sidebar list
-  Route: GET /api/markets/live/football
-  ============================================================ -->
 <script>
+  function slugify(text) {
+    return text
+      .toString()
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '') // remove special chars
+      .replace(/\s+/g, '-')        // space to hyphen
+      .trim();
+  }
+
   async function loadFootballMatches() {
     try {
-      const response = await fetch(`${API_BASE}/markets/live/football`);
-      const result   = await response.json();
+      const response = await fetch('https://bettingbackending.work.gd/api/markets/live/football');
+      const result = await response.json();
+
       const listContainer = document.querySelector('.footballEventList');
-      listContainer.innerHTML = '';
+      listContainer.innerHTML = ''; // Clear existing
 
       if (result.status === 'success' && result.data.length > 0) {
         result.data.forEach(match => {
           const li = document.createElement('li');
-          li.classList.add('match-card');
-          li.textContent  = match.match || 'Unknown Match';
+          li.classList.add('match-card'); // ✅ Custom style class
+
+          const matchName = match.match || 'match';
+          const matchId = match.marketId || match.eventId || '0';
+          const slug = slugify(matchName);
+
+          li.textContent = matchName;
           li.style.cursor = 'pointer';
+
+          // ✅ Redirect on click to market.html with id
           li.addEventListener('click', () => {
-            window.location.href = `/Common/Market.html?id=${match.marketId || match.eventId || '0'}`;
+            window.location.href = `/Common/Market.html?id=${matchId}`;
           });
+
           listContainer.appendChild(li);
         });
       } else {
         listContainer.innerHTML = '<li style="color:white;">No live football matches found.</li>';
       }
     } catch (err) {
-      console.error('Error loading football matches:', err.message);
+      console.error('⚠️ Error loading football matches:', err.message);
     }
   }
-  loadFootballMatches();
+
+  loadFootballMatches(); // auto load on page load
 </script>
-
-
-<!-- ============================================================
-  SCRIPT 10: Cricket sidebar list
-  Route: GET /api/markets/live/cricket
-  ============================================================ -->
 <script>
-  async function loadCricketSidebarMatches() {
+  function slugify(text) {
+    return text
+      .toString()
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '') // remove special chars
+      .replace(/\s+/g, '-')        // space to hyphen
+      .trim();
+  }
+
+  async function loadCricketMatches() {
     try {
-      const response = await fetch(`${API_BASE}/markets/live/cricket`);
-      const result   = await response.json();
+      const response = await fetch('https://bettingbackending.work.gd/api/markets/live/cricket');
+      const result = await response.json();
+
       const ul = document.querySelector('.cricketEventList');
       ul.innerHTML = '';
 
-      if (result.status === 'success' && result.data.length > 0) {
+      if (result.status === 'success') {
+        if (result.data.length === 0) {
+          ul.innerHTML = '<li>No live or upcoming cricket matches found</li>';
+          return;
+        }
+
         result.data.forEach(event => {
           const li = document.createElement('li');
           li.classList.add('match-card');
-          li.textContent  = event.match || 'Unknown Match';
+
+          const matchName = event.match || 'match';
+          const matchId = event.marketId || event.eventId || '0'; // fallback if id not found
+          const slug = slugify(matchName);
+
+          li.textContent = matchName;
           li.style.cursor = 'pointer';
+
           li.addEventListener('click', () => {
-            window.location.href = `/Common/Market.html?id=${event.marketId || event.eventId || '0'}`;
+            window.location.href = `/Common/Market.html?id=${matchId}`;
           });
+
           ul.appendChild(li);
         });
       } else {
-        ul.innerHTML = '<li>No live or upcoming cricket matches found</li>';
+        ul.innerHTML = '<li>Error loading matches</li>';
       }
     } catch (error) {
       console.error('API Error:', error);
-      document.querySelector('.cricketEventList').innerHTML = '<li>API Error: ' + error.message + '</li>';
+      document.querySelector('.cricketEventList').innerHTML =
+        '<li>API Error: ' + error.message + '</li>';
     }
   }
-  document.addEventListener('DOMContentLoaded', loadCricketSidebarMatches);
+
+  document.addEventListener('DOMContentLoaded', loadCricketMatches);
 </script>
+
 <script src="/js/unreal_html5_player_script_v2.js?00001"></script>
 
 <div id="MarketView">
@@ -1717,7 +1892,6 @@
                 <span class="price-amount">{{ runner.ls3 | formatForiegn }}</span>
             </a>
         </template>
- 
     </div>
 </div>
                                     </div>
@@ -3623,7 +3797,7 @@
                         <div class="btn-group btn-group-xs" style="width:100%; height:30px; margin-bottom:2px;">
                             <button class="btn btn-primary btn-xs" style="width:50%; border-right:solid" onclick="SHOWTV()">Tv</button>
 
-                                <button class="btn btn-primary btn-xs" style="width:50%" onclick="SHOWLIVE(marketId)">Score Card</button>
+                                <button class="btn btn-primary btn-xs" style="width:50%" onclick="SHOWLIVE('1.245405948')">Score Card</button>
                         </div>
                         <div id="TVDIVIFRAME" style="display:none;">
                         </div>
@@ -4146,26 +4320,19 @@
 </div>
 <!-- Vue 2 CDN -->
 <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-   <!-- Player script pehle -->
-    <script src="/js/unreal_html5_player_script_v2.js?00001"></script>
-
-    <!-- Bundle & mv2 (jo filters aur components define karta hai) -->
-    <script src="/dist/bundle0a.js"></script>
-    <script src="/js/mv2.min.js"></script>
 <!-- <script>
 document.addEventListener("DOMContentLoaded", async () => {
   const token = localStorage.getItem("token");
   if (!token) return;
 
   try {
-    const res = await fetch(`${ordersUrl}/users/me`, {
+    const res = await fetch("http://localhost:5000/api/users/latest", {
       headers: { "Authorization": "Bearer " + token }
     });
-    const json = await res.json();
+    const data = await res.json();
 
-    if (json.success && json.data && json.data.user) {
-      const user = json.data.user;
+    if (data.success && data.user) {
+      const user = data.user;
 
       // Username ko button me update karo
       const userBtn = document.getElementById("navbar-user");
@@ -4219,7 +4386,7 @@ new Vue({
       targetList.forEach(o => { map[o.orderId] = o; });
 
       newOrders.forEach(o => {
-        const id = String(o.request_id || o.orderId || o.requestId);
+        const id = o.orderId || o.requestId;
         map[id] = {
           orderId: id,
           rn: o.runnerName || o.selectionId,
@@ -4239,11 +4406,11 @@ new Vue({
     async fetchUnMatched() {
       try {
         const token = localStorage.getItem("token");
-        const res = await fetch(`${ordersUrl}/orders/pending?marketId=${this.selectedMatchId}`, {
+        const res = await fetch(`${ordersUrl}/orders/unmatched?matchId=${this.selectedMatchId}`, {
           headers: { "Authorization": `Bearer ${token}` }
         });
-        const json = await res.json();
-        const list = json.data?.orders || json.orders || (Array.isArray(json) ? json : []);
+        let list = await res.json();
+        if (!Array.isArray(list)) list = list.orders || [];
 
         this.UnMatched = this.upsertOrders(this.UnMatched, list, "PENDING");
         console.log("🟢 UnMatched merged:", this.UnMatched);
@@ -4255,11 +4422,11 @@ new Vue({
     async fetchMatched() {
       try {
         const token = localStorage.getItem("token");
-        const res = await fetch(`${ordersUrl}/orders/matched?marketId=${this.selectedMatchId}`, {
+        const res = await fetch(`${ordersUrl}/orders/matched?matchId=${this.selectedMatchId}`, {
           headers: { "Authorization": `Bearer ${token}` }
         });
-        const json = await res.json();
-        const list = json.data?.orders || json.orders || (Array.isArray(json) ? json : []);
+        let list = await res.json();
+        if (!Array.isArray(list)) list = list.orders || [];
 
         this.Matched = this.upsertOrders(this.Matched, list, "MATCHED");
         console.log("🟢 Matched merged:", this.Matched);
@@ -4326,30 +4493,16 @@ new Vue({
   }
 });
 </script> -->
-
-
-<script>
-// ============================================================
-// BACKEND URLS — server.js ke routes ke mutabiq
-// /api/orders  → orderRoutes
-// /api/users   → userRoutes
-// /api/markets → marketRoutes
-// ============================================================
-// const BASE_URL  = "https://bettingbackending.work.gd";
-// const ordersUrl = BASE_URL + "/api";   // prefix for all API calls
-
-const socket = io("https://1xbetbackend.work.gd");
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<!-- <script>
+const socket = io("http://localhost:5000");
 const matchId = new URLSearchParams(window.location.search).get("id");
-const ordersUrl = "https://1xbetbackend.work.gd/api/v1";
+const token = localStorage.getItem("token");
 
-// Token
-let token = typeof token !== 'undefined' && token ? token : localStorage.getItem("token");
-
-// Global Variables
 let UnMatched = [];
 let Matched = [];
-let allRunners = [];
 let runnerPnL = {};
+let allRunners = [];
 
 // ---------------------------
 // Utilities
@@ -4359,65 +4512,380 @@ function format(n) {
 }
 
 // ---------------------------
-// WALLET UPDATE
+// USER INFO (WALLET + LIABILITY)
 // ---------------------------
 async function updateUserWallet() {
     if (!token) return;
+
     try {
-        const res = await fetch(`${ordersUrl}/users/me`, {
+        const res = await fetch("http://localhost:5000/api/users/latest", {
             headers: { "Authorization": "Bearer " + token }
         });
-        const json = await res.json();
-        if (json.success && json.data?.user) {
-            const user = json.data.user;
+        const data = await res.json();
+        if (data.success && data.user) {
+            const user = data.user;
+
+            // Navbar username + role
             const userBtn = document.getElementById("navbar-user");
             if (userBtn) userBtn.innerHTML = `${user.username} (${user.role}) <i class="fas fa-caret-down"></i>`;
 
+            // Wallet balance
             const walletBalance = document.querySelector(".wallet-balance");
             if (walletBalance) walletBalance.textContent = `B: ${Math.floor(user.wallet_balance ?? 0)}`;
 
+            // Wallet exposure/liability
             const walletExposure = document.querySelector(".wallet-exposure");
-            if (walletExposure) walletExposure.textContent = ` | L: -${Math.floor(user.liable ?? 0)} |`;
+            if (walletExposure) walletExposure.textContent = `| L: -${Math.floor(user.liable ?? 0)}`;
         }
     } catch (err) {
-        console.error("Wallet update error:", err);
+        console.error("Error loading latest user info:", err);
     }
 }
 
 // ---------------------------
-// PNL CALCULATION
+// PNL CALCULATIONS
 // ---------------------------
 function calculateRunnerPnL(runnerName) {
-    const normalized = (runnerName || "").trim().toLowerCase();
-    let pnlIfThisWins = 0;
+  let profit = 0;
+  let liability = 0;
+  const normalizedRunnerName = runnerName.trim().toLowerCase();
 
+  Matched.forEach(order => {
+    const rn = (order.rn || "").trim().toLowerCase();
+    const odds = Number(order.mp || 0);
+    const stake = Number(order.ms || 0);
+    const side = (order.bs || "").toUpperCase();
+
+    if (!rn || odds === 0 || stake === 0) return;
+
+    if (rn === normalizedRunnerName) {
+      // Bets on this runner
+      if (side === "B") {
+        profit += (odds - 1) * stake;
+      } else if (side === "L") {
+        liability += (odds - 1) * stake;
+      }
+    } else {
+      // Bets on other runners affect this runner
+      if (side === "B") {
+        liability += stake; // Back on other runner increases this runner's liability
+      } else if (side === "L") {
+        profit += stake; // Lay on other runner increases this runner's profit
+      }
+    }
+  });
+
+  return { profit, liability, net: profit - liability };
+}
+function updateRunnerPnL() {
+  const matchedRunners = [...new Set(Matched.map(o => o.rn))];
+  allRunners = [...new Set([...allRunners, ...matchedRunners])];
+  runnerPnL = {};
+
+  allRunners.forEach(runner => {
+    const { profit, liability, net } = calculateRunnerPnL(runner);
+    runnerPnL[runner] = { profit, liability, net };
+  });
+}
+// ---------------------------
+// RENDER TABLES
+// ---------------------------
+function render() {
+  updateRunnerPnL();
+
+  // --- Unmatched Orders ---
+  const ub = document.getElementById("unmatched-body");
+  ub.innerHTML = "";
+  UnMatched.forEach(o => {
+    const tr = document.createElement("tr");
+    tr.className = o.bs === "B" ? "back" : "lay";
+    tr.innerHTML = `
+      <td>${o.rn}</td>
+      <td>${o.up}</td>
+      <td>${format(o.us)}</td>
+      <td><button class="btn-del" onclick="cancelOrder('${o.orderId}')">X</button></td>
+    `;
+    ub.appendChild(tr);
+  });
+  document.getElementById("unmatched-count").textContent = UnMatched.length;
+  document.getElementById("cancelAllBtn").style.display = UnMatched.length > 0 ? "inline-block" : "none";
+
+  // --- Matched Orders ---
+  const mb = document.getElementById("matched-body");
+  mb.innerHTML = "";
+  allRunners.forEach(runner => {
+    const runnerOrders = Matched.filter(o => o.rn.toLowerCase() === runner.toLowerCase());
+    const { profit = 0, liability = 0, net = 0 } = runnerPnL[runner] || {};
+    const profitClass = profit >= 0 ? "profit" : "liability";
+    const liabilityClass = liability > 0 ? "liability" : "profit";
+
+    if (runnerOrders.length > 0) {
+      runnerOrders.forEach(o => {
+        const tr = document.createElement("tr");
+        tr.className = o.bs === "B" ? "back" : "lay";
+        tr.innerHTML = `
+          <td>${o.rn}</td>
+          <td>${o.mp}</td>
+          <td>${format(o.ms)}</td>
+          <td class="${profitClass}">${format(profit)}</td>
+          <td class="${liabilityClass}">${format(-liability)}</td>
+          <td class="${net >= 0 ? 'profit' : 'liability'}">${format(net)}</td>
+        `;
+        mb.appendChild(tr);
+      });
+    } else {
+      const tr = document.createElement("tr");
+      tr.className = "no-bet";
+      tr.innerHTML = `
+        <td>${runner}</td>
+        <td>-</td>
+        <td>-</td>
+        <td class="${profitClass}">${format(profit)}</td>
+        <td class="${liabilityClass}">${format(-liability)}</td>
+        <td class="${net >= 0 ? 'profit' : 'liability'}">${format(net)}</td>
+      `;
+      mb.appendChild(tr);
+    }
+  });
+  document.getElementById("matched-count").textContent = Matched.length;
+  window.dispatchEvent(new Event("runnerPnLUpdated"));
+  updateUserWallet(); // Refresh wallet
+}
+// Utility to get runner P&L externally
+window.getRunnerAmounts = function(runnerName) {
+    const normalized = runnerName.trim().toLowerCase();
+    const key = Object.keys(runnerPnL).find(k => k.trim().toLowerCase() === normalized);
+    return runnerPnL[key] || 0;
+};
+
+// ---------------------------
+// API HELPERS
+// ---------------------------
+async function fetchUnMatched() {
+    try {
+        const res = await fetch(`${ordersUrl}/orders/unmatched?matchId=${matchId}`, {
+            headers: { "Authorization": `Bearer ${token}` }
+        });
+        let list = await res.json();
+        if (!Array.isArray(list)) list = list.orders || [];
+
+        UnMatched = list.map(o => ({
+            orderId: o.orderId || o.requestId,
+            rn: o.runnerName || o.selectionId,
+            up: o.price,
+            us: o.size,
+            bs: (o.side || o.type || "").toUpperCase()
+        }));
+        render();
+    } catch (e) { console.error("Error fetching unmatched:", e); }
+}
+
+async function fetchMatched() {
+    try {
+        const res = await fetch(`${ordersUrl}/orders/matched?matchId=${matchId}`, {
+            headers: { "Authorization": `Bearer ${token}` }
+        });
+        let list = await res.json();
+        if (!Array.isArray(list)) list = list.orders || [];
+
+        Matched = list.map(o => ({
+            orderId: o.orderId || o.requestId,
+            rn: o.runnerName || o.selectionId,
+            mp: o.price,
+            ms: o.size,
+            bs: (o.side || o.type || "").toUpperCase(),
+            matchId: o.matchId || o.marketId
+        }));
+        render();
+    } catch (e) { console.error("Error fetching matched:", e); }
+}
+
+async function fetchRunners() {
+    try {
+        const res = await fetch(`${ordersUrl}/markets/${matchId}`, {
+            headers: { "Authorization": `Bearer ${token}` }
+        });
+        const market = await res.json();
+        if (market && Array.isArray(market.runners) && market.runners.length > 0) {
+            allRunners = market.runners.map(r => r.runnerName || r.selectionId);
+        }
+    } catch (e) { console.error("Error fetching runners:", e); }
+}
+
+// Cancel orders
+async function cancelOrder(orderId) {
+    try {
+        await fetch(`${ordersUrl}/orders/cancel/${orderId}`, { method: "POST" });
+        fetchUnMatched();
+        updateUserWallet();
+    } catch (e) { console.error("Error canceling order:", e); }
+}
+
+async function cancelAll() {
+    try {
+        await fetch(`${ordersUrl}/orders/cancelAll?matchId=${matchId}`, { method: "POST" });
+        fetchUnMatched();
+        updateUserWallet();
+    } catch (e) { console.error("Error canceling all:", e); }
+}
+
+// ---------------------------
+// SOCKET EVENTS
+// ---------------------------
+socket.on("connect", async () => {
+    document.getElementById("isConnected").style.display = "inline";
+    socket.emit("JoinMatch", { matchId }, async ack => {
+        await fetchRunners();
+        await fetchUnMatched();
+        await fetchMatched();
+        await updateUserWallet();
+    });
+});
+
+socket.on("disconnect", () => {
+    document.getElementById("isConnected").style.display = "none";
+});
+
+socket.on("ordersUpdated", data => {
+    if (!data || !Array.isArray(data.newOrders)) return;
+    const unmatched = data.newOrders.filter(o => o.status === "PENDING");
+    const matched = data.newOrders.filter(o => o.status === "MATCHED");
+
+    if (unmatched.length) {
+        UnMatched = unmatched.map(o => ({
+            orderId: o.orderId || o.requestId,
+            rn: o.runnerName || o.selectionId,
+            up: o.price,
+            us: o.size,
+            bs: (o.side || o.type || "").toUpperCase()
+        }));
+    }
+
+    if (matched.length) {
+        Matched = matched.map(o => ({
+            orderId: o.orderId || o.requestId,
+            rn: o.runnerName || o.selectionId,
+            mp: o.price,
+            ms: o.size,
+            bs: (o.side || o.type || "").toUpperCase(),
+            matchId: o.matchId || o.marketId
+        }));
+    }
+
+    render();
+});
+
+// ---------------------------
+// AUTO REFRESH
+// ---------------------------
+setInterval(() => {
+    if (matchId) {
+        fetchUnMatched();
+        fetchMatched();
+    }
+}, 5000);
+
+document.addEventListener("DOMContentLoaded", updateUserWallet);
+</script> -->
+<script>
+const socket = io("https://bettingbackending.work.gd");
+const matchId = new URLSearchParams(window.location.search).get("id");
+const token = localStorage.getItem("token");
+
+let UnMatched = [];
+let Matched = [];
+let runnerPnL = {};
+let allRunners = [];
+
+// ---------------------------
+// Utilities
+// ---------------------------
+function format(n) {
+    return Number(n || 0).toLocaleString();
+}
+
+// ---------------------------
+// USER INFO (WALLET + LIABILITY)
+// ---------------------------
+async function updateUserWallet() {
+    if (!token) return;
+    try {
+        const res = await fetch(`${ordersUrl}/users/latest`, {
+            headers: { "Authorization": "Bearer " + token }
+        });
+        const data = await res.json();
+        if (data.success && data.user) {
+            const user = data.user;
+            const userBtn = document.getElementById("navbar-user");
+            if (userBtn) userBtn.innerHTML = `${user.username} (${user.role}) <i class="fas fa-caret-down"></i>`;
+            const walletBalance = document.querySelector(".wallet-balance");
+            if (walletBalance) walletBalance.textContent = `B: ${Math.floor(user.wallet_balance ?? 0)}`;
+            const walletExposure = document.querySelector(".wallet-exposure");
+            if (walletExposure) walletExposure.textContent = `| L: -${Math.floor(user.liable ?? 0)}`;
+        }
+    } catch (err) {
+        console.error("Error loading latest user info:", err);
+    }
+}
+
+// ---------------------------
+// PNL CALCULATIONS
+// ---------------------------
+// ---------------------------
+// PNL CALCULATIONS (Pending Bets Included)
+// ---------------------------
+function calculateRunnerPnL(runnerName) {
+    const normalized = runnerName.trim().toLowerCase();
+    let profit = 0;
+    let liability = 0;
+
+    // Matched orders
     Matched.forEach(order => {
-        const rn    = (order.rn || order.runnerName || "").trim().toLowerCase();
-        const odds  = Number(order.mp || order.price || 0);
-        const stake = Number(order.ms || order.size || 0);
-        const side  = (order.bs || order.side || "").toUpperCase();
-
-        if (!rn || odds <= 1 || stake <= 0) return;
+        const rn = (order.rn || "").trim().toLowerCase();
+        const odds = Number(order.mp || 0);
+        const stake = Number(order.ms || 0);
+        const side = (order.bs || "").toUpperCase();
+        if (!rn || odds === 0 || stake === 0) return;
 
         if (rn === normalized) {
-            if (side === "B") pnlIfThisWins += (odds - 1) * stake;
-            else pnlIfThisWins -= (odds - 1) * stake;
+            if (side === "B") profit += (odds - 1) * stake;
+            else if (side === "L") liability += (odds - 1) * stake;
         } else {
-            if (side === "B") pnlIfThisWins -= stake;
-            else pnlIfThisWins += stake;
+            if (side === "B") liability += stake;
+            else if (side === "L") profit += stake;
         }
     });
 
-    return Math.round(pnlIfThisWins);
+    // Unmatched (Pending) orders
+    // UnMatched.forEach(order => {
+    //     const rn = (order.rn || "").trim().toLowerCase();
+    //     const odds = Number(order.up || 0);
+    //     const stake = Number(order.us || 0);
+    //     const side = (order.bs || "").toUpperCase();
+    //     if (!rn || odds === 0 || stake === 0) return;
+
+    //     if (rn === normalized) {
+    //         if (side === "B") profit += (odds - 1) * stake;
+    //         else if (side === "L") liability += (odds - 1) * stake;
+    //     } else {
+    //         if (side === "B") liability += stake;
+    //         else if (side === "L") profit += stake;
+    //     }
+    // });
+
+    return { profit, liability, net: profit - liability };
 }
 
 function updateRunnerPnL() {
-    const matchedRunners = [...new Set(Matched.map(o => (o.rn || o.runnerName || "").trim()))].filter(Boolean);
-    allRunners = [...new Set([...allRunners, ...matchedRunners])];
+    const matchedRunners = [...new Set(Matched.map(o => o.rn || ""))].filter(r => r);
+    const unmatchedRunners = [...new Set(UnMatched.map(o => o.rn || ""))].filter(r => r);
 
+    allRunners = [...new Set([...allRunners, ...matchedRunners, ...unmatchedRunners])];
     runnerPnL = {};
+
     allRunners.forEach(runner => {
-        runnerPnL[runner] = calculateRunnerPnL(runner);
+        const { profit, liability, net } = calculateRunnerPnL(runner);
+        runnerPnL[runner] = { profit, liability, net };
     });
 }
 
@@ -4427,175 +4895,193 @@ function updateRunnerPnL() {
 function render() {
     updateRunnerPnL();
 
-    // Unmatched
+    // Unmatched table
     const ub = document.getElementById("unmatched-body");
-    if (ub) {
-        ub.innerHTML = "";
-        UnMatched.forEach(o => {
-            const tr = document.createElement("tr");
-            tr.className = (o.bs || "").toUpperCase() === "B" ? "back" : "lay";
-            tr.innerHTML = `
-                <td>${o.rn || ''}</td>
-                <td>${o.up || ''}</td>
-                <td>${format(o.us)}</td>
-                <td><button class="btn-del" onclick="cancelOrder('${o.orderId}')">X</button></td>
-            `;
-            ub.appendChild(tr);
-        });
-        document.getElementById("unmatched-count").textContent = UnMatched.length;
-        const cancelBtn = document.getElementById("cancelAllBtn");
-        if (cancelBtn) cancelBtn.style.display = UnMatched.length > 0 ? "inline-block" : "none";
-    }
+    ub.innerHTML = "";
+    UnMatched.forEach(o => {
+        const tr = document.createElement("tr");
+        tr.className = o.bs === "B" ? "back" : "lay";
+        tr.innerHTML = `
+            <td>${o.rn}</td>
+            <td>${o.up}</td>
+            <td>${format(o.us)}</td>
+            <td><button class="btn-del" onclick="cancelOrder('${o.orderId}')">X</button></td>
+        `;
+        ub.appendChild(tr);
+    });
+    document.getElementById("unmatched-count").textContent = UnMatched.length;
+    document.getElementById("cancelAllBtn").style.display = UnMatched.length > 0 ? "inline-block" : "none";
 
-    // Matched
+    // Matched table
     const mb = document.getElementById("matched-body");
-    if (mb) {
-        mb.innerHTML = "";
-        allRunners.forEach(runner => {
-            const runnerOrders = Matched.filter(o => 
-                (o.rn || o.runnerName || "").toLowerCase() === runner.toLowerCase()
-            );
+    mb.innerHTML = "";
+    allRunners.forEach(runner => {
+        const runnerOrders = Matched.filter(o => (o.rn || "").toLowerCase() === runner.toLowerCase());
+        if (runnerOrders.length > 0) {
             runnerOrders.forEach(o => {
                 const tr = document.createElement("tr");
-                tr.className = (o.bs || "").toUpperCase() === "B" ? "back" : "lay";
+                tr.className = o.bs === "B" ? "back" : "lay";
                 tr.innerHTML = `
-                    <td>${o.rn || ''}</td>
-                    <td>${o.mp || o.price || ''}</td>
-                    <td>${format(o.ms || o.size)}</td>
+                    <td>${o.rn}</td>
+                    <td>${o.mp}</td>
+                    <td>${format(o.ms)}</td>
                 `;
                 mb.appendChild(tr);
             });
-        });
-        document.getElementById("matched-count").textContent = Matched.length;
-    }
+        }
+    });
+    document.getElementById("matched-count").textContent = Matched.length;
 
     window.dispatchEvent(new Event("runnerPnLUpdated"));
     updateUserWallet();
 }
 
-// ---------------------------
-// GLOBAL HELPER FOR VUE (getRunnerAmounts)
-// ---------------------------
+// Vue/template helper
 window.getRunnerAmounts = function(runnerName) {
-    if (!runnerName) return { ifWin: 0, ifLose: 0, net: 0 };
-
-    const normalized = (runnerName || "").trim().toLowerCase();
-
+    const normalized = runnerName.trim().toLowerCase();
     if (!allRunners.some(r => r.trim().toLowerCase() === normalized)) {
         allRunners.push(runnerName);
+        updateRunnerPnL();
     }
 
-    updateRunnerPnL();
-
     const key = Object.keys(runnerPnL).find(k => k.trim().toLowerCase() === normalized);
-    const pnl = (key && runnerPnL[key]) ? runnerPnL[key] : 0;
+    const { profit, liability, net } = runnerPnL[key] || { profit: 0, liability: 0, net: 0 };
+    const otherLiability = Object.keys(runnerPnL)
+        .filter(k => k.trim().toLowerCase() !== normalized)
+        .reduce((sum, k) => sum + (runnerPnL[k]?.liability || 0), 0);
 
-    return { ifWin: pnl, ifLose: 0, net: pnl };
+    return { ifWin: net, ifLose: otherLiability, net };
 };
 
 // ---------------------------
-// FETCH FUNCTIONS
+// API HELPERS
 // ---------------------------
 async function fetchUnMatched() {
-    if (!matchId || !token) return;
     try {
-        const res = await fetch(`${ordersUrl}/orders/pending?marketId=${matchId}`, {
+        const res = await fetch(`${ordersUrl}/orders/unmatched?matchId=${matchId}`, {
             headers: { "Authorization": "Bearer " + token }
         });
-        const json = await res.json();
-        const list = json.data?.orders || json.orders || [];
+        let list = await res.json();
+        if (!Array.isArray(list)) list = list.orders || [];
         UnMatched = list.map(o => ({
-            orderId: String(o.request_id || o.orderId || o.requestId),
-            rn: o.runnerName || o.event_name || o.runner_name || String(o.selection_id || ""),
-            up: parseFloat(o.price) || 0,
-            us: parseFloat(o.size) || 0,
-            bs: (o.side || o.type || "").toUpperCase()
+            orderId: o.orderId || o.requestId,
+            rn: o.runnerName || o.selectionId,
+            up: o.price,
+            us: o.size,
+            bs: (o.side || o.type || "").toUpperCase(),
+            status: o.status || "PENDING"  // <-- FIX: ensure status is included
         }));
         render();
     } catch (e) {
-        console.error("fetchUnMatched error:", e);
+        console.error("Error fetching unmatched:", e);
     }
 }
 
 async function fetchMatched() {
-    if (!matchId || !token) return;
     try {
-        const res = await fetch(`${ordersUrl}/orders/matched?marketId=${matchId}`, {
+        const res = await fetch(`${ordersUrl}/orders/matched?matchId=${matchId}`, {
             headers: { "Authorization": "Bearer " + token }
         });
-        const json = await res.json();
-        const list = json.data?.orders || json.orders || [];
+        let list = await res.json();
+        if (!Array.isArray(list)) list = list.orders || [];
         Matched = list.map(o => ({
-            orderId: String(o.request_id || o.orderId || o.requestId),
-            rn: o.runnerName || o.event_name || o.runner_name || String(o.selection_id || ""),
-            mp: parseFloat(o.price) || 0,
-            ms: parseFloat(o.size) || 0,
-            bs: (o.side || o.type || "").toUpperCase()
+            orderId: o.orderId || o.requestId,
+            rn: o.runnerName || o.selectionId,
+            mp: o.price,
+            ms: o.size,
+            bs: (o.side || o.type || "").toUpperCase(),
+            matchId: o.matchId || o.marketId
         }));
         render();
     } catch (e) {
-        console.error("fetchMatched error:", e);
+        console.error("Error fetching matched:", e);
     }
 }
 
 async function fetchRunners() {
-    if (!matchId || !token) return;
     try {
-        const res = await fetch(`${ordersUrl}/markets/catalog2?id=${matchId}`, {
+        const res = await fetch(`${ordersUrl}/markets/${matchId}`, {
             headers: { "Authorization": "Bearer " + token }
         });
-        const json = await res.json();
-        const market = json.data || json;
-        if (market?.runners?.length) {
-            const marketRunners = market.runners.map(r => r.runnerName || String(r.selectionId || "")).filter(Boolean);
+        const market = await res.json();
+        if (market && Array.isArray(market.runners)) {
+            const marketRunners = market.runners.map(r => r.runnerName || r.selectionId).filter(r => r);
             allRunners = [...new Set([...allRunners, ...marketRunners])];
             updateRunnerPnL();
             render();
+        } else {
+            console.warn("No runners found in market data");
         }
     } catch (e) {
-        console.error("fetchRunners error:", e);
+        console.error("Error fetching runners:", e);
     }
 }
 
 // ---------------------------
 // CANCEL FUNCTIONS
 // ---------------------------
+// FRONTEND: ensure ordersUrl variable is set (e.g. const ordersUrl = "https://.../orders")
 async function cancelOrder(orderId) {
-    if (!token) return;
+    const token = localStorage.getItem("token");
+    if (!token) {
+        console.warn("No auth token, cannot cancel");
+        return;
+    }
+
     try {
-        const res = await fetch(`${ordersUrl}/orders/${encodeURIComponent(orderId)}/cancel`, {
+        // Use the server route /orders/cancel/:requestId
+        const res = await fetch(`${ordersUrl}/orders/cancel/${encodeURIComponent(orderId)}`, {
             method: "POST",
             headers: { "Authorization": "Bearer " + token }
         });
-        if (res.ok) {
+        const data = await res.json();
+        if (!res.ok) {
+            console.error("Cancel order failed:", data);
+        } else {
+            // refresh lists and wallet
             await fetchUnMatched();
             await fetchMatched();
+            await updateUserWallet();
         }
-    } catch (e) { console.error(e); }
+    } catch (e) {
+        console.error("Error canceling order:", e);
+    }
 }
 
 async function cancelAll() {
-    if (!token) return;
+    const token = localStorage.getItem("token");
+    if (!token) {
+        console.warn("No auth token, cannot cancel");
+        return;
+    }
+
     try {
+        // Use the server route /orders/cancel-all
         const res = await fetch(`${ordersUrl}/orders/cancel-all`, {
             method: "POST",
             headers: { "Authorization": "Bearer " + token }
         });
-        if (res.ok) {
+        const data = await res.json();
+        if (!res.ok) {
+            console.error("Cancel all failed:", data);
+        } else {
+            // refresh UI + wallet
             await fetchUnMatched();
             await fetchMatched();
+            await updateUserWallet();
         }
-    } catch (e) { console.error(e); }
+    } catch (e) {
+        console.error("Error canceling all:", e);
+    }
 }
+
 
 // ---------------------------
 // SOCKET EVENTS
 // ---------------------------
 socket.on("connect", async () => {
-    const isConnectedEl = document.getElementById("isConnected");
-    if (isConnectedEl) isConnectedEl.style.display = "inline";
-
-    socket.emit("JoinMatch", { matchId: matchId }, async (ack) => {
+    document.getElementById("isConnected").style.display = "inline";
+    socket.emit("JoinMatch", { matchId }, async ack => {
         await fetchRunners();
         await fetchUnMatched();
         await fetchMatched();
@@ -4604,40 +5090,56 @@ socket.on("connect", async () => {
 });
 
 socket.on("disconnect", () => {
-    const isConnectedEl = document.getElementById("isConnected");
-    if (isConnectedEl) isConnectedEl.style.display = "none";
+    document.getElementById("isConnected").style.display = "none";
 });
 
-socket.on("ordersUpdated", (data) => {
-    if (!data?.newOrders?.length) return;
+socket.on("ordersUpdated", data => {
+    if (!data || !Array.isArray(data.newOrders)) return;
 
     data.newOrders.forEach(newO => {
-        const orderId = String(newO.request_id || newO.orderId || newO.requestId);
-        UnMatched = UnMatched.filter(o => o.orderId !== orderId);
-        Matched = Matched.filter(o => o.orderId !== orderId);
+        const order = {
+            orderId: newO.orderId || newO.requestId,
+            rn: newO.runnerName || newO.selectionId,
+            price: newO.price,
+            size: newO.size,
+            bs: (newO.side || newO.type || "").toUpperCase(),
+            status: newO.status
+        };
 
-        if (newO.status === "PENDING") {
+        // Remove from both lists if exists
+        UnMatched = UnMatched.filter(o => o.orderId !== order.orderId);
+        Matched = Matched.filter(o => o.orderId !== order.orderId);
+
+        // Treat UNMATCHED as PENDING
+        const frontendStatus = (newO.status === "MATCHED") ? "MATCHED" : "PENDING";
+
+        if (frontendStatus === "PENDING") {
             UnMatched.push({
-                orderId,
-                rn: newO.runnerName || newO.event_name || newO.runner_name || "",
-                up: newO.price,
-                us: newO.size,
-                bs: (newO.side || "").toUpperCase()
+                orderId: order.orderId,
+                rn: order.rn,
+                up: order.price,
+                us: order.size,
+                bs: order.bs,
+                status: "PENDING"
             });
-        } else {
+        } else if (frontendStatus === "MATCHED") {
             Matched.push({
-                orderId,
-                rn: newO.runnerName || "",
-                mp: newO.price,
-                ms: newO.size,
-                bs: (newO.side || "").toUpperCase()
+                orderId: order.orderId,
+                rn: order.rn,
+                mp: order.price,
+                ms: order.size,
+                bs: order.bs,
+                matchId: newO.matchId || newO.marketId
             });
         }
     });
     render();
 });
 
-// Auto Refresh
+
+// ---------------------------
+// AUTO REFRESH
+// ---------------------------
 setInterval(() => {
     if (matchId) {
         fetchUnMatched();
@@ -4645,29 +5147,30 @@ setInterval(() => {
     }
 }, 5000);
 
-// Page Load
 document.addEventListener("DOMContentLoaded", async () => {
-    await updateUserWallet();
-    if (matchId) {
-        await fetchRunners();
-        await fetchUnMatched();
-        await fetchMatched();
-    }
+    updateUserWallet();
+    await fetchRunners();
 });
+</script>
 
-console.log("✅ PNL + Bets Script Loaded Successfully");
-</script>           
+
+
             </center>
            
         </div>
     </footer>
     <script type="text/javascript" src="https://wurfl.io/wurfl.js"></script>
+    <script type="text/javascript" src="/dist/bundle0a.js"></script>
 
     <script>
-        // const token = getCookie('');
-        // const sess = getCookie('wex3authtoken');
-        // const reft = getCookie('wex3reftoken');
+        // const token = getCookie('wexscktoken');
+        const sess = getCookie('wex3authtoken');
+        const reft = getCookie('wex3reftoken');
     </script>
+
+    
+    
+        <script src="/js/mv2.min.js"></script>
     <!-- <script>
 export default {
   data() {
@@ -4680,7 +5183,7 @@ export default {
   methods: {
     async fetchUnMatched() {
       try {
-        const res = await fetch(`${ordersUrl}/orders/pending`, {
+        const res = await fetch("/orders/unmatched", {
           headers: {
             "Authorization": "Bearer " + localStorage.getItem("wex3authtoken")
           }
@@ -4693,7 +5196,7 @@ export default {
     },
     async fetchMatched() {
       try {
-        const res = await fetch(`${ordersUrl}/orders/matched`, {
+        const res = await fetch("/orders/matched", {
           headers: {
             "Authorization": "Bearer " + localStorage.getItem("wex3authtoken")
           }
@@ -4729,64 +5232,14 @@ export default {
 </script> -->
 
     
-<script>
-Vue.component('runner-aggregate', {
-    template: '#runner-aggregate-template',
-    props: ['runner', 'Catalog'],
-    data() {
-        return {
-            displayPrices: {
-                price1: parseFloat(this.runner.price1),
-                price2: parseFloat(this.runner.price2),
-                price3: parseFloat(this.runner.price3),
-                lay1: parseFloat(this.runner.lay1),
-                lay2: parseFloat(this.runner.lay2),
-                lay3: parseFloat(this.runner.lay3)
-            },
-            timers: {}
-        };
-    },
-    watch: {
-        'runner.price1'(newVal) { this.smoothUpdate('price1', newVal); },
-        'runner.price2'(newVal) { this.smoothUpdate('price2', newVal); },
-        'runner.price3'(newVal) { this.smoothUpdate('price3', newVal); },
-        'runner.lay1'(newVal) { this.smoothUpdate('lay1', newVal); },
-        'runner.lay2'(newVal) { this.smoothUpdate('lay2', newVal); },
-        'runner.lay3'(newVal) { this.smoothUpdate('lay3', newVal); }
-    },
-    methods: {
-        smoothUpdate(key, newValue) {
-            const target = parseFloat(newValue);
-            if (isNaN(target)) return;
-
-            if (this.timers[key]) cancelAnimationFrame(this.timers[key]);
-
-            const step = () => {
-                const current = this.displayPrices[key];
-                const diff = target - current;
-                if (Math.abs(diff) < 0.01) {
-                    this.displayPrices[key] = target;
-                    return;
-                }
-                this.displayPrices[key] = current + diff * 0.2;
-                this.timers[key] = requestAnimationFrame(step);
-            };
-            this.timers[key] = requestAnimationFrame(step);
-        },
-        ShowBetSlip(runner, type, marketId, level) {
-            this.$emit('betslip', { runner, type, marketId, level });
-        }
-    }
-});
-</script>
-<script>
+    <script>
         var show_tv_tab = false;
         var LastTab = "";
         var lastheight = 0;
 
 
         $(document).ready(function () {
-            // MarketFactory yahan nahi — neeche ek jagah call hoti hai
+            MarketFactory();
             $("#TVDIV").on("click", "#UnrealPlayer1_volume", function () {
                 displayDate();
             });
@@ -4803,7 +5256,8 @@ Vue.component('runner-aggregate', {
             let ifrEl = document.querySelector("#livesc");
             if (ifrEl != null) {
                 setTimeout(function () { 
-                    ifrEl.src = `https://bpexch.xyz/Common/LiveScoreCard?id=${marketId}`; 
+                    ifrEl.src = `https://bpexch.xyz/Common/LiveScoreCard?id=${marketId}`;
+                   
                 }, 2000);
             }
             setTimeout(function() { PremiumSportsIframeset()}, 2000);
@@ -4961,13 +5415,13 @@ Vue.component('runner-aggregate', {
         }
 
         function PlayChannelFunction() {
-            $.get('/Common/Market?handler=ChannelData&Evid=' + 35041878, function (data) {
+            $.get('/Common/Market?handler=ChannelData&Evid=' + 34484327, function (data) {
                 if (data == '') {
                     if ($("#TVDIVIFRAME").is(":visible")) {
                         document.getElementById('TVDIVIFRAME').innerHTML = "";
                         $("#TVDIVIFRAME").hide();
                     } else {
-                        document.getElementById('TVDIVIFRAME').innerHTML = "<iframe scrolling=no frameborder='no' id='TVIFRAME' src='https://www.bpexch.xyz/Common/TvIframe?id=35041878'></iframe>";
+                        document.getElementById('TVDIVIFRAME').innerHTML = "<iframe scrolling=no frameborder='no' id='TVIFRAME' src='https://www.bpexch.xyz/Common/TvIframe?id=34484327'></iframe>";
                         $("#TVDIVIFRAME").show();
                     }
                 } else {
@@ -5019,10 +5473,6 @@ Vue.component('runner-aggregate', {
                 $("#TVDIV").hide();
                 $("#LIVEDIV").show();
                 $("#sr-widget").show();
-                 let ifrEl = document.querySelector("#livesc");
-    if (ifrEl != null) {
-        ifrEl.src = `https://bpexch.xyz/Common/LiveScoreCard?id=${MID}`;
-    }
             }
         }
 
@@ -5062,15 +5512,11 @@ Vue.component('runner-aggregate', {
 
     </script>
 
-    <script>
+
+    <!-- <script>
         $(document).ready(function () {
             pollRefreshToken();
         });
-
-        // token aur sess: localStorage se lo (same as baaki Market.html scripts)
-        var token = localStorage.getItem("token") || getCookie('wexscktoken') || '';
-        var sess  = getCookie('wex3authtoken') || localStorage.getItem("token") || '';
-        var reft  = getCookie('wex3reftoken') || '';
 
         if (genSck === 1) {
             const signalRConnection = new UWS(uwsUrl, token, sess);
@@ -5079,422 +5525,6 @@ Vue.component('runner-aggregate', {
         else {
             pollUserData();
         }
-    </script>  
-    <script>
-        // Global filters (agar mv2.min.js mein nahi aa rahe)
-        Vue.filter('formatForiegn', function (value) {
-            return Number(value || 0).toLocaleString();
-        });
-        Vue.filter('formatForiegn2', function (value) {
-            return Number(value || 0).toLocaleString();
-        });
-        Vue.filter('format', function (value) {
-            return Number(value || 0).toLocaleString();
-        });
-
-        // Unreal component ko manually register karo (safety ke liye)
-        if (typeof UnrealHTML5VideoPlayer !== 'undefined') {
-            Vue.component('UnrealHTML5VideoPlayer', UnrealHTML5VideoPlayer);
-        }
-
-        // MarketFactory ko delay dekar call karo taaki sab scripts load ho jayen
-        $(document).ready(function () {
-            setTimeout(() => {
-                if (typeof MarketFactory === "function") {
-                    MarketFactory();
-                } else {
-                    console.error("MarketFactory not found! Check mv2.min.js");
-                }
-
-                // Live score iframe
-                const ifr = document.getElementById("livesc");
-                if (ifr && marketId) {
-                    ifr.src = `https://bpexch.xyz/Common/LiveScoreCard?id=${marketId}`;
-                }
-
-                // ✅ Extra markets loader — saare available markets show karo
-                loadAllAvailableMarkets();
-
-            }, 500);
-        });
-    </script>
-
-<!-- ================================================================
-  ✅ ALL AVAILABLE MARKETS LOADER
-  Ye script same event ke saare Betfair markets fetch karti hai
-  aur Vue instance mein inject karti hai taake Bookmaker, Toss,
-  Fancy, Fancy2 etc. sab tabs show hon — sirf Match Odds nahi.
-
-  Backend endpoint required:
-    GET /api/v1/markets/event-markets?eventId=<eventId>
-  Response format:
-    {
-      success: true,
-      data: {
-        bookmaker: [ { marketId, marketName, runners:[...], ... } ],
-        toss:      [ { marketId, marketName, runners:[...], ... } ],
-        fancy:     [ { marketId, marketName, runners:[...], ... } ],
-        fancy2:    [ { marketId, marketName, runners:[...], ... } ],
-        figure:    [ { marketId, marketName, runners:[...], ... } ],
-        oddFigure: [ { marketId, marketName, runners:[...], ... } ],
-        other:     [ { marketId, marketName, runners:[...], ... } ],
-      }
-    }
-================================================================ -->
-<script>
-(function() {
-
-  /* ── helpers ── */
-  function getVm() {
-    const el = document.getElementById('MarketView') || document.getElementById('app');
-    return el ? el.__vue__ : null;
-  }
-
-  /**
-   * eventId resolve karo:
-   * 1. Vue Catalog.eventId (most reliable — mv2 ke load hone ke baad)
-   * 2. URL ?eventId= param
-   * 3. null — caller retry karega ya catalog2 se fetch karega
-   *
-   * NOTE: URL ?id= mein marketId hoti hai (1.XXXXXXX format), eventId nahi.
-   *       Isliye hum use directly USE nahi karte — catalog2 se resolve karte hain.
-   */
-  function getEventIdFromVueOrUrl() {
-    const vm = getVm();
-    if (vm && vm.Catalog && vm.Catalog.eventId) return String(vm.Catalog.eventId);
-    const p = new URLSearchParams(window.location.search);
-    const explicit = p.get('eventId');
-    if (explicit) return explicit;
-    return null;
-  }
-
-  /**
-   * marketId se eventId resolve karo via catalog2 API.
-   * catalog2 response mein eventId field hoti hai.
-   */
-  async function resolveEventIdFromMarketId(marketId, token) {
-    try {
-      const res = await fetch(`${API_BASE}/markets/catalog2?id=${encodeURIComponent(marketId)}`, {
-        headers: token ? { 'Authorization': 'Bearer ' + token } : {}
-      });
-      if (!res.ok) return null;
-      const json = await res.json();
-      const data = json.data || json;
-      // catalog2 returns eventId field directly
-      const eid = data.eventId || data.event?.id || null;
-      if (eid) console.log(`[Markets] Resolved eventId=${eid} from marketId=${marketId}`);
-      return eid ? String(eid) : null;
-    } catch (e) {
-      console.warn('[Markets] catalog2 lookup failed:', e.message);
-      return null;
-    }
-  }
-
-  /* ── runner normalizer ──
-     Vue mv2.min.js expects runners in a specific shape.
-     We map whatever the backend sends to that shape.
-  */
-  function normalizeRunners(runners) {
-    if (!Array.isArray(runners)) return [];
-    return runners.map(r => ({
-      selectionId:  r.selectionId  || r.id    || Math.random(),
-      runnerName:   r.runnerName   || r.name  || 'Runner',
-      status:       r.status       || 'ACTIVE',
-      price1: r.back?.[0]?.price ?? r.price1 ?? '-',
-      price2: r.back?.[1]?.price ?? r.price2 ?? '-',
-      price3: r.back?.[2]?.price ?? r.price3 ?? '-',
-      size1:  r.back?.[0]?.size  ?? r.size1  ?? '-',
-      size2:  r.back?.[1]?.size  ?? r.size2  ?? '-',
-      size3:  r.back?.[2]?.size  ?? r.size3  ?? '-',
-      lay1:   r.lay?.[0]?.price  ?? r.lay1   ?? '-',
-      lay2:   r.lay?.[1]?.price  ?? r.lay2   ?? '-',
-      lay3:   r.lay?.[2]?.price  ?? r.lay3   ?? '-',
-      ls1:    r.lay?.[0]?.size   ?? r.ls1    ?? '-',
-      ls2:    r.lay?.[1]?.size   ?? r.ls2    ?? '-',
-      ls3:    r.lay?.[2]?.size   ?? r.ls3    ?? '-',
-      ifWin:  r.ifWin  || 0,
-      ifLose: r.ifLose || 0,
-      jockeyName:   r.jockeyName  || null,
-      silkColor:    r.silkColor   || null,
-      clothNumber:  r.clothNumber || null,
-      metadataDict: r.metadataDict || null,
-      indB1: r.indB1 || '',
-      indL1: r.indL1 || '',
-      marketId:     r.marketId    || null,
-    }));
-  }
-
-  /* ── market normalizer ── */
-  function normalizeMarket(m) {
-    return {
-      marketId:    m.marketId   || m.id   || '',
-      marketName:  m.marketName || m.name || 'Market',
-      marketType:  m.marketType || '',
-      status:      m.status     || 'OPEN',
-      status2:     m.status2    || null,
-      bettingType: m.bettingType || '',
-      maxBetSize:  m.maxBetSize  || m.maxBet || 0,
-      eventTypeId: m.eventTypeId || null,
-      runners:     normalizeRunners(m.runners || []),
-    };
-  }
-
-  /* ── inject into Vue ── */
-  function injectMarkets(data) {
-    const vm = getVm();
-    if (!vm) { console.warn('[Markets] Vue instance not found'); return; }
-
-    const inject = (vmProp, arr) => {
-      if (!Array.isArray(arr) || arr.length === 0) return;
-      const normalized = arr.map(normalizeMarket);
-      // Only inject if Vue array is currently empty or shorter
-      if (!vm[vmProp] || vm[vmProp].length === 0) {
-        vm[vmProp] = normalized;
-        console.log(`[Markets] Injected ${normalized.length} into ${vmProp}`);
-      } else {
-        // Merge — add markets not already present
-        const existingIds = new Set(vm[vmProp].map(m => m.marketId));
-        const toAdd = normalized.filter(m => !existingIds.has(m.marketId));
-        if (toAdd.length > 0) {
-          vm[vmProp] = [...vm[vmProp], ...toAdd];
-          console.log(`[Markets] Merged ${toAdd.length} new into ${vmProp}`);
-        }
-      }
-    };
-
-    inject('BookmakerMarkets', data.bookmaker  || data.BookmakerMarkets  || []);
-    inject('TossMarkets',      data.toss        || data.TossMarkets        || []);
-    inject('FancyMarkets',     data.fancy       || data.FancyMarkets       || []);
-    inject('Fancy2Markets',    data.fancy2      || data.Fancy2Markets      || []);
-    inject('FigureMarkets',    data.figure      || data.FigureMarkets      || []);
-    inject('OddFigureMarkets', data.oddFigure   || data.OddFigureMarkets   || []);
-    inject('OtherMarkets',     data.other       || data.OtherMarkets       || []);
-  }
-
-  /* ── main fetch function ── */
-  async function loadAllAvailableMarkets() {
-    let retries = 0;
-    const maxRetries = 20;  // Vue mount ke liye zyada wait karo
-
-    async function tryFetch() {
-      const token    = localStorage.getItem('token') || '';
-      const urlParams = new URLSearchParams(window.location.search);
-      const marketId  = urlParams.get('id') || null;  // e.g. "1.245405948"
-
-      // ── Step 1: eventId dhundo ──
-      let eventId = getEventIdFromVueOrUrl();
-
-      if (!eventId) {
-        // Vue abhi load nahi hua — retry karo
-        if (retries++ < maxRetries) {
-          setTimeout(tryFetch, 400);
-          return;
-        }
-
-        // Retries khatam — marketId se catalog2 ke zariye eventId resolve karo
-        if (marketId) {
-          console.log('[Markets] Vue timeout — resolving eventId via catalog2...');
-          eventId = await resolveEventIdFromMarketId(marketId, token);
-        }
-
-        if (!eventId) {
-          console.warn('[Markets] ❌ Could not determine eventId. Markets will not load.');
-          return;
-        }
-      }
-
-      console.log(`[Markets] Using eventId=${eventId} to fetch all markets`);
-
-      // ── Step 2: event-markets endpoint se sab markets lo ──
-      try {
-        const res = await fetch(`${API_BASE}/markets/event-markets?eventId=${encodeURIComponent(eventId)}`, {
-          headers: token ? { 'Authorization': 'Bearer ' + token } : {}
-        });
-
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const json = await res.json();
-
-        if (json.success && json.data) {
-          const d = json.data;
-          // Koi bhi category mein markets hain?
-          const total = (d.bookmaker?.length||0) + (d.toss?.length||0) + (d.fancy?.length||0)
-                      + (d.fancy2?.length||0) + (d.figure?.length||0) + (d.oddFigure?.length||0)
-                      + (d.other?.length||0);
-          console.log(`[Markets] ✅ event-markets returned ${total} extra markets (bm:${d.bookmaker?.length} toss:${d.toss?.length} fancy:${d.fancy?.length} etc.)`);
-          if (total > 0) {
-            injectMarkets(d);
-          } else {
-            console.log('[Markets] No extra markets found for this event (only Match Odds).');
-          }
-          return;
-        }
-        throw new Error(json.message || 'success=false or no data');
-
-      } catch (err) {
-        console.warn('[Markets] event-markets failed:', err.message);
-
-        // ── Fallback: marketId se saare markets catalog2 ke zariye ──
-        if (marketId) {
-          console.log('[Markets] Trying catalog2 fallback for sub-markets...');
-          try {
-            const res3 = await fetch(`${API_BASE}/markets/catalog2?id=${encodeURIComponent(marketId)}`, {
-              headers: token ? { 'Authorization': 'Bearer ' + token } : {}
-            });
-            if (res3.ok) {
-              const json3 = await res3.json();
-              const d = json3.data || json3;
-              const subMkts = d.subMarkets || d.markets || [];
-              if (subMkts.length > 0) {
-                // Backend already ne category field set ki hai — use karo
-                const pre = { bookmaker:[], toss:[], fancy:[], fancy2:[], figure:[], oddFigure:[], other:[] };
-                const hasCategoryField = subMkts.some(m => m.category);
-                if (hasCategoryField) {
-                  subMkts.forEach(m => {
-                    const cat = m.category || 'other';
-                    if (pre[cat]) pre[cat].push(m);
-                    else pre.other.push(m);
-                  });
-                  injectMarkets(pre);
-                  console.log(`[Markets] ✅ catalog2 subMarkets: bm=${pre.bookmaker.length} toss=${pre.toss.length} fancy=${pre.fancy.length}`);
-                } else {
-                  // Old response format — manually categorize karo
-                  const categorized = categorizeMkts(subMkts);
-                  injectMarkets(categorized);
-                  console.log('[Markets] ✅ catalog2 subMarkets (auto-categorized)');
-                }
-              } else {
-                console.log('[Markets] catalog2 returned empty subMarkets — server restart needed?');
-              }
-            }
-          } catch(e3) {
-            console.warn('[Markets] catalog2 fallback also failed:', e3.message);
-          }
-        }
-      }
-    }
-
-    tryFetch();
-  }
-
-  /* ── categorize raw market list into Vue-expected buckets ── */
-  function categorizeMkts(markets) {
-    const result = {
-      bookmaker: [], toss: [], fancy: [], fancy2: [],
-      figure: [], oddFigure: [], other: []
-    };
-    markets.forEach(m => {
-      const type = (m.marketType || m.type || '').toUpperCase();
-      const name = (m.marketName || m.name || '').toLowerCase();
-      if      (type.includes('BOOKMAKER') || name.includes('bookmaker'))    result.bookmaker.push(m);
-      else if (type.includes('TOSS')      || name.includes('toss'))          result.toss.push(m);
-      else if (type.includes('FIGURE')    || name.includes('figure'))        result.figure.push(m);
-      else if (type.includes('ODD')       || name.includes('even'))          result.oddFigure.push(m);
-      else if (type.includes('FANCY2')    || name.includes('fancy 2') || name.includes('fancy-2')) result.fancy2.push(m);
-      else if (type.includes('FANCY')     || name.includes('fancy'))         result.fancy.push(m);
-      else if (!type.includes('MATCH_ODDS') && !type.includes('WINNER'))     result.other.push(m);
-    });
-    return result;
-  }
-
-  // Public karo taake mv2 ke baad bhi call ho sake
-  window.loadAllAvailableMarkets = loadAllAvailableMarkets;
-
-  // ── Trigger 1: page load ke 1.2s baad (Vue mount ke liye time) ──
-  setTimeout(loadAllAvailableMarkets, 1200);
-
-  // ── Trigger 2: Vue Catalog load hone ke baad (polling via MutationObserver) ──
-  // Agar eventId Vue se milta hai toh ye zyada reliable hai
-  let _catalogWatched = false;
-  function watchForCatalog() {
-    if (_catalogWatched) return;
-    const vm = getVm();
-    if (vm) {
-      // Vue instance mila — Catalog.eventId ka wait karo
-      let _pollCount = 0;
-      const _poll = setInterval(() => {
-        _pollCount++;
-        const eid = vm.Catalog && vm.Catalog.eventId;
-        if (eid) {
-          clearInterval(_poll);
-          _catalogWatched = true;
-          console.log('[Markets] Vue Catalog.eventId detected, reloading markets...');
-          loadAllAvailableMarkets();
-        }
-        if (_pollCount > 40) clearInterval(_poll); // 40 × 250ms = 10s max
-      }, 250);
-    }
-  }
-  setTimeout(watchForCatalog, 300);
-
-})();
-</script>
-    <!-- ==================== FINAL SAFE FIX FOR getRunnerAmounts ==================== -->
-<script>
-// Pehle saare variables aur functions define karo
-let allRunners = window.allRunners || [];
-let runnerPnL = window.runnerPnL || {};
-let Matched = window.Matched || [];
-
-// PNL Functions (safe version)
-function calculateRunnerPnL(runnerName) {
-    const normalized = (runnerName || "").trim().toLowerCase();
-    let pnlIfThisWins = 0;
-
-    Matched.forEach(order => {
-        const rn    = (order.rn || order.runnerName || "").trim().toLowerCase();
-        const odds  = Number(order.mp || order.price || 0);
-        const stake = Number(order.ms || order.size || 0);
-        const side  = (order.bs || order.side || "").toUpperCase();
-
-        if (!rn || odds <= 1 || stake <= 0) return;
-
-        if (rn === normalized) {
-            if (side === "B") pnlIfThisWins += (odds - 1) * stake;
-            else pnlIfThisWins -= (odds - 1) * stake;
-        } else {
-            if (side === "B") pnlIfThisWins -= stake;
-            else pnlIfThisWins += stake;
-        }
-    });
-    return Math.round(pnlIfThisWins);
-}
-
-function updateRunnerPnL() {
-    const matchedRunners = [...new Set(Matched.map(o => (o.rn || o.runnerName || "").trim()))].filter(Boolean);
-    allRunners = [...new Set([...allRunners, ...matchedRunners])];
-    runnerPnL = {};
-    allRunners.forEach(runner => {
-        runnerPnL[runner] = calculateRunnerPnL(runner);
-    });
-}
-
-// Main Global Function for Vue
-window.getRunnerAmounts = function(runnerName) {
-    if (!runnerName) return { ifWin: 0, ifLose: 0, net: 0 };
-
-    const normalized = (runnerName || "").trim().toLowerCase();
-
-    if (!allRunners.some(r => r.trim().toLowerCase() === normalized)) {
-        allRunners.push(runnerName);
-    }
-
-    updateRunnerPnL();
-
-    const key = Object.keys(runnerPnL).find(k => k.trim().toLowerCase() === normalized);
-    const pnl = (key && runnerPnL[key]) ? runnerPnL[key] : 0;
-
-    return { ifWin: pnl, ifLose: 0, net: pnl };
-};
-
-// Force re-define after delay (Vue ke render ke liye)
-setTimeout(() => {
-    window.getRunnerAmounts = window.getRunnerAmounts || function(runnerName) {
-        return { ifWin: 0, ifLose: 0, net: 0 };
-    };
-    console.log("✅ getRunnerAmounts safely defined for Vue");
-}, 800);
-
-console.log("🔧 Final getRunnerAmounts fix applied");
-</script>
+    </script>   -->
 </body>
 </html>

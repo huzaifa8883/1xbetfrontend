@@ -5446,6 +5446,7 @@ Vue.component('runner-aggregate', {
       const res = await fetch(API_BASE + '/settings/markets/' + sportKey, { headers });
       if (!res.ok) return null;
       const json = await res.json();
+      console.log('[AdminFilter] Backend response for', sportKey, ':', JSON.stringify(json));
       // filterActive false = admin ne koi setting nahi ki = sab show karo
       if (!json.data || !json.data.filterActive) return null;
       return json.data.enabledMarketIds; // e.g. ['match_odds', 'toss']

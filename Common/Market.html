@@ -4150,13 +4150,6 @@
    <!-- Player script pehle -->
     <script src="/js/unreal_html5_player_script_v2.js?00001"></script>
 
-<!-- getRunnerAmounts stub — bundle0a.js se PEHLE define hona ZARURI hai -->
-<script>
-window.getRunnerAmounts = function(runnerName) {
-    return { ifWin: 0, ifLose: 0, net: 0 };
-};
-</script>
-
     <!-- Bundle & mv2 (jo filters aur components define karta hai) -->
     <script src="/dist/bundle0a.js"></script>
     <script src="/js/mv2.min.js"></script>
@@ -4396,8 +4389,7 @@ async function updateUserWallet() {
 // ---------------------------
 function calculateRunnerPnL(runnerName) {
     const normalized = (runnerName || "").trim().toLowerCase();
-    let profit = 0;
-    let liability = 0;
+    let pnlIfThisWins = 0;
 
     Matched.forEach(order => {
         const rn    = (order.rn || order.runnerName || "").trim().toLowerCase();
@@ -4405,29 +4397,27 @@ function calculateRunnerPnL(runnerName) {
         const stake = Number(order.ms || order.size || 0);
         const side  = (order.bs || order.side || "").toUpperCase();
 
-        if (!rn || odds === 0 || stake === 0) return;
+        if (!rn || odds <= 1 || stake <= 0) return;
 
         if (rn === normalized) {
-            if (side === "B") profit += (odds - 1) * stake;
-            else if (side === "L") liability += (odds - 1) * stake;
+            if (side === "B") pnlIfThisWins += (odds - 1) * stake;
+            else pnlIfThisWins -= (odds - 1) * stake;
         } else {
-            if (side === "B") liability += stake;
-            else if (side === "L") profit += stake;
+            if (side === "B") pnlIfThisWins -= stake;
+            else pnlIfThisWins += stake;
         }
     });
 
-    return { profit, liability, net: profit - liability };
+    return Math.round(pnlIfThisWins);
 }
 
 function updateRunnerPnL() {
     const matchedRunners = [...new Set(Matched.map(o => (o.rn || o.runnerName || "").trim()))].filter(Boolean);
-    const unmatchedRunners = [...new Set(UnMatched.map(o => (o.rn || "").trim()))].filter(Boolean);
-    allRunners = [...new Set([...allRunners, ...matchedRunners, ...unmatchedRunners])];
+    allRunners = [...new Set([...allRunners, ...matchedRunners])];
 
     runnerPnL = {};
     allRunners.forEach(runner => {
-        const { profit, liability, net } = calculateRunnerPnL(runner);
-        runnerPnL[runner] = { profit, liability, net };
+        runnerPnL[runner] = calculateRunnerPnL(runner);
     });
 }
 
@@ -4480,6 +4470,8 @@ function render() {
     }
 
     window.dispatchEvent(new Event("runnerPnLUpdated"));
+    // Vue runners ko reactive update karo (ifWin/ifLose dikhao)
+    setTimeout(updateVueRunnerPnL, 100);
     updateUserWallet();
 }
 
@@ -4498,14 +4490,55 @@ window.getRunnerAmounts = function(runnerName) {
     updateRunnerPnL();
 
     const key = Object.keys(runnerPnL).find(k => k.trim().toLowerCase() === normalized);
-    const { profit = 0, liability = 0, net = 0 } = (key && runnerPnL[key]) ? runnerPnL[key] : {};
+    const pnl = (key && runnerPnL[key]) ? runnerPnL[key] : 0;
 
-    const otherLiability = Object.keys(runnerPnL)
-        .filter(k => k.trim().toLowerCase() !== normalized)
-        .reduce((sum, k) => sum + (runnerPnL[k]?.liability || 0), 0);
-
-    return { ifWin: net, ifLose: -otherLiability, net };
+    return { ifWin: pnl, ifLose: 0, net: pnl };
 };
+
+// ---------------------------
+// VUE REACTIVE PNL UPDATE
+// Ye function Vue ke runner objects ko directly update karta hai
+// taake runner ke neeche profit/liable numbers show ho
+// ---------------------------
+function updateVueRunnerPnL() {
+    try {
+        const vmEl = document.getElementById('MarketView') || document.getElementById('app');
+        if (!vmEl || !vmEl.__vue__) return;
+        const vm = vmEl.__vue__;
+
+        const allMarketLists = [
+            vm.subMarkets,
+            vm.BookmakerMarkets,
+            vm.TossMarkets,
+            vm.FancyMarkets,
+            vm.Fancy2Markets,
+            vm.FigureMarkets,
+            vm.OddFigureMarkets,
+            vm.OtherMarkets,
+            vm.OtherRaceMarkets
+        ].filter(Boolean);
+
+        allMarketLists.forEach(function(markets) {
+            if (!Array.isArray(markets)) return;
+            markets.forEach(function(catalog) {
+                if (!catalog || !Array.isArray(catalog.runners)) return;
+                catalog.runners.forEach(function(runner, idx) {
+                    const rName = runner.runnerName || "";
+                    if (!rName) return;
+                    const amounts = window.getRunnerAmounts(rName);
+                    if (runner.ifWin !== amounts.ifWin) {
+                        Vue.set(catalog.runners, idx, Object.assign({}, runner, {
+                            ifWin: amounts.ifWin,
+                            ifLose: amounts.ifLose
+                        }));
+                    }
+                });
+            });
+        });
+    } catch(e) {
+        console.warn("updateVueRunnerPnL error:", e.message);
+    }
+}
 
 // ---------------------------
 // FETCH FUNCTIONS
@@ -4584,7 +4617,6 @@ async function cancelOrder(orderId) {
         if (res.ok) {
             await fetchUnMatched();
             await fetchMatched();
-            await updateUserWallet();
         }
     } catch (e) { console.error(e); }
 }
@@ -4599,7 +4631,6 @@ async function cancelAll() {
         if (res.ok) {
             await fetchUnMatched();
             await fetchMatched();
-            await updateUserWallet();
         }
     } catch (e) { console.error(e); }
 }
@@ -4625,39 +4656,34 @@ socket.on("disconnect", () => {
 });
 
 socket.on("ordersUpdated", (data) => {
-    if (!data) return;
-    const newOrders = data.newOrders || (data.order ? [data.order] : []);
-    if (!newOrders.length) return;
+    if (!data?.newOrders?.length) return;
 
-    newOrders.forEach(newO => {
+    data.newOrders.forEach(newO => {
         const orderId = String(newO.request_id || newO.orderId || newO.requestId);
         UnMatched = UnMatched.filter(o => o.orderId !== orderId);
-        Matched   = Matched.filter(o => o.orderId !== orderId);
+        Matched = Matched.filter(o => o.orderId !== orderId);
 
-        const frontendStatus = (newO.status === "MATCHED") ? "MATCHED" : "PENDING";
-
-        if (frontendStatus === "PENDING") {
+        if (newO.status === "PENDING") {
             UnMatched.push({
                 orderId,
-                rn: newO.runnerName || newO.event_name || newO.runner_name || String(newO.selection_id || ""),
-                up: parseFloat(newO.price) || 0,
-                us: parseFloat(newO.size) || 0,
-                bs: (newO.side || newO.type || "").toUpperCase(),
-                status: "PENDING"
+                rn: newO.runnerName || newO.event_name || newO.runner_name || "",
+                up: newO.price,
+                us: newO.size,
+                bs: (newO.side || "").toUpperCase()
             });
         } else {
             Matched.push({
                 orderId,
-                rn: newO.runnerName || newO.event_name || newO.runner_name || String(newO.selection_id || ""),
-                mp: parseFloat(newO.price) || 0,
-                ms: parseFloat(newO.size) || 0,
-                bs: (newO.side || newO.type || "").toUpperCase(),
-                matchId: newO.matchId || newO.marketId || newO.market_id
+                rn: newO.runnerName || "",
+                mp: newO.price,
+                ms: newO.size,
+                bs: (newO.side || "").toUpperCase()
             });
         }
     });
     render();
-    updateUserWallet();
+    // Socket se update hone ke baad Vue runners bhi update karo
+    setTimeout(updateVueRunnerPnL, 200);
 });
 
 // Auto Refresh
@@ -4677,6 +4703,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         await fetchMatched();
     }
 });
+
+// Wallet balance — 1 second baad bhi update karo (mv2 load hone ke baad)
+setTimeout(updateUserWallet, 1000);
+setTimeout(updateUserWallet, 3000);
+
+// Wallet har 30 second mein auto-refresh (balance live rehna chahiye)
+setInterval(updateUserWallet, 30000);
 
 console.log("✅ PNL + Bets Script Loaded Successfully");
 </script>           
@@ -5555,6 +5588,74 @@ Vue.component('runner-aggregate', {
   setTimeout(startAdminFilter, 1500);
 
 })();
+</script>
+    <!-- ==================== FINAL SAFE FIX FOR getRunnerAmounts ==================== -->
+<script>
+// Pehle saare variables aur functions define karo
+let allRunners = window.allRunners || [];
+let runnerPnL = window.runnerPnL || {};
+let Matched = window.Matched || [];
+
+// PNL Functions (safe version)
+function calculateRunnerPnL(runnerName) {
+    const normalized = (runnerName || "").trim().toLowerCase();
+    let pnlIfThisWins = 0;
+
+    Matched.forEach(order => {
+        const rn    = (order.rn || order.runnerName || "").trim().toLowerCase();
+        const odds  = Number(order.mp || order.price || 0);
+        const stake = Number(order.ms || order.size || 0);
+        const side  = (order.bs || order.side || "").toUpperCase();
+
+        if (!rn || odds <= 1 || stake <= 0) return;
+
+        if (rn === normalized) {
+            if (side === "B") pnlIfThisWins += (odds - 1) * stake;
+            else pnlIfThisWins -= (odds - 1) * stake;
+        } else {
+            if (side === "B") pnlIfThisWins -= stake;
+            else pnlIfThisWins += stake;
+        }
+    });
+    return Math.round(pnlIfThisWins);
+}
+
+function updateRunnerPnL() {
+    const matchedRunners = [...new Set(Matched.map(o => (o.rn || o.runnerName || "").trim()))].filter(Boolean);
+    allRunners = [...new Set([...allRunners, ...matchedRunners])];
+    runnerPnL = {};
+    allRunners.forEach(runner => {
+        runnerPnL[runner] = calculateRunnerPnL(runner);
+    });
+}
+
+// Main Global Function for Vue
+window.getRunnerAmounts = function(runnerName) {
+    if (!runnerName) return { ifWin: 0, ifLose: 0, net: 0 };
+
+    const normalized = (runnerName || "").trim().toLowerCase();
+
+    if (!allRunners.some(r => r.trim().toLowerCase() === normalized)) {
+        allRunners.push(runnerName);
+    }
+
+    updateRunnerPnL();
+
+    const key = Object.keys(runnerPnL).find(k => k.trim().toLowerCase() === normalized);
+    const pnl = (key && runnerPnL[key]) ? runnerPnL[key] : 0;
+
+    return { ifWin: pnl, ifLose: 0, net: pnl };
+};
+
+// Force re-define after delay (Vue ke render ke liye)
+setTimeout(() => {
+    window.getRunnerAmounts = window.getRunnerAmounts || function(runnerName) {
+        return { ifWin: 0, ifLose: 0, net: 0 };
+    };
+    console.log("✅ getRunnerAmounts safely defined for Vue");
+}, 800);
+
+console.log("🔧 Final getRunnerAmounts fix applied");
 </script>
 </body>
 </html>

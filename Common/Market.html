@@ -5394,16 +5394,25 @@ Vue.component('runner-aggregate', {
 
   // Admin market id → Vue property jo disable hogi
   const MKTID_TO_VUEPROP = {
+    // ── Match Odds / Win (main market — sabse zaroori) ──
+    'match_odds':     'MatchOddsMarkets',
+    'win':            'MatchOddsMarkets',   // horse/greyhound ka main market
+    // ── Toss ──
     'toss':           'TossMarkets',
+    // ── Bookmaker ──
     'bookmaker':      'BookmakerMarkets',
+    // ── Fancy / session markets ──
     'fancy':          'FancyMarkets',
     'fancy2':         'Fancy2Markets',
-    'figure':         'FigureMarkets',
     'over_under':     'FancyMarkets',
     'innings_runs':   'FancyMarkets',
     'session_runs':   'FancyMarkets',
     'top_batsman':    'FancyMarkets',
     'top_bowler':     'FancyMarkets',
+    // ── Figure markets ──
+    'figure':         'FigureMarkets',
+    'odd_figure':     'OddFigureMarkets',
+    // ── Other / side markets ──
     'btts':           'OtherMarkets',
     'total_goals':    'OtherMarkets',
     'correct_score':  'OtherMarkets',
@@ -5421,7 +5430,7 @@ Vue.component('runner-aggregate', {
   };
 
   const ALL_VUE_MARKET_PROPS = [
-    'TossMarkets', 'BookmakerMarkets', 'FancyMarkets', 'Fancy2Markets',
+    'MatchOddsMarkets', 'TossMarkets', 'BookmakerMarkets', 'FancyMarkets', 'Fancy2Markets',
     'FigureMarkets', 'OddFigureMarkets', 'OtherMarkets'
   ];
 
@@ -5472,6 +5481,23 @@ Vue.component('runner-aggregate', {
         clearVueProp(vm, prop);
       }
     });
+
+    // match_odds / win disabled hone par — Vue Catalog.runners bhi clear karo
+    // (kuch Vue builds mein MatchOddsMarkets ki jagah Catalog.runners use hoti hai)
+    const matchOddsOff = !enabledMarketIds.includes('match_odds') && !enabledMarketIds.includes('win');
+    if (matchOddsOff) {
+      // Match odds section DOM se hide karo (fallback for Vue property name mismatch)
+      const oddsEls = document.querySelectorAll(
+        '.market-type-match-odds, [data-market-type="MATCH_ODDS"], ' +
+        '.match-odds-section, .odds-table, .main-market-section'
+      );
+      oddsEls.forEach(function(el) { el.style.display = 'none'; });
+      // Vue prop bhi try karo (har possible naam)
+      ['MatchOddsMarkets','MatchOdds','matchOdds','Runners','runners'].forEach(function(p) {
+        clearVueProp(vm, p);
+      });
+      console.log('[AdminFilter] match_odds disabled → section hidden');
+    }
 
     console.log('[AdminFilter] Applied. Enabled Vue props:', [...enabledVueProps]);
   }

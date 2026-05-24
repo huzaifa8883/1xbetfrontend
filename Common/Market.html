@@ -4150,6 +4150,13 @@
    <!-- Player script pehle -->
     <script src="/js/unreal_html5_player_script_v2.js?00001"></script>
 
+<!-- getRunnerAmounts stub — bundle0a.js se PEHLE define hona ZARURI hai -->
+<script>
+window.getRunnerAmounts = function(runnerName) {
+    return { ifWin: 0, ifLose: 0, net: 0 };
+};
+</script>
+
     <!-- Bundle & mv2 (jo filters aur components define karta hai) -->
     <script src="/dist/bundle0a.js"></script>
     <script src="/js/mv2.min.js"></script>

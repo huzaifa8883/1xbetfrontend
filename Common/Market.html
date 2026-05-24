@@ -5231,7 +5231,20 @@ Vue.component('runner-aggregate', {
     const vm = getVm();
     if (!vm) { console.warn('[Markets] Vue not found'); return; }
 
+    // Admin filter check — agar filter active hai to blocked props inject mat karo
+    const f = window.adminMarketFilter || { ready: false, filterActive: false };
+
+    const isAllowed = (prop) => {
+      if (!f.ready || !f.filterActive) return true; // filter nahi = sab allow
+      if (prop === 'MatchOdds') return f.matchOddsAllowed !== false;
+      return f.allowedProps ? f.allowedProps.has(prop) : true;
+    };
+
     const inject = (prop, arr) => {
+      if (!isAllowed(prop)) {
+        console.log(`[Markets] 🚫 Blocked by admin filter: ${prop}`);
+        return; // inject hi mat karo
+      }
       if (!Array.isArray(arr) || !arr.length) return;
       const norm = arr.map(normalizeMarket);
       if (!vm[prop] || vm[prop].length === 0) {
@@ -5378,7 +5391,34 @@ Vue.component('runner-aggregate', {
 
 <!-- ==================== ADMIN MARKET FILTER ==================== -->
 <script>
-(function() {
+/*
+  SAHI APPROACH:
+  ──────────────
+  Pehle wala code Vue props ko "baad mein clear" karta tha — race condition.
+  mv2.min.js bar bar inject karta tha, filter clear karta tha, phir inject hota tha.
+
+  NAI APPROACH:
+  ─────────────
+  1. Page load par PEHLE admin settings fetch karo (1 baar, cache rakho)
+  2. window.adminMarketFilter.allowedCategories set karo
+  3. Existing injectMarkets function ko wrap karo —
+     inject karte waqt hi disallowed categories ko block karo
+  4. Ek cleanup interval bhi rakho backup ke liye (agar koi aur script inject kare)
+
+  Admin market IDs → Vue prop / category mapping:
+  ─────────────────────────────────────────────────
+  match_odds  → main match odds (isRenderTopMarket / Catalog) — HAMESHA ON rehta hai jab tak admin ne explicitly off na kiya ho
+  toss        → TossMarkets
+  bookmaker   → BookmakerMarkets
+  fancy       → FancyMarkets
+  fancy2      → Fancy2Markets
+  figure      → FigureMarkets
+  over_under / innings_runs / session_runs / top_batsman / top_bowler → FancyMarkets
+  btts / total_goals / correct_score / ht_result / double_chance / asian_handicap
+  first_scorer / set_winner / total_sets / total_games / game_handicap
+  each_way / place / forecast → OtherMarkets
+*/
+(function () {
   'use strict';
 
   const API_BASE = 'https://1xbetbackend.work.gd/api/v1';
@@ -5392,9 +5432,11 @@ Vue.component('runner-aggregate', {
     '4339': 'greyhounds',
   };
 
-  // Admin market id → Vue property jo disable hogi
-  const MKTID_TO_VUEPROP = {
-    'match_odds':     'MatchOddsMarkets',   // ← match_odds ko bhi map karo
+  // Admin market ID → Vue prop name
+  // (sab IDs jo ek hi Vue prop se map hain unhe wahan group kiya)
+  const ADMIN_ID_TO_PROP = {
+    'match_odds':     'MatchOdds',       // special — isRenderTopMarket controls this
+    'win':            'MatchOdds',       // horse/greyhound main market
     'toss':           'TossMarkets',
     'bookmaker':      'BookmakerMarkets',
     'fancy':          'FancyMarkets',
@@ -5416,132 +5458,175 @@ Vue.component('runner-aggregate', {
     'total_sets':     'OtherMarkets',
     'total_games':    'OtherMarkets',
     'game_handicap':  'OtherMarkets',
-      'each_way':       'OtherMarkets',
+    'each_way':       'OtherMarkets',
     'place':          'OtherMarkets',
     'forecast':       'OtherMarkets',
   };
 
-  // MatchOddsMarkets ek virtual/sentinel prop hai — market.html mein iska
-  // actual Vue array nahi, isliye clearVueProp usse skip karega.
-  // Yeh sirf tracking ke liye ALL_VUE_MARKET_PROPS se bahar rakhna zaroori hai.
-  const ALL_VUE_MARKET_PROPS = [
+  // Sab Vue array props jo clear ho sakti hain
+  const ALL_ARRAY_PROPS = [
     'TossMarkets', 'BookmakerMarkets', 'FancyMarkets', 'Fancy2Markets',
     'FigureMarkets', 'OddFigureMarkets', 'OtherMarkets'
-    // NOTE: 'MatchOddsMarkets' yahan nahi — woh betfair odds hain jo hamesha
-    // Catalog se aate hain, Vue prop se nahi. Sirf tracking/sentinel ke liye use.
   ];
 
+  // Global state — baaki scripts bhi read kar sakein
+  window.adminMarketFilter = {
+    ready: false,         // settings load hui?
+    filterActive: false,  // admin ne koi filter set kiya?
+    allowedProps: null,   // Set of allowed Vue prop names (null = sab allow)
+    matchOddsAllowed: true, // match odds dikhane hain?
+  };
+
+  // ── Vue instance getter ──
   function getVm() {
     const el = document.getElementById('MarketView') || document.getElementById('app');
     return el ? el.__vue__ : null;
   }
 
-  // Vue array ko reactive tarike se clear karo
-  function clearVueProp(vm, prop) {
+  // ── Vue array ko safely clear karo ──
+  function clearProp(vm, prop) {
     if (vm[prop] && vm[prop].length > 0) {
       vm[prop].splice(0, vm[prop].length);
-      console.log('[AdminFilter] Cleared:', prop);
+      console.log('[AdminFilter] ❌ Cleared:', prop);
     }
   }
 
-  // Backend se sport ki enabled market IDs fetch karo
-  async function fetchEnabledMarkets(sportKey) {
-    try {
-      const token = localStorage.getItem('token') || '';
-      const headers = token ? { Authorization: 'Bearer ' + token } : {};
-      const res = await fetch(API_BASE + '/settings/markets/' + sportKey, { headers });
-      if (!res.ok) return null;
-      const json = await res.json();
-      console.log('[AdminFilter] Backend response for', sportKey, ':', JSON.stringify(json));
-      // filterActive false = admin ne koi setting nahi ki = sab show karo
-      if (!json.data || !json.data.filterActive) return null;
-      return json.data.enabledMarketIds; // e.g. ['match_odds', 'toss']
-    } catch(e) {
-      console.warn('[AdminFilter] Backend fetch failed:', e.message);
-      return null;
-    }
-  }
+  // ── Filter apply: sirf allowed props rakho, baaki clear ──
+  function applyFilter(vm) {
+    const f = window.adminMarketFilter;
+    if (!f.ready || !f.filterActive) return; // filter active nahi — kuch mat karo
 
-  // Filter lagao: disabled Vue props clear karo
-  // FIX: match_odds => 'MatchOddsMarkets' (sentinel, ALL_VUE_MARKET_PROPS mein nahi)
-  // Sirf match_odds selected hone par: koi real prop enabled nahi => sab clear ho jayenge
-  function applyFilter(vm, enabledMarketIds) {
-    if (!enabledMarketIds || !enabledMarketIds.length) return;
-
-    // Kaunse Vue props enabled hain?
-    var enabledVueProps = new Set();
-    enabledMarketIds.forEach(function(id) {
-      if (MKTID_TO_VUEPROP[id]) enabledVueProps.add(MKTID_TO_VUEPROP[id]);
-    });
-
-    // Disabled props clear karo
-    ALL_VUE_MARKET_PROPS.forEach(function(prop) {
-      if (!enabledVueProps.has(prop)) {
-        clearVueProp(vm, prop);
+    ALL_ARRAY_PROPS.forEach(function (prop) {
+      if (!f.allowedProps.has(prop)) {
+        clearProp(vm, prop);
       }
     });
 
-    // Log: sirf real clearable props dikhao (match_odds/MatchOddsMarkets exclude)
-    var realEnabled = Array.from(enabledVueProps).filter(function(p) {
-      return ALL_VUE_MARKET_PROPS.indexOf(p) !== -1;
-    });
-    console.log('[AdminFilter] Applied. Enabled Vue props:', realEnabled);
+    // Match Odds (isRenderTopMarket) — agar admin ne OFF kiya ho
+    if (!f.matchOddsAllowed && vm.isRenderTopMarket) {
+      vm.isRenderTopMarket = false;
+      console.log('[AdminFilter] ❌ isRenderTopMarket = false');
+    }
   }
 
-  // Main: wait for Catalog, fetch settings, apply filter, keep watching
+  // ── Backend se settings fetch karo ──
+  async function loadAdminSettings(sportKey) {
+    try {
+      const token = localStorage.getItem('token') || '';
+      const headers = token ? { Authorization: 'Bearer ' + token } : {};
+      const res  = await fetch(API_BASE + '/settings/markets/' + sportKey, { headers });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const json = await res.json();
+      console.log('[AdminFilter] Settings response:', JSON.stringify(json));
+
+      if (!json.data || !json.data.filterActive) {
+        // Admin ne koi filter set nahi kiya — sab dikhao
+        window.adminMarketFilter.ready        = true;
+        window.adminMarketFilter.filterActive = false;
+        console.log('[AdminFilter] No filter set for', sportKey, '— showing all');
+        return;
+      }
+
+      const enabledIds = json.data.enabledMarketIds || [];
+      console.log('[AdminFilter] Enabled market IDs:', enabledIds);
+
+      // Enabled IDs → allowed Vue props
+      const allowedProps = new Set();
+      let matchOddsAllowed = false;
+
+      enabledIds.forEach(function (id) {
+        const prop = ADMIN_ID_TO_PROP[id];
+        if (!prop) return;
+        if (prop === 'MatchOdds') {
+          matchOddsAllowed = true;
+        } else {
+          allowedProps.add(prop);
+        }
+      });
+
+      window.adminMarketFilter.ready            = true;
+      window.adminMarketFilter.filterActive     = true;
+      window.adminMarketFilter.allowedProps     = allowedProps;
+      window.adminMarketFilter.matchOddsAllowed = matchOddsAllowed;
+
+      console.log('[AdminFilter] Allowed Vue props:', [...allowedProps]);
+      console.log('[AdminFilter] Match Odds allowed:', matchOddsAllowed);
+
+    } catch (e) {
+      // Network error ya backend down — filter mat lagao
+      window.adminMarketFilter.ready        = true;
+      window.adminMarketFilter.filterActive = false;
+      console.warn('[AdminFilter] Settings fetch failed, showing all:', e.message);
+    }
+  }
+
+  // ── Sport key detect karo ──
+  async function detectSportKey() {
+    // 1. URL se eventTypeId milta hai kya?
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlEid    = urlParams.get('eventTypeId');
+    if (urlEid && EID_TO_SPORT[urlEid]) return EID_TO_SPORT[urlEid];
+
+    // 2. Vue Catalog.eventTypeId
+    let tries = 0;
+    while (tries++ < 40) {
+      const vm = getVm();
+      if (vm && vm.Catalog && vm.Catalog.eventTypeId) {
+        return EID_TO_SPORT[String(vm.Catalog.eventTypeId)] || null;
+      }
+      await new Promise(r => setTimeout(r, 200));
+    }
+
+    // 3. catalog2 API se pata karo
+    const marketId = urlParams.get('id');
+    if (marketId) {
+      try {
+        const res  = await fetch(API_BASE + '/markets/catalog2?id=' + marketId);
+        const json = await res.json();
+        const eid  = String((json.data || json).eventTypeId || '');
+        if (eid && EID_TO_SPORT[eid]) return EID_TO_SPORT[eid];
+      } catch (_) {}
+    }
+
+    return null;
+  }
+
+  // ── MAIN ──
   async function startAdminFilter() {
-    // Vue vm aane ka wait karo
-    let waited = 0;
-    while (!getVm() && waited < 8000) {
+    // 1. Vue mount ka wait karo
+    let w = 0;
+    while (!getVm() && w < 8000) {
       await new Promise(r => setTimeout(r, 300));
-      waited += 300;
+      w += 300;
     }
     const vm = getVm();
     if (!vm) { console.warn('[AdminFilter] Vue not found'); return; }
 
-    // Catalog.eventTypeId aane ka wait karo (mv2 set karta hai)
-    let tries = 0;
-    while (tries++ < 60) {
-      if (vm.Catalog && vm.Catalog.eventTypeId) break;
-      await new Promise(r => setTimeout(r, 300));
-    }
-
-    const eid = vm.Catalog && vm.Catalog.eventTypeId
-      ? String(vm.Catalog.eventTypeId) : null;
-
-    if (!eid) { console.warn('[AdminFilter] eventTypeId nahi mila'); return; }
-
-    const sportKey = EID_TO_SPORT[eid];
-    if (!sportKey) { console.warn('[AdminFilter] Unknown eventTypeId:', eid); return; }
-
-    console.log('[AdminFilter] Sport:', sportKey, '| eventTypeId:', eid);
-
-    // Backend se enabled markets fetch karo
-    const enabledMarketIds = await fetchEnabledMarkets(sportKey);
-
-    // Agar backend ne koi filter nahi diya — sab show karo
-    if (!enabledMarketIds) {
-      console.log('[AdminFilter] No filter active for', sportKey);
+    // 2. Sport detect karo
+    const sportKey = await detectSportKey();
+    if (!sportKey) {
+      console.warn('[AdminFilter] Sport detect nahi hua');
+      window.adminMarketFilter.ready = true; // fail-safe: sab show karo
       return;
     }
+    console.log('[AdminFilter] Sport detected:', sportKey);
 
-    console.log('[AdminFilter] Enabled market IDs:', enabledMarketIds);
+    // 3. Admin settings load karo
+    await loadAdminSettings(sportKey);
 
-    // Ek baar filter lagao
-    applyFilter(vm, enabledMarketIds);
+    // 4. Ek baar turant filter lagao
+    applyFilter(vm);
 
-    // Phir 15 sekond tak har 500ms watch karo
-    // (mv2 ya koi aur script markets reset kare to turant clear karo)
-    let elapsed = 0;
-    const guard = setInterval(function() {
-      elapsed += 500;
-      if (elapsed > 15000) { clearInterval(guard); return; }
-      applyFilter(vm, enabledMarketIds);
-    }, 500);
+    // 5. Permanent guard — har 600ms check karo
+    //    (mv2.min.js ya koi aur script markets dobara inject kare to clear karo)
+    setInterval(function () {
+      const v = getVm();
+      if (v) applyFilter(v);
+    }, 600);
   }
 
-  // Page load ke 1.5 sekond baad start karo
-  setTimeout(startAdminFilter, 1500);
+  // Page load hone ke 500ms baad start karo
+  setTimeout(startAdminFilter, 500);
 
 })();
 </script>

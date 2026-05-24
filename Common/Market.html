@@ -4330,32 +4330,20 @@ new Vue({
 
 <script>
 // ============================================================
-// BACKEND URLS — server.js ke routes ke mutabiq
-// /api/orders  → orderRoutes
-// /api/users   → userRoutes
-// /api/markets → marketRoutes
+// BACKEND URLS
 // ============================================================
-// const BASE_URL  = "https://bettingbackending.work.gd";
-// const ordersUrl = BASE_URL + "/api";   // prefix for all API calls
-
 const socket = io("https://1xbetbackend.work.gd");
 const matchId = new URLSearchParams(window.location.search).get("id");
 const ordersUrl = "https://1xbetbackend.work.gd/api/v1";
 
 // Token
-let token = typeof token !== 'undefined' && token ? token : localStorage.getItem("token");
+let token = (typeof token !== 'undefined' && token) ? token : localStorage.getItem("token");
 
 // Global Variables
 let UnMatched = [];
 let Matched = [];
 let allRunners = [];
 let runnerPnL = {};
-
-// ---------------------------
-// ============================================================
-// BETTING ENGINE - Fixed Version
-// Balance + Liable real-time update via socket + API
-// ============================================================
 
 // ---------------------------
 // Utilities
@@ -4365,29 +4353,25 @@ function format(n) {
 }
 
 // ---------------------------
-// BALANCE + LIABLE UI UPDATE  
-// Navbar mein B: (balance) aur L: (liable) live update karo
+// WALLET UPDATE
 // ---------------------------
-function applyWalletUI(walletBalance, liable) {
-    const walletEl = document.querySelector(".wallet-balance");
-    if (walletEl) walletEl.textContent = `B: ${Math.floor(walletBalance ?? 0)}`;
-
-    const liableEl = document.querySelector(".wallet-exposure");
-    if (liableEl) liableEl.textContent = ` | L: -${Math.floor(liable ?? 0)} |`;
-}
-
 async function updateUserWallet() {
     if (!token) return;
     try {
-        const res  = await fetch(`${ordersUrl}/users/me`, {
+        const res = await fetch(`${ordersUrl}/users/latest`, {
             headers: { "Authorization": "Bearer " + token }
         });
-        const json = await res.json();
-        if (json.success && json.data?.user) {
-            const user    = json.data.user;
+        const data = await res.json();
+        if (data.success && data.user) {
+            const user = data.user;
             const userBtn = document.getElementById("navbar-user");
             if (userBtn) userBtn.innerHTML = `${user.username} (${user.role}) <i class="fas fa-caret-down"></i>`;
-            applyWalletUI(user.wallet_balance, user.liable);
+
+            const walletBalance = document.querySelector(".wallet-balance");
+            if (walletBalance) walletBalance.textContent = `B: ${Math.floor(user.wallet_balance ?? 0)}`;
+
+            const walletExposure = document.querySelector(".wallet-exposure");
+            if (walletExposure) walletExposure.textContent = `| L: -${Math.floor(user.liable ?? 0)}`;
         }
     } catch (err) {
         console.error("Wallet update error:", err);
@@ -4395,85 +4379,83 @@ async function updateUserWallet() {
 }
 
 // ---------------------------
-// PNL CALCULATION (Runner-wise)
-// Matched bets ke hisab se har runner ka P&L
+// PNL CALCULATION (oldmarket logic)
 // ---------------------------
 function calculateRunnerPnL(runnerName) {
     const normalized = (runnerName || "").trim().toLowerCase();
-    let pnlIfThisWins = 0;
+    let profit = 0;
+    let liability = 0;
 
+    // Matched orders
     Matched.forEach(order => {
         const rn    = (order.rn || order.runnerName || "").trim().toLowerCase();
         const odds  = Number(order.mp || order.price || 0);
         const stake = Number(order.ms || order.size || 0);
         const side  = (order.bs || order.side || "").toUpperCase();
 
-        if (!rn || odds <= 1 || stake <= 0) return;
+        if (!rn || odds === 0 || stake === 0) return;
 
         if (rn === normalized) {
-            if (side === "B") pnlIfThisWins += (odds - 1) * stake;  // Back — profit
-            else              pnlIfThisWins -= (odds - 1) * stake;  // Lay — loss
+            if (side === "B") profit += (odds - 1) * stake;
+            else if (side === "L") liability += (odds - 1) * stake;
         } else {
-            if (side === "B") pnlIfThisWins -= stake;  // Back on loser — lose stake
-            else              pnlIfThisWins += stake;  // Lay on loser — win stake
+            if (side === "B") liability += stake;
+            else if (side === "L") profit += stake;
         }
     });
 
-    return Math.round(pnlIfThisWins);
+    return { profit, liability, net: profit - liability };
 }
 
 function updateRunnerPnL() {
     const matchedRunners = [...new Set(Matched.map(o => (o.rn || o.runnerName || "").trim()))].filter(Boolean);
-    allRunners = [...new Set([...allRunners, ...matchedRunners])];
+    const unmatchedRunners = [...new Set(UnMatched.map(o => (o.rn || "").trim()))].filter(Boolean);
+    allRunners = [...new Set([...allRunners, ...matchedRunners, ...unmatchedRunners])];
 
     runnerPnL = {};
     allRunners.forEach(runner => {
-        runnerPnL[runner] = calculateRunnerPnL(runner);
+        const { profit, liability, net } = calculateRunnerPnL(runner);
+        runnerPnL[runner] = { profit, liability, net };
     });
 }
 
 // ---------------------------
-// RENDER TABLES (Unmatched + Matched)
+// RENDER TABLES
 // ---------------------------
 function render() {
     updateRunnerPnL();
 
-    // Unmatched / Pending bets table
+    // Unmatched
     const ub = document.getElementById("unmatched-body");
     if (ub) {
         ub.innerHTML = "";
         UnMatched.forEach(o => {
-            const liable = (o.bs === "B")
-                ? parseFloat(o.us)
-                : (parseFloat(o.up) - 1) * parseFloat(o.us);
             const tr = document.createElement("tr");
-            tr.className = o.bs === "B" ? "back" : "lay";
+            tr.className = (o.bs || "").toUpperCase() === "B" ? "back" : "lay";
             tr.innerHTML = `
                 <td>${o.rn || ''}</td>
                 <td>${o.up || ''}</td>
                 <td>${format(o.us)}</td>
-                <td>${format(liable.toFixed(2))}</td>
                 <td><button class="btn-del" onclick="cancelOrder('${o.orderId}')">X</button></td>
             `;
             ub.appendChild(tr);
         });
-        const ucnt = document.getElementById("unmatched-count");
-        if (ucnt) ucnt.textContent = UnMatched.length;
+        document.getElementById("unmatched-count").textContent = UnMatched.length;
         const cancelBtn = document.getElementById("cancelAllBtn");
         if (cancelBtn) cancelBtn.style.display = UnMatched.length > 0 ? "inline-block" : "none";
     }
 
-    // Matched bets table
+    // Matched
     const mb = document.getElementById("matched-body");
     if (mb) {
         mb.innerHTML = "";
         allRunners.forEach(runner => {
-            const runnerOrders = Matched.filter(o =>
+            const runnerOrders = Matched.filter(o => 
                 (o.rn || o.runnerName || "").toLowerCase() === runner.toLowerCase()
             );
             runnerOrders.forEach(o => {
                 const tr = document.createElement("tr");
-                tr.className = o.bs === "B" ? "back" : "lay";
+                tr.className = (o.bs || "").toUpperCase() === "B" ? "back" : "lay";
                 tr.innerHTML = `
                     <td>${o.rn || ''}</td>
                     <td>${o.mp || o.price || ''}</td>
@@ -4482,27 +4464,37 @@ function render() {
                 mb.appendChild(tr);
             });
         });
-        const mcnt = document.getElementById("matched-count");
-        if (mcnt) mcnt.textContent = Matched.length;
+        document.getElementById("matched-count").textContent = Matched.length;
     }
 
     window.dispatchEvent(new Event("runnerPnLUpdated"));
+    updateUserWallet();
 }
 
 // ---------------------------
 // GLOBAL HELPER FOR VUE (getRunnerAmounts)
-// Vue components mein runner ka P&L dikhane ke liye
 // ---------------------------
 window.getRunnerAmounts = function(runnerName) {
     if (!runnerName) return { ifWin: 0, ifLose: 0, net: 0 };
+
     const normalized = (runnerName || "").trim().toLowerCase();
+
     if (!allRunners.some(r => r.trim().toLowerCase() === normalized)) {
         allRunners.push(runnerName);
     }
+
     updateRunnerPnL();
+
     const key = Object.keys(runnerPnL).find(k => k.trim().toLowerCase() === normalized);
-    const pnl = (key !== undefined && runnerPnL[key]) ? runnerPnL[key] : 0;
-    return { ifWin: pnl, ifLose: 0, net: pnl };
+    const { profit = 0, liability = 0, net = 0 } = (key && runnerPnL[key]) ? runnerPnL[key] : {};
+
+    // ifWin = net PnL if this runner wins
+    // ifLose = net PnL from all other runners' liability perspective
+    const otherLiability = Object.keys(runnerPnL)
+        .filter(k => k.trim().toLowerCase() !== normalized)
+        .reduce((sum, k) => sum + (runnerPnL[k]?.liability || 0), 0);
+
+    return { ifWin: net, ifLose: -otherLiability, net };
 };
 
 // ---------------------------
@@ -4511,56 +4503,64 @@ window.getRunnerAmounts = function(runnerName) {
 async function fetchUnMatched() {
     if (!matchId || !token) return;
     try {
-        const res  = await fetch(`${ordersUrl}/orders/pending?marketId=${matchId}`, {
+        const res = await fetch(`${ordersUrl}/orders/pending?marketId=${matchId}`, {
             headers: { "Authorization": "Bearer " + token }
         });
         const json = await res.json();
-        const list = json.data?.orders || json.orders || [];
-        UnMatched  = list.map(o => ({
+        const list = json.data?.orders || json.orders || (Array.isArray(json) ? json : []);
+        UnMatched = list.map(o => ({
             orderId: String(o.request_id || o.orderId || o.requestId),
-            rn:      o.runnerName || o.event_name || o.runner_name || String(o.selection_id || ""),
-            up:      parseFloat(o.price) || 0,
-            us:      parseFloat(o.size) || 0,
-            bs:      (o.side || o.type || "").toUpperCase()
+            rn: o.runnerName || o.event_name || o.runner_name || String(o.selection_id || ""),
+            up: parseFloat(o.price) || 0,
+            us: parseFloat(o.size) || 0,
+            bs: (o.side || o.type || "").toUpperCase(),
+            status: o.status || "PENDING"
         }));
         render();
-    } catch (e) { console.error("fetchUnMatched error:", e); }
+    } catch (e) {
+        console.error("fetchUnMatched error:", e);
+    }
 }
 
 async function fetchMatched() {
     if (!matchId || !token) return;
     try {
-        const res  = await fetch(`${ordersUrl}/orders/matched?marketId=${matchId}`, {
+        const res = await fetch(`${ordersUrl}/orders/matched?marketId=${matchId}`, {
             headers: { "Authorization": "Bearer " + token }
         });
         const json = await res.json();
-        const list = json.data?.orders || json.orders || [];
-        Matched    = list.map(o => ({
+        const list = json.data?.orders || json.orders || (Array.isArray(json) ? json : []);
+        Matched = list.map(o => ({
             orderId: String(o.request_id || o.orderId || o.requestId),
-            rn:      o.runnerName || o.event_name || o.runner_name || String(o.selection_id || ""),
-            mp:      parseFloat(o.price) || 0,
-            ms:      parseFloat(o.size) || 0,
-            bs:      (o.side || o.type || "").toUpperCase()
+            rn: o.runnerName || o.event_name || o.runner_name || String(o.selection_id || ""),
+            mp: parseFloat(o.price) || 0,
+            ms: parseFloat(o.size) || 0,
+            bs: (o.side || o.type || "").toUpperCase(),
+            matchId: o.matchId || o.marketId || o.market_id
         }));
         render();
-    } catch (e) { console.error("fetchMatched error:", e); }
+    } catch (e) {
+        console.error("fetchMatched error:", e);
+    }
 }
 
 async function fetchRunners() {
     if (!matchId || !token) return;
     try {
-        const res  = await fetch(`${ordersUrl}/markets/catalog2?id=${matchId}`, {
+        const res = await fetch(`${ordersUrl}/markets/catalog2?id=${matchId}`, {
             headers: { "Authorization": "Bearer " + token }
         });
         const json = await res.json();
         const market = json.data || json;
         if (market?.runners?.length) {
-            const mRunners = market.runners.map(r => r.runnerName || String(r.selectionId || "")).filter(Boolean);
-            allRunners = [...new Set([...allRunners, ...mRunners])];
+            const marketRunners = market.runners.map(r => r.runnerName || String(r.selectionId || "")).filter(Boolean);
+            allRunners = [...new Set([...allRunners, ...marketRunners])];
             updateRunnerPnL();
             render();
         }
-    } catch (e) { console.error("fetchRunners error:", e); }
+    } catch (e) {
+        console.error("fetchRunners error:", e);
+    }
 }
 
 // ---------------------------
@@ -4573,55 +4573,65 @@ async function cancelOrder(orderId) {
             method: "POST",
             headers: { "Authorization": "Bearer " + token }
         });
-        const json = await res.json();
-        // Cancel ke baad server jo wallet+liable bheje, instantly update karo
-        if (json.success && json.data) {
-            if (json.data.wallet !== undefined) applyWalletUI(json.data.wallet, json.data.liable);
+        const data = await res.json();
+        if (res.ok) {
+            // Update wallet immediately from response if available
+            if (data.data?.wallet !== undefined) {
+                const walletBalance = document.querySelector(".wallet-balance");
+                if (walletBalance) walletBalance.textContent = `B: ${Math.floor(data.data.wallet)}`;
+            }
+            if (data.data?.liable !== undefined) {
+                const walletExposure = document.querySelector(".wallet-exposure");
+                if (walletExposure) walletExposure.textContent = `| L: -${Math.floor(data.data.liable)}`;
+            }
+            await fetchUnMatched();
+            await fetchMatched();
+            await updateUserWallet();
+        } else {
+            console.error("Cancel order failed:", data);
         }
-        await fetchUnMatched();
-        await fetchMatched();
     } catch (e) { console.error("cancelOrder error:", e); }
 }
 
 async function cancelAll() {
     if (!token) return;
     try {
-        const res  = await fetch(`${ordersUrl}/orders/cancel-all`, {
+        const res = await fetch(`${ordersUrl}/orders/cancel-all`, {
             method: "POST",
             headers: { "Authorization": "Bearer " + token }
         });
-        const json = await res.json();
-        if (json.success && json.data) {
-            if (json.data.wallet !== undefined) applyWalletUI(json.data.wallet, json.data.liable);
+        const data = await res.json();
+        if (res.ok) {
+            if (data.data?.wallet !== undefined) {
+                const walletBalance = document.querySelector(".wallet-balance");
+                if (walletBalance) walletBalance.textContent = `B: ${Math.floor(data.data.wallet)}`;
+            }
+            if (data.data?.liable !== undefined) {
+                const walletExposure = document.querySelector(".wallet-exposure");
+                if (walletExposure) walletExposure.textContent = `| L: -${Math.floor(data.data.liable)}`;
+            }
+            await fetchUnMatched();
+            await fetchMatched();
+            await updateUserWallet();
+        } else {
+            console.error("Cancel all failed:", data);
         }
-        await fetchUnMatched();
-        await fetchMatched();
     } catch (e) { console.error("cancelAll error:", e); }
 }
 
 // ---------------------------
 // SOCKET EVENTS
 // ---------------------------
-
-// Server ke connection par
 socket.on("connect", async () => {
     const isConnectedEl = document.getElementById("isConnected");
     if (isConnectedEl) isConnectedEl.style.display = "inline";
 
-    socket.emit("JoinMatch", { matchId }, async (ack) => {
+    socket.emit("JoinMatch", { matchId: matchId }, async (ack) => {
         await fetchRunners();
         await fetchUnMatched();
         await fetchMatched();
         await updateUserWallet();
     });
-
-    // User-specific room join karo (balance updates ke liye)
-    if (token) {
-        try {
-            const decoded = JSON.parse(atob(token.split('.')[1]));
-            if (decoded.id) socket.emit("JoinUser", { userId: decoded.id });
-        } catch(e) { /* token decode fail — skip */ }
-    }
 });
 
 socket.on("disconnect", () => {
@@ -4629,78 +4639,69 @@ socket.on("disconnect", () => {
     if (isConnectedEl) isConnectedEl.style.display = "none";
 });
 
-// ordersUpdated: bet match hone par (PENDING → MATCHED)
 socket.on("ordersUpdated", (data) => {
-    const orders = data?.newOrders || (data?.order ? [data.order] : []);
-    if (!orders.length) return;
+    if (!data) return;
+    const newOrders = data.newOrders || (data.order ? [data.order] : []);
+    if (!newOrders.length) return;
 
-    orders.forEach(newO => {
+    newOrders.forEach(newO => {
         const orderId = String(newO.request_id || newO.orderId || newO.requestId);
-        // Remove from both lists (fir sahi list mein daalo)
+
+        // Remove from both lists
         UnMatched = UnMatched.filter(o => o.orderId !== orderId);
         Matched   = Matched.filter(o => o.orderId !== orderId);
 
-        if (newO.status === "PENDING") {
+        const status = newO.status || "";
+        const frontendStatus = (status === "MATCHED") ? "MATCHED" : "PENDING";
+
+        if (frontendStatus === "PENDING") {
             UnMatched.push({
                 orderId,
                 rn: newO.runnerName || newO.event_name || newO.runner_name || String(newO.selection_id || ""),
-                up: parseFloat(newO.price),
-                us: parseFloat(newO.size),
-                bs: (newO.side || "").toUpperCase()
+                up: parseFloat(newO.price) || 0,
+                us: parseFloat(newO.size) || 0,
+                bs: (newO.side || newO.type || "").toUpperCase(),
+                status: "PENDING"
             });
-        } else if (newO.status === "MATCHED") {
+        } else if (frontendStatus === "MATCHED") {
             Matched.push({
                 orderId,
                 rn: newO.runnerName || newO.event_name || newO.runner_name || String(newO.selection_id || ""),
-                mp: parseFloat(newO.price),
-                ms: parseFloat(newO.matched || newO.size),
-                bs: (newO.side || "").toUpperCase()
+                mp: parseFloat(newO.price) || 0,
+                ms: parseFloat(newO.size) || 0,
+                bs: (newO.side || newO.type || "").toUpperCase(),
+                matchId: newO.matchId || newO.marketId || newO.market_id
             });
         }
     });
 
     render();
+    // Wallet refresh after any order update (match/settle ke baad balance change)
+    updateUserWallet();
 });
 
-// userUpdated: wallet + liable real-time (bet place, cancel, settle par)
-socket.on("userUpdated", (data) => {
-    if (!data) return;
-    // Balance + Liable instantly update karo
-    if (data.wallet_balance !== undefined || data.liable !== undefined) {
-        applyWalletUI(data.wallet_balance ?? 0, data.liable ?? 0);
-    }
-    // Settlement hone par toast dikhao
-    if (data.event === "settlement") {
-        const msg = `Settlement: Net ${data.net >= 0 ? '+' : ''}${Math.floor(data.net)}`;
-        console.log("✅ " + msg);
-        // Optional: show notification
-        const notif = document.getElementById("settlement-notif");
-        if (notif) { notif.textContent = msg; notif.style.display = "block"; setTimeout(() => notif.style.display = "none", 5000); }
-    }
-});
-
-// orderMatched: single order match notification
-socket.on("orderMatched", (data) => {
-    if (!data?.order) return;
-    console.log("✅ Order matched:", data.order.request_id, "at price:", data.order.price);
-    // Refresh matched table
+// Settle hone par wallet refresh
+socket.on("marketSettled", () => {
+    updateUserWallet();
     fetchMatched();
-    fetchUnMatched();
 });
 
 // ---------------------------
-// AUTO REFRESH (fallback polling)
+// AUTO REFRESH
 // ---------------------------
 setInterval(() => {
-    if (matchId && socket.connected) {
+    if (matchId) {
         fetchUnMatched();
         fetchMatched();
     }
 }, 5000);
 
-// ---------------------------
-// PAGE LOAD
-// ---------------------------
+// Wallet separately har 10 sec refresh (bet ke baad bhi balance current rahe)
+setInterval(() => {
+    updateUserWallet();
+}, 10000);
+
+// Page Load
 document.addEventListener("DOMContentLoaded", async () => {
     await updateUserWallet();
     if (matchId) {
@@ -4710,7 +4711,31 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 });
 
-console.log("✅ Betting Engine Loaded - Balance+Liable realtime active");
+// ---------------------------
+// BET PLACEMENT HOOK
+// Jab bhi PlaceOrder (mv2.min.js) bet place kare,
+// wallet turant update ho jaaye
+// ---------------------------
+window.__onBetPlaced = async function(responseData) {
+    // Backend se wallet/liable directly milta hai bet response mein
+    if (responseData?.data) {
+        const d = responseData.data;
+        if (d.wallet !== undefined) {
+            const walletBalance = document.querySelector(".wallet-balance");
+            if (walletBalance) walletBalance.textContent = `B: ${Math.floor(d.wallet)}`;
+        }
+        if (d.liable !== undefined) {
+            const walletExposure = document.querySelector(".wallet-exposure");
+            if (walletExposure) walletExposure.textContent = `| L: -${Math.floor(d.liable)}`;
+        }
+    }
+    // Fresh data bhi fetch kar lo
+    await fetchUnMatched();
+    await fetchMatched();
+    await updateUserWallet();
+};
+
+console.log("✅ PNL + Bets Script Loaded Successfully");
 </script>           
             </center>
            
@@ -5588,73 +5613,6 @@ Vue.component('runner-aggregate', {
 
 })();
 </script>
-    <!-- ==================== FINAL SAFE FIX FOR getRunnerAmounts ==================== -->
-<script>
-// Pehle saare variables aur functions define karo
-let allRunners = window.allRunners || [];
-let runnerPnL = window.runnerPnL || {};
-let Matched = window.Matched || [];
-
-// PNL Functions (safe version)
-function calculateRunnerPnL(runnerName) {
-    const normalized = (runnerName || "").trim().toLowerCase();
-    let pnlIfThisWins = 0;
-
-    Matched.forEach(order => {
-        const rn    = (order.rn || order.runnerName || "").trim().toLowerCase();
-        const odds  = Number(order.mp || order.price || 0);
-        const stake = Number(order.ms || order.size || 0);
-        const side  = (order.bs || order.side || "").toUpperCase();
-
-        if (!rn || odds <= 1 || stake <= 0) return;
-
-        if (rn === normalized) {
-            if (side === "B") pnlIfThisWins += (odds - 1) * stake;
-            else pnlIfThisWins -= (odds - 1) * stake;
-        } else {
-            if (side === "B") pnlIfThisWins -= stake;
-            else pnlIfThisWins += stake;
-        }
-    });
-    return Math.round(pnlIfThisWins);
-}
-
-function updateRunnerPnL() {
-    const matchedRunners = [...new Set(Matched.map(o => (o.rn || o.runnerName || "").trim()))].filter(Boolean);
-    allRunners = [...new Set([...allRunners, ...matchedRunners])];
-    runnerPnL = {};
-    allRunners.forEach(runner => {
-        runnerPnL[runner] = calculateRunnerPnL(runner);
-    });
-}
-
-// Main Global Function for Vue
-window.getRunnerAmounts = function(runnerName) {
-    if (!runnerName) return { ifWin: 0, ifLose: 0, net: 0 };
-
-    const normalized = (runnerName || "").trim().toLowerCase();
-
-    if (!allRunners.some(r => r.trim().toLowerCase() === normalized)) {
-        allRunners.push(runnerName);
-    }
-
-    updateRunnerPnL();
-
-    const key = Object.keys(runnerPnL).find(k => k.trim().toLowerCase() === normalized);
-    const pnl = (key && runnerPnL[key]) ? runnerPnL[key] : 0;
-
-    return { ifWin: pnl, ifLose: 0, net: pnl };
-};
-
-// Force re-define after delay (Vue ke render ke liye)
-setTimeout(() => {
-    window.getRunnerAmounts = window.getRunnerAmounts || function(runnerName) {
-        return { ifWin: 0, ifLose: 0, net: 0 };
-    };
-    console.log("✅ getRunnerAmounts safely defined for Vue");
-}, 800);
-
-console.log("🔧 Final getRunnerAmounts fix applied");
-</script>
+<!-- getRunnerAmounts is defined in the main PNL script above -->
 </body>
 </html>

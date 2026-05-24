@@ -1348,9 +1348,6 @@ async function fetchBetfairMarkets(k) {
         desc: mt.desc || '',
       }));
       // Preserve selections — add any new market ids as selected by default
-      betfairMarkets[k].forEach(m => {
-        if (!selMarkets[k].includes(m.id)) selMarkets[k].push(m.id);
-      });
       if (marketStatusEl) { marketStatusEl.style.color = 'var(--accent-green)'; marketStatusEl.textContent = `✅ ${betfairMarkets[k].length} markets (Betfair Live)`; }
       toast(`✅ ${betfairMarkets[k].length} markets loaded from Betfair`);
     } else {
@@ -1362,7 +1359,8 @@ async function fetchBetfairMarkets(k) {
     if (marketStatusEl) { marketStatusEl.style.color = 'var(--accent-orange)'; marketStatusEl.textContent = `⚠️ Cached (API unavailable)`; }
   } finally {
     if (fetchBtn) fetchBtn.disabled = false;
-    renderMarkets(k);
+    // Backend se saved selections restore karo (Betfair fetch ne override na kare)
+    await loadMarketSettingsFromBackend();
   }
 }
 

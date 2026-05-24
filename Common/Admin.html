@@ -1247,16 +1247,8 @@ Object.keys(SPORTS).forEach(k => {
   betfairLeagues[k] = [];
   betfairMarkets[k] = [];
   enabledLeagues[k] = new Set();
-
-  // Restore saved MARKET selections from localStorage (set by saveMarkets)
-  try {
-    const savedMarkets = JSON.parse(localStorage.getItem('enabledMarkets_' + k) || 'null');
-    selMarkets[k] = (savedMarkets && Array.isArray(savedMarkets) && savedMarkets.length > 0)
-      ? savedMarkets
-      : SPORTS[k].markets.map(m => m.id); // default: all enabled
-  } catch(e) {
-    selMarkets[k] = SPORTS[k].markets.map(m => m.id);
-  }
+  // Default: all markets enabled (backend se overwrite hoga)
+  selMarkets[k] = SPORTS[k].markets.map(m => m.id);
 
   // Restore saved LEAGUE selections from localStorage
   try {
@@ -1264,6 +1256,26 @@ Object.keys(SPORTS).forEach(k => {
     saved.forEach(id => enabledLeagues[k].add(String(id)));
   } catch(e) {}
 });
+
+// Backend se saved market selections load karo
+async function loadMarketSettingsFromBackend() {
+  try {
+    const res = await api('/api/v1/settings/markets', 'GET');
+    if (res && typeof res.data === 'object') {
+      Object.keys(SPORTS).forEach(k => {
+        const saved = res.data[k];
+        if (saved && Array.isArray(saved) && saved.length > 0) {
+          selMarkets[k] = saved;
+        }
+      });
+      // Re-render current sport markets with loaded selections
+      renderMarkets(curSport);
+      console.log('[Admin] Market settings loaded from backend', res.data);
+    }
+  } catch(e) {
+    console.warn('[Admin] Could not load market settings from backend:', e.message);
+  }
+}
 
 function initSports() {
   document.getElementById('sport-tabs').innerHTML = Object.entries(SPORTS).map(([k, s]) =>
@@ -1273,6 +1285,8 @@ function initSports() {
   // Fetch both markets and leagues from Betfair
   fetchBetfairMarkets(curSport);
   fetchBetfairLeagues(curSport);
+  // Backend se saved market selections load karo
+  loadMarketSettingsFromBackend();
 }
 
 function selectSport(k) {
@@ -1673,22 +1687,24 @@ function saveLeagues() {
   toast(`✅ Leagues saved — ${total} leagues enabled across all sports`);
 }
 
-function saveMarkets() {
-  // Save ALL sports markets to localStorage so market.html can read them
-  Object.keys(SPORTS).forEach(k => {
-    const enabled = selMarkets[k] || [];
-    localStorage.setItem('enabledMarkets_' + k, JSON.stringify(enabled));
-  });
-
-  // Also persist to backend (fire-and-forget)
+async function saveMarkets() {
+  // Backend pe save karo (no localStorage)
   const payload = {};
   Object.keys(SPORTS).forEach(k => {
-    payload[k] = { enabledMarketIds: selMarkets[k] || [] };
+    payload[k] = selMarkets[k] || [];
   });
-  api('/api/v1/settings/markets', 'POST', payload).catch(() => {});
 
-  const count = (selMarkets[curSport] || []).length;
-  toast(`✅ ${SPORTS[curSport].name} — ${count} markets saved. Market.html pe apply ho jayenge.`);
+  try {
+    const res = await api('/api/v1/settings/markets', 'POST', payload);
+    if (res && res.success !== false) {
+      const count = (selMarkets[curSport] || []).length;
+      toast('✅ ' + SPORTS[curSport].name + ' — ' + count + ' markets saved');
+    } else {
+      toast('❌ Save failed: ' + (res && res.message ? res.message : 'Unknown error'));
+    }
+  } catch(e) {
+    toast('❌ Save failed: ' + e.message);
+  }
 }
 
 /* ===================================================

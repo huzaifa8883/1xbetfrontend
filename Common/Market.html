@@ -5394,6 +5394,7 @@ Vue.component('runner-aggregate', {
 
   // Admin market id → Vue property jo disable hogi
   const MKTID_TO_VUEPROP = {
+    'match_odds':     'MatchOddsMarkets',   // ← match_odds ko bhi map karo
     'toss':           'TossMarkets',
     'bookmaker':      'BookmakerMarkets',
     'fancy':          'FancyMarkets',
@@ -5415,14 +5416,19 @@ Vue.component('runner-aggregate', {
     'total_sets':     'OtherMarkets',
     'total_games':    'OtherMarkets',
     'game_handicap':  'OtherMarkets',
-    'each_way':       'OtherMarkets',
+      'each_way':       'OtherMarkets',
     'place':          'OtherMarkets',
     'forecast':       'OtherMarkets',
   };
 
+  // MatchOddsMarkets ek virtual/sentinel prop hai — market.html mein iska
+  // actual Vue array nahi, isliye clearVueProp usse skip karega.
+  // Yeh sirf tracking ke liye ALL_VUE_MARKET_PROPS se bahar rakhna zaroori hai.
   const ALL_VUE_MARKET_PROPS = [
     'TossMarkets', 'BookmakerMarkets', 'FancyMarkets', 'Fancy2Markets',
     'FigureMarkets', 'OddFigureMarkets', 'OtherMarkets'
+    // NOTE: 'MatchOddsMarkets' yahan nahi — woh betfair odds hain jo hamesha
+    // Catalog se aate hain, Vue prop se nahi. Sirf tracking/sentinel ke liye use.
   ];
 
   function getVm() {
@@ -5457,11 +5463,13 @@ Vue.component('runner-aggregate', {
   }
 
   // Filter lagao: disabled Vue props clear karo
+  // FIX: match_odds => 'MatchOddsMarkets' (sentinel, ALL_VUE_MARKET_PROPS mein nahi)
+  // Sirf match_odds selected hone par: koi real prop enabled nahi => sab clear ho jayenge
   function applyFilter(vm, enabledMarketIds) {
     if (!enabledMarketIds || !enabledMarketIds.length) return;
 
     // Kaunse Vue props enabled hain?
-    const enabledVueProps = new Set();
+    var enabledVueProps = new Set();
     enabledMarketIds.forEach(function(id) {
       if (MKTID_TO_VUEPROP[id]) enabledVueProps.add(MKTID_TO_VUEPROP[id]);
     });
@@ -5473,7 +5481,11 @@ Vue.component('runner-aggregate', {
       }
     });
 
-    console.log('[AdminFilter] Applied. Enabled Vue props:', [...enabledVueProps]);
+    // Log: sirf real clearable props dikhao (match_odds/MatchOddsMarkets exclude)
+    var realEnabled = Array.from(enabledVueProps).filter(function(p) {
+      return ALL_VUE_MARKET_PROPS.indexOf(p) !== -1;
+    });
+    console.log('[AdminFilter] Applied. Enabled Vue props:', realEnabled);
   }
 
   // Main: wait for Catalog, fetch settings, apply filter, keep watching

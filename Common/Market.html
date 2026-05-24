@@ -4330,14 +4330,20 @@ new Vue({
 
 <script>
 // ============================================================
-// BACKEND URLS
+// BACKEND URLS — server.js ke routes ke mutabiq
+// /api/orders  → orderRoutes
+// /api/users   → userRoutes
+// /api/markets → marketRoutes
 // ============================================================
+// const BASE_URL  = "https://bettingbackending.work.gd";
+// const ordersUrl = BASE_URL + "/api";   // prefix for all API calls
+
 const socket = io("https://1xbetbackend.work.gd");
 const matchId = new URLSearchParams(window.location.search).get("id");
 const ordersUrl = "https://1xbetbackend.work.gd/api/v1";
 
 // Token
-let token = (typeof token !== 'undefined' && token) ? token : localStorage.getItem("token");
+let token = typeof token !== 'undefined' && token ? token : localStorage.getItem("token");
 
 // Global Variables
 let UnMatched = [];
@@ -4358,12 +4364,12 @@ function format(n) {
 async function updateUserWallet() {
     if (!token) return;
     try {
-        const res = await fetch(`${ordersUrl}/users/latest`, {
+        const res = await fetch(`${ordersUrl}/users/me`, {
             headers: { "Authorization": "Bearer " + token }
         });
-        const data = await res.json();
-        if (data.success && data.user) {
-            const user = data.user;
+        const json = await res.json();
+        if (json.success && json.data?.user) {
+            const user = json.data.user;
             const userBtn = document.getElementById("navbar-user");
             if (userBtn) userBtn.innerHTML = `${user.username} (${user.role}) <i class="fas fa-caret-down"></i>`;
 
@@ -4371,7 +4377,7 @@ async function updateUserWallet() {
             if (walletBalance) walletBalance.textContent = `B: ${Math.floor(user.wallet_balance ?? 0)}`;
 
             const walletExposure = document.querySelector(".wallet-exposure");
-            if (walletExposure) walletExposure.textContent = `| L: -${Math.floor(user.liable ?? 0)}`;
+            if (walletExposure) walletExposure.textContent = ` | L: -${Math.floor(user.liable ?? 0)} |`;
         }
     } catch (err) {
         console.error("Wallet update error:", err);
@@ -4379,14 +4385,13 @@ async function updateUserWallet() {
 }
 
 // ---------------------------
-// PNL CALCULATION (oldmarket logic)
+// PNL CALCULATION
 // ---------------------------
 function calculateRunnerPnL(runnerName) {
     const normalized = (runnerName || "").trim().toLowerCase();
     let profit = 0;
     let liability = 0;
 
-    // Matched orders
     Matched.forEach(order => {
         const rn    = (order.rn || order.runnerName || "").trim().toLowerCase();
         const odds  = Number(order.mp || order.price || 0);
@@ -4488,8 +4493,6 @@ window.getRunnerAmounts = function(runnerName) {
     const key = Object.keys(runnerPnL).find(k => k.trim().toLowerCase() === normalized);
     const { profit = 0, liability = 0, net = 0 } = (key && runnerPnL[key]) ? runnerPnL[key] : {};
 
-    // ifWin = net PnL if this runner wins
-    // ifLose = net PnL from all other runners' liability perspective
     const otherLiability = Object.keys(runnerPnL)
         .filter(k => k.trim().toLowerCase() !== normalized)
         .reduce((sum, k) => sum + (runnerPnL[k]?.liability || 0), 0);
@@ -4507,14 +4510,13 @@ async function fetchUnMatched() {
             headers: { "Authorization": "Bearer " + token }
         });
         const json = await res.json();
-        const list = json.data?.orders || json.orders || (Array.isArray(json) ? json : []);
+        const list = json.data?.orders || json.orders || [];
         UnMatched = list.map(o => ({
             orderId: String(o.request_id || o.orderId || o.requestId),
             rn: o.runnerName || o.event_name || o.runner_name || String(o.selection_id || ""),
             up: parseFloat(o.price) || 0,
             us: parseFloat(o.size) || 0,
-            bs: (o.side || o.type || "").toUpperCase(),
-            status: o.status || "PENDING"
+            bs: (o.side || o.type || "").toUpperCase()
         }));
         render();
     } catch (e) {
@@ -4529,14 +4531,13 @@ async function fetchMatched() {
             headers: { "Authorization": "Bearer " + token }
         });
         const json = await res.json();
-        const list = json.data?.orders || json.orders || (Array.isArray(json) ? json : []);
+        const list = json.data?.orders || json.orders || [];
         Matched = list.map(o => ({
             orderId: String(o.request_id || o.orderId || o.requestId),
             rn: o.runnerName || o.event_name || o.runner_name || String(o.selection_id || ""),
             mp: parseFloat(o.price) || 0,
             ms: parseFloat(o.size) || 0,
-            bs: (o.side || o.type || "").toUpperCase(),
-            matchId: o.matchId || o.marketId || o.market_id
+            bs: (o.side || o.type || "").toUpperCase()
         }));
         render();
     } catch (e) {
@@ -4573,24 +4574,12 @@ async function cancelOrder(orderId) {
             method: "POST",
             headers: { "Authorization": "Bearer " + token }
         });
-        const data = await res.json();
         if (res.ok) {
-            // Update wallet immediately from response if available
-            if (data.data?.wallet !== undefined) {
-                const walletBalance = document.querySelector(".wallet-balance");
-                if (walletBalance) walletBalance.textContent = `B: ${Math.floor(data.data.wallet)}`;
-            }
-            if (data.data?.liable !== undefined) {
-                const walletExposure = document.querySelector(".wallet-exposure");
-                if (walletExposure) walletExposure.textContent = `| L: -${Math.floor(data.data.liable)}`;
-            }
             await fetchUnMatched();
             await fetchMatched();
             await updateUserWallet();
-        } else {
-            console.error("Cancel order failed:", data);
         }
-    } catch (e) { console.error("cancelOrder error:", e); }
+    } catch (e) { console.error(e); }
 }
 
 async function cancelAll() {
@@ -4600,23 +4589,12 @@ async function cancelAll() {
             method: "POST",
             headers: { "Authorization": "Bearer " + token }
         });
-        const data = await res.json();
         if (res.ok) {
-            if (data.data?.wallet !== undefined) {
-                const walletBalance = document.querySelector(".wallet-balance");
-                if (walletBalance) walletBalance.textContent = `B: ${Math.floor(data.data.wallet)}`;
-            }
-            if (data.data?.liable !== undefined) {
-                const walletExposure = document.querySelector(".wallet-exposure");
-                if (walletExposure) walletExposure.textContent = `| L: -${Math.floor(data.data.liable)}`;
-            }
             await fetchUnMatched();
             await fetchMatched();
             await updateUserWallet();
-        } else {
-            console.error("Cancel all failed:", data);
         }
-    } catch (e) { console.error("cancelAll error:", e); }
+    } catch (e) { console.error(e); }
 }
 
 // ---------------------------
@@ -4646,13 +4624,10 @@ socket.on("ordersUpdated", (data) => {
 
     newOrders.forEach(newO => {
         const orderId = String(newO.request_id || newO.orderId || newO.requestId);
-
-        // Remove from both lists
         UnMatched = UnMatched.filter(o => o.orderId !== orderId);
         Matched   = Matched.filter(o => o.orderId !== orderId);
 
-        const status = newO.status || "";
-        const frontendStatus = (status === "MATCHED") ? "MATCHED" : "PENDING";
+        const frontendStatus = (newO.status === "MATCHED") ? "MATCHED" : "PENDING";
 
         if (frontendStatus === "PENDING") {
             UnMatched.push({
@@ -4663,7 +4638,7 @@ socket.on("ordersUpdated", (data) => {
                 bs: (newO.side || newO.type || "").toUpperCase(),
                 status: "PENDING"
             });
-        } else if (frontendStatus === "MATCHED") {
+        } else {
             Matched.push({
                 orderId,
                 rn: newO.runnerName || newO.event_name || newO.runner_name || String(newO.selection_id || ""),
@@ -4674,32 +4649,17 @@ socket.on("ordersUpdated", (data) => {
             });
         }
     });
-
     render();
-    // Wallet refresh after any order update (match/settle ke baad balance change)
     updateUserWallet();
 });
 
-// Settle hone par wallet refresh
-socket.on("marketSettled", () => {
-    updateUserWallet();
-    fetchMatched();
-});
-
-// ---------------------------
-// AUTO REFRESH
-// ---------------------------
+// Auto Refresh
 setInterval(() => {
     if (matchId) {
         fetchUnMatched();
         fetchMatched();
     }
 }, 5000);
-
-// Wallet separately har 10 sec refresh (bet ke baad bhi balance current rahe)
-setInterval(() => {
-    updateUserWallet();
-}, 10000);
 
 // Page Load
 document.addEventListener("DOMContentLoaded", async () => {
@@ -4710,30 +4670,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         await fetchMatched();
     }
 });
-
-// ---------------------------
-// BET PLACEMENT HOOK
-// Jab bhi PlaceOrder (mv2.min.js) bet place kare,
-// wallet turant update ho jaaye
-// ---------------------------
-window.__onBetPlaced = async function(responseData) {
-    // Backend se wallet/liable directly milta hai bet response mein
-    if (responseData?.data) {
-        const d = responseData.data;
-        if (d.wallet !== undefined) {
-            const walletBalance = document.querySelector(".wallet-balance");
-            if (walletBalance) walletBalance.textContent = `B: ${Math.floor(d.wallet)}`;
-        }
-        if (d.liable !== undefined) {
-            const walletExposure = document.querySelector(".wallet-exposure");
-            if (walletExposure) walletExposure.textContent = `| L: -${Math.floor(d.liable)}`;
-        }
-    }
-    // Fresh data bhi fetch kar lo
-    await fetchUnMatched();
-    await fetchMatched();
-    await updateUserWallet();
-};
 
 console.log("✅ PNL + Bets Script Loaded Successfully");
 </script>           
@@ -5613,6 +5549,5 @@ Vue.component('runner-aggregate', {
 
 })();
 </script>
-<!-- getRunnerAmounts is defined in the main PNL script above -->
 </body>
 </html>

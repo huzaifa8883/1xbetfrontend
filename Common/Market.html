@@ -1628,20 +1628,20 @@
             </span>-->
             </div>
 <!-- <div class="runner-position">
-  <span v-if="getRunnerAmounts(runner.runnerName, runner.selectionId).ifWin >= 0">
+  <span v-if="getRunnerAmounts(runner.runnerName).ifWin >= 0">
     <span class="runner-position-pos">
-      <strong>{{ getRunnerAmounts(runner.runnerName, runner.selectionId).ifWin | format }}</strong>
+      <strong>{{ getRunnerAmounts(runner.runnerName).ifWin | format }}</strong>
     </span>
-    <span class="position-minus" v-if="getRunnerAmounts(runner.runnerName, runner.selectionId).ifLose != null && getRunnerAmounts(runner.runnerName, runner.selectionId).ifLose != 0">
-      <strong>{{ getRunnerAmounts(runner.runnerName, runner.selectionId).ifLose | format }}</strong>
+    <span class="position-minus" v-if="getRunnerAmounts(runner.runnerName).ifLose != null && getRunnerAmounts(runner.runnerName).ifLose != 0">
+      <strong>{{ getRunnerAmounts(runner.runnerName).ifLose | format }}</strong>
     </span>
   </span>
   <span v-else>
     <span class="position-minus">
-      <strong>{{ getRunnerAmounts(runner.runnerName, runner.selectionId).ifWin | format }}</strong>
+      <strong>{{ getRunnerAmounts(runner.runnerName).ifWin | format }}</strong>
     </span>
-    <span class="runner-position-pos" v-if="getRunnerAmounts(runner.runnerName, runner.selectionId).ifLose != null && getRunnerAmounts(runner.runnerName, runner.selectionId).ifLose != 0">
-      <strong>{{ getRunnerAmounts(runner.runnerName, runner.selectionId).ifLose | format }}</strong>
+    <span class="runner-position-pos" v-if="getRunnerAmounts(runner.runnerName).ifLose != null && getRunnerAmounts(runner.runnerName).ifLose != 0">
+      <strong>{{ getRunnerAmounts(runner.runnerName).ifLose | format }}</strong>
     </span>
   </span>
   <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -1656,8 +1656,8 @@
 </div> -->
 <div class="runner-position">
   <span>
-    <span :class="getRunnerAmounts(runner.runnerName, runner.selectionId).ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
-      <strong>{{ getRunnerAmounts(runner.runnerName, runner.selectionId).ifWin | format }}</strong>
+    <span :class="getRunnerAmounts(runner.runnerName).ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
+      <strong>{{ getRunnerAmounts(runner.runnerName).ifWin | format }}</strong>
     </span>
   </span>
   <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -4435,11 +4435,11 @@ const ordersUrl = "https://1xbetbackend.work.gd/api/v1";
 // Token — TDZ bug fix
 let token = localStorage.getItem("token") || localStorage.getItem("wex3authtoken") || getCookie('wexscktoken') || '';
 
-// Global Variables — window pe bhi expose karo taake alag script blocks access kar sakein
-let UnMatched = window.UnMatched = [];
-let Matched   = window.Matched   = [];
-let allRunners = window.allRunners = [];
-let runnerPnL  = window.runnerPnL  = {};
+// Global Variables
+let UnMatched = [];
+let Matched = [];
+let allRunners = [];
+let runnerPnL = {};
 
 // ---------------------------
 // Utilities
@@ -4538,10 +4538,6 @@ function updateRunnerPnL() {
     allRunners.forEach(runner => {
         runnerPnL[runner] = calculateRunnerPnL(runner);
     });
-
-    // Global expose
-    window.allRunners = allRunners;
-    window.runnerPnL  = runnerPnL;
 }
 
 // ---------------------------
@@ -4774,67 +4770,6 @@ window.getRunnerAmounts = function(runnerName) {
 };
 
 // ---------------------------
-// RUNNER NAME RESOLVER
-// selectionId → runnerName lookup: Vue Catalog se ya selectionId-keyed cache se
-// Yeh isliye zaroori hai kyunki backend Order model mein runner_name column nahi hai
-// ---------------------------
-const _selIdToName = {};  // cache: selectionId (string) → runnerName
-
-function resolveRunnerName(selectionId, fallbackName) {
-    const selStr = String(selectionId || "");
-    // Agar cache mein hai to wapas do
-    if (_selIdToName[selStr]) return _selIdToName[selStr];
-    // Vue Catalog se dhundho
-    try {
-        const vmEl = document.getElementById('MarketView') || document.getElementById('app');
-        const vm   = vmEl && vmEl.__vue__;
-        if (vm) {
-            const lists = [
-                vm.Catalog,
-                ...(vm.BookmakerMarkets || []),
-                ...(vm.TossMarkets || []),
-                ...(vm.subMarkets || []),
-            ];
-            for (const catalog of lists) {
-                if (!catalog || !Array.isArray(catalog.runners)) continue;
-                for (const r of catalog.runners) {
-                    if (String(r.selectionId || "") === selStr) {
-                        const name = r.runnerName || r.name || "";
-                        if (name) { _selIdToName[selStr] = name; return name; }
-                    }
-                }
-            }
-        }
-    } catch(e) {}
-    // Fallback: passed name ya selectionId
-    return fallbackName || selStr;
-}
-
-// Vue runners load hone ke baad cache populate karo
-function populateSelIdCache() {
-    try {
-        const vmEl = document.getElementById('MarketView') || document.getElementById('app');
-        const vm   = vmEl && vmEl.__vue__;
-        if (!vm) return;
-        const lists = [
-            vm.Catalog,
-            ...(vm.BookmakerMarkets || []),
-            ...(vm.TossMarkets || []),
-            ...(vm.subMarkets || []),
-        ];
-        for (const catalog of lists) {
-            if (!catalog || !Array.isArray(catalog.runners)) continue;
-            catalog.runners.forEach(r => {
-                const sel  = String(r.selectionId || "");
-                const name = r.runnerName || r.name || "";
-                if (sel && name) _selIdToName[sel] = name;
-            });
-        }
-        console.log("[PnL] selIdCache populated:", _selIdToName);
-    } catch(e) {}
-}
-
-// ---------------------------
 // FETCH FUNCTIONS
 // ---------------------------
 async function fetchUnMatched() {
@@ -4853,13 +4788,11 @@ async function fetchUnMatched() {
         if (!Array.isArray(list)) list = [];
         UnMatched = list.map(o => ({
             orderId: String(o.request_id || o.orderId || o.requestId || o.id || ""),
-            rn:      resolveRunnerName(o.selection_id, o.runnerName || o.runner_name),
-            selId:   String(o.selection_id || ""),
+            rn:      o.runnerName || o.runner_name || o.event_name || String(o.selection_id || ""),
             up:      parseFloat(o.price) || 0,
             us:      parseFloat(o.size) || 0,
             bs:      (o.side || o.type || "").toUpperCase()
         }));
-        window.UnMatched = UnMatched;
         console.log("[Bets] UnMatched loaded:", UnMatched.length, UnMatched);
         render();
     } catch (e) {
@@ -4883,7 +4816,7 @@ async function fetchMatched() {
         if (!Array.isArray(list)) list = [];
         Matched = list.map(o => ({
             orderId:  String(o.request_id || o.orderId || o.requestId || o.id || ""),
-            rn:       resolveRunnerName(o.selection_id, o.runnerName || o.runner_name),
+            rn:       o.runnerName || o.runner_name || o.event_name || String(o.selection_id || ""),
             selId:    String(o.selection_id || ""),
             mp:       parseFloat(o.price) || 0,
             ms:       parseFloat(o.matched > 0 ? o.matched : o.size) || 0,
@@ -4891,7 +4824,6 @@ async function fetchMatched() {
             profit:   parseFloat(o.profit || 0),
             liable:   parseFloat(o.liable || 0),
         }));
-        window.Matched = Matched;
         console.log("[Bets] Matched loaded:", Matched.length, Matched);
         render();
     } catch (e) {
@@ -4912,7 +4844,6 @@ async function fetchRunners() {
         if (market?.runners?.length) {
             const marketRunners = market.runners.map(r => r.runnerName || String(r.selectionId || "")).filter(Boolean);
             allRunners = [...new Set([...allRunners, ...marketRunners])];
-            populateSelIdCache();
             updateRunnerPnL();
             render();
         }
@@ -4988,7 +4919,7 @@ socket.on("ordersUpdated", (data) => {
 
         const status = (newO.status || "").toUpperCase();
         // ── FIXED: runnerName properly extract karo ──
-        const rn = resolveRunnerName(newO.selection_id, newO.runnerName || newO.runner_name);
+        const rn = newO.runnerName || newO.runner_name || newO.event_name || String(newO.selection_id || "");
 
         if (status === "PENDING") {
             UnMatched.push({
@@ -5017,8 +4948,6 @@ socket.on("ordersUpdated", (data) => {
     });
 
     console.log("[Socket] ordersUpdated → UnMatched:", UnMatched.length, "Matched:", Matched.length);
-    window.UnMatched = UnMatched;
-    window.Matched   = Matched;
     render();
 });
 
@@ -5126,8 +5055,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         await fetchMatched();
     }
     // Vue load hone ke baad PnL bhi update karo
-    setTimeout(() => { populateSelIdCache(); updateVueRunnerPnL(); }, 1500);
-    setTimeout(() => { populateSelIdCache(); updateVueRunnerPnL(); }, 3000);
+    setTimeout(updateVueRunnerPnL, 1500);
+    setTimeout(updateVueRunnerPnL, 3000);
 });
 
 // Script load pe bhi wallet update karo (DOMContentLoaded ka wait nahi)
@@ -6018,51 +5947,23 @@ Vue.component('runner-aggregate', {
 // Sab asli variables main script mein hain (window scope) — unhe dobara declare mat karo
 
 // Main Global Function for Vue — window.Matched, window.allRunners, window.runnerPnL use karo
-window.getRunnerAmounts = function(runnerName, selectionId) {
-    if (!runnerName && !selectionId) return { ifWin: 0, ifLose: 0, net: 0 };
+window.getRunnerAmounts = function(runnerName) {
+    if (!runnerName) return { ifWin: 0, ifLose: 0, net: 0 };
 
-    // IMPORTANT: window.* use karo, kabhi bare Matched/UnMatched nahi —
-    // yeh function Vue render ke waqt bhi call hota hai jab local vars defined nahi hote
-    var matchedArr   = window.Matched   || [];
-    var unmatchedArr = window.UnMatched || [];
+    var normalized = (runnerName || "").trim().toLowerCase();
+    var runners = window.allRunners || [];
+    var pnlMap  = window.runnerPnL  || {};
 
-    // selectionId se direct PnL calculate karo
-    if (selectionId) {
-        var selStr = String(selectionId);
-        var allOrders = matchedArr.concat(
-            unmatchedArr.map(function(o) {
-                return { selId: o.selId, mp: o.up, ms: o.us, bs: o.bs };
-            })
-        );
-        var hasAnySelId = allOrders.some(function(o) { return o.selId; });
-        if (hasAnySelId) {
-            var pnl = 0;
-            allOrders.forEach(function(order) {
-                var odds  = Number(order.mp || 0);
-                var stake = Number(order.ms || 0);
-                var side  = (order.bs || "").toUpperCase();
-                if (!odds || !stake) return;
-                if (order.selId === selStr) {
-                    if (side === "B") pnl += (odds - 1) * stake;
-                    else              pnl -= (odds - 1) * stake;
-                } else {
-                    if (side === "B") pnl -= stake;
-                    else              pnl += stake;
-                }
-            });
-            pnl = Math.round(pnl);
-            return { ifWin: pnl, ifLose: 0, net: pnl };
-        }
+    if (!runners.some(function(r){ return r.trim().toLowerCase() === normalized; })) {
+        runners.push(runnerName);
+        if (window.allRunners) window.allRunners = runners;
+        if (typeof updateRunnerPnL === 'function') updateRunnerPnL();
     }
 
-    // Fallback: window.runnerPnL map mein runnerName se dhundho
-    var normalized = (runnerName || "").trim().toLowerCase();
-    var pnlMap     = window.runnerPnL || {};
-    var key = Object.keys(pnlMap).find(function(k) {
-        return k.trim().toLowerCase() === normalized;
-    });
-    var val = (key !== undefined && pnlMap[key]) ? pnlMap[key] : 0;
-    return { ifWin: val, ifLose: 0, net: val };
+    var key = Object.keys(pnlMap).find(function(k){ return k.trim().toLowerCase() === normalized; });
+    var pnl = (key !== undefined && pnlMap[key]) ? pnlMap[key] : 0;
+
+    return { ifWin: pnl, ifLose: 0, net: pnl };
 };
 
 console.log("🔧 getRunnerAmounts safely defined (uses window globals)");

@@ -4439,6 +4439,11 @@ window.Matched     = Matched;
 window.allRunners  = allRunners;
 window.runnerPnL   = runnerPnL;
 
+// selectionId -> runnerName map
+// Vue catalog se populate hoga — order ka selId se sahi runner name milega
+var selIdToRunnerName = {};
+window.selIdToRunnerName = selIdToRunnerName;
+
 // ---------------------------
 // Utilities
 // ---------------------------
@@ -4741,13 +4746,29 @@ function updateVueRunnerPnL() {
             catalog.runners.forEach(function(runner, idx) {
                 const rName = (runner.runnerName || "").trim();
                 if (!rName) return;
+
+                // selectionId -> runnerName map update karo
+                const sid = String(runner.selectionId || "");
+                if (sid) {
+                    selIdToRunnerName[sid] = rName;
+                    window.selIdToRunnerName[sid] = rName;
+                }
+
+                // allRunners mein add karo agar nahi hai
+                if (!allRunners.some(function(r){ return r.trim().toLowerCase() === rName.toLowerCase(); })) {
+                    allRunners.push(rName);
+                    window.allRunners = allRunners;
+                }
+
                 const normalized = rName.toLowerCase();
                 const key = Object.keys(runnerPnL).find(k => k.trim().toLowerCase() === normalized);
                 const pnl = key !== undefined ? (runnerPnL[key] || 0) : 0;
-                if (runner.ifWin !== pnl) {
+                const loseVal = calculateRunnerIfLose(rName);
+
+                if (runner.ifWin !== pnl || runner.ifLose !== loseVal) {
                     Vue.set(catalog.runners, idx, Object.assign({}, runner, {
                         ifWin:  pnl,
-                        ifLose: 0
+                        ifLose: loseVal
                     }));
                 }
             });
@@ -4801,6 +4822,27 @@ window.getRunnerAmounts = function(runnerName) {
 // ---------------------------
 // FETCH FUNCTIONS
 // ---------------------------
+
+// Runner name resolve karo:
+// Backend kabhi kabhi match name ya event name bhejta hai.
+// selectionId se sahi Vue runner name dhundo.
+function resolveRunnerName(o) {
+    const selId = String(o.selection_id || o.selId || "");
+    // Pehle selId se map check karo
+    if (selId && selIdToRunnerName[selId]) {
+        return selIdToRunnerName[selId];
+    }
+    // Phir direct runnerName check karo
+    const directName = (o.runnerName || o.runner_name || "").trim();
+    // Agar directName allRunners mein hai to use karo
+    if (directName && allRunners.some(r => r.trim().toLowerCase() === directName.toLowerCase())) {
+        return directName;
+    }
+    // Agar directName nahi mila — event_name skip karo (woh match name hota hai)
+    // selId fallback
+    if (selId) return selId;
+    return directName || String(o.selection_id || "");
+}
 async function fetchUnMatched() {
     if (!matchId) return;
     const tk = localStorage.getItem('token') || localStorage.getItem('wex3authtoken') || token;
@@ -4814,7 +4856,8 @@ async function fetchUnMatched() {
         const list = json.data?.orders || json.orders || [];
         UnMatched = list.map(o => ({
             orderId: String(o.request_id || o.orderId || o.requestId),
-            rn: o.runnerName || o.runner_name || o.event_name || String(o.selection_id || ""),
+            rn:  resolveRunnerName(o),
+            selId: String(o.selection_id || ""),
             up: parseFloat(o.price) || 0,
             us: parseFloat(o.size) || 0,
             bs: (o.side || o.type || "").toUpperCase()
@@ -4838,12 +4881,11 @@ async function fetchMatched() {
         const list = json.data?.orders || json.orders || [];
         Matched = list.map(o => ({
             orderId:  String(o.request_id || o.orderId || o.requestId),
-            rn:       o.runnerName || o.runner_name || o.event_name || String(o.selection_id || ""),
+            rn:       resolveRunnerName(o),
             selId:    String(o.selection_id || ""),
             mp:       parseFloat(o.price) || 0,
             ms:       parseFloat(o.matched > 0 ? o.matched : o.size) || 0,
             bs:       (o.side || o.type || "").toUpperCase(),
-            // Pre-computed from backend if available
             profit:   parseFloat(o.profit || 0),
             liable:   parseFloat(o.liable || 0),
         }));
@@ -4864,8 +4906,21 @@ async function fetchRunners() {
         const json = await res.json();
         const market = json.data || json;
         if (market?.runners?.length) {
-            const marketRunners = market.runners.map(r => r.runnerName || String(r.selectionId || "")).filter(Boolean);
+            // selId -> runnerName map banao
+            market.runners.forEach(function(r) {
+                const sid  = String(r.selectionId || r.selection_id || "");
+                const name = (r.runnerName || r.runner_name || "").trim();
+                if (sid && name) {
+                    selIdToRunnerName[sid] = name;
+                    window.selIdToRunnerName[sid] = name;
+                }
+            });
+
+            const marketRunners = market.runners
+                .map(r => (r.runnerName || r.runner_name || "").trim())
+                .filter(Boolean);
             allRunners = [...new Set([...allRunners, ...marketRunners])];
+            window.allRunners = allRunners;
             updateRunnerPnL();
             render();
         }
@@ -4939,7 +4994,7 @@ socket.on("ordersUpdated", (data) => {
         if (newO.status === "PENDING") {
             UnMatched.push({
                 orderId,
-                rn:    newO.runnerName || newO.event_name || newO.runner_name || "",
+                rn:    resolveRunnerName(newO),
                 selId: String(newO.selection_id || ""),
                 up:    newO.price,
                 us:    newO.size,
@@ -4951,7 +5006,7 @@ socket.on("ordersUpdated", (data) => {
             const side   = (newO.side || "").toUpperCase();
             Matched.push({
                 orderId,
-                rn:     newO.runnerName || newO.event_name || newO.runner_name || "",
+                rn:     resolveRunnerName(newO),
                 selId:  String(newO.selection_id || ""),
                 mp:     price,
                 ms:     size,

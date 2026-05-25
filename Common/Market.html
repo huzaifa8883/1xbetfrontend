@@ -4596,38 +4596,51 @@ function updateVueRunnerPnL() {
         if (!vmEl || !vmEl.__vue__) return;
         const vm = vmEl.__vue__;
 
-        // Sab market arrays loop karo
+        // Sab market arrays loop karo — Catalog.runners bhi include karo
         const lists = [
             'subMarkets', 'BookmakerMarkets', 'TossMarkets',
             'FancyMarkets', 'Fancy2Markets', 'FigureMarkets',
             'OddFigureMarkets', 'OtherMarkets', 'OtherRaceMarkets'
         ];
 
+        function updateRunnersInCatalog(catalog) {
+            if (!catalog || !Array.isArray(catalog.runners)) return;
+            catalog.runners.forEach(function(runner, idx) {
+                const rName = (runner.runnerName || "").trim();
+                if (!rName) return;
+                const normalized = rName.toLowerCase();
+                const key = Object.keys(runnerPnL).find(k => k.trim().toLowerCase() === normalized);
+                const pnl = key !== undefined ? (runnerPnL[key] || 0) : 0;
+                if (runner.ifWin !== pnl) {
+                    Vue.set(catalog.runners, idx, Object.assign({}, runner, {
+                        ifWin:  pnl,
+                        ifLose: 0
+                    }));
+                }
+            });
+        }
+
+        // Catalog.runners (main market)
+        if (vm.Catalog && Array.isArray(vm.Catalog.runners)) {
+            updateRunnersInCatalog(vm.Catalog);
+        }
+
         lists.forEach(function(listName) {
             const markets = vm[listName];
             if (!Array.isArray(markets)) return;
             markets.forEach(function(catalog) {
-                if (!catalog || !Array.isArray(catalog.runners)) return;
-                catalog.runners.forEach(function(runner, idx) {
-                    const rName = (runner.runnerName || "").trim();
-                    if (!rName) return;
-                    const normalized = rName.toLowerCase();
-                    const key = Object.keys(runnerPnL).find(k => k.trim().toLowerCase() === normalized);
-                    const pnl = key !== undefined ? (runnerPnL[key] || 0) : 0;
-                    // Sirf tab update karo jab value change hui ho
-                    if (runner.ifWin !== pnl || runner.ifLose !== 0) {
-                        Vue.set(catalog.runners, idx, Object.assign({}, runner, {
-                            ifWin: pnl,
-                            ifLose: 0
-                        }));
-                    }
-                });
+                updateRunnersInCatalog(catalog);
             });
         });
     } catch(e) {
         console.warn("[PnL] Vue update error:", e.message);
     }
 }
+
+// runnerPnLUpdated event pe bhi update karo
+window.addEventListener('runnerPnLUpdated', function() {
+    updateVueRunnerPnL();
+});
 
 // ---------------------------
 // GLOBAL HELPER FOR VUE (getRunnerAmounts)
@@ -5755,71 +5768,30 @@ Vue.component('runner-aggregate', {
 </script>
     <!-- ==================== FINAL SAFE FIX FOR getRunnerAmounts ==================== -->
 <script>
-// Pehle saare variables aur functions define karo
-let allRunners = window.allRunners || [];
-let runnerPnL = window.runnerPnL || {};
-let Matched = window.Matched || [];
+// Yeh script sirf getRunnerAmounts ko safely define karta hai
+// Sab asli variables main script mein hain (window scope) — unhe dobara declare mat karo
 
-// PNL Functions (safe version)
-function calculateRunnerPnL(runnerName) {
-    const normalized = (runnerName || "").trim().toLowerCase();
-    let pnlIfThisWins = 0;
-
-    Matched.forEach(order => {
-        const rn    = (order.rn || order.runnerName || "").trim().toLowerCase();
-        const odds  = Number(order.mp || order.price || 0);
-        const stake = Number(order.ms || order.size || 0);
-        const side  = (order.bs || order.side || "").toUpperCase();
-
-        if (!rn || odds <= 1 || stake <= 0) return;
-
-        if (rn === normalized) {
-            if (side === "B") pnlIfThisWins += (odds - 1) * stake;
-            else pnlIfThisWins -= (odds - 1) * stake;
-        } else {
-            if (side === "B") pnlIfThisWins -= stake;
-            else pnlIfThisWins += stake;
-        }
-    });
-    return Math.round(pnlIfThisWins);
-}
-
-function updateRunnerPnL() {
-    const matchedRunners = [...new Set(Matched.map(o => (o.rn || o.runnerName || "").trim()))].filter(Boolean);
-    allRunners = [...new Set([...allRunners, ...matchedRunners])];
-    runnerPnL = {};
-    allRunners.forEach(runner => {
-        runnerPnL[runner] = calculateRunnerPnL(runner);
-    });
-}
-
-// Main Global Function for Vue
+// Main Global Function for Vue — window.Matched, window.allRunners, window.runnerPnL use karo
 window.getRunnerAmounts = function(runnerName) {
     if (!runnerName) return { ifWin: 0, ifLose: 0, net: 0 };
 
-    const normalized = (runnerName || "").trim().toLowerCase();
+    var normalized = (runnerName || "").trim().toLowerCase();
+    var runners = window.allRunners || [];
+    var pnlMap  = window.runnerPnL  || {};
 
-    if (!allRunners.some(r => r.trim().toLowerCase() === normalized)) {
-        allRunners.push(runnerName);
+    if (!runners.some(function(r){ return r.trim().toLowerCase() === normalized; })) {
+        runners.push(runnerName);
+        if (window.allRunners) window.allRunners = runners;
+        if (typeof updateRunnerPnL === 'function') updateRunnerPnL();
     }
 
-    updateRunnerPnL();
-
-    const key = Object.keys(runnerPnL).find(k => k.trim().toLowerCase() === normalized);
-    const pnl = (key && runnerPnL[key]) ? runnerPnL[key] : 0;
+    var key = Object.keys(pnlMap).find(function(k){ return k.trim().toLowerCase() === normalized; });
+    var pnl = (key !== undefined && pnlMap[key]) ? pnlMap[key] : 0;
 
     return { ifWin: pnl, ifLose: 0, net: pnl };
 };
 
-// Force re-define after delay (Vue ke render ke liye)
-setTimeout(() => {
-    window.getRunnerAmounts = window.getRunnerAmounts || function(runnerName) {
-        return { ifWin: 0, ifLose: 0, net: 0 };
-    };
-    console.log("✅ getRunnerAmounts safely defined for Vue");
-}, 800);
-
-console.log("🔧 Final getRunnerAmounts fix applied");
+console.log("🔧 getRunnerAmounts safely defined (uses window globals)");
 </script>
 </body>
 </html>

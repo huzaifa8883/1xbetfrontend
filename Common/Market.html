@@ -4735,14 +4735,18 @@ async function fetchUnMatched() {
         });
         if (!res.ok) return;
         const json = await res.json();
-        const list = json.data?.orders || json.orders || [];
+        // ── FIXED: saare possible response formats handle karo ──
+        let list = json.data?.orders || json.data?.bets || json.orders || json.bets || [];
+        if (!Array.isArray(list) && Array.isArray(json.data)) list = json.data;
+        if (!Array.isArray(list)) list = [];
         UnMatched = list.map(o => ({
-            orderId: String(o.request_id || o.orderId || o.requestId),
-            rn: o.runnerName || o.runner_name || o.event_name || String(o.selection_id || ""),
-            up: parseFloat(o.price) || 0,
-            us: parseFloat(o.size) || 0,
-            bs: (o.side || o.type || "").toUpperCase()
+            orderId: String(o.request_id || o.orderId || o.requestId || o.id || ""),
+            rn:      o.runnerName || o.runner_name || o.event_name || String(o.selection_id || ""),
+            up:      parseFloat(o.price) || 0,
+            us:      parseFloat(o.size) || 0,
+            bs:      (o.side || o.type || "").toUpperCase()
         }));
+        console.log("[Bets] UnMatched loaded:", UnMatched.length, UnMatched);
         render();
     } catch (e) {
         console.error("fetchUnMatched error:", e);
@@ -4759,18 +4763,21 @@ async function fetchMatched() {
         });
         if (!res.ok) return;
         const json = await res.json();
-        const list = json.data?.orders || json.orders || [];
+        // ── FIXED: saare possible response formats handle karo ──
+        let list = json.data?.orders || json.data?.bets || json.orders || json.bets || [];
+        if (!Array.isArray(list) && Array.isArray(json.data)) list = json.data;
+        if (!Array.isArray(list)) list = [];
         Matched = list.map(o => ({
-            orderId:  String(o.request_id || o.orderId || o.requestId),
+            orderId:  String(o.request_id || o.orderId || o.requestId || o.id || ""),
             rn:       o.runnerName || o.runner_name || o.event_name || String(o.selection_id || ""),
             selId:    String(o.selection_id || ""),
             mp:       parseFloat(o.price) || 0,
             ms:       parseFloat(o.matched > 0 ? o.matched : o.size) || 0,
             bs:       (o.side || o.type || "").toUpperCase(),
-            // Pre-computed from backend if available
             profit:   parseFloat(o.profit || 0),
             liable:   parseFloat(o.liable || 0),
         }));
+        console.log("[Bets] Matched loaded:", Matched.length, Matched);
         render();
     } catch (e) {
         console.error("fetchMatched error:", e);
@@ -4853,29 +4860,36 @@ socket.on("disconnect", () => {
 });
 
 socket.on("ordersUpdated", (data) => {
-    if (!data?.newOrders?.length) return;
+    // ── FIXED: backend newOrders[] array format support ──
+    // Backend ab { userId, newOrders: [...] } format mein bhejta hai
+    const ordersArr = data?.newOrders || (data?.order ? [data.order] : []);
+    if (!ordersArr.length) return;
 
-    data.newOrders.forEach(newO => {
-        const orderId = String(newO.request_id || newO.orderId || newO.requestId);
+    ordersArr.forEach(newO => {
+        const orderId = String(newO.request_id || newO.orderId || newO.requestId || newO.id || "");
         UnMatched = UnMatched.filter(o => o.orderId !== orderId);
         Matched   = Matched.filter(o => o.orderId !== orderId);
 
-        if (newO.status === "PENDING") {
+        const status = (newO.status || "").toUpperCase();
+        // ── FIXED: runnerName properly extract karo ──
+        const rn = newO.runnerName || newO.runner_name || newO.event_name || String(newO.selection_id || "");
+
+        if (status === "PENDING") {
             UnMatched.push({
                 orderId,
-                rn:    newO.runnerName || newO.event_name || newO.runner_name || "",
+                rn,
                 selId: String(newO.selection_id || ""),
-                up:    newO.price,
-                us:    newO.size,
+                up:    parseFloat(newO.price || 0),
+                us:    parseFloat(newO.size || 0),
                 bs:    (newO.side || "").toUpperCase()
             });
-        } else if (newO.status === "MATCHED") {
-            const price  = parseFloat(newO.price || 0);
-            const size   = parseFloat(newO.matched > 0 ? newO.matched : newO.size || 0);
-            const side   = (newO.side || "").toUpperCase();
+        } else if (status === "MATCHED") {
+            const price = parseFloat(newO.price || 0);
+            const size  = parseFloat(newO.matched > 0 ? newO.matched : newO.size || 0);
+            const side  = (newO.side || "").toUpperCase();
             Matched.push({
                 orderId,
-                rn:     newO.runnerName || newO.event_name || newO.runner_name || "",
+                rn,
                 selId:  String(newO.selection_id || ""),
                 mp:     price,
                 ms:     size,
@@ -4885,6 +4899,8 @@ socket.on("ordersUpdated", (data) => {
             });
         }
     });
+
+    console.log("[Socket] ordersUpdated → UnMatched:", UnMatched.length, "Matched:", Matched.length);
     render();
 });
 

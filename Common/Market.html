@@ -3921,72 +3921,7 @@
     </div>
   </div>
 </div> -->
-<div id="bets-panel">
-  <!-- Settlement / Void notification banner -->
-  <div id="settlement-banner" style="display:none; padding:0 6px;"></div>
-  <div class="bets">
-    <strong>
-      Open Bets (<span id="unmatched-count">0</span>)
-      <span id="isConnected" style="display:none">🟢</span>
-      <button id="cancelAllBtn"
-        class="btn-del"
-        style="float:right; display:none;"
-        onclick="cancelAll()">
-        Cancel All
-      </button>
-    </strong>
-    <div class="betting-table">
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Runner</th>
-            <th>Price</th>
-            <th>Size</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="unmatched-body"></tbody>
-      </table>
-    </div>
-  </div>
-
-  <div class="bets">
-    <strong>Matched Bets (<span id="matched-count">0</span>)</strong>
-    <div class="betting-table">
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Runner</th>
-            <th>Price</th>
-            <th>Size</th>
-            <th style="color:#4dbd74;">Profit</th>
-            <th style="color:#e05555;">Liability</th>
-            <th>Net</th>
-          </tr>
-        </thead>
-        <tbody id="matched-body"></tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- Runner P&L Summary Table -->
-  <div class="bets" id="runner-pnl-panel" style="display:none;">
-    <strong>Position Summary (If Winner)</strong>
-    <div class="betting-table">
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Runner</th>
-            <th style="color:#4dbd74;">If Win</th>
-            <th style="color:#e05555;">If Lose</th>
-            <th>Net</th>
-          </tr>
-        </thead>
-        <tbody id="runner-pnl-body"></tbody>
-      </table>
-    </div>
-  </div>
-</div>
+<!-- bets-panel moved out of Vue DOM -->
 
 <div style="margin-top:7px;">
     <strong style="display: block; background: #2b2f35; color: #fff; padding:10px;" class="RM_In_Markets">Related Events</strong>
@@ -4071,6 +4006,74 @@
     </div>
 </div>
     </div>
+
+<div id="bets-panel">
+  <!-- Settlement / Void notification banner -->
+  <div id="settlement-banner" style="display:none; padding:0 6px;"></div>
+  <div class="bets">
+    <strong>
+      Open Bets (<span id="unmatched-count">0</span>)
+      <span id="isConnected" style="display:none">🟢</span>
+      <button id="cancelAllBtn"
+        class="btn-del"
+        style="float:right; display:none;"
+        onclick="cancelAll()">
+        Cancel All
+      </button>
+    </strong>
+    <div class="betting-table">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Runner</th>
+            <th>Price</th>
+            <th>Size</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="unmatched-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="bets">
+    <strong>Matched Bets (<span id="matched-count">0</span>)</strong>
+    <div class="betting-table">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Runner</th>
+            <th>Price</th>
+            <th>Size</th>
+            <th style="color:#4dbd74;">Profit</th>
+            <th style="color:#e05555;">Liability</th>
+            <th>Net</th>
+          </tr>
+        </thead>
+        <tbody id="matched-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Runner P&L Summary Table -->
+  <div class="bets" id="runner-pnl-panel" style="display:none;">
+    <strong>Position Summary (If Winner)</strong>
+    <div class="betting-table">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Runner</th>
+            <th style="color:#4dbd74;">If Win</th>
+            <th style="color:#e05555;">If Lose</th>
+            <th>Net</th>
+          </tr>
+        </thead>
+        <tbody id="runner-pnl-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 </div>
 
 
@@ -4528,6 +4531,10 @@ function updateRunnerPnL() {
 // ---------------------------
 function render() {
     updateRunnerPnL();
+
+    // DEBUG — yeh console mein dikhega
+    console.log('[render] Matched:', Matched.length, 'UnMatched:', UnMatched.length,
+        'matched-body el:', !!document.getElementById("matched-body"));
 
     // Unmatched bets table
     const ub = document.getElementById("unmatched-body");

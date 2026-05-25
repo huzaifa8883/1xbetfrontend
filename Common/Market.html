@@ -4762,7 +4762,12 @@ function updateVueRunnerPnL() {
 
                 const normalized = rName.toLowerCase();
                 const key = Object.keys(runnerPnL).find(k => k.trim().toLowerCase() === normalized);
-                const pnl = key !== undefined ? (runnerPnL[key] || 0) : 0;
+
+                // Agar runnerPnL mein key nahi mili (data abhi load nahi hua)
+                // to existing Vue value preserve karo — 0 se override mat karo
+                if (key === undefined) return;
+
+                const pnl     = runnerPnL[key] || 0;
                 const loseVal = calculateRunnerIfLose(rName);
 
                 if (runner.ifWin !== pnl || runner.ifLose !== loseVal) {
@@ -4820,6 +4825,19 @@ window.getRunnerAmounts = function(runnerName) {
 };
 
 // ---------------------------
+// DEBOUNCED RENDER — concurrent fetchUnMatched + fetchMatched dono ek sath
+// render() call karte the → race condition → flicker. Ab sirf ek baar render hoga.
+// ---------------------------
+var _renderTimer = null;
+function debouncedRender() {
+    if (_renderTimer) clearTimeout(_renderTimer);
+    _renderTimer = setTimeout(function() {
+        _renderTimer = null;
+        render();
+    }, 80);  // 80ms — dono fetches resolve hone ke baad ek sath fire hoga
+}
+
+// ---------------------------
 // FETCH FUNCTIONS
 // ---------------------------
 
@@ -4862,7 +4880,8 @@ async function fetchUnMatched() {
             us: parseFloat(o.size) || 0,
             bs: (o.side || o.type || "").toUpperCase()
         }));
-        render();
+        window.UnMatched = UnMatched;
+        debouncedRender();
     } catch (e) {
         console.error("fetchUnMatched error:", e);
     }
@@ -4889,7 +4908,8 @@ async function fetchMatched() {
             profit:   parseFloat(o.profit || 0),
             liable:   parseFloat(o.liable || 0),
         }));
-        render();
+        window.Matched = Matched;
+        debouncedRender();
     } catch (e) {
         console.error("fetchMatched error:", e);
     }
@@ -5119,20 +5139,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     await updateUserWallet();
     if (matchId) {
         await fetchRunners();
-        await fetchUnMatched();
-        await fetchMatched();
+        await Promise.all([fetchUnMatched(), fetchMatched()]);
+        // render debouncedRender ke zariye automatically call hoga
     }
-    // Vue load hone ke baad PnL bhi update karo
-    setTimeout(updateVueRunnerPnL, 1500);
-    setTimeout(updateVueRunnerPnL, 3000);
+    // Vue load hone ke baad PnL bhi update karo (agar Vue late mount hua ho)
+    setTimeout(updateVueRunnerPnL, 2000);
 });
 
 // Script load pe bhi wallet update karo (DOMContentLoaded ka wait nahi)
 setTimeout(updateUserWallet, 500);
 setTimeout(updateUserWallet, 2000);
 
-// Vue PnL periodic update — bet ke baad runners ke neeche P&L show karne ke liye
-setInterval(updateVueRunnerPnL, 3000);
+// Vue PnL periodic update — render() ke andar se call hota hai,
+// standalone interval hata diya kyunki woh stale/zero values se flicker karta tha
 
 // jQuery AJAX complete hook — PlaceOrder ke baad turant bets + PnL refresh karo
 $(document).on('ajaxComplete', function(event, xhr, settings) {

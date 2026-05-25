@@ -3641,90 +3641,6 @@
                                 <iframe id="livesc" src="" class="responsive-iframe" scrolling='no' frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
                             </div>
 
-<!-- ══ BETS PANEL — Vue se protected via Shadow DOM ══ -->
-<div id="bets-host"></div>
-<script>
-(function() {
-    // Shadow DOM banao taake Vue andar touch na kar sake
-    var host = document.getElementById('bets-host');
-    var shadow = host.attachShadow({ mode: 'open' });
-
-    shadow.innerHTML = `
-        <style>
-            :host { display: block; }
-            .bets { background:#2b2f35; color:#fff; padding:6px 10px; margin-bottom:4px; font-size:12px; }
-            .bets strong { display:block; padding:6px 0 4px; font-size:13px; color:#fff; }
-            table { width:100%; border-collapse:collapse; }
-            th { color:#aaa; font-size:11px; padding:3px 4px; text-align:left; border-bottom:1px solid #444; }
-            td { padding:3px 4px; font-size:12px; color:#fff; border-bottom:1px solid #333; }
-            tr.back td { background:rgba(0,128,255,0.08); }
-            tr.lay td  { background:rgba(220,53,69,0.08); }
-            .btn-del { background:#e05555; color:#fff; border:none; border-radius:3px; padding:1px 6px; cursor:pointer; font-size:11px; }
-            #cancelAllBtn { float:right; background:red; color:#fff; border:none; border-radius:3px; padding:2px 8px; cursor:pointer; font-size:11px; display:none; }
-            #settlement-banner { display:none; padding:4px 6px; margin-bottom:4px; }
-            #runner-pnl-panel { display:none; }
-            .pos { color:#4dbd74; font-weight:700; }
-            .neg { color:#e05555; font-weight:700; }
-        </style>
-
-        <div id="settlement-banner"></div>
-
-        <div class="bets">
-            <strong>
-                Open Bets (<span id="unmatched-count">0</span>)
-                <span id="isConnected" style="display:none">🟢</span>
-                <button id="cancelAllBtn" onclick="cancelAll()">Cancel All</button>
-            </strong>
-            <table>
-                <thead><tr><th>Runner</th><th>Price</th><th>Size</th><th></th></tr></thead>
-                <tbody id="unmatched-body"></tbody>
-            </table>
-        </div>
-
-        <div class="bets">
-            <strong>Matched Bets (<span id="matched-count">0</span>)</strong>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Runner</th><th>Price</th><th>Size</th>
-                        <th style="color:#4dbd74;">Profit</th>
-                        <th style="color:#e05555;">Liability</th>
-                        <th>Net</th>
-                    </tr>
-                </thead>
-                <tbody id="matched-body"></tbody>
-            </table>
-        </div>
-
-        <div class="bets" id="runner-pnl-panel">
-            <strong>Position Summary (If Winner)</strong>
-            <table>
-                <thead><tr><th>Runner</th><th style="color:#4dbd74;">If Win</th><th style="color:#e05555;">If Lose</th><th>Net</th></tr></thead>
-                <tbody id="runner-pnl-body"></tbody>
-            </table>
-        </div>
-    `;
-
-    // Shadow DOM ke andar elements ko window pe expose karo
-    // taake baaki scripts getElementById se access kar sakein
-    var _shadowRoot = shadow;
-
-    // Override getElementById globally to check shadow first
-    var _origGetById = document.getElementById.bind(document);
-    document.getElementById = function(id) {
-        var shadowIds = ['unmatched-body','matched-body','runner-pnl-body','runner-pnl-panel',
-                         'unmatched-count','matched-count','isConnected','cancelAllBtn','settlement-banner'];
-        if (shadowIds.indexOf(id) !== -1) {
-            return _shadowRoot.getElementById(id);
-        }
-        return _origGetById(id);
-    };
-
-    console.log('✅ Bets panel Shadow DOM ready');
-})();
-</script>
-<!-- ══ END BETS PANEL ══ -->
-
 
 
 <div class="bets" id="betSlip" v-show="Order.render">
@@ -4005,6 +3921,73 @@
     </div>
   </div>
 </div> -->
+<div id="bets-panel">
+  <!-- Settlement / Void notification banner -->
+  <div id="settlement-banner" style="display:none; padding:0 6px;"></div>
+  <div class="bets">
+    <strong>
+      Open Bets (<span id="unmatched-count">0</span>)
+      <span id="isConnected" style="display:none">🟢</span>
+      <button id="cancelAllBtn"
+        class="btn-del"
+        style="float:right; display:none;"
+        onclick="cancelAll()">
+        Cancel All
+      </button>
+    </strong>
+    <div class="betting-table">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Runner</th>
+            <th>Price</th>
+            <th>Size</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="unmatched-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="bets">
+    <strong>Matched Bets (<span id="matched-count">0</span>)</strong>
+    <div class="betting-table">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Runner</th>
+            <th>Price</th>
+            <th>Size</th>
+            <th style="color:#4dbd74;">Profit</th>
+            <th style="color:#e05555;">Liability</th>
+            <th>Net</th>
+          </tr>
+        </thead>
+        <tbody id="matched-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Runner P&L Summary Table -->
+  <div class="bets" id="runner-pnl-panel" style="display:none;">
+    <strong>Position Summary (If Winner)</strong>
+    <div class="betting-table">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Runner</th>
+            <th style="color:#4dbd74;">If Win</th>
+            <th style="color:#e05555;">If Lose</th>
+            <th>Net</th>
+          </tr>
+        </thead>
+        <tbody id="runner-pnl-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 <div style="margin-top:7px;">
     <strong style="display: block; background: #2b2f35; color: #fff; padding:10px;" class="RM_In_Markets">Related Events</strong>
     <div >
@@ -4671,7 +4654,6 @@ function updateRunnerPnLTable() {
 // ---------------------------
 // VUE RUNNER PNL — Vue ke runner objects ko directly update karo
 // taake runner naam ke neeche profit/liable show ho
-// ── FIXED: selectionId se match karo (runnerName mein match name aa raha tha) ──
 // ---------------------------
 function updateVueRunnerPnL() {
     try {
@@ -4679,36 +4661,7 @@ function updateVueRunnerPnL() {
         if (!vmEl || !vmEl.__vue__) return;
         const vm = vmEl.__vue__;
 
-        // selectionId → pnl map banao (Matched array se)
-        const selPnL = {};
-        const allOrders = [...Matched, ...UnMatched.map(o => ({
-            rn: o.rn, selId: o.selId || "",
-            mp: o.up, ms: o.us, bs: o.bs,
-        }))];
-
-        // Pehle sab runners collect karo with their selectionIds
-        const selIds = [...new Set(allOrders.map(o => o.selId).filter(Boolean))];
-
-        selIds.forEach(function(selId) {
-            let pnl = 0;
-            allOrders.forEach(function(order) {
-                const odds  = Number(order.mp || 0);
-                const stake = Number(order.ms || order.us || 0);
-                const side  = (order.bs || "").toUpperCase();
-                if (!odds || !stake) return;
-
-                if (order.selId === selId) {
-                    if (side === "B") pnl += (odds - 1) * stake;
-                    else              pnl -= (odds - 1) * stake;
-                } else {
-                    if (side === "B") pnl -= stake;
-                    else              pnl += stake;
-                }
-            });
-            selPnL[selId] = Math.round(pnl);
-        });
-
-        // Sab market arrays loop karo
+        // Sab market arrays loop karo — Catalog.runners bhi include karo
         const lists = [
             'subMarkets', 'BookmakerMarkets', 'TossMarkets',
             'FancyMarkets', 'Fancy2Markets', 'FigureMarkets',
@@ -4718,9 +4671,11 @@ function updateVueRunnerPnL() {
         function updateRunnersInCatalog(catalog) {
             if (!catalog || !Array.isArray(catalog.runners)) return;
             catalog.runners.forEach(function(runner, idx) {
-                const selId = String(runner.selectionId || "");
-                if (!selId) return;
-                const pnl = selPnL[selId] !== undefined ? selPnL[selId] : 0;
+                const rName = (runner.runnerName || "").trim();
+                if (!rName) return;
+                const normalized = rName.toLowerCase();
+                const key = Object.keys(runnerPnL).find(k => k.trim().toLowerCase() === normalized);
+                const pnl = key !== undefined ? (runnerPnL[key] || 0) : 0;
                 if (runner.ifWin !== pnl) {
                     Vue.set(catalog.runners, idx, Object.assign({}, runner, {
                         ifWin:  pnl,
@@ -4742,8 +4697,6 @@ function updateVueRunnerPnL() {
                 updateRunnersInCatalog(catalog);
             });
         });
-
-        console.log("[PnL] Vue runners updated with selId map:", selPnL);
     } catch(e) {
         console.warn("[PnL] Vue update error:", e.message);
     }
@@ -4782,18 +4735,14 @@ async function fetchUnMatched() {
         });
         if (!res.ok) return;
         const json = await res.json();
-        // ── FIXED: saare possible response formats handle karo ──
-        let list = json.data?.orders || json.data?.bets || json.orders || json.bets || [];
-        if (!Array.isArray(list) && Array.isArray(json.data)) list = json.data;
-        if (!Array.isArray(list)) list = [];
+        const list = json.data?.orders || json.orders || [];
         UnMatched = list.map(o => ({
-            orderId: String(o.request_id || o.orderId || o.requestId || o.id || ""),
-            rn:      o.runnerName || o.runner_name || o.event_name || String(o.selection_id || ""),
-            up:      parseFloat(o.price) || 0,
-            us:      parseFloat(o.size) || 0,
-            bs:      (o.side || o.type || "").toUpperCase()
+            orderId: String(o.request_id || o.orderId || o.requestId),
+            rn: o.runnerName || o.runner_name || o.event_name || String(o.selection_id || ""),
+            up: parseFloat(o.price) || 0,
+            us: parseFloat(o.size) || 0,
+            bs: (o.side || o.type || "").toUpperCase()
         }));
-        console.log("[Bets] UnMatched loaded:", UnMatched.length, UnMatched);
         render();
     } catch (e) {
         console.error("fetchUnMatched error:", e);
@@ -4810,21 +4759,18 @@ async function fetchMatched() {
         });
         if (!res.ok) return;
         const json = await res.json();
-        // ── FIXED: saare possible response formats handle karo ──
-        let list = json.data?.orders || json.data?.bets || json.orders || json.bets || [];
-        if (!Array.isArray(list) && Array.isArray(json.data)) list = json.data;
-        if (!Array.isArray(list)) list = [];
+        const list = json.data?.orders || json.orders || [];
         Matched = list.map(o => ({
-            orderId:  String(o.request_id || o.orderId || o.requestId || o.id || ""),
+            orderId:  String(o.request_id || o.orderId || o.requestId),
             rn:       o.runnerName || o.runner_name || o.event_name || String(o.selection_id || ""),
             selId:    String(o.selection_id || ""),
             mp:       parseFloat(o.price) || 0,
             ms:       parseFloat(o.matched > 0 ? o.matched : o.size) || 0,
             bs:       (o.side || o.type || "").toUpperCase(),
+            // Pre-computed from backend if available
             profit:   parseFloat(o.profit || 0),
             liable:   parseFloat(o.liable || 0),
         }));
-        console.log("[Bets] Matched loaded:", Matched.length, Matched);
         render();
     } catch (e) {
         console.error("fetchMatched error:", e);
@@ -4907,36 +4853,29 @@ socket.on("disconnect", () => {
 });
 
 socket.on("ordersUpdated", (data) => {
-    // ── FIXED: backend newOrders[] array format support ──
-    // Backend ab { userId, newOrders: [...] } format mein bhejta hai
-    const ordersArr = data?.newOrders || (data?.order ? [data.order] : []);
-    if (!ordersArr.length) return;
+    if (!data?.newOrders?.length) return;
 
-    ordersArr.forEach(newO => {
-        const orderId = String(newO.request_id || newO.orderId || newO.requestId || newO.id || "");
+    data.newOrders.forEach(newO => {
+        const orderId = String(newO.request_id || newO.orderId || newO.requestId);
         UnMatched = UnMatched.filter(o => o.orderId !== orderId);
         Matched   = Matched.filter(o => o.orderId !== orderId);
 
-        const status = (newO.status || "").toUpperCase();
-        // ── FIXED: runnerName properly extract karo ──
-        const rn = newO.runnerName || newO.runner_name || newO.event_name || String(newO.selection_id || "");
-
-        if (status === "PENDING") {
+        if (newO.status === "PENDING") {
             UnMatched.push({
                 orderId,
-                rn,
+                rn:    newO.runnerName || newO.event_name || newO.runner_name || "",
                 selId: String(newO.selection_id || ""),
-                up:    parseFloat(newO.price || 0),
-                us:    parseFloat(newO.size || 0),
+                up:    newO.price,
+                us:    newO.size,
                 bs:    (newO.side || "").toUpperCase()
             });
-        } else if (status === "MATCHED") {
-            const price = parseFloat(newO.price || 0);
-            const size  = parseFloat(newO.matched > 0 ? newO.matched : newO.size || 0);
-            const side  = (newO.side || "").toUpperCase();
+        } else if (newO.status === "MATCHED") {
+            const price  = parseFloat(newO.price || 0);
+            const size   = parseFloat(newO.matched > 0 ? newO.matched : newO.size || 0);
+            const side   = (newO.side || "").toUpperCase();
             Matched.push({
                 orderId,
-                rn,
+                rn:     newO.runnerName || newO.event_name || newO.runner_name || "",
                 selId:  String(newO.selection_id || ""),
                 mp:     price,
                 ms:     size,
@@ -4946,8 +4885,6 @@ socket.on("ordersUpdated", (data) => {
             });
         }
     });
-
-    console.log("[Socket] ordersUpdated → UnMatched:", UnMatched.length, "Matched:", Matched.length);
     render();
 });
 

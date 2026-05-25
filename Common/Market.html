@@ -4370,8 +4370,8 @@ const socket = io("https://1xbetbackend.work.gd");
 const matchId = new URLSearchParams(window.location.search).get("id");
 const ordersUrl = "https://1xbetbackend.work.gd/api/v1";
 
-// Token — localStorage se lo (TDZ bug fix: pehle declare, phir assign)
-let token = localStorage.getItem("token") || localStorage.getItem("wex3authtoken") || getCookie('wexscktoken') || '';
+// Token
+let token = typeof token !== 'undefined' && token ? token : localStorage.getItem("token");
 
 // Global Variables
 let UnMatched = [];
@@ -4387,48 +4387,39 @@ function format(n) {
 }
 
 // ---------------------------
-// WALLET UPDATE
+// WALLET UPDATE — dashboard.html jaise bilkul same
 // ---------------------------
 async function updateUserWallet() {
-    const tk = localStorage.getItem('token') || localStorage.getItem('wex3authtoken') || (typeof token !== 'undefined' ? token : '');
-    if (!tk) {
-        console.warn("updateUserWallet: no token found");
-        return;
-    }
+    const tk = localStorage.getItem('token') || localStorage.getItem('wex3authtoken') || getCookie('wexscktoken') || '';
+    if (!tk) { console.warn("updateUserWallet: no token"); return; }
     try {
         const res = await fetch(`${ordersUrl}/users/me`, {
             headers: { "Authorization": "Bearer " + tk }
         });
-        if (!res.ok) {
-            console.warn("updateUserWallet: HTTP", res.status);
-            return;
-        }
+        if (!res.ok) { console.warn("Wallet fetch failed:", res.status); return; }
         const json = await res.json();
 
-        // Saare possible response formats handle karo:
+        // Saare possible response formats handle karo
         // Format 1: { success, data: { user: {...} } }
-        // Format 2: { success, data: { wallet_balance, liable, ... } }
-        // Format 3: { wallet_balance, liable, username, ... }
+        // Format 2: { success, data: { wallet_balance, liable } }
+        // Format 3: { wallet_balance, liable, username }
         const user = json?.data?.user || json?.data || json || {};
+        if (!user || (user.wallet_balance === undefined && !user.username)) return;
 
         const bal    = Math.floor(parseFloat(user.wallet_balance ?? user.balance ?? 0));
         const liable = Math.floor(parseFloat(user.liable ?? user.exposure ?? 0));
 
-        // Navbar username
         const userBtn = document.getElementById("navbar-user");
-        if (userBtn && user.username) {
+        if (userBtn && user.username)
             userBtn.innerHTML = `${user.username}${user.role ? ' (' + user.role + ')' : ''} <i class="fas fa-caret-down"></i>`;
-        }
 
-        // Balance display
         const walletBalance = document.querySelector(".wallet-balance");
         if (walletBalance) walletBalance.textContent = `B: ${bal.toLocaleString()}`;
 
-        // Liable display — liable 0 ho to bhi "0" show karo, "-" nahi
         const walletExposure = document.querySelector(".wallet-exposure");
         if (walletExposure) walletExposure.textContent = ` | L: ${liable.toLocaleString()} |`;
 
-        console.log(`✅ Wallet updated: B:${bal} L:${liable}`, 'raw:', JSON.stringify(user).substring(0, 100));
+        console.log(`✅ Wallet updated: B:${bal} L:${liable}`);
     } catch (err) {
         console.error("Wallet update error:", err);
     }
@@ -5316,7 +5307,7 @@ Vue.component('runner-aggregate', {
         });
 
         // token aur sess: localStorage se lo (same as baaki Market.html scripts)
-        // token already defined above — reuse kar rahe hain
+        var token = localStorage.getItem("token") || getCookie('wexscktoken') || '';
         var sess  = getCookie('wex3authtoken') || localStorage.getItem("token") || '';
         var reft  = getCookie('wex3reftoken') || '';
 

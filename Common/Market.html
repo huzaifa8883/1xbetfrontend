@@ -35,6 +35,12 @@
         const pricesUrl = "https://1xbetbackend.work.gd/api/v1";   // prefix for all API calls
         const ordersUrl = "https://1xbetbackend.work.gd/api/v1";   // prefix for all API calls
         const LiquidityRate = 35;
+
+        // getRunnerAmounts stub — Vue template render ke liye zaroori
+        // Main PnL script baad mein isko override karega with real data
+        window.getRunnerAmounts = function(runnerName) {
+            return { ifWin: 0, ifLose: 0, net: 0 };
+        };
         // mv2.min.js svc_prefix use karta hai catalog2 / orders calls ke liye
         const SsocketUrl = "https://1xbetbackend.work.gd/signalr";
         const uwsUrl = "https://orders-ws2.bfexch.com/usershub";
@@ -4411,18 +4417,24 @@ new Vue({
 // const BASE_URL  = "https://bettingbackending.work.gd";
 // const ordersUrl = BASE_URL + "/api";   // prefix for all API calls
 
-const socket = io("https://1xbetbackend.work.gd");
-const matchId = new URLSearchParams(window.location.search).get("id");
-const ordersUrl = "https://1xbetbackend.work.gd/api/v1";
+// ordersUrl pehle se head mein declare hai (const) — dobara assign karo sirf
+// socket aur matchId naye hain
+var _pnlSocket;
+try { _pnlSocket = io("https://1xbetbackend.work.gd"); } catch(e) {}
+var socket = _pnlSocket;
+var matchId = new URLSearchParams(window.location.search).get("id");
+// ordersUrl already declared in <head> as const — reuse karo, reassign mat karo
+// ordersUrl = "https://1xbetbackend.work.gd/api/v1"; // already set
 
-// Token — TDZ bug fix
-let token = localStorage.getItem("token") || localStorage.getItem("wex3authtoken") || getCookie('wexscktoken') || '';
+// Token — TDZ bug fix (var use karo redeclaration se bachne ke liye)
+var pnlToken = localStorage.getItem("token") || localStorage.getItem("wex3authtoken") || getCookie('wexscktoken') || '';
+if (typeof token === 'undefined') { var token = pnlToken; }
 
-// Global Variables
-let UnMatched = [];
-let Matched = [];
-let allRunners = [];
-let runnerPnL = {};
+// Global Variables (var — redeclaration safe)
+var UnMatched = [];
+var Matched = [];
+var allRunners = [];
+var runnerPnL = {};
 
 // Window par expose karo taake Vue templates access kar sakein
 window.UnMatched   = UnMatched;

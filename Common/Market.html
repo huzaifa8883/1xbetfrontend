@@ -4743,7 +4743,7 @@ function updateVueRunnerPnL() {
 
         function updateRunnersInCatalog(catalog) {
             if (!catalog || !Array.isArray(catalog.runners)) return;
-            catalog.runners.forEach(function(runner, idx) {
+            catalog.runners.forEach(function(runner) {
                 const rName = (runner.runnerName || "").trim();
                 if (!rName) return;
 
@@ -4770,11 +4770,16 @@ function updateVueRunnerPnL() {
                 const pnl     = runnerPnL[key] || 0;
                 const loseVal = calculateRunnerIfLose(rName);
 
-                if (runner.ifWin !== pnl || runner.ifLose !== loseVal) {
-                    Vue.set(catalog.runners, idx, Object.assign({}, runner, {
-                        ifWin:  pnl,
-                        ifLose: loseVal
-                    }));
+                // IMPORTANT FIX: Object replace karne ki jagah in-place set karo.
+                // Vue.set(array, idx, newObj) pura runner replace karta tha — mv2.min.js
+                // phir old reference pe update karta tha ya array reset karta tha aur
+                // hamare ifWin values gayab ho jaate the. In-place set karne se
+                // mv2.min.js ki baaki properties (prices etc.) safe rehti hain.
+                if (runner.ifWin !== pnl) {
+                    Vue.set(runner, 'ifWin', pnl);
+                }
+                if (runner.ifLose !== loseVal) {
+                    Vue.set(runner, 'ifLose', loseVal);
                 }
             });
         }
@@ -4800,6 +4805,48 @@ function updateVueRunnerPnL() {
 window.addEventListener('runnerPnLUpdated', function() {
     updateVueRunnerPnL();
 });
+
+// ---------------------------
+// VUE $WATCH SETUP
+// mv2.min.js har price update pe Catalog.runners aur sub-market arrays reset
+// karta hai — hamare ifWin values gayab ho jaate hain. $watch lagao taake
+// TURANT re-apply ho jaye bina 5-second fetch ka wait kiye.
+// ---------------------------
+function setupVuePnLWatchers() {
+    var vmEl = document.getElementById('app') || document.getElementById('MarketView');
+    var vm   = vmEl && vmEl.__vue__;
+    if (!vm) {
+        setTimeout(setupVuePnLWatchers, 600);
+        return;
+    }
+
+    var watchLists = [
+        'BookmakerMarkets', 'TossMarkets', 'FancyMarkets',
+        'Fancy2Markets', 'FigureMarkets', 'OddFigureMarkets',
+        'OtherMarkets', 'OtherRaceMarkets', 'subMarkets'
+    ];
+
+    // Main market runners watch
+    try {
+        vm.$watch('Catalog.runners', function() {
+            if (Matched.length > 0) setTimeout(updateVueRunnerPnL, 0);
+        }, { deep: false });
+        console.log('[PnL] $watch Catalog.runners lagaya');
+    } catch(e) { console.warn('[PnL] Catalog watch fail:', e.message); }
+
+    // Sub-market arrays watch
+    watchLists.forEach(function(listName) {
+        try {
+            vm.$watch(listName, function() {
+                if (Matched.length > 0) setTimeout(updateVueRunnerPnL, 0);
+            }, { deep: false });
+        } catch(e) {}
+    });
+
+    console.log('[PnL] Vue $watch setup complete — mv2 overwrites ab instantly re-apply honge');
+}
+// Vue mount hone ke baad setup karo
+setTimeout(setupVuePnLWatchers, 2000);
 
 // ---------------------------
 // GLOBAL HELPER FOR VUE (getRunnerAmounts)

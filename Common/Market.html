@@ -3688,7 +3688,11 @@
                                    v-on:keyup.enter="PlaceOrder()" />
                         </div>
                     </td>
-                    <td>{{ Order.profit }} / -{{ Order.liable }}</td>
+                    <td>
+                        <span style="color:#4dbd74;font-weight:700;">If Win: {{ Order.profit }}</span>
+                        <span style="color:#ccc;"> / </span>
+                        <span style="color:#e05555;font-weight:700;">If Lose: -{{ Order.liable }}</span>
+                    </td>
                 </tr>
                 <tr v-bind:class="{ 'back': Order.side.toLowerCase() == 'b', 'lay': Order.side.toLowerCase() == 'l' }">
                     <td colspan="5">
@@ -3836,7 +3840,9 @@
                                 <b>Submit</b>
                                 <div class="ld ld-ball ld-flip"></div>
                             </div>
-                            <span>{{ Order.profit }} / -{{ Order.liable }}</span>
+                            <span style="color:#4dbd74;font-weight:700;">If Win: {{ Order.profit }}</span>
+                            <span style="color:#ccc;"> / </span>
+                            <span style="color:#e05555;font-weight:700;">If Lose: -{{ Order.liable }}</span>
                         </td>
                     </tr>
                     <tr v-show="Order.error !== '' && Order.error !== undefined">
@@ -3916,6 +3922,8 @@
   </div>
 </div> -->
 <div id="bets-panel">
+  <!-- Settlement / Void notification banner -->
+  <div id="settlement-banner" style="display:none; padding:0 6px;"></div>
   <div class="bets">
     <strong>
       Open Bets (<span id="unmatched-count">0</span>)
@@ -3951,9 +3959,30 @@
             <th>Runner</th>
             <th>Price</th>
             <th>Size</th>
+            <th style="color:#4dbd74;">Profit</th>
+            <th style="color:#e05555;">Liability</th>
+            <th>Net</th>
           </tr>
         </thead>
         <tbody id="matched-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Runner P&L Summary Table -->
+  <div class="bets" id="runner-pnl-panel" style="display:none;">
+    <strong>Position Summary (If Winner)</strong>
+    <div class="betting-table">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Runner</th>
+            <th style="color:#4dbd74;">If Win</th>
+            <th style="color:#e05555;">If Lose</th>
+            <th>Net</th>
+          </tr>
+        </thead>
+        <tbody id="runner-pnl-body"></tbody>
       </table>
     </div>
   </div>
@@ -4454,17 +4483,29 @@ function render() {
         if (cancelBtn) cancelBtn.style.display = UnMatched.length > 0 ? "inline-block" : "none";
     }
 
-    // Matched bets table — sab orders directly dikhao (allRunners se group nahi)
+    // Matched bets table — Profit/Liability/Net ke saath
     const mb = document.getElementById("matched-body");
     if (mb) {
         mb.innerHTML = "";
         Matched.forEach(o => {
             const tr = document.createElement("tr");
-            tr.className = (o.bs || "").toUpperCase() === "B" ? "back" : "lay";
+            const side  = (o.bs || "").toUpperCase();
+            tr.className = side === "B" ? "back" : "lay";
+            const price  = parseFloat(o.mp || o.price || 0);
+            const size   = parseFloat(o.ms || o.size || 0);
+            // BACK: profit=(price-1)*size, liable=size
+            // LAY:  profit=size, liable=(price-1)*size
+            const profit  = side === "B" ? (price - 1) * size : size;
+            const liable  = side === "B" ? size : (price - 1) * size;
+            const net     = profit - liable;
+            const netColor = net >= 0 ? "#4dbd74" : "#e05555";
             tr.innerHTML = `
                 <td>${o.rn || ''}</td>
-                <td>${o.mp || o.price || ''}</td>
-                <td>${format(o.ms || o.size)}</td>
+                <td>${price.toFixed(2)}</td>
+                <td>${format(size)}</td>
+                <td style="color:#4dbd74;font-weight:600;">${format(Math.round(profit))}</td>
+                <td style="color:#e05555;font-weight:600;">${format(Math.round(liable))}</td>
+                <td style="color:${netColor};font-weight:700;">${net >= 0 ? '+' : ''}${format(Math.round(net))}</td>
             `;
             mb.appendChild(tr);
         });
@@ -4472,12 +4513,77 @@ function render() {
         if (mcEl) mcEl.textContent = Matched.length;
     }
 
+    // Runner PnL Summary Table — per-runner "If Win/If Lose" aggregate
+    updateRunnerPnLTable();
+
     // Vue runners ko reactive update karo (ifWin/ifLose neeche dikhao)
     updateVueRunnerPnL();
 
     // Wallet bhi update karo
     updateUserWallet();
     window.dispatchEvent(new Event("runnerPnLUpdated"));
+}
+
+// ---------------------------
+// RUNNER PNL SUMMARY TABLE
+// Matched bets se per-runner aggregate position dikhao
+// ---------------------------
+function updateRunnerPnLTable() {
+    const panel = document.getElementById("runner-pnl-panel");
+    const tbody = document.getElementById("runner-pnl-body");
+    if (!tbody) return;
+
+    if (!Matched.length) {
+        if (panel) panel.style.display = "none";
+        return;
+    }
+
+    // Per-runner aggregate: agar yeh runner jeeta to net kya hoga
+    const runnerData = {};
+
+    Matched.forEach(o => {
+        const rn    = (o.rn || "").trim();
+        if (!rn) return;
+        const side  = (o.bs || "").toUpperCase();
+        const price = parseFloat(o.mp || o.price || 0);
+        const size  = parseFloat(o.ms || o.size || 0);
+
+        // For every other runner: what happens to THIS runner if THAT runner wins?
+        // We store pnl[thisRunner] = net if thisRunner wins
+        const allRunnerNames = [...new Set(Matched.map(x => (x.rn || "").trim()).filter(Boolean))];
+
+        allRunnerNames.forEach(winRunner => {
+            if (!runnerData[winRunner]) runnerData[winRunner] = { ifWin: 0, ifLose: 0 };
+
+            if (rn === winRunner) {
+                // This bet's runner wins
+                if (side === "B") runnerData[winRunner].ifWin += (price - 1) * size;
+                else              runnerData[winRunner].ifWin -= (price - 1) * size;
+            } else {
+                // This bet's runner loses (winRunner won)
+                if (side === "B") runnerData[winRunner].ifWin -= size;
+                else              runnerData[winRunner].ifWin += size;
+            }
+        });
+    });
+
+    tbody.innerHTML = "";
+    Object.entries(runnerData).forEach(([runner, pnl]) => {
+        const net      = Math.round(pnl.ifWin);
+        const ifLose   = -net; // if this runner loses, opposite happens
+        const netColor = net >= 0 ? "#4dbd74" : "#e05555";
+        const loseColor = ifLose >= 0 ? "#4dbd74" : "#e05555";
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td><strong>${runner}</strong></td>
+            <td style="color:${netColor};font-weight:700;">${net >= 0 ? '+' : ''}${format(net)}</td>
+            <td style="color:${loseColor};font-weight:600;">${ifLose >= 0 ? '+' : ''}${format(ifLose)}</td>
+            <td style="color:${netColor};font-weight:700;">${net >= 0 ? '+' : ''}${format(net)}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    if (panel) panel.style.display = Object.keys(runnerData).length ? "block" : "none";
 }
 
 // ---------------------------
@@ -4577,11 +4683,15 @@ async function fetchMatched() {
         const json = await res.json();
         const list = json.data?.orders || json.orders || [];
         Matched = list.map(o => ({
-            orderId: String(o.request_id || o.orderId || o.requestId),
-            rn: o.runnerName || o.runner_name || o.event_name || String(o.selection_id || ""),
-            mp: parseFloat(o.price) || 0,
-            ms: parseFloat(o.size) || 0,
-            bs: (o.side || o.type || "").toUpperCase()
+            orderId:  String(o.request_id || o.orderId || o.requestId),
+            rn:       o.runnerName || o.runner_name || o.event_name || String(o.selection_id || ""),
+            selId:    String(o.selection_id || ""),
+            mp:       parseFloat(o.price) || 0,
+            ms:       parseFloat(o.matched > 0 ? o.matched : o.size) || 0,
+            bs:       (o.side || o.type || "").toUpperCase(),
+            // Pre-computed from backend if available
+            profit:   parseFloat(o.profit || 0),
+            liable:   parseFloat(o.liable || 0),
         }));
         render();
     } catch (e) {
@@ -4668,27 +4778,72 @@ socket.on("ordersUpdated", (data) => {
     data.newOrders.forEach(newO => {
         const orderId = String(newO.request_id || newO.orderId || newO.requestId);
         UnMatched = UnMatched.filter(o => o.orderId !== orderId);
-        Matched = Matched.filter(o => o.orderId !== orderId);
+        Matched   = Matched.filter(o => o.orderId !== orderId);
 
         if (newO.status === "PENDING") {
             UnMatched.push({
                 orderId,
-                rn: newO.runnerName || newO.event_name || newO.runner_name || "",
-                up: newO.price,
-                us: newO.size,
-                bs: (newO.side || "").toUpperCase()
+                rn:    newO.runnerName || newO.event_name || newO.runner_name || "",
+                selId: String(newO.selection_id || ""),
+                up:    newO.price,
+                us:    newO.size,
+                bs:    (newO.side || "").toUpperCase()
             });
-        } else {
+        } else if (newO.status === "MATCHED") {
+            const price  = parseFloat(newO.price || 0);
+            const size   = parseFloat(newO.matched > 0 ? newO.matched : newO.size || 0);
+            const side   = (newO.side || "").toUpperCase();
             Matched.push({
                 orderId,
-                rn: newO.runnerName || "",
-                mp: newO.price,
-                ms: newO.size,
-                bs: (newO.side || "").toUpperCase()
+                rn:     newO.runnerName || newO.event_name || newO.runner_name || "",
+                selId:  String(newO.selection_id || ""),
+                mp:     price,
+                ms:     size,
+                bs:     side,
+                profit: parseFloat(newO.profit || 0),
+                liable: parseFloat(newO.liable || 0),
             });
         }
     });
     render();
+});
+
+// userUpdated — wallet + liable + settlement info
+socket.on("userUpdated", (data) => {
+    if (!data) return;
+    const bal    = Math.floor(data.wallet_balance ?? 0);
+    const liable = Math.floor(data.liable ?? 0);
+
+    const walletBalance  = document.querySelector(".wallet-balance");
+    const walletExposure = document.querySelector(".wallet-exposure");
+    if (walletBalance)  walletBalance.textContent  = `B: ${bal.toLocaleString()}`;
+    if (walletExposure) walletExposure.textContent = ` | L: ${liable.toLocaleString()} |`;
+
+    // Settlement banner
+    if (data.event === 'settlement' && data.settlement) {
+        const s = data.settlement;
+        const banner = document.getElementById("settlement-banner");
+        if (banner) {
+            const netTxt = s.grossProfit >= 0 ? `+${s.netCredit.toFixed(2)}` : s.netCredit.toFixed(2);
+            banner.innerHTML = `
+                <div style="padding:8px 12px;background:${s.grossProfit>=0?'#1a3a1a':'#3a1a1a'};border:1px solid ${s.grossProfit>=0?'#4dbd74':'#e05555'};border-radius:4px;margin:6px 0;font-size:13px;">
+                    🏁 <strong>Market Settled</strong> — 
+                    Net: <span style="color:${s.grossProfit>=0?'#4dbd74':'#e05555'};font-weight:700;">${netTxt}</span>
+                    | Commission: ${s.commission} | Loss: ${s.totalLoss.toFixed(2)}
+                </div>`;
+            banner.style.display = "block";
+            setTimeout(() => { banner.style.display = "none"; }, 10000);
+        }
+    }
+
+    if (data.event === 'void') {
+        const banner = document.getElementById("settlement-banner");
+        if (banner) {
+            banner.innerHTML = `<div style="padding:8px 12px;background:#2a2a1a;border:1px solid #f0ad4e;border-radius:4px;margin:6px 0;font-size:13px;">⚠️ <strong>Market Voided</strong> — Sab bets cancel, liable wapas wallet mein.</div>`;
+            banner.style.display = "block";
+            setTimeout(() => { banner.style.display = "none"; }, 10000);
+        }
+    }
 });
 
 // Auto Refresh bets + wallet har 5 second mein

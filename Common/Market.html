@@ -3965,9 +3965,6 @@
             <th>Runner</th>
             <th>Price</th>
             <th>Size</th>
-            <th style="color:#4dbd74;">Profit</th>
-            <th style="color:#e05555;">Liability</th>
-            <th>Net</th>
           </tr>
         </thead>
         <tbody id="matched-body"></tbody>
@@ -4492,22 +4489,21 @@ async function updateUserWallet() {
 // PNL CALCULATION
 // ---------------------------
 function calculateRunnerPnL(runnerName) {
+    // Exchange P&L logic:
+    // Agar Runner A pe BACK bet lagao:
+    //   - Runner A jeeta  => profit = (odds-1) * stake
+    //   - Runner A haara  => loss   = -stake  (kisi bhi doosre runner ke jeetne pe)
+    //
+    // Agar Runner A pe LAY bet lagao:
+    //   - Runner A jeeta  => loss   = -(odds-1) * stake
+    //   - Runner A haara  => profit = +stake
+
     const normalized = (runnerName || "").trim().toLowerCase();
+
+    // Sirf Matched orders se calculate karo
     let pnlIfThisWins = 0;
 
-    // Matched + UnMatched (PENDING) dono se PnL calculate karo
-    // Kyunki backend immediately match karta hai, PENDING bhi count hoti hai
-    const allOrders = [
-        ...Matched,
-        ...UnMatched.map(o => ({
-            rn:    o.rn,
-            mp:    o.up,   // unmatched price
-            ms:    o.us,   // unmatched size
-            bs:    o.bs,
-        }))
-    ];
-
-    allOrders.forEach(order => {
+    Matched.forEach(order => {
         const rn    = (order.rn || order.runnerName || "").trim().toLowerCase();
         const odds  = Number(order.mp || order.price || 0);
         const stake = Number(order.ms || order.size || 0);
@@ -4516,13 +4512,13 @@ function calculateRunnerPnL(runnerName) {
         if (!rn || odds <= 1 || stake <= 0) return;
 
         if (rn === normalized) {
-            // Is runner pe bet lagai hai
-            if (side === "B") pnlIfThisWins += (odds - 1) * stake;  // back jite to profit
-            else              pnlIfThisWins -= (odds - 1) * stake;  // lay jite to loss
+            // Is runner pe directly bet hai
+            if (side === "B") pnlIfThisWins += (odds - 1) * stake;  // jeeta to profit
+            else              pnlIfThisWins -= (odds - 1) * stake;  // jeeta to liability
         } else {
-            // Doosre runner pe bet lagai hai
-            if (side === "B") pnlIfThisWins -= stake;  // back haare to stake loss
-            else              pnlIfThisWins += stake;  // lay haare to stake profit
+            // Doosre runner pe bet hai — agar YEH runner jeeta to doosra haara
+            if (side === "B") pnlIfThisWins -= stake;    // doosre pe back tha — stake gaya
+            else              pnlIfThisWins += stake;    // doosre pe lay tha — stake mila
         }
     });
 
@@ -4572,7 +4568,7 @@ function render() {
         if (cancelBtn) cancelBtn.style.display = UnMatched.length > 0 ? "inline-block" : "none";
     }
 
-    // Matched bets table — Profit/Liability/Net ke saath
+    // Matched bets table — sirf Runner, Price, Size
     const mb = document.getElementById("matched-body");
     if (mb) {
         mb.innerHTML = "";
@@ -4582,19 +4578,10 @@ function render() {
             tr.className = side === "B" ? "back" : "lay";
             const price  = parseFloat(o.mp || o.price || 0);
             const size   = parseFloat(o.ms || o.size || 0);
-            // BACK: profit=(price-1)*size, liable=size
-            // LAY:  profit=size, liable=(price-1)*size
-            const profit  = side === "B" ? (price - 1) * size : size;
-            const liable  = side === "B" ? size : (price - 1) * size;
-            const net     = profit - liable;
-            const netColor = net >= 0 ? "#4dbd74" : "#e05555";
             tr.innerHTML = `
                 <td>${o.rn || ''}</td>
                 <td>${price.toFixed(2)}</td>
                 <td>${format(size)}</td>
-                <td style="color:#4dbd74;font-weight:600;">${format(Math.round(profit))}</td>
-                <td style="color:#e05555;font-weight:600;">${format(Math.round(liable))}</td>
-                <td style="color:${netColor};font-weight:700;">${net >= 0 ? '+' : ''}${format(Math.round(net))}</td>
             `;
             mb.appendChild(tr);
         });
@@ -4754,13 +4741,40 @@ window.addEventListener('runnerPnLUpdated', function() {
 window.getRunnerAmounts = function(runnerName) {
     if (!runnerName) return { ifWin: 0, ifLose: 0, net: 0 };
     const normalized = (runnerName || "").trim().toLowerCase();
+
+    // Runner ko list mein add karo agar nahi hai
     if (!allRunners.some(r => r.trim().toLowerCase() === normalized)) {
         allRunners.push(runnerName);
         updateRunnerPnL();
     }
-    const key = Object.keys(runnerPnL).find(k => k.trim().toLowerCase() === normalized);
-    const pnl = key !== undefined ? (runnerPnL[key] || 0) : 0;
-    return { ifWin: pnl, ifLose: 0, net: pnl };
+
+    // ifWin = agar yeh runner jeeta to P&L
+    const key    = Object.keys(runnerPnL).find(k => k.trim().toLowerCase() === normalized);
+    const ifWin  = key !== undefined ? (runnerPnL[key] || 0) : 0;
+
+    // ifLose = agar yeh runner haara to P&L
+    // Seedha calculate karo: back pe yeh runner haara = -stake loss
+    // Lay pe yeh runner haara = +stake profit
+    let ifLose = 0;
+    Matched.forEach(order => {
+        const rn    = (order.rn || "").trim().toLowerCase();
+        const odds  = Number(order.mp || 0);
+        const stake = Number(order.ms || 0);
+        const side  = (order.bs || "").toUpperCase();
+        if (!rn || odds <= 1 || stake <= 0) return;
+
+        if (rn === normalized) {
+            // Is runner pe directly bet thi — yeh haara
+            if (side === "B") ifLose -= stake;              // back — stake gaya
+            else              ifLose += stake;              // lay — stake mila
+        } else {
+            // Doosre runner pe bet thi — woh jeeta (yeh haara)
+            if (side === "B") ifLose += (odds - 1) * stake; // doosre pe back jeeta — profit
+            else              ifLose -= (odds - 1) * stake; // doosre pe lay jeeta — liability
+        }
+    });
+
+    return { ifWin: Math.round(ifWin), ifLose: Math.round(ifLose), net: Math.round(ifWin) };
 };
 
 // ---------------------------

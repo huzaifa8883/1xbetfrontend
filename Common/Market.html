@@ -4181,6 +4181,51 @@
     <!-- Bundle & mv2 (jo filters aur components define karta hai) -->
     <script src="/dist/bundle0a.js"></script>
     <script src="/js/mv2.min.js"></script>
+                <script>
+document.addEventListener("DOMContentLoaded", async () => {
+  const token = localStorage.getItem("token");
+  if (!token) return;
+
+  try {
+    const res = await fetch("https://1xbetbackend.work.gd/api/v1/auth/me", {
+      headers: { "Authorization": "Bearer " + token }
+    });
+    const data = await res.json();
+    console.log("Latest user info:", data);
+
+    if (data.success && data.data) {
+      const user = data.data.user;
+
+      // Update username in navbar
+      const userBtn = document.getElementById("navbar-user");
+      if (userBtn)
+        userBtn.innerHTML = `${user.username} (${user.role}) <i class="fas fa-caret-down"></i>`;
+
+      // Update wallet balance
+      const walletBalance = document.querySelector(".wallet-balance");
+      if (walletBalance) walletBalance.textContent = `B: ${Math.floor(user.wallet_balance ?? 0)}`;
+
+      // Update wallet exposure/liable
+      const walletExposure = document.querySelector(".wallet-exposure");
+      if (walletExposure) walletExposure.textContent = ` | L: -${Math.floor(user.liable ?? 0)}`;
+
+      // Optional extra fields if present on page
+      const creditEl = document.querySelector(".user-credit");
+      const balanceEl = document.querySelector(".user-balance");
+      const liableEl = document.querySelector(".user-liable");
+      const betsEl = document.querySelector(".user-bets");
+
+      if (creditEl) creditEl.textContent = `Credit: ${user.credit_balance ?? 0}`;
+      if (balanceEl) balanceEl.textContent = `Balance: ${Math.floor(user.wallet_balance ?? 0)}`;
+      if (liableEl) liableEl.textContent = `Liable: ${Math.floor(user.liable ?? 0)}`;
+      if (betsEl) betsEl.textContent = `Active Bets: ${user.active_bets ?? 0}`;
+    }
+
+  } catch (err) {
+    console.error("⚠️ Error loading latest user info:", err);
+  }
+});
+</script>
 <!-- <script>
 document.addEventListener("DOMContentLoaded", async () => {
   const token = localStorage.getItem("token");

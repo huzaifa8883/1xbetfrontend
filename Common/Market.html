@@ -4726,23 +4726,29 @@ window.getRunnerAmounts = function(runnerName) {
 // FETCH FUNCTIONS
 // ---------------------------
 async function fetchUnMatched() {
-    if (!matchId) return;
+    if (!matchId) { console.warn("[Bets] matchId null — URL mein ?id= check karo"); return; }
     const tk = localStorage.getItem('token') || localStorage.getItem('wex3authtoken') || token;
-    if (!tk) return;
+    if (!tk) { console.warn("[Bets] No token found"); return; }
     try {
         const res = await fetch(`${ordersUrl}/orders/pending?marketId=${matchId}`, {
             headers: { "Authorization": "Bearer " + tk }
         });
-        if (!res.ok) return;
+        if (!res.ok) { console.warn("[Bets] fetchUnMatched HTTP:", res.status); return; }
         const json = await res.json();
-        const list = json.data?.orders || json.orders || [];
+        console.log("[Bets] fetchUnMatched raw:", JSON.stringify(json).slice(0, 300));
+        // Sab possible backend formats handle karo
+        const list = json.data?.orders
+                  || (Array.isArray(json.data) ? json.data : null)
+                  || json.orders
+                  || (Array.isArray(json) ? json : []);
         UnMatched = list.map(o => ({
-            orderId: String(o.request_id || o.orderId || o.requestId),
+            orderId: String(o.request_id || o.orderId || o.requestId || o._id || Math.random()),
             rn: o.runnerName || o.runner_name || o.event_name || String(o.selection_id || ""),
             up: parseFloat(o.price) || 0,
             us: parseFloat(o.size) || 0,
             bs: (o.side || o.type || "").toUpperCase()
         }));
+        console.log("[Bets] UnMatched count:", UnMatched.length);
         render();
     } catch (e) {
         console.error("fetchUnMatched error:", e);
@@ -4750,27 +4756,32 @@ async function fetchUnMatched() {
 }
 
 async function fetchMatched() {
-    if (!matchId) return;
+    if (!matchId) { console.warn("[Bets] matchId null — URL mein ?id= check karo"); return; }
     const tk = localStorage.getItem('token') || localStorage.getItem('wex3authtoken') || token;
-    if (!tk) return;
+    if (!tk) { console.warn("[Bets] No token found"); return; }
     try {
         const res = await fetch(`${ordersUrl}/orders/matched?marketId=${matchId}`, {
             headers: { "Authorization": "Bearer " + tk }
         });
-        if (!res.ok) return;
+        if (!res.ok) { console.warn("[Bets] fetchMatched HTTP:", res.status); return; }
         const json = await res.json();
-        const list = json.data?.orders || json.orders || [];
+        console.log("[Bets] fetchMatched raw:", JSON.stringify(json).slice(0, 300));
+        // Sab possible backend formats handle karo
+        const list = json.data?.orders
+                  || (Array.isArray(json.data) ? json.data : null)
+                  || json.orders
+                  || (Array.isArray(json) ? json : []);
         Matched = list.map(o => ({
-            orderId:  String(o.request_id || o.orderId || o.requestId),
+            orderId:  String(o.request_id || o.orderId || o.requestId || o._id || Math.random()),
             rn:       o.runnerName || o.runner_name || o.event_name || String(o.selection_id || ""),
             selId:    String(o.selection_id || ""),
             mp:       parseFloat(o.price) || 0,
             ms:       parseFloat(o.matched > 0 ? o.matched : o.size) || 0,
             bs:       (o.side || o.type || "").toUpperCase(),
-            // Pre-computed from backend if available
             profit:   parseFloat(o.profit || 0),
             liable:   parseFloat(o.liable || 0),
         }));
+        console.log("[Bets] Matched count:", Matched.length);
         render();
     } catch (e) {
         console.error("fetchMatched error:", e);
@@ -4979,6 +4990,33 @@ window.onBetPlaced = async function() {
             });
         }
         return _send.apply(this, arguments);
+    };
+
+    // fetch() bhi intercept karo — mv2.min.js fetch use karta ho to
+    const _fetch = window.fetch;
+    window.fetch = function(url, opts) {
+        const p = _fetch.apply(this, arguments);
+        if (opts && opts.method === 'POST' && typeof url === 'string'
+            && url.includes('/orders') && !url.includes('cancel')) {
+            p.then(res => {
+                const clone = res.clone();
+                clone.json().then(resp => {
+                    if (resp && resp.success) {
+                        setTimeout(async () => {
+                            await fetchUnMatched();
+                            await fetchMatched();
+                            updateVueRunnerPnL();
+                        }, 500);
+                        setTimeout(async () => {
+                            await fetchUnMatched();
+                            await fetchMatched();
+                            updateVueRunnerPnL();
+                        }, 2000);
+                    }
+                }).catch(() => {});
+            }).catch(() => {});
+        }
+        return p;
     };
 })();
 

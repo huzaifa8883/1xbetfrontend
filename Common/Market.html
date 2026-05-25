@@ -4529,61 +4529,64 @@ function updateRunnerPnL() {
 function render() {
     updateRunnerPnL();
 
-    // Unmatched bets table
     const ub = document.getElementById("unmatched-body");
-    if (ub) {
-        ub.innerHTML = "";
-        UnMatched.forEach(o => {
-            const tr = document.createElement("tr");
-            tr.className = (o.bs || "").toUpperCase() === "B" ? "back" : "lay";
-            tr.innerHTML = `
-                <td>${o.rn || ''}</td>
-                <td>${o.up || ''}</td>
-                <td>${format(o.us)}</td>
-                <td><button class="btn-del" onclick="cancelOrder('${o.orderId}')">X</button></td>
-            `;
-            ub.appendChild(tr);
-        });
-        const ucEl = document.getElementById("unmatched-count");
-        if (ucEl) ucEl.textContent = UnMatched.length;
-        const cancelBtn = document.getElementById("cancelAllBtn");
-        if (cancelBtn) cancelBtn.style.display = UnMatched.length > 0 ? "inline-block" : "none";
-    }
-
-    // Matched bets table — Profit/Liability/Net ke saath
     const mb = document.getElementById("matched-body");
-    if (mb) {
-        mb.innerHTML = "";
-        Matched.forEach(o => {
-            const tr = document.createElement("tr");
-            const side  = (o.bs || "").toUpperCase();
-            tr.className = side === "B" ? "back" : "lay";
-            const price  = parseFloat(o.mp || o.price || 0);
-            const size   = parseFloat(o.ms || o.size || 0);
-            // BACK: profit=(price-1)*size, liable=size
-            // LAY:  profit=size, liable=(price-1)*size
-            const profit  = side === "B" ? (price - 1) * size : size;
-            const liable  = side === "B" ? size : (price - 1) * size;
-            const net     = profit - liable;
-            const netColor = net >= 0 ? "#4dbd74" : "#e05555";
-            tr.innerHTML = `
-                <td>${o.rn || ''}</td>
-                <td>${price.toFixed(2)}</td>
-                <td>${format(size)}</td>
-                <td style="color:#4dbd74;font-weight:600;">${format(Math.round(profit))}</td>
-                <td style="color:#e05555;font-weight:600;">${format(Math.round(liable))}</td>
-                <td style="color:${netColor};font-weight:700;">${net >= 0 ? '+' : ''}${format(Math.round(net))}</td>
-            `;
-            mb.appendChild(tr);
-        });
-        const mcEl = document.getElementById("matched-count");
-        if (mcEl) mcEl.textContent = Matched.length;
+
+    // Agar DOM elements abhi exist nahi karte — 200ms baad retry
+    if (!ub || !mb) {
+        console.warn("[Render] DOM elements nahi mile — retry in 200ms");
+        setTimeout(render, 200);
+        return;
     }
 
-    // Runner PnL Summary Table — per-runner "If Win/If Lose" aggregate
+    // Unmatched bets
+    ub.innerHTML = "";
+    UnMatched.forEach(o => {
+        const tr = document.createElement("tr");
+        tr.className = (o.bs || "").toUpperCase() === "B" ? "back" : "lay";
+        tr.innerHTML = `
+            <td>${o.rn || ''}</td>
+            <td>${o.up || ''}</td>
+            <td>${format(o.us)}</td>
+            <td><button class="btn-del" onclick="cancelOrder('${o.orderId}')">X</button></td>
+        `;
+        ub.appendChild(tr);
+    });
+    const ucEl = document.getElementById("unmatched-count");
+    if (ucEl) ucEl.textContent = UnMatched.length;
+    const cancelBtn = document.getElementById("cancelAllBtn");
+    if (cancelBtn) cancelBtn.style.display = UnMatched.length > 0 ? "inline-block" : "none";
+
+    // Matched bets
+    mb.innerHTML = "";
+    console.log("[Render] Matched rendering:", Matched.length, "bets");
+    Matched.forEach(o => {
+        const tr = document.createElement("tr");
+        const side   = (o.bs || "").toUpperCase();
+        tr.className = side === "B" ? "back" : "lay";
+        const price  = parseFloat(o.mp || o.price || 0);
+        const size   = parseFloat(o.ms || o.size || 0);
+        const profit = side === "B" ? (price - 1) * size : size;
+        const liable = side === "B" ? size : (price - 1) * size;
+        const net    = profit - liable;
+        const netColor = net >= 0 ? "#4dbd74" : "#e05555";
+        tr.innerHTML = `
+            <td>${o.rn || ''}</td>
+            <td>${price.toFixed(2)}</td>
+            <td>${format(size)}</td>
+            <td style="color:#4dbd74;font-weight:600;">${format(Math.round(profit))}</td>
+            <td style="color:#e05555;font-weight:600;">${format(Math.round(liable))}</td>
+            <td style="color:${netColor};font-weight:700;">${net >= 0 ? '+' : ''}${format(Math.round(net))}</td>
+        `;
+        mb.appendChild(tr);
+    });
+    const mcEl = document.getElementById("matched-count");
+    if (mcEl) mcEl.textContent = Matched.length;
+
+    // Runner PnL Summary Table
     updateRunnerPnLTable();
 
-    // Vue runners ko reactive update karo (ifWin/ifLose neeche dikhao)
+    // Vue runners ko reactive update karo
     updateVueRunnerPnL();
 
     window.dispatchEvent(new Event("runnerPnLUpdated"));
@@ -5022,17 +5025,45 @@ window.onBetPlaced = async function() {
 
 // Page Load
 document.addEventListener("DOMContentLoaded", async () => {
-    // Wallet pehle update karo
     await updateUserWallet();
     if (matchId) {
         await fetchRunners();
         await fetchUnMatched();
         await fetchMatched();
     }
-    // Vue load hone ke baad PnL bhi update karo
     setTimeout(updateVueRunnerPnL, 1500);
     setTimeout(updateVueRunnerPnL, 3000);
+
+    // ── SAFETY NET: agar matched-body kabhi bhi wipe ho (Vue/mv2 ne replace kiya)
+    // toh turant re-render karo
+    const betsPanel = document.getElementById("bets-panel");
+    if (betsPanel) {
+        const observer = new MutationObserver(() => {
+            // tbody empty ho gaya — re-inject karo
+            const mb = document.getElementById("matched-body");
+            const ub = document.getElementById("unmatched-body");
+            if ((mb && mb.children.length === 0 && Matched.length > 0) ||
+                (ub && ub.children.length === 0 && UnMatched.length > 0)) {
+                console.log("[Observer] tbody wipe detected — re-rendering");
+                render();
+            }
+        });
+        observer.observe(betsPanel, { childList: true, subtree: true });
+        console.log("[Observer] Watching bets-panel for DOM changes");
+    }
 });
+
+// ── FORCE RENDER after mv2.min.js loads (it may take time to mount Vue)
+// Retry render every second for first 10 seconds if data exists
+let _renderRetryCount = 0;
+const _renderRetryInterval = setInterval(() => {
+    _renderRetryCount++;
+    if (_renderRetryCount > 10) { clearInterval(_renderRetryInterval); return; }
+    if ((Matched.length > 0 || UnMatched.length > 0)) {
+        console.log(`[RetryRender] attempt ${_renderRetryCount} — forcing render`);
+        render();
+    }
+}, 1000);
 
 // Script load pe bhi wallet update karo (DOMContentLoaded ka wait nahi)
 setTimeout(updateUserWallet, 500);

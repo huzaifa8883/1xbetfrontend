@@ -4415,8 +4415,8 @@ const socket = io("https://1xbetbackend.work.gd");
 const matchId = new URLSearchParams(window.location.search).get("id");
 const ordersUrl = "https://1xbetbackend.work.gd/api/v1";
 
-// Token
-let token = typeof token !== 'undefined' && token ? token : localStorage.getItem("token");
+// Token — TDZ bug fix
+let token = localStorage.getItem("token") || localStorage.getItem("wex3authtoken") || getCookie('wexscktoken') || '';
 
 // Global Variables
 let UnMatched = [];
@@ -4477,7 +4477,19 @@ function calculateRunnerPnL(runnerName) {
     const normalized = (runnerName || "").trim().toLowerCase();
     let pnlIfThisWins = 0;
 
-    Matched.forEach(order => {
+    // Matched + UnMatched (PENDING) dono se PnL calculate karo
+    // Kyunki backend immediately match karta hai, PENDING bhi count hoti hai
+    const allOrders = [
+        ...Matched,
+        ...UnMatched.map(o => ({
+            rn:    o.rn,
+            mp:    o.up,   // unmatched price
+            ms:    o.us,   // unmatched size
+            bs:    o.bs,
+        }))
+    ];
+
+    allOrders.forEach(order => {
         const rn    = (order.rn || order.runnerName || "").trim().toLowerCase();
         const odds  = Number(order.mp || order.price || 0);
         const stake = Number(order.ms || order.size || 0);
@@ -4486,11 +4498,13 @@ function calculateRunnerPnL(runnerName) {
         if (!rn || odds <= 1 || stake <= 0) return;
 
         if (rn === normalized) {
-            if (side === "B") pnlIfThisWins += (odds - 1) * stake;
-            else pnlIfThisWins -= (odds - 1) * stake;
+            // Is runner pe bet lagai hai
+            if (side === "B") pnlIfThisWins += (odds - 1) * stake;  // back jite to profit
+            else              pnlIfThisWins -= (odds - 1) * stake;  // lay jite to loss
         } else {
-            if (side === "B") pnlIfThisWins -= stake;
-            else pnlIfThisWins += stake;
+            // Doosre runner pe bet lagai hai
+            if (side === "B") pnlIfThisWins -= stake;  // back haare to stake loss
+            else              pnlIfThisWins += stake;  // lay haare to stake profit
         }
     });
 
@@ -4498,8 +4512,10 @@ function calculateRunnerPnL(runnerName) {
 }
 
 function updateRunnerPnL() {
-    const matchedRunners = [...new Set(Matched.map(o => (o.rn || o.runnerName || "").trim()))].filter(Boolean);
-    allRunners = [...new Set([...allRunners, ...matchedRunners])];
+    // Matched aur UnMatched dono se runner names lo
+    const matchedRunners   = Matched.map(o => (o.rn || o.runnerName || "").trim()).filter(Boolean);
+    const unmatchedRunners = UnMatched.map(o => (o.rn || "").trim()).filter(Boolean);
+    allRunners = [...new Set([...allRunners, ...matchedRunners, ...unmatchedRunners])];
 
     runnerPnL = {};
     allRunners.forEach(runner => {
@@ -4570,8 +4586,6 @@ function render() {
     // Vue runners ko reactive update karo (ifWin/ifLose neeche dikhao)
     updateVueRunnerPnL();
 
-    // Wallet bhi update karo
-    updateUserWallet();
     window.dispatchEvent(new Event("runnerPnLUpdated"));
 }
 
@@ -4764,10 +4778,12 @@ async function fetchMatched() {
 }
 
 async function fetchRunners() {
-    if (!matchId || !token) return;
+    if (!matchId) return;
+    const tk = localStorage.getItem('token') || localStorage.getItem('wex3authtoken') || getCookie('wexscktoken') || '';
+    if (!tk) return;
     try {
         const res = await fetch(`${ordersUrl}/markets/catalog2?id=${matchId}`, {
-            headers: { "Authorization": "Bearer " + token }
+            headers: { "Authorization": "Bearer " + tk }
         });
         const json = await res.json();
         const market = json.data || json;
@@ -4920,6 +4936,51 @@ setInterval(() => {
 
 // Wallet har 30 second mein refresh
 setInterval(updateUserWallet, 30000);
+
+// ── BET PLACED HOOK ───────────────────────────────────────────
+// mv2.min.js PlaceOrder success ke baad yeh call karo
+// taake bets aur PnL turant update ho
+window.onBetPlaced = async function() {
+    await fetchUnMatched();
+    await fetchMatched();
+    updateVueRunnerPnL();
+};
+
+// mv2.min.js PlaceOrder $.ajax success ke baad hook lagao
+// (XMLHttpRequest monkey-patch — har POST /orders ke baad trigger)
+(function() {
+    const _open = XMLHttpRequest.prototype.open;
+    const _send = XMLHttpRequest.prototype.send;
+    XMLHttpRequest.prototype.open = function(method, url) {
+        this._url = url || '';
+        this._method = method || '';
+        return _open.apply(this, arguments);
+    };
+    XMLHttpRequest.prototype.send = function() {
+        if (this._method === 'POST' && this._url && this._url.includes('/orders') && !this._url.includes('cancel')) {
+            this.addEventListener('load', function() {
+                try {
+                    const resp = JSON.parse(this.responseText);
+                    if (resp && resp.success) {
+                        // Bet successfully placed — 500ms baad refresh karo
+                        setTimeout(async () => {
+                            await fetchUnMatched();
+                            await fetchMatched();
+                            updateVueRunnerPnL();
+                        }, 500);
+                        // Aur 2 second baad bhi (matching ka time)
+                        setTimeout(async () => {
+                            await fetchUnMatched();
+                            await fetchMatched();
+                            updateVueRunnerPnL();
+                        }, 2000);
+                    }
+                } catch(e) {}
+            });
+        }
+        return _send.apply(this, arguments);
+    };
+})();
 
 // Page Load
 document.addEventListener("DOMContentLoaded", async () => {

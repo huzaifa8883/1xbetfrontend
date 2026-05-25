@@ -3641,74 +3641,88 @@
                                 <iframe id="livesc" src="" class="responsive-iframe" scrolling='no' frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
                             </div>
 
-<!-- ══ BETS PANEL — Open Bets + Matched Bets + Position Summary ══ -->
-<div id="bets-panel">
-  <!-- Settlement / Void notification banner -->
-  <div id="settlement-banner" style="display:none; padding:0 6px;"></div>
+<!-- ══ BETS PANEL — Vue se protected via Shadow DOM ══ -->
+<div id="bets-host"></div>
+<script>
+(function() {
+    // Shadow DOM banao taake Vue andar touch na kar sake
+    var host = document.getElementById('bets-host');
+    var shadow = host.attachShadow({ mode: 'open' });
 
-  <div class="bets">
-    <strong>
-      Open Bets (<span id="unmatched-count">0</span>)
-      <span id="isConnected" style="display:none">🟢</span>
-      <button id="cancelAllBtn"
-        class="btn-del"
-        style="float:right; display:none;"
-        onclick="cancelAll()">
-        Cancel All
-      </button>
-    </strong>
-    <div class="betting-table">
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Runner</th>
-            <th>Price</th>
-            <th>Size</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="unmatched-body"></tbody>
-      </table>
-    </div>
-  </div>
+    shadow.innerHTML = `
+        <style>
+            :host { display: block; }
+            .bets { background:#2b2f35; color:#fff; padding:6px 10px; margin-bottom:4px; font-size:12px; }
+            .bets strong { display:block; padding:6px 0 4px; font-size:13px; color:#fff; }
+            table { width:100%; border-collapse:collapse; }
+            th { color:#aaa; font-size:11px; padding:3px 4px; text-align:left; border-bottom:1px solid #444; }
+            td { padding:3px 4px; font-size:12px; color:#fff; border-bottom:1px solid #333; }
+            tr.back td { background:rgba(0,128,255,0.08); }
+            tr.lay td  { background:rgba(220,53,69,0.08); }
+            .btn-del { background:#e05555; color:#fff; border:none; border-radius:3px; padding:1px 6px; cursor:pointer; font-size:11px; }
+            #cancelAllBtn { float:right; background:red; color:#fff; border:none; border-radius:3px; padding:2px 8px; cursor:pointer; font-size:11px; display:none; }
+            #settlement-banner { display:none; padding:4px 6px; margin-bottom:4px; }
+            #runner-pnl-panel { display:none; }
+            .pos { color:#4dbd74; font-weight:700; }
+            .neg { color:#e05555; font-weight:700; }
+        </style>
 
-  <div class="bets">
-    <strong>Matched Bets (<span id="matched-count">0</span>)</strong>
-    <div class="betting-table">
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Runner</th>
-            <th>Price</th>
-            <th>Size</th>
-            <th style="color:#4dbd74;">Profit</th>
-            <th style="color:#e05555;">Liability</th>
-            <th>Net</th>
-          </tr>
-        </thead>
-        <tbody id="matched-body"></tbody>
-      </table>
-    </div>
-  </div>
+        <div id="settlement-banner"></div>
 
-  <!-- Runner P&L Summary Table -->
-  <div class="bets" id="runner-pnl-panel" style="display:none;">
-    <strong>Position Summary (If Winner)</strong>
-    <div class="betting-table">
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Runner</th>
-            <th style="color:#4dbd74;">If Win</th>
-            <th style="color:#e05555;">If Lose</th>
-            <th>Net</th>
-          </tr>
-        </thead>
-        <tbody id="runner-pnl-body"></tbody>
-      </table>
-    </div>
-  </div>
-</div>
+        <div class="bets">
+            <strong>
+                Open Bets (<span id="unmatched-count">0</span>)
+                <span id="isConnected" style="display:none">🟢</span>
+                <button id="cancelAllBtn" onclick="cancelAll()">Cancel All</button>
+            </strong>
+            <table>
+                <thead><tr><th>Runner</th><th>Price</th><th>Size</th><th></th></tr></thead>
+                <tbody id="unmatched-body"></tbody>
+            </table>
+        </div>
+
+        <div class="bets">
+            <strong>Matched Bets (<span id="matched-count">0</span>)</strong>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Runner</th><th>Price</th><th>Size</th>
+                        <th style="color:#4dbd74;">Profit</th>
+                        <th style="color:#e05555;">Liability</th>
+                        <th>Net</th>
+                    </tr>
+                </thead>
+                <tbody id="matched-body"></tbody>
+            </table>
+        </div>
+
+        <div class="bets" id="runner-pnl-panel">
+            <strong>Position Summary (If Winner)</strong>
+            <table>
+                <thead><tr><th>Runner</th><th style="color:#4dbd74;">If Win</th><th style="color:#e05555;">If Lose</th><th>Net</th></tr></thead>
+                <tbody id="runner-pnl-body"></tbody>
+            </table>
+        </div>
+    `;
+
+    // Shadow DOM ke andar elements ko window pe expose karo
+    // taake baaki scripts getElementById se access kar sakein
+    var _shadowRoot = shadow;
+
+    // Override getElementById globally to check shadow first
+    var _origGetById = document.getElementById.bind(document);
+    document.getElementById = function(id) {
+        var shadowIds = ['unmatched-body','matched-body','runner-pnl-body','runner-pnl-panel',
+                         'unmatched-count','matched-count','isConnected','cancelAllBtn','settlement-banner'];
+        if (shadowIds.indexOf(id) !== -1) {
+            return _shadowRoot.getElementById(id);
+        }
+        return _origGetById(id);
+    };
+
+    console.log('✅ Bets panel Shadow DOM ready');
+})();
+</script>
 <!-- ══ END BETS PANEL ══ -->
 
 

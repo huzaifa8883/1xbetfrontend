@@ -3641,6 +3641,76 @@
                                 <iframe id="livesc" src="" class="responsive-iframe" scrolling='no' frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
                             </div>
 
+<!-- ══ BETS PANEL — Open Bets + Matched Bets + Position Summary ══ -->
+<div id="bets-panel">
+  <!-- Settlement / Void notification banner -->
+  <div id="settlement-banner" style="display:none; padding:0 6px;"></div>
+
+  <div class="bets">
+    <strong>
+      Open Bets (<span id="unmatched-count">0</span>)
+      <span id="isConnected" style="display:none">🟢</span>
+      <button id="cancelAllBtn"
+        class="btn-del"
+        style="float:right; display:none;"
+        onclick="cancelAll()">
+        Cancel All
+      </button>
+    </strong>
+    <div class="betting-table">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Runner</th>
+            <th>Price</th>
+            <th>Size</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="unmatched-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="bets">
+    <strong>Matched Bets (<span id="matched-count">0</span>)</strong>
+    <div class="betting-table">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Runner</th>
+            <th>Price</th>
+            <th>Size</th>
+            <th style="color:#4dbd74;">Profit</th>
+            <th style="color:#e05555;">Liability</th>
+            <th>Net</th>
+          </tr>
+        </thead>
+        <tbody id="matched-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Runner P&L Summary Table -->
+  <div class="bets" id="runner-pnl-panel" style="display:none;">
+    <strong>Position Summary (If Winner)</strong>
+    <div class="betting-table">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Runner</th>
+            <th style="color:#4dbd74;">If Win</th>
+            <th style="color:#e05555;">If Lose</th>
+            <th>Net</th>
+          </tr>
+        </thead>
+        <tbody id="runner-pnl-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<!-- ══ END BETS PANEL ══ -->
+
 
 
 <div class="bets" id="betSlip" v-show="Order.render">
@@ -3921,73 +3991,6 @@
     </div>
   </div>
 </div> -->
-<div id="bets-panel">
-  <!-- Settlement / Void notification banner -->
-  <div id="settlement-banner" style="display:none; padding:0 6px;"></div>
-  <div class="bets">
-    <strong>
-      Open Bets (<span id="unmatched-count">0</span>)
-      <span id="isConnected" style="display:none">🟢</span>
-      <button id="cancelAllBtn"
-        class="btn-del"
-        style="float:right; display:none;"
-        onclick="cancelAll()">
-        Cancel All
-      </button>
-    </strong>
-    <div class="betting-table">
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Runner</th>
-            <th>Price</th>
-            <th>Size</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="unmatched-body"></tbody>
-      </table>
-    </div>
-  </div>
-
-  <div class="bets">
-    <strong>Matched Bets (<span id="matched-count">0</span>)</strong>
-    <div class="betting-table">
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Runner</th>
-            <th>Price</th>
-            <th>Size</th>
-            <th style="color:#4dbd74;">Profit</th>
-            <th style="color:#e05555;">Liability</th>
-            <th>Net</th>
-          </tr>
-        </thead>
-        <tbody id="matched-body"></tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- Runner P&L Summary Table -->
-  <div class="bets" id="runner-pnl-panel" style="display:none;">
-    <strong>Position Summary (If Winner)</strong>
-    <div class="betting-table">
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Runner</th>
-            <th style="color:#4dbd74;">If Win</th>
-            <th style="color:#e05555;">If Lose</th>
-            <th>Net</th>
-          </tr>
-        </thead>
-        <tbody id="runner-pnl-body"></tbody>
-      </table>
-    </div>
-  </div>
-</div>
-
 <div style="margin-top:7px;">
     <strong style="display: block; background: #2b2f35; color: #fff; padding:10px;" class="RM_In_Markets">Related Events</strong>
     <div >
@@ -4654,6 +4657,7 @@ function updateRunnerPnLTable() {
 // ---------------------------
 // VUE RUNNER PNL — Vue ke runner objects ko directly update karo
 // taake runner naam ke neeche profit/liable show ho
+// ── FIXED: selectionId se match karo (runnerName mein match name aa raha tha) ──
 // ---------------------------
 function updateVueRunnerPnL() {
     try {
@@ -4661,7 +4665,36 @@ function updateVueRunnerPnL() {
         if (!vmEl || !vmEl.__vue__) return;
         const vm = vmEl.__vue__;
 
-        // Sab market arrays loop karo — Catalog.runners bhi include karo
+        // selectionId → pnl map banao (Matched array se)
+        const selPnL = {};
+        const allOrders = [...Matched, ...UnMatched.map(o => ({
+            rn: o.rn, selId: o.selId || "",
+            mp: o.up, ms: o.us, bs: o.bs,
+        }))];
+
+        // Pehle sab runners collect karo with their selectionIds
+        const selIds = [...new Set(allOrders.map(o => o.selId).filter(Boolean))];
+
+        selIds.forEach(function(selId) {
+            let pnl = 0;
+            allOrders.forEach(function(order) {
+                const odds  = Number(order.mp || 0);
+                const stake = Number(order.ms || order.us || 0);
+                const side  = (order.bs || "").toUpperCase();
+                if (!odds || !stake) return;
+
+                if (order.selId === selId) {
+                    if (side === "B") pnl += (odds - 1) * stake;
+                    else              pnl -= (odds - 1) * stake;
+                } else {
+                    if (side === "B") pnl -= stake;
+                    else              pnl += stake;
+                }
+            });
+            selPnL[selId] = Math.round(pnl);
+        });
+
+        // Sab market arrays loop karo
         const lists = [
             'subMarkets', 'BookmakerMarkets', 'TossMarkets',
             'FancyMarkets', 'Fancy2Markets', 'FigureMarkets',
@@ -4671,11 +4704,9 @@ function updateVueRunnerPnL() {
         function updateRunnersInCatalog(catalog) {
             if (!catalog || !Array.isArray(catalog.runners)) return;
             catalog.runners.forEach(function(runner, idx) {
-                const rName = (runner.runnerName || "").trim();
-                if (!rName) return;
-                const normalized = rName.toLowerCase();
-                const key = Object.keys(runnerPnL).find(k => k.trim().toLowerCase() === normalized);
-                const pnl = key !== undefined ? (runnerPnL[key] || 0) : 0;
+                const selId = String(runner.selectionId || "");
+                if (!selId) return;
+                const pnl = selPnL[selId] !== undefined ? selPnL[selId] : 0;
                 if (runner.ifWin !== pnl) {
                     Vue.set(catalog.runners, idx, Object.assign({}, runner, {
                         ifWin:  pnl,
@@ -4697,6 +4728,8 @@ function updateVueRunnerPnL() {
                 updateRunnersInCatalog(catalog);
             });
         });
+
+        console.log("[PnL] Vue runners updated with selId map:", selPnL);
     } catch(e) {
         console.warn("[PnL] Vue update error:", e.message);
     }

@@ -4489,40 +4489,89 @@ async function updateUserWallet() {
 // PNL CALCULATION
 // ---------------------------
 function calculateRunnerPnL(runnerName) {
-    // Exchange P&L logic:
-    // Agar Runner A pe BACK bet lagao:
-    //   - Runner A jeeta  => profit = (odds-1) * stake
-    //   - Runner A haara  => loss   = -stake  (kisi bhi doosre runner ke jeetne pe)
+    // ===========================================
+    // CORRECT EXCHANGE BETTING P&L LOGIC
+    // ===========================================
+    // Bet ek hi runner pe lagti hai.
+    // Jab hum kisi runner X ka P&L calculate karte hain:
     //
-    // Agar Runner A pe LAY bet lagao:
-    //   - Runner A jeeta  => loss   = -(odds-1) * stake
-    //   - Runner A haara  => profit = +stake
+    // AGAR bet runner X pe lagi hai:
+    //   BACK: X jeeta => +(odds-1)*stake  |  X haara => -stake
+    //   LAY:  X jeeta => -(odds-1)*stake  |  X haara => +stake
+    //
+    // AGAR bet kisi doosre runner Y pe lagi hai:
+    //   BACK Y: Y jeeta (X haara) => -stake pe X ka P&L = -stake
+    //           Y haara (X jeeta) => +stake pe X ka P&L = +stake ... wait
+    //
+    // SEEDHA FORMULA:
+    // ifWin[X]  = sum of (agar X jeeta to kya hoga har bet ka result)
+    // ifLose[X] = sum of (agar X haara to kya hoga) — handled separately
+    //
+    // Har bet ka contribution to "agar X jeeta":
+    //   - Bet on X, BACK:  +(odds-1)*stake   (back on X paid off)
+    //   - Bet on X, LAY:   -(odds-1)*stake   (lay on X cost us)
+    //   - Bet on Y, BACK:  -stake            (we backed Y, Y lost = stake gone)
+    //   - Bet on Y, LAY:   +stake            (we laid Y, Y lost = we win stake)
+    // ===========================================
 
     const normalized = (runnerName || "").trim().toLowerCase();
+    let ifWin = 0;
 
-    // Sirf Matched orders se calculate karo
-    let pnlIfThisWins = 0;
-
-    Matched.forEach(order => {
+    Matched.forEach(function(order) {
         const rn    = (order.rn || order.runnerName || "").trim().toLowerCase();
-        const odds  = Number(order.mp || order.price || 0);
-        const stake = Number(order.ms || order.size || 0);
+        const odds  = parseFloat(order.mp || order.price || 0);
+        const stake = parseFloat(order.ms || order.size || 0);
         const side  = (order.bs || order.side || "").toUpperCase();
 
         if (!rn || odds <= 1 || stake <= 0) return;
 
         if (rn === normalized) {
-            // Is runner pe directly bet hai
-            if (side === "B") pnlIfThisWins += (odds - 1) * stake;  // jeeta to profit
-            else              pnlIfThisWins -= (odds - 1) * stake;  // jeeta to liability
+            // Yeh bet is runner (X) pe hai
+            if (side === "B") ifWin += (odds - 1) * stake;
+            else              ifWin -= (odds - 1) * stake;
         } else {
-            // Doosre runner pe bet hai — agar YEH runner jeeta to doosra haara
-            if (side === "B") pnlIfThisWins -= stake;    // doosre pe back tha — stake gaya
-            else              pnlIfThisWins += stake;    // doosre pe lay tha — stake mila
+            // Yeh bet doosre runner pe hai — agar X jeeta to doosra haara
+            if (side === "B") ifWin -= stake;   // doosre pe back lagaya tha — stake gaya
+            else              ifWin += stake;   // doosre pe lay lagaya tha — stake mila
         }
     });
 
-    return Math.round(pnlIfThisWins);
+    return Math.round(ifWin);
+}
+
+// ifLose calculate karo: agar runner X haara to kya hoga
+function calculateRunnerIfLose(runnerName) {
+    const normalized = (runnerName || "").trim().toLowerCase();
+    let ifLose = 0;
+
+    // "X haara" ka matlab: koi aur runner jeeta
+    // Har bet ka contribution to "agar X haara":
+    //   - Bet on X, BACK:  -stake           (X pe back tha, X haara — stake gaya)
+    //   - Bet on X, LAY:   +stake           (X pe lay tha, X haara — stake mila)
+    //   - Bet on Y, BACK:  we don't know which Y won — but X haara = koi jeeta
+    //     => Y jeeta aur Y pe back tha: +(odds-1)*stake ... lekin kaunsa Y?
+    //   Actually "if X loses" mein sirf X ke bets ka impact clear hai.
+    //   Doosre runners ka impact depends on which one wins.
+    //   Is liye sirf X ke direct bets se ifLose calculate karo:
+    Matched.forEach(function(order) {
+        const rn    = (order.rn || order.runnerName || "").trim().toLowerCase();
+        const odds  = parseFloat(order.mp || order.price || 0);
+        const stake = parseFloat(order.ms || order.size || 0);
+        const side  = (order.bs || order.side || "").toUpperCase();
+
+        if (!rn || odds <= 1 || stake <= 0) return;
+
+        if (rn === normalized) {
+            // X pe bet thi aur X haara
+            if (side === "B") ifLose -= stake;           // back — stake gaya
+            else              ifLose += stake;           // lay — stake mila (X haara = lay wins)
+        }
+        // Doosre runners ke bets ka "if X loses" contribution
+        // include nahi karte kyunki woh depend karta hai KON jeeta
+        // Vue template mein sirf ifWin show hota hai mainly
+    });
+
+    return Math.round(ifLose);
 }
 
 function updateRunnerPnL() {
@@ -4603,6 +4652,10 @@ function render() {
 // Matched bets se per-runner aggregate position dikhao
 // ---------------------------
 function updateRunnerPnLTable() {
+    // ==============================================
+    // POSITION SUMMARY TABLE — sahi exchange logic
+    // Har runner ke liye: "agar yeh jeeta to P&L"
+    // ==============================================
     const panel = document.getElementById("runner-pnl-panel");
     const tbody = document.getElementById("runner-pnl-body");
     if (!tbody) return;
@@ -4612,52 +4665,39 @@ function updateRunnerPnLTable() {
         return;
     }
 
-    // Per-runner aggregate: agar yeh runner jeeta to net kya hoga
-    const runnerData = {};
-
-    Matched.forEach(o => {
-        const rn    = (o.rn || "").trim();
-        if (!rn) return;
-        const side  = (o.bs || "").toUpperCase();
-        const price = parseFloat(o.mp || o.price || 0);
-        const size  = parseFloat(o.ms || o.size || 0);
-
-        // For every other runner: what happens to THIS runner if THAT runner wins?
-        // We store pnl[thisRunner] = net if thisRunner wins
-        const allRunnerNames = [...new Set(Matched.map(x => (x.rn || "").trim()).filter(Boolean))];
-
-        allRunnerNames.forEach(winRunner => {
-            if (!runnerData[winRunner]) runnerData[winRunner] = { ifWin: 0, ifLose: 0 };
-
-            if (rn === winRunner) {
-                // This bet's runner wins
-                if (side === "B") runnerData[winRunner].ifWin += (price - 1) * size;
-                else              runnerData[winRunner].ifWin -= (price - 1) * size;
-            } else {
-                // This bet's runner loses (winRunner won)
-                if (side === "B") runnerData[winRunner].ifWin -= size;
-                else              runnerData[winRunner].ifWin += size;
-            }
-        });
-    });
+    // Step 1: Sab unique runners nikalo jo bets mein hain + allRunners se bhi
+    const betRunners = [...new Set(Matched.map(o => (o.rn || "").trim()).filter(Boolean))];
+    // allRunners mein Vue se aaye real runner names bhi hain
+    const knownRunners = [...new Set([...allRunners, ...betRunners])].filter(Boolean);
 
     tbody.innerHTML = "";
-    Object.entries(runnerData).forEach(([runner, pnl]) => {
-        const net      = Math.round(pnl.ifWin);
-        const ifLose   = -net; // if this runner loses, opposite happens
-        const netColor = net >= 0 ? "#4dbd74" : "#e05555";
+    let hasData = false;
+
+    knownRunners.forEach(function(runner) {
+        // Is runner ka ifWin calculate karo
+        const ifWin = calculateRunnerPnL(runner);
+        // Is runner ka ifLose calculate karo
+        const ifLose = calculateRunnerIfLose(runner);
+
+        // Sirf woh runners dikhao jinka ifWin ya ifLose 0 se alag ho
+        if (ifWin === 0 && ifLose === 0) return;
+        hasData = true;
+
+        const winColor  = ifWin  >= 0 ? "#4dbd74" : "#e05555";
         const loseColor = ifLose >= 0 ? "#4dbd74" : "#e05555";
+        const net       = ifWin; // net = ifWin (primary scenario)
+        const netColor  = net >= 0 ? "#4dbd74" : "#e05555";
+
         const tr = document.createElement("tr");
-        tr.innerHTML = `
-            <td><strong>${runner}</strong></td>
-            <td style="color:${netColor};font-weight:700;">${net >= 0 ? '+' : ''}${format(net)}</td>
-            <td style="color:${loseColor};font-weight:600;">${ifLose >= 0 ? '+' : ''}${format(ifLose)}</td>
-            <td style="color:${netColor};font-weight:700;">${net >= 0 ? '+' : ''}${format(net)}</td>
-        `;
+        tr.innerHTML =
+            "<td><strong>" + runner + "</strong></td>" +
+            "<td style='color:" + winColor + ";font-weight:700;'>" + (ifWin >= 0 ? "+" : "") + format(ifWin) + "</td>" +
+            "<td style='color:" + loseColor + ";font-weight:600;'>" + (ifLose >= 0 ? "+" : "") + format(ifLose) + "</td>" +
+            "<td style='color:" + netColor + ";font-weight:700;'>" + (net >= 0 ? "+" : "") + format(net) + "</td>";
         tbody.appendChild(tr);
     });
 
-    if (panel) panel.style.display = Object.keys(runnerData).length ? "block" : "none";
+    if (panel) panel.style.display = hasData ? "block" : "none";
 }
 
 // ---------------------------
@@ -4748,31 +4788,12 @@ window.getRunnerAmounts = function(runnerName) {
         updateRunnerPnL();
     }
 
-    // ifWin = agar yeh runner jeeta to P&L
-    const key    = Object.keys(runnerPnL).find(k => k.trim().toLowerCase() === normalized);
-    const ifWin  = key !== undefined ? (runnerPnL[key] || 0) : 0;
+    // runnerPnL mein ifWin stored hai (calculateRunnerPnL se)
+    const key   = Object.keys(runnerPnL).find(k => k.trim().toLowerCase() === normalized);
+    const ifWin = key !== undefined ? (runnerPnL[key] || 0) : 0;
 
-    // ifLose = agar yeh runner haara to P&L
-    // Seedha calculate karo: back pe yeh runner haara = -stake loss
-    // Lay pe yeh runner haara = +stake profit
-    let ifLose = 0;
-    Matched.forEach(order => {
-        const rn    = (order.rn || "").trim().toLowerCase();
-        const odds  = Number(order.mp || 0);
-        const stake = Number(order.ms || 0);
-        const side  = (order.bs || "").toUpperCase();
-        if (!rn || odds <= 1 || stake <= 0) return;
-
-        if (rn === normalized) {
-            // Is runner pe directly bet thi — yeh haara
-            if (side === "B") ifLose -= stake;              // back — stake gaya
-            else              ifLose += stake;              // lay — stake mila
-        } else {
-            // Doosre runner pe bet thi — woh jeeta (yeh haara)
-            if (side === "B") ifLose += (odds - 1) * stake; // doosre pe back jeeta — profit
-            else              ifLose -= (odds - 1) * stake; // doosre pe lay jeeta — liability
-        }
-    });
+    // ifLose: sirf is runner ke direct bets ka result (haarne pe)
+    const ifLose = calculateRunnerIfLose(runnerName);
 
     return { ifWin: Math.round(ifWin), ifLose: Math.round(ifLose), net: Math.round(ifWin) };
 };

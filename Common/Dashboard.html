@@ -32,10 +32,10 @@
     </style>
       
     <script>
-        const pricesUrl = "https://PORTBACKEND.WORK.GD/api/v1";
-        const ordersUrl = "https://orders.bfexch.com/api";
+        const pricesUrl = "https://1xbetbackend.work.gd/api/v1";
+        const ordersUrl = "https://1xbetbackend.work.gd/api/v1";
         const LiquidityRate = 35;
-        const SsocketUrl = "https://PORTBACKEND.WORK.GD/signalr";
+        const SsocketUrl = "https://1xbetbackend.work.gd/signalr";
         const uwsUrl = "https://orders-ws2.bfexch.com/usershub";
         const genSck = 1;
         const CasSck = 1;
@@ -795,7 +795,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (!token) return;
 
   try {
-    const res = await fetch("https://PORTBACKEND.WORK.GD/api/v1/auth/me", {
+    const res = await fetch("https://1xbetbackend.work.gd/api/v1/auth/me", {
       headers: { "Authorization": "Bearer " + token }
     });
     const data = await res.json();
@@ -854,7 +854,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     try {
       const token = localStorage.getItem('token') || '';
       const res = await fetch(
-        'https://PORTBACKEND.WORK.GD/api/v1/settings/leagues',
+        'https://1xbetbackend.work.gd/api/v1/settings/leagues',
         { headers: { 'Authorization': 'Bearer ' + token } }
       );
       const data = await res.json();
@@ -909,7 +909,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   async function loadgreyhoundMatches() {
     try {
       const [response, filter] = await Promise.all([
-        fetch('https://PORTBACKEND.WORK.GD/api/v1/markets/live/greyhound'),
+        fetch('https://1xbetbackend.work.gd/api/v1/markets/live/greyhound'),
         getLeagueFilter('greyhound')
       ]);
       const result = await response.json();
@@ -958,7 +958,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   async function loadhorseMatches() {
     try {
       const [response, filter] = await Promise.all([
-        fetch('https://PORTBACKEND.WORK.GD/api/v1/markets/live/horse'),
+        fetch('https://1xbetbackend.work.gd/api/v1/markets/live/horse'),
         getLeagueFilter('horse')
       ]);
       const result = await response.json();
@@ -1006,7 +1006,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 <script>
   async function loadHorseLiveData() {
     try {
-      const res = await fetch('https://PORTBACKEND.WORK.GD/api/v1/markets/live/horse');
+      const res = await fetch('https://1xbetbackend.work.gd/api/v1/markets/live/horse');
       const data = await res.json();
 
       const container = document.getElementById('horseRaceContainer');
@@ -1074,7 +1074,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 <script>
   async function loadgreyhoundLiveData() {
     try {
-      const res = await fetch('https://PORTBACKEND.WORK.GD/api/v1/markets/live/greyhound');
+      const res = await fetch('https://1xbetbackend.work.gd/api/v1/markets/live/greyhound');
       const data = await res.json();
 
       const container = document.getElementById('greyhoundRaceContainer');
@@ -1151,7 +1151,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   async function loadTennisMatches() {
     try {
       const [response, filter] = await Promise.all([
-        fetch('https://PORTBACKEND.WORK.GD/api/v1/markets/live/tennis'),
+        fetch('https://1xbetbackend.work.gd/api/v1/markets/live/tennis'),
         getLeagueFilter('tennis')
       ]);
       const result = await response.json();
@@ -1202,7 +1202,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   async function loadFootballMatches() {
     try {
       const [response, filter] = await Promise.all([
-        fetch('https://PORTBACKEND.WORK.GD/api/v1/markets/live/football'),
+        fetch('https://1xbetbackend.work.gd/api/v1/markets/live/football'),
         getLeagueFilter('football')
       ]);
       const result = await response.json();
@@ -1251,7 +1251,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   async function loadCricketSidebarMatches() {
     try {
       const [response, filter] = await Promise.all([
-        fetch('https://PORTBACKEND.WORK.GD/api/v1/markets/live/cricket'),
+        fetch('https://1xbetbackend.work.gd/api/v1/markets/live/cricket'),
         getLeagueFilter('cricket')
       ]);
       const result = await response.json();
@@ -1293,7 +1293,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   async function loadCricketMatches() {
     try {
       const [response, filter] = await Promise.all([
-        fetch('https://PORTBACKEND.WORK.GD/api/v1/markets/live/cricket'),
+        fetch('https://1xbetbackend.work.gd/api/v1/markets/live/cricket'),
         getLeagueFilter('cricket')
       ]);
       const result = await response.json();
@@ -1406,7 +1406,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   async function loadInPlayCricketMatches() {
     try {
       const [response, filter] = await Promise.all([
-        fetch('https://PORTBACKEND.WORK.GD/api/v1/markets/live/cricket'),
+        fetch('https://1xbetbackend.work.gd/api/v1/markets/live/cricket'),
         getLeagueFilter('cricket')
       ]);
       const result = await response.json();
@@ -1501,7 +1501,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   async function loadfootballoddsMatches() {
     try {
       const [response, filter] = await Promise.all([
-        fetch('https://PORTBACKEND.WORK.GD/api/v1/markets/live/football'),
+        fetch('https://1xbetbackend.work.gd/api/v1/markets/live/football'),
         getLeagueFilter('football')
       ]);
       const result = await response.json();
@@ -1618,7 +1618,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   async function loadInPlayfootballMatches() {
     try {
       const [response, filter] = await Promise.all([
-        fetch('https://PORTBACKEND.WORK.GD/api/v1/markets/live/football'),
+        fetch('https://1xbetbackend.work.gd/api/v1/markets/live/football'),
         getLeagueFilter('football')
       ]);
       const result = await response.json();
@@ -1709,7 +1709,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   async function loadtennisoddsMatches() {
     try {
       const [response, filter] = await Promise.all([
-        fetch('https://PORTBACKEND.WORK.GD/api/v1/markets/live/tennis'),
+        fetch('https://1xbetbackend.work.gd/api/v1/markets/live/tennis'),
         getLeagueFilter('tennis')
       ]);
       const result = await response.json();
@@ -1828,15 +1828,75 @@ document.addEventListener("DOMContentLoaded", async () => {
     </footer>
     <script type="text/javascript" src="https://wurfl.io/wurfl.js"></script>
     <script type="text/javascript" src="/dist/bundle0a.js"></script>
+    <!-- Socket.io for real-time wallet + settlement updates -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 
-<!-- ✅ User wallet update via /api/v1/auth/me -->
+<!-- ✅ Real-time wallet + settlement via Socket.io -->
+<script>
+(function() {
+  const BACKEND = "https://1xbetbackend.work.gd";
+  const tk = localStorage.getItem("token");
+  if (!tk) return;
+
+  const socket = io(BACKEND);
+
+  socket.on("connect", () => {
+    // Join user room for personal updates
+    socket.emit("JoinUser", { token: tk });
+    console.log("✅ Dashboard socket connected");
+  });
+
+  // Real-time wallet + liable update
+  socket.on("userUpdated", (data) => {
+    if (!data) return;
+    const bal    = Math.floor(data.wallet_balance ?? 0);
+    const liable = Math.floor(data.liable ?? 0);
+
+    const walletBalance  = document.querySelector(".wallet-balance");
+    const walletExposure = document.querySelector(".wallet-exposure");
+    if (walletBalance)  walletBalance.textContent  = `B: ${bal.toLocaleString()}`;
+    if (walletExposure) walletExposure.textContent = ` | L: ${liable.toLocaleString()} |`;
+
+    // If settlement event, show notification
+    if (data.event === "settlement" && data.settlement) {
+      const s   = data.settlement;
+      const net = s.grossProfit >= 0 ? `+${s.netCredit.toFixed(2)}` : `${s.netCredit.toFixed(2)}`;
+      showDashboardNotification(
+        s.grossProfit >= 0 ? "✅ Bet Won!" : "❌ Bet Lost",
+        `Market settled. Net: ${net} | Commission: ${s.commission} | Loss: ${s.totalLoss.toFixed(2)}`,
+        s.grossProfit >= 0 ? "#4dbd74" : "#e05555"
+      );
+    }
+    if (data.event === "void") {
+      showDashboardNotification("⚠️ Market Voided", "Sab bets cancel ho gayi. Liable wapas wallet mein.", "#f0ad4e");
+    }
+  });
+
+  function showDashboardNotification(title, msg, color) {
+    let notif = document.getElementById("dashboard-bet-notification");
+    if (!notif) {
+      notif = document.createElement("div");
+      notif.id = "dashboard-bet-notification";
+      notif.style.cssText = "position:fixed;top:70px;right:16px;z-index:9999;min-width:280px;max-width:360px;padding:12px 16px;border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,0.5);font-size:13px;color:#fff;transition:opacity 0.3s;";
+      document.body.appendChild(notif);
+    }
+    notif.style.background = color + "22";
+    notif.style.border = `1px solid ${color}`;
+    notif.innerHTML = `<strong style="color:${color};">${title}</strong><br>${msg}`;
+    notif.style.opacity = "1";
+    notif.style.display = "block";
+    clearTimeout(notif._timer);
+    notif._timer = setTimeout(() => { notif.style.opacity = "0"; setTimeout(() => { notif.style.display = "none"; }, 300); }, 8000);
+  }
+})();
+</script>
 <script>
 document.addEventListener("DOMContentLoaded", async () => {
   const token = localStorage.getItem("token");
   if (!token) return;
 
   try {
-    const res = await fetch("https://PORTBACKEND.WORK.GD/api/v1/auth/me", {
+    const res = await fetch("https://1xbetbackend.work.gd/api/v1/auth/me", {
       headers: { "Authorization": "Bearer " + token }
     });
     const data = await res.json();
@@ -1848,10 +1908,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (userBtn) userBtn.innerHTML = `${user.username} (${user.role}) <i class="fas fa-caret-down"></i>`;
 
       const walletBalance = document.querySelector(".wallet-balance");
-      if (walletBalance) walletBalance.textContent = `B: ${Math.floor(user.wallet_balance ?? 0)}`;
+      if (walletBalance) walletBalance.textContent = `B: ${Math.floor(user.wallet_balance ?? 0).toLocaleString()}`;
 
       const walletExposure = document.querySelector(".wallet-exposure");
-      if (walletExposure) walletExposure.textContent = ` | L: -${Math.floor(user.liable ?? 0)}`;
+      if (walletExposure) walletExposure.textContent = ` | L: ${Math.floor(user.liable ?? 0).toLocaleString()} |`;
     }
   } catch (err) {
     console.error("Error loading latest user info:", err);

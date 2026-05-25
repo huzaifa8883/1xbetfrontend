@@ -4424,6 +4424,12 @@ let Matched = [];
 let allRunners = [];
 let runnerPnL = {};
 
+// Window par expose karo taake Vue templates access kar sakein
+window.UnMatched   = UnMatched;
+window.Matched     = Matched;
+window.allRunners  = allRunners;
+window.runnerPnL   = runnerPnL;
+
 // ---------------------------
 // Utilities
 // ---------------------------
@@ -4521,6 +4527,10 @@ function updateRunnerPnL() {
     allRunners.forEach(runner => {
         runnerPnL[runner] = calculateRunnerPnL(runner);
     });
+
+    // window globals sync karo taake Vue/duplicate scripts access kar sakein
+    window.allRunners = allRunners;
+    window.runnerPnL  = runnerPnL;
 }
 
 // ---------------------------
@@ -4529,64 +4539,61 @@ function updateRunnerPnL() {
 function render() {
     updateRunnerPnL();
 
+    // Unmatched bets table
     const ub = document.getElementById("unmatched-body");
-    const mb = document.getElementById("matched-body");
-
-    // Agar DOM elements abhi exist nahi karte — 200ms baad retry
-    if (!ub || !mb) {
-        console.warn("[Render] DOM elements nahi mile — retry in 200ms");
-        setTimeout(render, 200);
-        return;
+    if (ub) {
+        ub.innerHTML = "";
+        UnMatched.forEach(o => {
+            const tr = document.createElement("tr");
+            tr.className = (o.bs || "").toUpperCase() === "B" ? "back" : "lay";
+            tr.innerHTML = `
+                <td>${o.rn || ''}</td>
+                <td>${o.up || ''}</td>
+                <td>${format(o.us)}</td>
+                <td><button class="btn-del" onclick="cancelOrder('${o.orderId}')">X</button></td>
+            `;
+            ub.appendChild(tr);
+        });
+        const ucEl = document.getElementById("unmatched-count");
+        if (ucEl) ucEl.textContent = UnMatched.length;
+        const cancelBtn = document.getElementById("cancelAllBtn");
+        if (cancelBtn) cancelBtn.style.display = UnMatched.length > 0 ? "inline-block" : "none";
     }
 
-    // Unmatched bets
-    ub.innerHTML = "";
-    UnMatched.forEach(o => {
-        const tr = document.createElement("tr");
-        tr.className = (o.bs || "").toUpperCase() === "B" ? "back" : "lay";
-        tr.innerHTML = `
-            <td>${o.rn || ''}</td>
-            <td>${o.up || ''}</td>
-            <td>${format(o.us)}</td>
-            <td><button class="btn-del" onclick="cancelOrder('${o.orderId}')">X</button></td>
-        `;
-        ub.appendChild(tr);
-    });
-    const ucEl = document.getElementById("unmatched-count");
-    if (ucEl) ucEl.textContent = UnMatched.length;
-    const cancelBtn = document.getElementById("cancelAllBtn");
-    if (cancelBtn) cancelBtn.style.display = UnMatched.length > 0 ? "inline-block" : "none";
+    // Matched bets table — Profit/Liability/Net ke saath
+    const mb = document.getElementById("matched-body");
+    if (mb) {
+        mb.innerHTML = "";
+        Matched.forEach(o => {
+            const tr = document.createElement("tr");
+            const side  = (o.bs || "").toUpperCase();
+            tr.className = side === "B" ? "back" : "lay";
+            const price  = parseFloat(o.mp || o.price || 0);
+            const size   = parseFloat(o.ms || o.size || 0);
+            // BACK: profit=(price-1)*size, liable=size
+            // LAY:  profit=size, liable=(price-1)*size
+            const profit  = side === "B" ? (price - 1) * size : size;
+            const liable  = side === "B" ? size : (price - 1) * size;
+            const net     = profit - liable;
+            const netColor = net >= 0 ? "#4dbd74" : "#e05555";
+            tr.innerHTML = `
+                <td>${o.rn || ''}</td>
+                <td>${price.toFixed(2)}</td>
+                <td>${format(size)}</td>
+                <td style="color:#4dbd74;font-weight:600;">${format(Math.round(profit))}</td>
+                <td style="color:#e05555;font-weight:600;">${format(Math.round(liable))}</td>
+                <td style="color:${netColor};font-weight:700;">${net >= 0 ? '+' : ''}${format(Math.round(net))}</td>
+            `;
+            mb.appendChild(tr);
+        });
+        const mcEl = document.getElementById("matched-count");
+        if (mcEl) mcEl.textContent = Matched.length;
+    }
 
-    // Matched bets
-    mb.innerHTML = "";
-    console.log("[Render] Matched rendering:", Matched.length, "bets");
-    Matched.forEach(o => {
-        const tr = document.createElement("tr");
-        const side   = (o.bs || "").toUpperCase();
-        tr.className = side === "B" ? "back" : "lay";
-        const price  = parseFloat(o.mp || o.price || 0);
-        const size   = parseFloat(o.ms || o.size || 0);
-        const profit = side === "B" ? (price - 1) * size : size;
-        const liable = side === "B" ? size : (price - 1) * size;
-        const net    = profit - liable;
-        const netColor = net >= 0 ? "#4dbd74" : "#e05555";
-        tr.innerHTML = `
-            <td>${o.rn || ''}</td>
-            <td>${price.toFixed(2)}</td>
-            <td>${format(size)}</td>
-            <td style="color:#4dbd74;font-weight:600;">${format(Math.round(profit))}</td>
-            <td style="color:#e05555;font-weight:600;">${format(Math.round(liable))}</td>
-            <td style="color:${netColor};font-weight:700;">${net >= 0 ? '+' : ''}${format(Math.round(net))}</td>
-        `;
-        mb.appendChild(tr);
-    });
-    const mcEl = document.getElementById("matched-count");
-    if (mcEl) mcEl.textContent = Matched.length;
-
-    // Runner PnL Summary Table
+    // Runner PnL Summary Table — per-runner "If Win/If Lose" aggregate
     updateRunnerPnLTable();
 
-    // Vue runners ko reactive update karo
+    // Vue runners ko reactive update karo (ifWin/ifLose neeche dikhao)
     updateVueRunnerPnL();
 
     window.dispatchEvent(new Event("runnerPnLUpdated"));
@@ -4660,9 +4667,28 @@ function updateRunnerPnLTable() {
 // ---------------------------
 function updateVueRunnerPnL() {
     try {
-        const vmEl = document.getElementById('MarketView') || document.getElementById('app');
-        if (!vmEl || !vmEl.__vue__) return;
-        const vm = vmEl.__vue__;
+        // Vue instance dhundo — pehle app, phir MarketView, phir koi bhi vue-mounted element
+        let vmEl = document.getElementById('app') || document.getElementById('MarketView');
+        let vm = vmEl && vmEl.__vue__;
+
+        // Agar direct element pe nahi mila to child elements check karo
+        if (!vm && vmEl) {
+            const children = vmEl.querySelectorAll('*');
+            for (let el of children) {
+                if (el.__vue__) { vm = el.__vue__; break; }
+            }
+        }
+
+        // Root tak bhi try karo
+        if (!vm && vmEl) {
+            let el = vmEl;
+            while (el && !vm) {
+                vm = el.__vue__;
+                el = el.parentElement;
+            }
+        }
+
+        if (!vm) return;
 
         // Sab market arrays loop karo — Catalog.runners bhi include karo
         const lists = [
@@ -4729,29 +4755,23 @@ window.getRunnerAmounts = function(runnerName) {
 // FETCH FUNCTIONS
 // ---------------------------
 async function fetchUnMatched() {
-    if (!matchId) { console.warn("[Bets] matchId null — URL mein ?id= check karo"); return; }
+    if (!matchId) return;
     const tk = localStorage.getItem('token') || localStorage.getItem('wex3authtoken') || token;
-    if (!tk) { console.warn("[Bets] No token found"); return; }
+    if (!tk) return;
     try {
         const res = await fetch(`${ordersUrl}/orders/pending?marketId=${matchId}`, {
             headers: { "Authorization": "Bearer " + tk }
         });
-        if (!res.ok) { console.warn("[Bets] fetchUnMatched HTTP:", res.status); return; }
+        if (!res.ok) return;
         const json = await res.json();
-        console.log("[Bets] fetchUnMatched raw:", JSON.stringify(json).slice(0, 300));
-        // Sab possible backend formats handle karo
-        const list = json.data?.orders
-                  || (Array.isArray(json.data) ? json.data : null)
-                  || json.orders
-                  || (Array.isArray(json) ? json : []);
+        const list = json.data?.orders || json.orders || [];
         UnMatched = list.map(o => ({
-            orderId: String(o.request_id || o.orderId || o.requestId || o._id || Math.random()),
+            orderId: String(o.request_id || o.orderId || o.requestId),
             rn: o.runnerName || o.runner_name || o.event_name || String(o.selection_id || ""),
             up: parseFloat(o.price) || 0,
             us: parseFloat(o.size) || 0,
             bs: (o.side || o.type || "").toUpperCase()
         }));
-        console.log("[Bets] UnMatched count:", UnMatched.length);
         render();
     } catch (e) {
         console.error("fetchUnMatched error:", e);
@@ -4759,32 +4779,27 @@ async function fetchUnMatched() {
 }
 
 async function fetchMatched() {
-    if (!matchId) { console.warn("[Bets] matchId null — URL mein ?id= check karo"); return; }
+    if (!matchId) return;
     const tk = localStorage.getItem('token') || localStorage.getItem('wex3authtoken') || token;
-    if (!tk) { console.warn("[Bets] No token found"); return; }
+    if (!tk) return;
     try {
         const res = await fetch(`${ordersUrl}/orders/matched?marketId=${matchId}`, {
             headers: { "Authorization": "Bearer " + tk }
         });
-        if (!res.ok) { console.warn("[Bets] fetchMatched HTTP:", res.status); return; }
+        if (!res.ok) return;
         const json = await res.json();
-        console.log("[Bets] fetchMatched raw:", JSON.stringify(json).slice(0, 300));
-        // Sab possible backend formats handle karo
-        const list = json.data?.orders
-                  || (Array.isArray(json.data) ? json.data : null)
-                  || json.orders
-                  || (Array.isArray(json) ? json : []);
+        const list = json.data?.orders || json.orders || [];
         Matched = list.map(o => ({
-            orderId:  String(o.request_id || o.orderId || o.requestId || o._id || Math.random()),
+            orderId:  String(o.request_id || o.orderId || o.requestId),
             rn:       o.runnerName || o.runner_name || o.event_name || String(o.selection_id || ""),
             selId:    String(o.selection_id || ""),
             mp:       parseFloat(o.price) || 0,
             ms:       parseFloat(o.matched > 0 ? o.matched : o.size) || 0,
             bs:       (o.side || o.type || "").toUpperCase(),
+            // Pre-computed from backend if available
             profit:   parseFloat(o.profit || 0),
             liable:   parseFloat(o.liable || 0),
         }));
-        console.log("[Bets] Matched count:", Matched.length);
         render();
     } catch (e) {
         console.error("fetchMatched error:", e);
@@ -4994,80 +5009,51 @@ window.onBetPlaced = async function() {
         }
         return _send.apply(this, arguments);
     };
-
-    // fetch() bhi intercept karo — mv2.min.js fetch use karta ho to
-    const _fetch = window.fetch;
-    window.fetch = function(url, opts) {
-        const p = _fetch.apply(this, arguments);
-        if (opts && opts.method === 'POST' && typeof url === 'string'
-            && url.includes('/orders') && !url.includes('cancel')) {
-            p.then(res => {
-                const clone = res.clone();
-                clone.json().then(resp => {
-                    if (resp && resp.success) {
-                        setTimeout(async () => {
-                            await fetchUnMatched();
-                            await fetchMatched();
-                            updateVueRunnerPnL();
-                        }, 500);
-                        setTimeout(async () => {
-                            await fetchUnMatched();
-                            await fetchMatched();
-                            updateVueRunnerPnL();
-                        }, 2000);
-                    }
-                }).catch(() => {});
-            }).catch(() => {});
-        }
-        return p;
-    };
 })();
 
 // Page Load
 document.addEventListener("DOMContentLoaded", async () => {
+    // Wallet pehle update karo
     await updateUserWallet();
     if (matchId) {
         await fetchRunners();
         await fetchUnMatched();
         await fetchMatched();
     }
+    // Vue load hone ke baad PnL bhi update karo
     setTimeout(updateVueRunnerPnL, 1500);
     setTimeout(updateVueRunnerPnL, 3000);
-
-    // ── SAFETY NET: agar matched-body kabhi bhi wipe ho (Vue/mv2 ne replace kiya)
-    // toh turant re-render karo
-    const betsPanel = document.getElementById("bets-panel");
-    if (betsPanel) {
-        const observer = new MutationObserver(() => {
-            // tbody empty ho gaya — re-inject karo
-            const mb = document.getElementById("matched-body");
-            const ub = document.getElementById("unmatched-body");
-            if ((mb && mb.children.length === 0 && Matched.length > 0) ||
-                (ub && ub.children.length === 0 && UnMatched.length > 0)) {
-                console.log("[Observer] tbody wipe detected — re-rendering");
-                render();
-            }
-        });
-        observer.observe(betsPanel, { childList: true, subtree: true });
-        console.log("[Observer] Watching bets-panel for DOM changes");
-    }
 });
-
-// ── FORCE RENDER after mv2.min.js loads (it may take time to mount Vue)
-// Retry render every second for first 10 seconds if data exists
-let _renderRetryCount = 0;
-const _renderRetryInterval = setInterval(() => {
-    _renderRetryCount++;
-    if (_renderRetryCount > 10) { clearInterval(_renderRetryInterval); return; }
-    if ((Matched.length > 0 || UnMatched.length > 0)) {
-        console.log(`[RetryRender] attempt ${_renderRetryCount} — forcing render`);
-        render();
-    }
-}, 1000);
 
 // Script load pe bhi wallet update karo (DOMContentLoaded ka wait nahi)
 setTimeout(updateUserWallet, 500);
 setTimeout(updateUserWallet, 2000);
+
+// Vue PnL periodic update — bet ke baad runners ke neeche P&L show karne ke liye
+setInterval(updateVueRunnerPnL, 3000);
+
+// jQuery AJAX complete hook — PlaceOrder ke baad turant bets + PnL refresh karo
+$(document).on('ajaxComplete', function(event, xhr, settings) {
+    const url = settings.url || '';
+    if (url.includes('/orders') && !url.includes('cancel')) {
+        try {
+            const resp = JSON.parse(xhr.responseText);
+            if (resp && resp.success !== false) {
+                setTimeout(async function() {
+                    await fetchUnMatched();
+                    await fetchMatched();
+                    updateVueRunnerPnL();
+                    await updateUserWallet();
+                }, 500);
+                setTimeout(async function() {
+                    await fetchUnMatched();
+                    await fetchMatched();
+                    updateVueRunnerPnL();
+                }, 2000);
+            }
+        } catch(e) {}
+    }
+});
 
 console.log("✅ PNL + Bets Script Loaded Successfully");
 </script>           
@@ -5947,32 +5933,6 @@ Vue.component('runner-aggregate', {
 
 })();
 </script>
-    <!-- ==================== FINAL SAFE FIX FOR getRunnerAmounts ==================== -->
-<script>
-// Yeh script sirf getRunnerAmounts ko safely define karta hai
-// Sab asli variables main script mein hain (window scope) — unhe dobara declare mat karo
-
-// Main Global Function for Vue — window.Matched, window.allRunners, window.runnerPnL use karo
-window.getRunnerAmounts = function(runnerName) {
-    if (!runnerName) return { ifWin: 0, ifLose: 0, net: 0 };
-
-    var normalized = (runnerName || "").trim().toLowerCase();
-    var runners = window.allRunners || [];
-    var pnlMap  = window.runnerPnL  || {};
-
-    if (!runners.some(function(r){ return r.trim().toLowerCase() === normalized; })) {
-        runners.push(runnerName);
-        if (window.allRunners) window.allRunners = runners;
-        if (typeof updateRunnerPnL === 'function') updateRunnerPnL();
-    }
-
-    var key = Object.keys(pnlMap).find(function(k){ return k.trim().toLowerCase() === normalized; });
-    var pnl = (key !== undefined && pnlMap[key]) ? pnlMap[key] : 0;
-
-    return { ifWin: pnl, ifLose: 0, net: pnl };
-};
-
-console.log("🔧 getRunnerAmounts safely defined (uses window globals)");
-</script>
+    <!-- getRunnerAmounts is defined in the main PNL script above -->
 </body>
 </html>

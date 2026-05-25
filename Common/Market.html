@@ -4738,7 +4738,7 @@ async function fetchUnMatched() {
         const list = json.data?.orders || json.orders || [];
         UnMatched = list.map(o => ({
             orderId: String(o.request_id || o.orderId || o.requestId),
-            rn: o.runnerName || o.runner_name || o.event_name || String(o.selection_id || ""),
+            rn: o.runner_name || o.runnerName || String(o.selection_id || ""),
             up: parseFloat(o.price) || 0,
             us: parseFloat(o.size) || 0,
             bs: (o.side || o.type || "").toUpperCase()
@@ -4762,7 +4762,9 @@ async function fetchMatched() {
         const list = json.data?.orders || json.orders || [];
         Matched = list.map(o => ({
             orderId:  String(o.request_id || o.orderId || o.requestId),
-            rn:       o.runnerName || o.runner_name || o.event_name || String(o.selection_id || ""),
+            rn:       o.runner_name || o.runnerName ||
+                      (window.selectionIdToRunner && window.selectionIdToRunner[String(o.selection_id || '')]) ||
+                      String(o.selection_id || ''),
             selId:    String(o.selection_id || ""),
             mp:       parseFloat(o.price) || 0,
             ms:       parseFloat(o.matched > 0 ? o.matched : o.size) || 0,
@@ -4788,6 +4790,13 @@ async function fetchRunners() {
         const json = await res.json();
         const market = json.data || json;
         if (market?.runners?.length) {
+            // selectionId → runnerName map store karo (global) — taake ordersUpdated mein lookup ho sake
+            window.selectionIdToRunner = window.selectionIdToRunner || {};
+            market.runners.forEach(r => {
+                const name = r.runnerName || String(r.selectionId || "");
+                const sid  = String(r.selectionId || "");
+                if (sid) window.selectionIdToRunner[sid] = name;
+            });
             const marketRunners = market.runners.map(r => r.runnerName || String(r.selectionId || "")).filter(Boolean);
             allRunners = [...new Set([...allRunners, ...marketRunners])];
             updateRunnerPnL();
@@ -4836,7 +4845,8 @@ socket.on("connect", async () => {
     const isConnectedEl = document.getElementById("isConnected");
     if (isConnectedEl) isConnectedEl.style.display = "inline";
 
-    socket.emit("JoinMatch", { matchId: matchId }, async (ack) => {
+    const tk = localStorage.getItem('token') || localStorage.getItem('wex3authtoken') || '';
+    socket.emit("JoinMatch", { matchId: matchId, token: tk }, async (ack) => {
         console.log("✅ JoinMatch ack:", ack);
         await fetchRunners();
         await fetchUnMatched();
@@ -4860,11 +4870,17 @@ socket.on("ordersUpdated", (data) => {
         UnMatched = UnMatched.filter(o => o.orderId !== orderId);
         Matched   = Matched.filter(o => o.orderId !== orderId);
 
+        // runner_name prefer karo — event_name kabhi nahi (woh match ka naam hota hai)
+        const selId = String(newO.selection_id || "");
+        const rn = newO.runner_name || newO.runnerName ||
+                   (window.selectionIdToRunner && window.selectionIdToRunner[selId]) ||
+                   selId;
+
         if (newO.status === "PENDING") {
             UnMatched.push({
                 orderId,
-                rn:    newO.runnerName || newO.event_name || newO.runner_name || "",
-                selId: String(newO.selection_id || ""),
+                rn,
+                selId,
                 up:    newO.price,
                 us:    newO.size,
                 bs:    (newO.side || "").toUpperCase()
@@ -4875,8 +4891,8 @@ socket.on("ordersUpdated", (data) => {
             const side   = (newO.side || "").toUpperCase();
             Matched.push({
                 orderId,
-                rn:     newO.runnerName || newO.event_name || newO.runner_name || "",
-                selId:  String(newO.selection_id || ""),
+                rn,
+                selId,
                 mp:     price,
                 ms:     size,
                 bs:     side,
@@ -5890,6 +5906,7 @@ window.getRunnerAmounts = function(runnerName) {
     var normalized = (runnerName || "").trim().toLowerCase();
     var runners = window.allRunners || [];
     var pnlMap  = window.runnerPnL  || {};
+    var sidMap  = window.selectionIdToRunner || {};
 
     if (!runners.some(function(r){ return r.trim().toLowerCase() === normalized; })) {
         runners.push(runnerName);
@@ -5897,7 +5914,19 @@ window.getRunnerAmounts = function(runnerName) {
         if (typeof updateRunnerPnL === 'function') updateRunnerPnL();
     }
 
+    // Direct name match try karo
     var key = Object.keys(pnlMap).find(function(k){ return k.trim().toLowerCase() === normalized; });
+
+    // Nahi mila? selectionId se runner name reverse-lookup karo
+    if (key === undefined) {
+        // sidMap mein iss runnerName ka selectionId dhundho
+        var selId = Object.keys(sidMap).find(function(sid){ return (sidMap[sid] || "").trim().toLowerCase() === normalized; });
+        if (selId) {
+            // Pnl map mein selectionId string se dhundho (purani bets)
+            key = Object.keys(pnlMap).find(function(k){ return k.trim() === selId; });
+        }
+    }
+
     var pnl = (key !== undefined && pnlMap[key]) ? pnlMap[key] : 0;
 
     return { ifWin: pnl, ifLose: 0, net: pnl };

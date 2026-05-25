@@ -3921,7 +3921,72 @@
     </div>
   </div>
 </div> -->
-<!-- bets-panel moved out of Vue DOM -->
+<div id="bets-panel">
+  <!-- Settlement / Void notification banner -->
+  <div id="settlement-banner" style="display:none; padding:0 6px;"></div>
+  <div class="bets">
+    <strong>
+      Open Bets (<span id="unmatched-count">0</span>)
+      <span id="isConnected" style="display:none">🟢</span>
+      <button id="cancelAllBtn"
+        class="btn-del"
+        style="float:right; display:none;"
+        onclick="cancelAll()">
+        Cancel All
+      </button>
+    </strong>
+    <div class="betting-table">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Runner</th>
+            <th>Price</th>
+            <th>Size</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="unmatched-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="bets">
+    <strong>Matched Bets (<span id="matched-count">0</span>)</strong>
+    <div class="betting-table">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Runner</th>
+            <th>Price</th>
+            <th>Size</th>
+            <th style="color:#4dbd74;">Profit</th>
+            <th style="color:#e05555;">Liability</th>
+            <th>Net</th>
+          </tr>
+        </thead>
+        <tbody id="matched-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Runner P&L Summary Table -->
+  <div class="bets" id="runner-pnl-panel" style="display:none;">
+    <strong>Position Summary (If Winner)</strong>
+    <div class="betting-table">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Runner</th>
+            <th style="color:#4dbd74;">If Win</th>
+            <th style="color:#e05555;">If Lose</th>
+            <th>Net</th>
+          </tr>
+        </thead>
+        <tbody id="runner-pnl-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
 
 <div style="margin-top:7px;">
     <strong style="display: block; background: #2b2f35; color: #fff; padding:10px;" class="RM_In_Markets">Related Events</strong>
@@ -4006,74 +4071,6 @@
     </div>
 </div>
     </div>
-
-<div id="bets-panel">
-  <!-- Settlement / Void notification banner -->
-  <div id="settlement-banner" style="display:none; padding:0 6px;"></div>
-  <div class="bets">
-    <strong>
-      Open Bets (<span id="unmatched-count">0</span>)
-      <span id="isConnected" style="display:none">🟢</span>
-      <button id="cancelAllBtn"
-        class="btn-del"
-        style="float:right; display:none;"
-        onclick="cancelAll()">
-        Cancel All
-      </button>
-    </strong>
-    <div class="betting-table">
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Runner</th>
-            <th>Price</th>
-            <th>Size</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="unmatched-body"></tbody>
-      </table>
-    </div>
-  </div>
-
-  <div class="bets">
-    <strong>Matched Bets (<span id="matched-count">0</span>)</strong>
-    <div class="betting-table">
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Runner</th>
-            <th>Price</th>
-            <th>Size</th>
-            <th style="color:#4dbd74;">Profit</th>
-            <th style="color:#e05555;">Liability</th>
-            <th>Net</th>
-          </tr>
-        </thead>
-        <tbody id="matched-body"></tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- Runner P&L Summary Table -->
-  <div class="bets" id="runner-pnl-panel" style="display:none;">
-    <strong>Position Summary (If Winner)</strong>
-    <div class="betting-table">
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Runner</th>
-            <th style="color:#4dbd74;">If Win</th>
-            <th style="color:#e05555;">If Lose</th>
-            <th>Net</th>
-          </tr>
-        </thead>
-        <tbody id="runner-pnl-body"></tbody>
-      </table>
-    </div>
-  </div>
-</div>
-
 </div>
 
 
@@ -4532,10 +4529,6 @@ function updateRunnerPnL() {
 function render() {
     updateRunnerPnL();
 
-    // DEBUG — yeh console mein dikhega
-    console.log('[render] Matched:', Matched.length, 'UnMatched:', UnMatched.length,
-        'matched-body el:', !!document.getElementById("matched-body"));
-
     // Unmatched bets table
     const ub = document.getElementById("unmatched-body");
     if (ub) {
@@ -4745,7 +4738,7 @@ async function fetchUnMatched() {
         const list = json.data?.orders || json.orders || [];
         UnMatched = list.map(o => ({
             orderId: String(o.request_id || o.orderId || o.requestId),
-            rn: o.runner_name || o.runnerName || String(o.selection_id || ""),
+            rn: o.runnerName || o.runner_name || o.event_name || String(o.selection_id || ""),
             up: parseFloat(o.price) || 0,
             us: parseFloat(o.size) || 0,
             bs: (o.side || o.type || "").toUpperCase()
@@ -4769,9 +4762,7 @@ async function fetchMatched() {
         const list = json.data?.orders || json.orders || [];
         Matched = list.map(o => ({
             orderId:  String(o.request_id || o.orderId || o.requestId),
-            rn:       o.runner_name || o.runnerName ||
-                      (window.selectionIdToRunner && window.selectionIdToRunner[String(o.selection_id || '')]) ||
-                      String(o.selection_id || ''),
+            rn:       o.runnerName || o.runner_name || o.event_name || String(o.selection_id || ""),
             selId:    String(o.selection_id || ""),
             mp:       parseFloat(o.price) || 0,
             ms:       parseFloat(o.matched > 0 ? o.matched : o.size) || 0,
@@ -4797,13 +4788,6 @@ async function fetchRunners() {
         const json = await res.json();
         const market = json.data || json;
         if (market?.runners?.length) {
-            // selectionId → runnerName map store karo (global) — taake ordersUpdated mein lookup ho sake
-            window.selectionIdToRunner = window.selectionIdToRunner || {};
-            market.runners.forEach(r => {
-                const name = r.runnerName || String(r.selectionId || "");
-                const sid  = String(r.selectionId || "");
-                if (sid) window.selectionIdToRunner[sid] = name;
-            });
             const marketRunners = market.runners.map(r => r.runnerName || String(r.selectionId || "")).filter(Boolean);
             allRunners = [...new Set([...allRunners, ...marketRunners])];
             updateRunnerPnL();
@@ -4852,8 +4836,7 @@ socket.on("connect", async () => {
     const isConnectedEl = document.getElementById("isConnected");
     if (isConnectedEl) isConnectedEl.style.display = "inline";
 
-    const tk = localStorage.getItem('token') || localStorage.getItem('wex3authtoken') || '';
-    socket.emit("JoinMatch", { matchId: matchId, token: tk }, async (ack) => {
+    socket.emit("JoinMatch", { matchId: matchId }, async (ack) => {
         console.log("✅ JoinMatch ack:", ack);
         await fetchRunners();
         await fetchUnMatched();
@@ -4877,17 +4860,11 @@ socket.on("ordersUpdated", (data) => {
         UnMatched = UnMatched.filter(o => o.orderId !== orderId);
         Matched   = Matched.filter(o => o.orderId !== orderId);
 
-        // runner_name prefer karo — event_name kabhi nahi (woh match ka naam hota hai)
-        const selId = String(newO.selection_id || "");
-        const rn = newO.runner_name || newO.runnerName ||
-                   (window.selectionIdToRunner && window.selectionIdToRunner[selId]) ||
-                   selId;
-
         if (newO.status === "PENDING") {
             UnMatched.push({
                 orderId,
-                rn,
-                selId,
+                rn:    newO.runnerName || newO.event_name || newO.runner_name || "",
+                selId: String(newO.selection_id || ""),
                 up:    newO.price,
                 us:    newO.size,
                 bs:    (newO.side || "").toUpperCase()
@@ -4898,8 +4875,8 @@ socket.on("ordersUpdated", (data) => {
             const side   = (newO.side || "").toUpperCase();
             Matched.push({
                 orderId,
-                rn,
-                selId,
+                rn:     newO.runnerName || newO.event_name || newO.runner_name || "",
+                selId:  String(newO.selection_id || ""),
                 mp:     price,
                 ms:     size,
                 bs:     side,
@@ -5913,7 +5890,6 @@ window.getRunnerAmounts = function(runnerName) {
     var normalized = (runnerName || "").trim().toLowerCase();
     var runners = window.allRunners || [];
     var pnlMap  = window.runnerPnL  || {};
-    var sidMap  = window.selectionIdToRunner || {};
 
     if (!runners.some(function(r){ return r.trim().toLowerCase() === normalized; })) {
         runners.push(runnerName);
@@ -5921,19 +5897,7 @@ window.getRunnerAmounts = function(runnerName) {
         if (typeof updateRunnerPnL === 'function') updateRunnerPnL();
     }
 
-    // Direct name match try karo
     var key = Object.keys(pnlMap).find(function(k){ return k.trim().toLowerCase() === normalized; });
-
-    // Nahi mila? selectionId se runner name reverse-lookup karo
-    if (key === undefined) {
-        // sidMap mein iss runnerName ka selectionId dhundho
-        var selId = Object.keys(sidMap).find(function(sid){ return (sidMap[sid] || "").trim().toLowerCase() === normalized; });
-        if (selId) {
-            // Pnl map mein selectionId string se dhundho (purani bets)
-            key = Object.keys(pnlMap).find(function(k){ return k.trim() === selId; });
-        }
-    }
-
     var pnl = (key !== undefined && pnlMap[key]) ? pnlMap[key] : 0;
 
     return { ifWin: pnl, ifLose: 0, net: pnl };

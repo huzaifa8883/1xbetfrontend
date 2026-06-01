@@ -4284,47 +4284,47 @@ new Vue({
         const selId = String(o.selection_id || o.selectionId || o.selId || "");
 
         // -------------------------------------------------------
-        // STRICT ANTI-FLICKER GUARD — BUG 1 FIX (upsertOrders)
-        // Step 1: run through the global resolveRunnerName resolver
-        //         which prioritises selectionIdToRunner map first.
-        // Step 2: if the result is still a match/event title, pull
-        //         directly from the selectionIdToRunner map.
-        // Step 3: if map is empty / not populated yet, retain the
-        //         previously stored valid name from the existing map
-        //         entry.  NEVER persist a string that contains ' v ',
-        //         ' vs ' or the dash separator ' - '.
+        // FIX 2: STRICT FALLBACK HIERARCHY (upsertOrders + interceptor)
+        // Step 1: resolveRunnerName (map-first, strict)
+        // Step 2: pull from selectionIdToRunner map if step 1 is polluted
+        // Step 3: check the already-rendered valid name in local state
+        // Step 4: safe fallback — selectionId label, NEVER a match title
+        // RACE-CONDITION LOCK: once a real name is confirmed, never
+        // overwrite it with a placeholder or match title.
         // -------------------------------------------------------
         let finalRunnerName = (typeof resolveRunnerName === "function")
           ? resolveRunnerName(o)
           : (o.runner_name || o.rn || o.runnerName || "").trim();
 
-        // Guard: if resolveRunnerName still returned a polluted title
-        if (!finalRunnerName || (typeof _isMatchName === "function" && _isMatchName(finalRunnerName))) {
-          // Try selectionIdToRunner map directly
-          const mapStore = window.selectionIdToRunner || {};
+        const mapStore = window.selectionIdToRunner || {};
+
+        if (!finalRunnerName || _isMatchName(finalRunnerName) ||
+            finalRunnerName === "Runner" || finalRunnerName.startsWith("Runner ")) {
           if (selId && mapStore[selId]) {
             finalRunnerName = mapStore[selId];
-          } else if (map[id] && map[id].rn && !(typeof _isMatchName === "function" && _isMatchName(map[id].rn))) {
-            // Retain the previously saved clean name — do NOT overwrite with noise
-            finalRunnerName = map[id].rn;
-          } else {
-            // Absolute safe fallback: show selectionId, never the match title
-            finalRunnerName = selId ? ("Runner " + selId) : "Runner";
           }
         }
 
-        // RACE-CONDITION GUARD (upsertOrders): if the selectionIdToRunner map was
-        // empty when this order first arrived, the resolver may have written a
-        // placeholder ("Runner" / "Runner 12345").  Before accepting that string,
-        // check whether the existing entry in targetList already holds a real,
-        // confirmed player name -- if so, keep it instead of overwriting with noise.
-        if ((typeof _isPlaceholderName === "function" && _isPlaceholderName(finalRunnerName)) ||
-            (typeof _isMatchName      === "function" && _isMatchName(finalRunnerName))) {
-          const existing = map[id];
-          if (existing && existing.rn &&
-              !(typeof _isPlaceholderName === "function" && _isPlaceholderName(existing.rn)) &&
-              !(typeof _isMatchName       === "function" && _isMatchName(existing.rn))) {
-            finalRunnerName = existing.rn; // freeze the confirmed real player name
+        // Fallback: check if we have an already-rendered valid string in local state
+        const existingOrder = [...(window.Matched || []), ...(window.UnMatched || [])]
+          .find(x => String(x.orderId) === String(o.orderId || o.request_id));
+        if (existingOrder && existingOrder.rn &&
+            !_isMatchName(existingOrder.rn) &&
+            !existingOrder.rn.startsWith("Runner") &&
+            existingOrder.rn !== "Runner") {
+          finalRunnerName = existingOrder.rn;
+        }
+
+        if (!finalRunnerName || _isMatchName(finalRunnerName) ||
+            finalRunnerName === "Runner" || finalRunnerName.startsWith("Runner ")) {
+          // Retain existing clean name from the in-progress map entry
+          if (map[id] && map[id].rn &&
+              !_isMatchName(map[id].rn) &&
+              map[id].rn !== "Runner" &&
+              !map[id].rn.startsWith("Runner ")) {
+            finalRunnerName = map[id].rn;
+          } else {
+            finalRunnerName = selId ? ("Runner " + selId) : "Runner";
           }
         }
         // -------------------------------------------------------
@@ -4393,20 +4393,36 @@ new Vue({
       this.UnMatched = this.upsertOrders(this.UnMatched, unmatched, "PENDING");
       this.Matched   = this.upsertOrders(this.Matched,   matched,   "MATCHED");
 
-      // Post-upsert safety sweep — block any residual match-name leak
-      // before Vue's reactivity propagates the change to the DOM.
+      // POST-UPSERT SAFETY SWEEP (FIX 1) — strict reaction sweep before Vue DOM propagation.
+      // Rule: if an order already has a valid real player name, NEVER downgrade it to a
+      // placeholder or match title from the incoming socket payload. Lock and retain it.
       const mapStore = window.selectionIdToRunner || {};
       [this.Matched, this.UnMatched].forEach(list => {
         list.forEach(o => {
-          if (!o.rn || (typeof _isMatchName === "function" && _isMatchName(o.rn))) {
+          const isPlaceholder = (typeof _isPlaceholderName === "function" && _isPlaceholderName(o.rn));
+          const isMatchTitle  = (typeof _isMatchName       === "function" && _isMatchName(o.rn));
+          const needsUpgrade  = !o.rn || isPlaceholder || isMatchTitle;
+          if (needsUpgrade) {
+            // Step 1: try selectionIdToRunner map first
             const fromMap = o.selId && mapStore[o.selId] ? mapStore[o.selId] : null;
-            o.rn = fromMap
-              || (typeof resolveRunnerName === "function" ? resolveRunnerName(o) : "")
-              || (o.selId ? ("Runner " + o.selId) : "Runner");
-            // Hard-stop: still polluted
-            if (typeof _isMatchName === "function" && _isMatchName(o.rn)) {
-              o.rn = o.selId ? ("Runner " + o.selId) : "Runner";
+            if (fromMap && !(typeof _isMatchName === "function" && _isMatchName(fromMap))) {
+              o.rn = fromMap;
+            } else {
+              // Step 2: strict resolver
+              const resolved = (typeof resolveRunnerName === "function") ? resolveRunnerName(o) : "";
+              if (resolved &&
+                  !(typeof _isMatchName       === "function" && _isMatchName(resolved)) &&
+                  !(typeof _isPlaceholderName === "function" && _isPlaceholderName(resolved))) {
+                o.rn = resolved;
+              } else {
+                // Step 3: safe fallback — never write a match title to the DOM
+                o.rn = o.selId ? ("Runner " + o.selId) : "Runner";
+              }
             }
+          }
+          // HARD LOCK: even if all steps above produced a match title, force-correct it
+          if (typeof _isMatchName === "function" && _isMatchName(o.rn)) {
+            o.rn = (mapStore[o.selId]) || (o.selId ? ("Runner " + o.selId) : "Runner");
           }
         });
       });
@@ -5376,6 +5392,22 @@ setInterval(async () => {
     if (!runnersReady) await fetchRunners();
     await fetchUnMatched();
     await fetchMatched();
+
+    // FIX 3: VUE LAZY RENDERING SAFEGUARD — periodic repair loop.
+    // On every tick, scan Matched + UnMatched and upgrade any order whose
+    // .rn is still a placeholder or match title now that the
+    // selectionIdToRunner map may have been populated since last fetch.
+    // Once a real confirmed name is written, it is frozen here so that
+    // the next raw streaming payload cannot downgrade it back.
+    [Matched, UnMatched].forEach(list => {
+        list.forEach(o => {
+            if (!o.rn || o.rn === "Runner" || o.rn.startsWith("Runner ") || _isMatchName(o.rn)) {
+                if (o.selId && window.selectionIdToRunner && window.selectionIdToRunner[o.selId]) {
+                    o.rn = window.selectionIdToRunner[o.selId];
+                }
+            }
+        });
+    });
 }, 5000);
 
 // Wallet har 30 second mein refresh

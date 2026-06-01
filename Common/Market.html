@@ -38,7 +38,8 @@
 
         // getRunnerAmounts stub — Vue template render ke liye zaroori
         // Main PnL script baad mein isko override karega with real data
-        window.getRunnerAmounts = function(runnerName) {
+        // BUG 2 FIX: accepts optional second param forMarketId (ignored in stub)
+        window.getRunnerAmounts = function(runnerName, forMarketId) {
             return { ifWin: 0, ifLose: 0, net: 0 };
         };
         // mv2.min.js svc_prefix use karta hai catalog2 / orders calls ke liye
@@ -1634,20 +1635,20 @@
             </span>-->
             </div>
 <!-- <div class="runner-position">
-  <span v-if="getRunnerAmounts(runner.runnerName).ifWin >= 0">
+  <span v-if="getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin >= 0">
     <span class="runner-position-pos">
-      <strong>{{ getRunnerAmounts(runner.runnerName).ifWin | format }}</strong>
+      <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin | format }}</strong>
     </span>
-    <span class="position-minus" v-if="getRunnerAmounts(runner.runnerName).ifLose != null && getRunnerAmounts(runner.runnerName).ifLose != 0">
-      <strong>{{ getRunnerAmounts(runner.runnerName).ifLose | format }}</strong>
+    <span class="position-minus" v-if="getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose != null && getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose != 0">
+      <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose | format }}</strong>
     </span>
   </span>
   <span v-else>
     <span class="position-minus">
-      <strong>{{ getRunnerAmounts(runner.runnerName).ifWin | format }}</strong>
+      <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin | format }}</strong>
     </span>
-    <span class="runner-position-pos" v-if="getRunnerAmounts(runner.runnerName).ifLose != null && getRunnerAmounts(runner.runnerName).ifLose != 0">
-      <strong>{{ getRunnerAmounts(runner.runnerName).ifLose | format }}</strong>
+    <span class="runner-position-pos" v-if="getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose != null && getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose != 0">
+      <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose | format }}</strong>
     </span>
   </span>
   <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -1662,8 +1663,8 @@
 </div> -->
 <div class="runner-position">
   <span>
-    <span :class="getRunnerAmounts(runner.runnerName).ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
-      <strong>{{ getRunnerAmounts(runner.runnerName).ifWin | format }}</strong>
+    <span :class="getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
+      <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin | format }}</strong>
     </span>
   </span>
   <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -4419,38 +4420,52 @@ var runnerPnL = {};
 var selectionIdToRunner = {};  // selectionId (string) → runnerName mapping
 var runnersReady = false;       // fetchRunners complete ho gaya?
 
-// Helper: kisi bhi order object se correct runner name nikalo
+// ------------------------------------------------------------------
+// BUG 1 FIX: resolveRunnerName — strict resolver
+// Priority: selectionIdToRunner map → runner_name → verified runnerName
+// NEVER falls back to event_name or any string containing match-name
+// patterns like " v ", " vs ", " - " (those are event/match names).
+// ------------------------------------------------------------------
+function _isMatchName(str) {
+    if (!str) return false;
+    const s = str.toLowerCase();
+    // Common match-name separators used by Betfair
+    return s.includes(' v ') || s.includes(' vs ') || /\s-\s/.test(s);
+}
+
 function resolveRunnerName(o) {
     const selId = String(o.selection_id || o.selectionId || o.selId || "");
 
-    // 1. selectionId map (most reliable — catalog se aaya hai)
+    // 1. selectionId → runnerName map — MOST RELIABLE (populated from catalog2)
     if (selId && selectionIdToRunner[selId]) {
         return selectionIdToRunner[selId];
     }
 
-    // 2. runner_name field (backend kabhi kabhi sahi bhejta hai)
-    if (o.runner_name && o.runner_name.trim()) {
-        return o.runner_name.trim();
-    }
+    // 2. runner_name field (dedicated backend field, usually correct)
+    const rn = (o.runner_name || "").trim();
+    if (rn && !_isMatchName(rn)) return rn;
 
-    // 3. runnerName / event_name — check karo ke match name to nahi
-    const raw = (o.runnerName || o.event_name || "").trim();
-    if (raw) {
+    // 3. runnerName field — only if it is a known runner in our map
+    //    and does NOT look like a match/event name
+    const rawRN = (o.runnerName || "").trim();
+    if (rawRN && !_isMatchName(rawRN)) {
         const knownRunners = Object.values(selectionIdToRunner);
-        // Agar known runners hain aur raw unme se koi nahi → match name hai, skip
         if (knownRunners.length > 0) {
-            const isKnown = knownRunners.some(r =>
-                r.trim().toLowerCase() === raw.toLowerCase()
+            const matched = knownRunners.find(r =>
+                r.trim().toLowerCase() === rawRN.toLowerCase()
             );
-            if (isKnown) return raw;
-            // Match name hai — selId fallback
-            return selId || raw;
+            if (matched) return matched;
+            // rawRN is not in known runners → likely polluted, skip it
+        } else {
+            // Map empty (runners not loaded yet) — use rawRN as temporary;
+            // it will be corrected on next fetchRunners() → render() cycle
+            return rawRN;
         }
-        // Map abhi empty — raw use karo (baad mein re-render theek kar dega)
-        return raw;
     }
 
-    return selId || "";
+    // 4. NEVER use event_name — it always contains the match name (e.g. "India v England")
+    //    Fallback to selId so at least something unique is shown
+    return selId ? `Runner ${selId}` : "";
 }
 
 // Window par expose karo taake Vue templates access kar sakein
@@ -4505,30 +4520,28 @@ async function updateUserWallet() {
     }
 }
 
-// ---------------------------
-// PNL CALCULATION
-// ---------------------------
-function calculateRunnerPnL(runnerName) {
-    // ==============================================
-    // CORRECT EXCHANGE P&L LOGIC
-    // ==============================================
-    // BACK Runner A @ odds, stake S:
-    //   Runner A jeeta  => +profit = (odds-1)*S
-    //   Runner A haara  => -loss   = -S
-    //
-    // LAY Runner A @ odds, stake S:
-    //   Runner A jeeta  => -liability = -(odds-1)*S
-    //   Runner A haara  => +profit   = +S
-    //
-    // ifWin  = total P&L agar YEH runner jeeta
-    // ifLose = total P&L agar YEH runner haara (doosra koi jeeta)
-    // ==============================================
+// ------------------------------------------------------------------
+// BUG 2 FIX: calculateRunnerPnL — now scoped to a specific marketId
+// Only orders whose mktId matches the requested marketId are included.
+// This prevents "Match Odds" bets from bleeding into sub-market PnL.
+// ------------------------------------------------------------------
+function calculateRunnerPnL(runnerName, forMarketId) {
+    const normalized  = (runnerName || "").trim().toLowerCase();
+    // forMarketId: if provided, restrict to orders for that market only
+    // if not provided (legacy call), use all orders (backward-compat)
+    const useMarketFilter = !!forMarketId;
 
-    const normalized = (runnerName || "").trim().toLowerCase();
     let ifWin  = 0;
     let ifLose = 0;
 
-    Matched.forEach(order => {
+    // Collect all runner names in the target market so we can compute
+    // the "if this runner wins, all others lose" cross-market P&L correctly
+    const marketOrders = Matched.filter(order => {
+        if (!useMarketFilter) return true;
+        return String(order.mktId || matchId) === String(forMarketId);
+    });
+
+    marketOrders.forEach(order => {
         const rn    = (order.rn || order.runnerName || "").trim().toLowerCase();
         const odds  = Number(order.mp || order.price || 0);
         const stake = Number(order.ms || order.size || 0);
@@ -4537,25 +4550,20 @@ function calculateRunnerPnL(runnerName) {
         if (!rn || odds <= 1 || stake <= 0) return;
 
         if (rn === normalized) {
-            // Bet seedhi IS runner pe hai
             if (side === "B") {
-                ifWin  += (odds - 1) * stake;   // jeeta   → profit
-                ifLose -= stake;                 // haara   → stake gaya
+                ifWin  += (odds - 1) * stake;
+                ifLose -= stake;
             } else {
-                // LAY
-                ifWin  -= (odds - 1) * stake;   // jeeta   → liability
-                ifLose += stake;                 // haara   → stake mila
+                ifWin  -= (odds - 1) * stake;
+                ifLose += stake;
             }
         } else {
-            // Bet kisi DOOSRE runner pe hai
-            // Agar YEH runner jeeta → doosra haara
             if (side === "B") {
-                ifWin  -= stake;                 // doosre pe back — stake gaya
-                ifLose += (odds - 1) * stake;   // doosra jeeta   → profit
+                ifWin  -= stake;
+                ifLose += (odds - 1) * stake;
             } else {
-                // LAY doosre pe
-                ifWin  += stake;                 // doosra haara   → stake mila
-                ifLose -= (odds - 1) * stake;   // doosra jeeta   → liability
+                ifWin  += stake;
+                ifLose -= (odds - 1) * stake;
             }
         }
     });
@@ -4563,15 +4571,29 @@ function calculateRunnerPnL(runnerName) {
     return { ifWin: Math.round(ifWin), ifLose: Math.round(ifLose) };
 }
 
+// runnerPnL keyed as "marketId||runnerName" for strict per-market isolation
 function updateRunnerPnL() {
-    const matchedRunners   = Matched.map(o => (o.rn || o.runnerName || "").trim()).filter(Boolean);
-    const unmatchedRunners = UnMatched.map(o => (o.rn || "").trim()).filter(Boolean);
-    allRunners = [...new Set([...allRunners, ...matchedRunners, ...unmatchedRunners])];
+    // Gather all unique (mktId, runnerName) pairs from both order lists
+    const pairs = new Map(); // key: "mktId||rn"  value: { mktId, rn }
+
+    Matched.forEach(o => {
+        const rn    = (o.rn || "").trim();
+        const mktId = String(o.mktId || matchId);
+        if (rn) pairs.set(`${mktId}||${rn}`, { mktId, rn });
+    });
+    UnMatched.forEach(o => {
+        const rn    = (o.rn || "").trim();
+        const mktId = String(o.mktId || matchId);
+        if (rn) pairs.set(`${mktId}||${rn}`, { mktId, rn });
+    });
 
     runnerPnL = {};
-    allRunners.forEach(runner => {
-        runnerPnL[runner] = calculateRunnerPnL(runner); // { ifWin, ifLose }
+    pairs.forEach(({ mktId, rn }, key) => {
+        runnerPnL[key] = calculateRunnerPnL(rn, mktId);
     });
+
+    // Keep plain runner list for legacy allRunners usage
+    allRunners = [...new Set([...pairs.values()].map(p => p.rn))];
 
     window.allRunners = allRunners;
     window.runnerPnL  = runnerPnL;
@@ -4648,18 +4670,25 @@ function updateRunnerPnLTable() {
         return;
     }
 
-    const allRunnerNames = [...new Set(Matched.map(x => (x.rn || "").trim()).filter(Boolean))];
+    // Group by mktId||rn (BUG 2 FIX: show per-market rows, not cross-market)
+    const seen = new Map();
+    Matched.forEach(x => {
+        const rn    = (x.rn || "").trim();
+        const mktId = String(x.mktId || matchId);
+        if (rn) seen.set(`${mktId}||${rn}`, { mktId, rn });
+    });
 
     tbody.innerHTML = "";
-    allRunnerNames.forEach(runner => {
-        const pnl    = calculateRunnerPnL(runner);
+    seen.forEach(({ mktId, rn }) => {
+        const pnlKey = `${mktId}||${rn}`;
+        const pnl    = runnerPnL[pnlKey] || calculateRunnerPnL(rn, mktId);
         const ifWin  = pnl.ifWin;
         const ifLose = pnl.ifLose;
         const winColor  = ifWin  >= 0 ? "#4dbd74" : "#e05555";
         const loseColor = ifLose >= 0 ? "#4dbd74" : "#e05555";
         const tr = document.createElement("tr");
         tr.innerHTML = `
-            <td><strong>${runner}</strong></td>
+            <td><strong>${rn}</strong></td>
             <td style="color:${winColor};font-weight:700;">${ifWin  >= 0 ? '+' : ''}${format(ifWin)}</td>
             <td style="color:${loseColor};font-weight:600;">${ifLose >= 0 ? '+' : ''}${format(ifLose)}</td>
             <td style="color:${winColor};font-weight:700;">${ifWin  >= 0 ? '+' : ''}${format(ifWin)}</td>
@@ -4667,12 +4696,13 @@ function updateRunnerPnLTable() {
         tbody.appendChild(tr);
     });
 
-    if (panel) panel.style.display = allRunnerNames.length ? "block" : "none";
+    if (panel) panel.style.display = seen.size ? "block" : "none";
 }
 
 // ---------------------------
 // VUE RUNNER PNL — Vue ke runner objects ko directly update karo
 // taake runner naam ke neeche profit/liable show ho
+// BUG 2 FIX: lookup is now scoped by catalog.marketId (compound key)
 // ---------------------------
 function updateVueRunnerPnL() {
     try {
@@ -4697,18 +4727,24 @@ function updateVueRunnerPnL() {
             'OddFigureMarkets', 'OtherMarkets', 'OtherRaceMarkets'
         ];
 
+        // BUG 2 FIX: pass the catalog's own marketId so we only apply PnL
+        // from orders that belong to THIS specific market, not all markets
         function updateRunnersInCatalog(catalog) {
             if (!catalog || !Array.isArray(catalog.runners)) return;
+            const mktId = String(catalog.marketId || matchId);
+
             catalog.runners.forEach(function(runner, idx) {
                 const rName = (runner.runnerName || "").trim();
                 if (!rName) return;
-                const normalized = rName.toLowerCase();
-                const key = Object.keys(runnerPnL).find(k => k.trim().toLowerCase() === normalized);
-                const pnl = key !== undefined ? runnerPnL[key] : { ifWin: 0, ifLose: 0 };
-                const ifWin  = (pnl && pnl.ifWin  !== undefined) ? pnl.ifWin  : 0;
-                const ifLose = (pnl && pnl.ifLose !== undefined) ? pnl.ifLose : 0;
 
-                // Sirf update karo agar value badli ho
+                // Compound key lookup: "marketId||runnerName"
+                const compoundKey = `${mktId}||${rName}`;
+                const pnl = runnerPnL[compoundKey]
+                          || calculateRunnerPnL(rName, mktId);
+                const ifWin  = pnl ? (pnl.ifWin  ?? 0) : 0;
+                const ifLose = pnl ? (pnl.ifLose ?? 0) : 0;
+
+                // Only trigger Vue reactivity when value actually changed
                 if (runner.ifWin !== ifWin || runner.ifLose !== ifLose) {
                     Vue.set(catalog.runners, idx, Object.assign({}, runner, {
                         ifWin:  ifWin,
@@ -4739,20 +4775,26 @@ window.addEventListener('runnerPnLUpdated', function() {
 
 // ---------------------------
 // GLOBAL HELPER FOR VUE (getRunnerAmounts)
+// BUG 2 FIX: now accepts optional second argument `forMarketId`
+// Vue templates call: getRunnerAmounts(runner.runnerName, Catalog.marketId)
+// Falls back to matchId if not provided (backward-compatible).
 // ---------------------------
-window.getRunnerAmounts = function(runnerName) {
+window.getRunnerAmounts = function(runnerName, forMarketId) {
     if (!runnerName) return { ifWin: 0, ifLose: 0, net: 0 };
-    const normalized = (runnerName || "").trim().toLowerCase();
 
-    if (!allRunners.some(r => r.trim().toLowerCase() === normalized)) {
-        allRunners.push(runnerName.trim());
-        updateRunnerPnL();
+    const mktId      = String(forMarketId || matchId || "");
+    const rn         = runnerName.trim();
+    const compoundKey = `${mktId}||${rn}`;
+
+    // If this runner+market combo is not yet tracked, register it
+    if (!runnerPnL[compoundKey]) {
+        const pnl = calculateRunnerPnL(rn, mktId);
+        runnerPnL[compoundKey] = pnl;
     }
 
-    const key = Object.keys(runnerPnL).find(k => k.trim().toLowerCase() === normalized);
-    const pnl = key !== undefined ? runnerPnL[key] : { ifWin: 0, ifLose: 0 };
-    const ifWin  = (pnl && pnl.ifWin  !== undefined) ? pnl.ifWin  : 0;
-    const ifLose = (pnl && pnl.ifLose !== undefined) ? pnl.ifLose : 0;
+    const pnl    = runnerPnL[compoundKey] || { ifWin: 0, ifLose: 0 };
+    const ifWin  = pnl.ifWin  ?? 0;
+    const ifLose = pnl.ifLose ?? 0;
 
     return { ifWin, ifLose, net: ifWin };
 };
@@ -4773,11 +4815,14 @@ async function fetchUnMatched() {
         const list = json.data?.orders || json.orders || [];
         UnMatched = list.map(o => ({
             orderId: String(o.request_id || o.orderId || o.requestId),
-            rn: _resolveToRunnerName(o),   // ← selectionIdToRunner map PEHLE check
+            // BUG 1 FIX: always go through resolveRunnerName (never raw event_name)
+            rn:    resolveRunnerName(o),
             selId: String(o.selection_id || o.selectionId || ""),
-            up: parseFloat(o.price) || 0,
-            us: parseFloat(o.size) || 0,
-            bs: (o.side || o.type || "").toUpperCase()
+            // BUG 2 FIX: store the order's own marketId for per-market PnL scoping
+            mktId: String(o.marketId || o.market_id || matchId),
+            up:    parseFloat(o.price) || 0,
+            us:    parseFloat(o.size) || 0,
+            bs:    (o.side || o.type || "").toUpperCase()
         }));
         render();
     } catch (e) {
@@ -4800,8 +4845,10 @@ async function fetchMatched() {
             const selId = String(o.selection_id || o.selectionId || "");
             return {
                 orderId:  String(o.request_id || o.orderId || o.requestId || ""),
-                rn:       _resolveToRunnerName(o),   // ← selectionIdToRunner map PEHLE check
+                rn:       resolveRunnerName(o),
                 selId:    selId,
+                // BUG 2 FIX: capture each order's own marketId — this scopes PnL correctly
+                mktId:    String(o.marketId || o.market_id || matchId),
                 mp:       parseFloat(o.price) || 0,
                 ms:       parseFloat(o.matched > 0 ? o.matched : o.size) || 0,
                 bs:       (o.side || o.type || "").toUpperCase(),
@@ -4825,84 +4872,57 @@ async function fetchRunners() {
         });
         const json = await res.json();
         const market = json.data || json;
-        if (market?.runners?.length) {
-            // selectionId → runnerName map REBUILD karo har baar
-            // Taake subMarkets aur toss runners bhi cover hon
-            market.runners.forEach(r => {
-                if (r.selectionId && r.runnerName) {
-                    selectionIdToRunner[String(r.selectionId)] = r.runnerName.trim();
-                }
-            });
-            // subMarkets ke runners bhi map mein daalo
-            const allSubRunners = [];
-            ['subMarkets','bookmakerMarkets','tossMarkets'].forEach(key => {
-                const arr = market[key] || [];
+
+        // Build selectionId → runnerName map from ALL available runner sources:
+        // main market runners + every sub-market (TossMarkets, BookmakerMarkets, etc.)
+        const allRunnerSources = [];
+
+        if (Array.isArray(market?.runners)) {
+            allRunnerSources.push(...market.runners);
+        }
+
+        // Sub-market arrays the backend may include
+        const subKeys = [
+            'subMarkets', 'tossMarkets', 'bookmakerMarkets',
+            'fancyMarkets', 'fancy2Markets', 'figureMarkets',
+            'oddFigureMarkets', 'otherMarkets'
+        ];
+        subKeys.forEach(key => {
+            const arr = market[key];
+            if (Array.isArray(arr)) {
                 arr.forEach(sub => {
-                    (sub.runners || []).forEach(r => {
-                        if (r.selectionId && r.runnerName) {
-                            selectionIdToRunner[String(r.selectionId)] = r.runnerName.trim();
-                        }
-                        if (r.runnerName) allSubRunners.push(r.runnerName.trim());
-                    });
+                    if (Array.isArray(sub.runners)) allRunnerSources.push(...sub.runners);
                 });
+            }
+        });
+
+        if (allRunnerSources.length > 0) {
+            // Rebuild map completely on every call so stale entries are cleared
+            allRunnerSources.forEach(r => {
+                const sid = String(r.selectionId || r.selection_id || "");
+                const rn  = (r.runnerName || r.runner_name || "").trim();
+                if (sid && rn && !_isMatchName(rn)) {
+                    selectionIdToRunner[sid] = rn;
+                }
             });
 
             runnersReady = true;
 
-            // Ab Matched aur UnMatched mein jo galat/missing runner names hain unhe fix karo
-            Matched = Matched.map(o => ({
-                ...o,
-                rn: _resolveToRunnerName(o)
-            }));
-            UnMatched = UnMatched.map(o => ({
-                ...o,
-                rn: _resolveToRunnerName(o)
-            }));
+            // Re-resolve ALL existing orders now that the map is populated.
+            // This fixes any orders that arrived before the map was ready.
+            Matched   = Matched.map(o => ({ ...o, rn: resolveRunnerName(o) }));
+            UnMatched = UnMatched.map(o => ({ ...o, rn: resolveRunnerName(o) }));
 
-            const marketRunners = market.runners.map(r => r.runnerName || String(r.selectionId || "")).filter(Boolean);
-            allRunners = [...new Set([...allRunners, ...marketRunners, ...allSubRunners])];
+            const marketRunners = allRunnerSources
+                .map(r => (r.runnerName || r.runner_name || "").trim())
+                .filter(n => n && !_isMatchName(n));
+            allRunners = [...new Set([...allRunners, ...marketRunners])];
             updateRunnerPnL();
             render();
         }
     } catch (e) {
         console.error("fetchRunners error:", e);
     }
-}
-
-// Internal resolver — selectionIdToRunner map PEHLE check karo, phir fallback
-// Yeh function resolveRunnerName se alag hai: yeh SIRF confirmed runner names return karta hai
-// match/event name kabhi return nahi karta
-function _resolveToRunnerName(o) {
-    const selId = String(o.selection_id || o.selectionId || o.selId || "");
-
-    // 1. selectionId → runnerName map (MOST RELIABLE — catalog2 se aata hai)
-    if (selId && selectionIdToRunner[selId]) {
-        return selectionIdToRunner[selId];
-    }
-
-    // 2. runner_name field (backend ka dedicated runner field)
-    if (o.runner_name && o.runner_name.trim()) {
-        return o.runner_name.trim();
-    }
-
-    // 3. runnerName field — sirf tab use karo jab yeh koi known runner ho
-    const raw = (o.runnerName || "").trim();
-    if (raw) {
-        const knownRunners = Object.values(selectionIdToRunner);
-        if (knownRunners.length > 0) {
-            // Case-insensitive match karo known runners se
-            const match = knownRunners.find(r => r.trim().toLowerCase() === raw.toLowerCase());
-            if (match) return match; // Confirmed runner name
-            // raw known runners mein nahi — match name ho sakta hai, selId use karo
-            return selId ? `Runner ${selId}` : raw;
-        }
-        // Map abhi empty (runners load nahi hue) — raw rakhdo, baad mein fix hoga
-        return raw;
-    }
-
-    // 4. event_name kabhi bhi use mat karo — match name hai, runner name nahi
-    // Fallback: selId se generic label
-    return selId ? `Runner ${selId}` : "";
 }
 
 // ---------------------------
@@ -4945,12 +4965,11 @@ socket.on("connect", async () => {
 
     socket.emit("JoinMatch", { matchId: matchId }, async (ack) => {
         console.log("✅ JoinMatch ack:", ack);
-        // fetchRunners PEHLE — selectionIdToRunner map ready karo
-        // taake orders ke runner names sahi aayein pehle render se
         await fetchRunners();
         await fetchUnMatched();
         await fetchMatched();
         await updateUserWallet();
+        // Vue runners ko bhi update karo
         setTimeout(updateVueRunnerPnL, 500);
     });
 });
@@ -4968,11 +4987,15 @@ socket.on("ordersUpdated", (data) => {
         UnMatched = UnMatched.filter(o => o.orderId !== orderId);
         Matched   = Matched.filter(o => o.orderId !== orderId);
 
+        // BUG 2 FIX: capture mktId from the incoming order payload
+        const orderMktId = String(newO.marketId || newO.market_id || matchId);
+
         if (newO.status === "PENDING") {
             UnMatched.push({
                 orderId,
-                rn:    _resolveToRunnerName(newO),   // ← fixed
+                rn:    resolveRunnerName(newO),
                 selId: String(newO.selection_id || ""),
+                mktId: orderMktId,      // BUG 2 FIX
                 up:    newO.price,
                 us:    newO.size,
                 bs:    (newO.side || "").toUpperCase()
@@ -4983,8 +5006,9 @@ socket.on("ordersUpdated", (data) => {
             const side   = (newO.side || "").toUpperCase();
             Matched.push({
                 orderId,
-                rn:     _resolveToRunnerName(newO),  // ← fixed
+                rn:     resolveRunnerName(newO),
                 selId:  String(newO.selection_id || ""),
+                mktId:  orderMktId,     // BUG 2 FIX
                 mp:     price,
                 ms:     size,
                 bs:     side,
@@ -5037,9 +5061,7 @@ socket.on("userUpdated", (data) => {
 // Auto Refresh bets + wallet har 5 second mein
 setInterval(async () => {
     if (!matchId) return;
-    // fetchRunners HAMESHA call karo — map ko fresh rakhta hai
-    // aur existing orders ke runner names re-resolve karta hai
-    await fetchRunners();
+    if (!runnersReady) await fetchRunners();
     await fetchUnMatched();
     await fetchMatched();
 }, 5000);
@@ -5051,8 +5073,7 @@ setInterval(updateUserWallet, 30000);
 // mv2.min.js PlaceOrder success ke baad yeh call karo
 // taake bets aur PnL turant update ho
 window.onBetPlaced = async function() {
-    // fetchRunners PEHLE — map ready hona chahiye bet render se pehle
-    await fetchRunners();
+    if (!runnersReady) await fetchRunners();
     await fetchUnMatched();
     await fetchMatched();
     updateVueRunnerPnL();

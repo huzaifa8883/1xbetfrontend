@@ -4411,7 +4411,47 @@ new Vue({
 });
 </script> -->
 
+<script>
+    function upsertOrders(targetList, newOrders, status) {
+    const map = {};
+    targetList.forEach(o => { map[o.orderId] = o; });
 
+    newOrders.forEach(o => {
+        const id = String(o.request_id || o.orderId || o.requestId || "");
+        if (!id) return;
+
+        // --- ANTI-FLICKER GUARD FOR SOCKET / LIVE UPDATES ---
+        let finalRunnerName = resolveRunnerName(o);
+
+        // Agar resolve hone ke baad bhi poora Match Name (' v ') aa raha hai
+        if (!finalRunnerName || _isMatchName(finalRunnerName)) {
+            const selId = String(o.selection_id || o.selectionId || o.selId || "");
+            if (selId && selectionIdToRunner[selId]) {
+                finalRunnerName = selectionIdToRunner[selId];
+            } else {
+                // Agar map mein nahi hai, to purana saved name retain karein, match name nahi
+                finalRunnerName = map[id] ? map[id].rn : (o.runnerName || "Runner " + selId);
+            }
+        }
+        // ----------------------------------------------------
+
+        map[id] = {
+            orderId: id,
+            rn: finalRunnerName, // strictly clean name
+            selId: String(o.selection_id || o.selectionId || o.selId || ""),
+            mktId: String(o.marketId || o.market_id || matchId),
+            mp: parseFloat(o.price || o.mp || 0),
+            ms: parseFloat(o.matched > 0 ? o.matched : (o.size || o.ms || 0)),
+            bs: (o.side || o.type || o.bs || "").toUpperCase(),
+            profit: parseFloat(o.profit || 0),
+            liable: parseFloat(o.liable || 0),
+            status: status
+        };
+    });
+
+    return Object.values(map);
+}
+</script>
 <script>
 // ============================================================
 // BACKEND URLS — server.js ke routes ke mutabiq

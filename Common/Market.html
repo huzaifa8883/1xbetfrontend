@@ -4465,11 +4465,10 @@ function resolveRunnerName(o) {
     }
 
     // 2. runner_name field (dedicated backend field, usually correct)
-    const rn = (o.runner_name || "").trim();
+    const rn = (o.runner_name || o.rn || "").trim();
     if (rn && !_isMatchName(rn)) return rn;
 
-    // 3. runnerName field — only if it is a known runner in our map
-    //    and does NOT look like a match/event name
+    // 3. runnerName field — check with strict match-name filter
     const rawRN = (o.runnerName || "").trim();
     if (rawRN && !_isMatchName(rawRN)) {
         const knownRunners = Object.values(selectionIdToRunner);
@@ -4478,19 +4477,17 @@ function resolveRunnerName(o) {
                 r.trim().toLowerCase() === rawRN.toLowerCase()
             );
             if (matched) return matched;
-            // rawRN is not in known runners → likely polluted, skip it
         } else {
-            // Map empty (runners not loaded yet) — use rawRN as temporary;
-            // it will be corrected on next fetchRunners() → render() cycle
+            // Agar map khali bhi ho, tab bhi ensure karein ke rawRN match name na ho
             return rawRN;
         }
     }
 
-    // 4. NEVER use event_name — it always contains the match name (e.g. "India v England")
-    //    Fallback to selId so at least something unique is shown
-    return selId ? `Runner ${selId}` : "";
+    // 4. FIX FOR FLICKERING: Agar upar sab fail ho jaye, 
+    // ya data polluted ho (Match name aa raha ho), to match name ke bajaye selectionId show karein.
+    // Is se har second text change nahi hoga.
+    return selId ? `Runner ${selId}` : "Runner";
 }
-
 // Window par expose karo taake Vue templates access kar sakein
 window.UnMatched   = UnMatched;
 window.Matched     = Matched;

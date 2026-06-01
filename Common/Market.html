@@ -4312,6 +4312,21 @@ new Vue({
             finalRunnerName = selId ? ("Runner " + selId) : "Runner";
           }
         }
+
+        // RACE-CONDITION GUARD (upsertOrders): if the selectionIdToRunner map was
+        // empty when this order first arrived, the resolver may have written a
+        // placeholder ("Runner" / "Runner 12345").  Before accepting that string,
+        // check whether the existing entry in targetList already holds a real,
+        // confirmed player name -- if so, keep it instead of overwriting with noise.
+        if ((typeof _isPlaceholderName === "function" && _isPlaceholderName(finalRunnerName)) ||
+            (typeof _isMatchName      === "function" && _isMatchName(finalRunnerName))) {
+          const existing = map[id];
+          if (existing && existing.rn &&
+              !(typeof _isPlaceholderName === "function" && _isPlaceholderName(existing.rn)) &&
+              !(typeof _isMatchName       === "function" && _isMatchName(existing.rn))) {
+            finalRunnerName = existing.rn; // freeze the confirmed real player name
+          }
+        }
         // -------------------------------------------------------
 
         map[id] = {
@@ -4483,6 +4498,19 @@ function _isMatchName(str) {
     const s = str.toLowerCase();
     // Common match-name separators used by Betfair
     return s.includes(' v ') || s.includes(' vs ') || /\s-\s/.test(s);
+}
+
+// Returns true when a name is a temporary placeholder written before
+// the selectionIdToRunner map was populated -- i.e. the bare string
+// "Runner" or "Runner <selectionId>" produced by safe-fallback paths.
+// These strings must NEVER be treated as confirmed player names: they
+// should be upgraded to the real name as soon as the map is ready.
+function _isPlaceholderName(str) {
+    if (!str) return true;
+    const t = str.trim();
+    if (t === "Runner") return true;
+    if (/^Runner\s+\S+$/.test(t)) return true;   // "Runner 12345678"
+    return false;
 }
 
 function resolveRunnerName(o) {
@@ -4662,25 +4690,54 @@ function render() {
     // sees a match/event title in the sidebar tables.
     // ------------------------------------------------------------------
     function _safeDisplayName(o) {
-        // Layer 1 — use whatever is already stored on the object
+        const selKey = String(o.selId || o.selectionId || o.selection_id || "");
+        const liveMap = window.selectionIdToRunner || selectionIdToRunner || {};
+
+        // Layer 1 -- use whatever is stored on the object
         let name = (o.rn || "").trim();
 
-        // Layer 2 — if empty or a match title, re-run the strict resolver
-        if (!name || _isMatchName(name)) {
-            name = resolveRunnerName(o);
+        // Layer 2 -- LAZY UPGRADE: if the stored value is a placeholder
+        // ("Runner" / "Runner 123") but the live map now has the real name,
+        // upgrade it immediately and cache it back onto the object so future
+        // render cycles don't have to resolve it again.
+        if (_isPlaceholderName(name) || _isMatchName(name)) {
+            if (selKey && liveMap[selKey]) {
+                name = liveMap[selKey];
+                o.rn = name;  // cache the confirmed name back onto the order object
+            }
         }
 
-        // Layer 3 — resolver still returned a title or nothing:
-        //           force-pull from the selectionId → runnerName map
-        if (!name || _isMatchName(name)) {
-            const selKey = String(o.selId || o.selectionId || o.selection_id || "");
-            name = selectionIdToRunner[selKey] || "";
+        // Layer 3 -- still bad: re-run the full strict resolver
+        if (!name || _isMatchName(name) || _isPlaceholderName(name)) {
+            const resolved = resolveRunnerName(o);
+            if (resolved && !_isMatchName(resolved) && !_isPlaceholderName(resolved)) {
+                name = resolved;
+                o.rn = name;  // cache it
+            }
         }
 
-        // Layer 4 — absolute safe fallback; NEVER writes a match title
+        // Layer 4 -- resolver still returned a bad value: force-pull map one more time
+        if (!name || _isMatchName(name) || _isPlaceholderName(name)) {
+            if (selKey && liveMap[selKey]) {
+                name = liveMap[selKey];
+                o.rn = name;
+            }
+        }
+
+        // Layer 5 -- last resort: try raw runner_name / runnerName fields
+        if (_isPlaceholderName(name) || _isMatchName(name)) {
+            const rawField = (o.runner_name || "").trim() || (o.runnerName || "").trim();
+            if (rawField && !_isMatchName(rawField) && !_isPlaceholderName(rawField)) {
+                name = rawField;
+                o.rn = name;
+            }
+        }
+
+        // Layer 6 -- absolute safe fallback; NEVER writes a match title to the DOM
         if (!name || _isMatchName(name)) {
-            const selKey = String(o.selId || o.selectionId || o.selection_id || "");
             name = selKey ? ("Runner " + selKey) : "Runner";
+            // NOTE: do NOT cache this back to o.rn -- keep it temporary so the
+            // next render cycle can still attempt a real upgrade from the map.
         }
 
         return name;
@@ -4901,17 +4958,40 @@ async function fetchUnMatched() {
         if (!res.ok) return;
         const json = await res.json();
         const list = json.data?.orders || json.orders || [];
-        UnMatched = list.map(o => ({
-            orderId: String(o.request_id || o.orderId || o.requestId),
-            // BUG 1 FIX: always go through resolveRunnerName (never raw event_name)
-            rn:    resolveRunnerName(o),
-            selId: String(o.selection_id || o.selectionId || ""),
-            // BUG 2 FIX: store the order's own marketId for per-market PnL scoping
-            mktId: String(o.marketId || o.market_id || matchId),
-            up:    parseFloat(o.price) || 0,
-            us:    parseFloat(o.size) || 0,
-            bs:    (o.side || o.type || "").toUpperCase()
-        }));
+        UnMatched = list.map(o => {
+            const selId = String(o.selection_id || o.selectionId || o.selId || "");
+            // Resolve through strict resolver; result may be a placeholder if
+            // selectionIdToRunner is not yet populated -- that is OK, because
+            // _safeDisplayName() will upgrade it lazily on every render cycle.
+            let rn = resolveRunnerName(o);
+            // Post-resolve upgrade: if map already loaded but resolver returned
+            // a placeholder (e.g. map was populated after resolver ran), fix it now.
+            if (_isPlaceholderName(rn) && selId && selectionIdToRunner[selId]) {
+                rn = selectionIdToRunner[selId];
+            }
+            return {
+                orderId: String(o.request_id || o.orderId || o.requestId),
+                rn,
+                selId,
+                mktId: String(o.marketId || o.market_id || matchId),
+                up:    parseFloat(o.price) || 0,
+                us:    parseFloat(o.size) || 0,
+                bs:    (o.side || o.type || "").toUpperCase()
+            };
+        });
+
+        // Post-map sweep: upgrade any remaining placeholders
+        UnMatched.forEach(o => {
+            if (!o.rn || _isMatchName(o.rn) || _isPlaceholderName(o.rn)) {
+                const fromMap = o.selId && selectionIdToRunner[o.selId]
+                              ? selectionIdToRunner[o.selId] : null;
+                const resolved = fromMap || resolveRunnerName(o);
+                if (resolved && !_isMatchName(resolved) && !_isPlaceholderName(resolved)) {
+                    o.rn = resolved;
+                }
+            }
+        });
+
         render();
     } catch (e) {
         console.error("fetchUnMatched error:", e);
@@ -4964,13 +5044,19 @@ async function fetchMatched() {
             };
         });
 
-        // Post-map sweep: guard against any stale/polluted entries
+        // Post-map sweep: upgrade placeholders AND purge any stale/polluted entries.
+        // IMPORTANT: only write back to o.rn when we have a REAL confirmed name --
+        // never cache a placeholder back, so the next render can still try to upgrade.
         Matched.forEach(o => {
-            if (!o.rn || _isMatchName(o.rn)) {
-                o.rn = selectionIdToRunner[o.selId] || resolveRunnerName(o);
-                if (!o.rn || _isMatchName(o.rn)) {
-                    o.rn = o.selId ? ("Runner " + o.selId) : "Runner";
+            if (!o.rn || _isMatchName(o.rn) || _isPlaceholderName(o.rn)) {
+                const fromMap = o.selId && selectionIdToRunner[o.selId]
+                              ? selectionIdToRunner[o.selId] : null;
+                const resolved = fromMap || resolveRunnerName(o);
+                if (resolved && !_isMatchName(resolved) && !_isPlaceholderName(resolved)) {
+                    o.rn = resolved; // confirmed real name -- cache it
                 }
+                // If still no real name, leave o.rn as-is so _safeDisplayName
+                // can attempt a live-map lookup on the next render cycle.
             }
         });
 
@@ -5027,9 +5113,28 @@ async function fetchRunners() {
             runnersReady = true;
 
             // Re-resolve ALL existing orders now that the map is populated.
-            // This fixes any orders that arrived before the map was ready.
-            Matched   = Matched.map(o => ({ ...o, rn: resolveRunnerName(o) }));
-            UnMatched = UnMatched.map(o => ({ ...o, rn: resolveRunnerName(o) }));
+            // This is the key fix for the race condition: orders that arrived
+            // before the catalog loaded will have placeholder rn values --
+            // now we can replace every single one with the real player name.
+            // We use resolveRunnerName() which now has a full map to query.
+            // Only overwrite if the resolved name is a genuine improvement
+            // (i.e. not still a placeholder or match title).
+            Matched = Matched.map(o => {
+                const fresh = resolveRunnerName(o);
+                const keep  = (!_isPlaceholderName(fresh) && !_isMatchName(fresh))
+                            ? fresh
+                            : ((!_isPlaceholderName(o.rn) && !_isMatchName(o.rn))
+                               ? o.rn : fresh);
+                return { ...o, rn: keep };
+            });
+            UnMatched = UnMatched.map(o => {
+                const fresh = resolveRunnerName(o);
+                const keep  = (!_isPlaceholderName(fresh) && !_isMatchName(fresh))
+                            ? fresh
+                            : ((!_isPlaceholderName(o.rn) && !_isMatchName(o.rn))
+                               ? o.rn : fresh);
+                return { ...o, rn: keep };
+            });
 
             const marketRunners = allRunnerSources
                 .map(r => (r.runnerName || r.runner_name || "").trim())
@@ -5101,24 +5206,51 @@ socket.on("ordersUpdated", (data) => {
     if (!data?.newOrders?.length) return;
 
     // ---------------------------------------------------------
-    // PRE-PROCESSING SANITIZATION PASS — BUG 1 FIX (socket ingestion)
-    // Mutate each incoming order object in-place BEFORE any array
-    // push or render call.  This guarantees that the raw socket
-    // payload can never inject a "PlayerA v PlayerB" match-title
-    // string into the data pipeline, regardless of what the server
-    // sends in the runnerName / runner_name fields.
+    // PRE-PROCESSING SANITIZATION PASS -- BUG 1 FIX (socket ingestion)
+    // Mutate each incoming order object in-place BEFORE any array push
+    // or render call, so no raw socket payload can write a match-title
+    // or stale placeholder into the data pipeline.
+    //
+    // RACE-CONDITION RULE: if the selectionIdToRunner map is still empty
+    // (catalog not yet loaded), do NOT overwrite a valid name that already
+    // exists in the live Matched / UnMatched arrays -- only update the
+    // incoming raw object fields, leaving the in-memory order objects
+    // untouched until a real name can be confirmed.
     // ---------------------------------------------------------
     data.newOrders.forEach(o => {
+        const selKey   = String(o.selectionId || o.selection_id || "");
+        const orderId  = String(o.request_id || o.orderId || o.requestId || "");
+
+        // Check whether the live arrays already hold a confirmed real name
+        // for this order (written by a previous fetch/socket cycle).
+        const existing = [...Matched, ...UnMatched].find(x => x.orderId === orderId);
+        const frozenName = (existing && existing.rn &&
+                            !_isPlaceholderName(existing.rn) &&
+                            !_isMatchName(existing.rn))
+                         ? existing.rn : null;
+
+        // Resolve the best available name from the incoming payload
         let validName = resolveRunnerName(o);
-        if (!validName || _isMatchName(validName)) {
-            const selKey = String(o.selectionId || o.selection_id || "");
+        if (!validName || _isMatchName(validName) || _isPlaceholderName(validName)) {
             validName = selectionIdToRunner[selKey] || "";
         }
+        if (!validName || _isMatchName(validName) || _isPlaceholderName(validName)) {
+            const rawField = (o.runner_name || "").trim() || (o.runnerName || "").trim();
+            if (rawField && !_isMatchName(rawField)) validName = rawField;
+        }
+
+        // If the incoming resolution is only a placeholder but we already
+        // have a confirmed real name in memory, use the frozen name instead.
+        if (frozenName && (_isPlaceholderName(validName) || !validName)) {
+            validName = frozenName;
+        }
+
+        // Final fallback -- only reached when map is genuinely empty
         if (!validName || _isMatchName(validName)) {
-            const selKey = String(o.selectionId || o.selection_id || "");
             validName = selKey ? ("Runner " + selKey) : "Runner";
         }
-        // Overwrite both fields so every downstream reader gets clean data
+
+        // Overwrite all name fields on the raw payload object
         o.runnerName  = validName;
         o.runner_name = validName;
         o.rn          = validName;
@@ -5175,27 +5307,25 @@ socket.on("ordersUpdated", (data) => {
     });
 
     // ---------------------------------------------------------
-    // POST-PUSH SAFETY SWEEP — last line of defence before render.
-    // If any .rn is still a match/event name (e.g. because the
-    // selectionIdToRunner map had not yet been populated when the
-    // order arrived), correct it now before the DOM is touched.
+    // POST-PUSH SAFETY SWEEP -- last line of defence before render.
+    // Catches BOTH match-name pollution AND placeholder strings.
+    // Only writes back to o.rn when a real confirmed name is found --
+    // never caches a placeholder, so future render cycles can still upgrade.
     // ---------------------------------------------------------
-    Matched.forEach(o => {
-        if (!o.rn || _isMatchName(o.rn)) {
-            o.rn = selectionIdToRunner[o.selId] || resolveRunnerName(o);
-            // Final hard-stop: still polluted → use safe label
-            if (!o.rn || _isMatchName(o.rn)) {
-                o.rn = o.selId ? ("Runner " + o.selId) : "Runner";
+    [Matched, UnMatched].forEach(list => {
+        list.forEach(o => {
+            const needsUpgrade = !o.rn || _isMatchName(o.rn) || _isPlaceholderName(o.rn);
+            if (needsUpgrade) {
+                const fromMap  = o.selId && selectionIdToRunner[o.selId]
+                               ? selectionIdToRunner[o.selId] : null;
+                const resolved = fromMap || resolveRunnerName(o);
+                if (resolved && !_isMatchName(resolved) && !_isPlaceholderName(resolved)) {
+                    o.rn = resolved; // real name confirmed -- freeze it
+                }
+                // If map is still empty, leave o.rn alone so _safeDisplayName
+                // can attempt a live upgrade on the next render cycle.
             }
-        }
-    });
-    UnMatched.forEach(o => {
-        if (!o.rn || _isMatchName(o.rn)) {
-            o.rn = selectionIdToRunner[o.selId] || resolveRunnerName(o);
-            if (!o.rn || _isMatchName(o.rn)) {
-                o.rn = o.selId ? ("Runner " + o.selId) : "Runner";
-            }
-        }
+        });
     });
     // ---------------------------------------------------------
 

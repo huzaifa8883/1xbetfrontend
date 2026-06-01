@@ -4522,10 +4522,17 @@ function _isMatchName(str) {
 // These strings must NEVER be treated as confirmed player names: they
 // should be upgraded to the real name as soon as the map is ready.
 function _isPlaceholderName(str) {
-    if (!str) return true;
+    // Agar string khali hai, ya sirf spaces hain, toh true (placeholder)
+    if (!str || !str.trim()) return true;
+    
     const t = str.trim();
-    if (t === "Runner") return true;
-    if (/^Runner\s+\S+$/.test(t)) return true;   // "Runner 12345678"
+    
+    // Exact "Runner" check (case-insensitive option ke sath agar chahiye ho)
+    if (t.toLowerCase() === "runner") return true;
+    
+    // "Runner 12345678" ko check karne ke liye (\d+ lagaya taake sirf numbers pakde, text nahi)
+    if (/^runner\s+\d+$/i.test(t)) return true;   
+    
     return false;
 }
 

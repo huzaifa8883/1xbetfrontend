@@ -4522,17 +4522,10 @@ function _isMatchName(str) {
 // These strings must NEVER be treated as confirmed player names: they
 // should be upgraded to the real name as soon as the map is ready.
 function _isPlaceholderName(str) {
-    // Agar string khali hai, ya sirf spaces hain, toh true (placeholder)
-    if (!str || !str.trim()) return true;
-    
+    if (!str) return true;
     const t = str.trim();
-    
-    // Exact "Runner" check (case-insensitive option ke sath agar chahiye ho)
-    if (t.toLowerCase() === "runner") return true;
-    
-    // "Runner 12345678" ko check karne ke liye (\d+ lagaya taake sirf numbers pakde, text nahi)
-    if (/^runner\s+\d+$/i.test(t)) return true;   
-    
+    if (t === "Runner") return true;
+    if (/^Runner\s+\S+$/.test(t)) return true;   // "Runner 12345678"
     return false;
 }
 
@@ -4982,25 +4975,27 @@ async function fetchUnMatched() {
         const json = await res.json();
         const list = json.data?.orders || json.orders || [];
 
-        // Build lookup of existing confirmed names — NEVER downgrade a real name
-        const existingMap = {};
-        UnMatched.forEach(o => { existingMap[o.orderId] = o; });
+        // Build lookup: orderId -> existing object (to preserve confirmed names)
+        const prev = {};
+        UnMatched.forEach(o => { prev[o.orderId] = o; });
 
         UnMatched = list.map(o => {
             const selId   = String(o.selection_id || o.selectionId || o.selId || "");
             const orderId = String(o.request_id || o.orderId || o.requestId);
+            const existing = prev[orderId];
 
-            // FREEZE: if previous fetch already has a real confirmed name, keep it
-            const prev = existingMap[orderId];
-            if (prev && prev.rn && prev.rn !== "Runner" &&
-                !prev.rn.startsWith("Runner ") && !_isMatchName(prev.rn)) {
-                return { ...prev, up: parseFloat(o.price) || 0, us: parseFloat(o.size) || 0 };
+            // RULE: if we already have a real confirmed name, NEVER overwrite it
+            if (existing && existing.rn &&
+                existing.rn !== "Runner" &&
+                !existing.rn.startsWith("Runner ") &&
+                !_isMatchName(existing.rn)) {
+                return { ...existing, up: parseFloat(o.price) || 0, us: parseFloat(o.size) || 0 };
             }
 
-            // Resolution priority: backend runnerName > map > selectionId fallback
+            // Fresh resolution: backend field first, then map, then fallback
             let rn = (o.runnerName || o.runner_name || "").trim();
             if (!rn || rn === "Runner" || rn.startsWith("Runner ") || _isMatchName(rn)) {
-                rn = (selId && selectionIdToRunner[selId]) ? selectionIdToRunner[selId] : rn;
+                rn = (selId && selectionIdToRunner[selId]) ? selectionIdToRunner[selId] : "";
             }
             if (!rn || _isMatchName(rn)) {
                 rn = selId ? ("Runner " + selId) : "Runner";
@@ -5011,9 +5006,9 @@ async function fetchUnMatched() {
                 rn,
                 selId,
                 mktId: String(o.marketId || o.market_id || matchId),
-                up:    parseFloat(o.price) || 0,
-                us:    parseFloat(o.size) || 0,
-                bs:    (o.side || o.type || "").toUpperCase()
+                up: parseFloat(o.price) || 0,
+                us: parseFloat(o.size) || 0,
+                bs: (o.side || o.type || "").toUpperCase()
             };
         });
 
@@ -5035,31 +5030,33 @@ async function fetchMatched() {
         const json = await res.json();
         const list = json.data?.orders || json.orders || [];
 
-        // Build lookup of existing confirmed names — NEVER downgrade a real name
-        const existingMap = {};
-        Matched.forEach(o => { existingMap[o.orderId] = o; });
+        // Build lookup: orderId -> existing object (to preserve confirmed names)
+        const prev = {};
+        Matched.forEach(o => { prev[o.orderId] = o; });
 
         Matched = list.map(o => {
             const selId   = String(o.selection_id || o.selectionId || o.selId || "");
             const orderId = String(o.request_id || o.orderId || o.requestId || "");
+            const existing = prev[orderId];
 
-            // FREEZE: if previous fetch already has a real confirmed name, keep it
-            const prev = existingMap[orderId];
-            if (prev && prev.rn && prev.rn !== "Runner" &&
-                !prev.rn.startsWith("Runner ") && !_isMatchName(prev.rn)) {
+            // RULE: if we already have a real confirmed name, NEVER overwrite it
+            if (existing && existing.rn &&
+                existing.rn !== "Runner" &&
+                !existing.rn.startsWith("Runner ") &&
+                !_isMatchName(existing.rn)) {
                 return {
-                    ...prev,
-                    mp:     parseFloat(o.price) || 0,
-                    ms:     parseFloat(o.matched > 0 ? o.matched : o.size) || 0,
+                    ...existing,
+                    mp: parseFloat(o.price) || 0,
+                    ms: parseFloat(o.matched > 0 ? o.matched : o.size) || 0,
                     profit: parseFloat(o.profit || 0),
                     liable: parseFloat(o.liable || 0),
                 };
             }
 
-            // Resolution priority: backend runnerName > map > selectionId fallback
+            // Fresh resolution: backend field first, then map, then fallback
             let rn = (o.runnerName || o.runner_name || "").trim();
             if (!rn || rn === "Runner" || rn.startsWith("Runner ") || _isMatchName(rn)) {
-                rn = (selId && selectionIdToRunner[selId]) ? selectionIdToRunner[selId] : rn;
+                rn = (selId && selectionIdToRunner[selId]) ? selectionIdToRunner[selId] : "";
             }
             if (!rn || _isMatchName(rn)) {
                 rn = selId ? ("Runner " + selId) : "Runner";
@@ -5069,10 +5066,10 @@ async function fetchMatched() {
                 orderId,
                 rn,
                 selId,
-                mktId:  String(o.marketId || o.market_id || matchId),
-                mp:     parseFloat(o.price) || 0,
-                ms:     parseFloat(o.matched > 0 ? o.matched : o.size) || 0,
-                bs:     (o.side || o.type || "").toUpperCase(),
+                mktId: String(o.marketId || o.market_id || matchId),
+                mp: parseFloat(o.price) || 0,
+                ms: parseFloat(o.matched > 0 ? o.matched : o.size) || 0,
+                bs: (o.side || o.type || "").toUpperCase(),
                 profit: parseFloat(o.profit || 0),
                 liable: parseFloat(o.liable || 0),
             };
@@ -5083,6 +5080,7 @@ async function fetchMatched() {
         console.error("fetchMatched error:", e);
     }
 }
+
 
 async function fetchRunners() {
     if (!matchId) return;
@@ -5130,14 +5128,21 @@ async function fetchRunners() {
 
             runnersReady = true;
 
-            // UPGRADE PASS: now that selectionIdToRunner map is populated,
-            // upgrade any orders whose .rn is still a placeholder.
-            // ONLY upgrade placeholder/Runner values — NEVER downgrade a real name.
+            // Upgrade placeholder names now that selectionIdToRunner map is populated.
+            // ONLY upgrade "Runner ..." placeholders — never touch confirmed real names.
             [...Matched, ...UnMatched].forEach(o => {
                 if (o.selId && selectionIdToRunner[o.selId] &&
                     (o.rn === "Runner" || o.rn.startsWith("Runner ") || _isMatchName(o.rn) || !o.rn)) {
                     o.rn = selectionIdToRunner[o.selId];
                 }
+            });
+            UnMatched = UnMatched.map(o => {
+                const fresh = resolveRunnerName(o);
+                const keep  = (!_isPlaceholderName(fresh) && !_isMatchName(fresh))
+                            ? fresh
+                            : ((!_isPlaceholderName(o.rn) && !_isMatchName(o.rn))
+                               ? o.rn : fresh);
+                return { ...o, rn: keep };
             });
 
             const marketRunners = allRunnerSources
@@ -5214,70 +5219,54 @@ socket.on("ordersUpdated", (data) => {
         const orderSelId = String(newO.selection_id || newO.selectionId || "");
         const orderMktId = String(newO.marketId || newO.market_id || matchId);
 
-        // Resolve runner name — priority: backend runnerName > map > selectionId fallback
-        // FREEZE RULE: check if we already have a confirmed real name in memory
-        const existingInMem = [...Matched, ...UnMatched].find(x => x.orderId === orderId);
-        let safeRn = (existingInMem && existingInMem.rn &&
-                      existingInMem.rn !== "Runner" &&
-                      !existingInMem.rn.startsWith("Runner ") &&
-                      !_isMatchName(existingInMem.rn))
-                   ? existingInMem.rn   // keep the confirmed real name
-                   : null;
+        // RULE: if we already confirmed a real name in memory, NEVER replace it
+        const inMem = [...Matched, ...UnMatched].find(x => x.orderId === orderId);
+        let safeRn = (inMem && inMem.rn &&
+                      inMem.rn !== "Runner" &&
+                      !inMem.rn.startsWith("Runner ") &&
+                      !_isMatchName(inMem.rn))
+                   ? inMem.rn : null;
 
         if (!safeRn) {
-            // Not yet confirmed — try to resolve from incoming payload
+            // Resolve from incoming payload
             safeRn = (newO.runnerName || newO.runner_name || "").trim();
             if (!safeRn || safeRn === "Runner" || safeRn.startsWith("Runner ") || _isMatchName(safeRn)) {
                 safeRn = (orderSelId && selectionIdToRunner[orderSelId])
-                       ? selectionIdToRunner[orderSelId] : safeRn;
+                       ? selectionIdToRunner[orderSelId] : "";
             }
             if (!safeRn || _isMatchName(safeRn)) {
                 safeRn = orderSelId ? ("Runner " + orderSelId) : "Runner";
             }
         }
 
-        // Remove old entries then push updated one
         UnMatched = UnMatched.filter(o => o.orderId !== orderId);
         Matched   = Matched.filter(o => o.orderId !== orderId);
 
         if (newO.status === "PENDING") {
-            UnMatched.push({
-                orderId,
-                rn:    safeRn,
-                selId: orderSelId,
-                mktId: orderMktId,
-                up:    newO.price,
-                us:    newO.size,
-                bs:    (newO.side || "").toUpperCase()
-            });
+            UnMatched.push({ orderId, rn: safeRn, selId: orderSelId, mktId: orderMktId,
+                up: newO.price, us: newO.size, bs: (newO.side || "").toUpperCase() });
         } else if (newO.status === "MATCHED") {
-            Matched.push({
-                orderId,
-                rn:     safeRn,
-                selId:  orderSelId,
-                mktId:  orderMktId,
-                mp:     parseFloat(newO.price || 0),
-                ms:     parseFloat(newO.matched > 0 ? newO.matched : newO.size || 0),
-                bs:     (newO.side || "").toUpperCase(),
+            Matched.push({ orderId, rn: safeRn, selId: orderSelId, mktId: orderMktId,
+                mp: parseFloat(newO.price || 0),
+                ms: parseFloat(newO.matched > 0 ? newO.matched : newO.size || 0),
+                bs: (newO.side || "").toUpperCase(),
                 profit: parseFloat(newO.profit || 0),
-                liable: parseFloat(newO.liable || 0),
-            });
+                liable: parseFloat(newO.liable || 0) });
         }
     });
 
-    // Final upgrade pass: if map is now populated, upgrade any remaining placeholders
-    [Matched, UnMatched].forEach(list => {
-        list.forEach(o => {
-            if (o.selId && selectionIdToRunner[o.selId] &&
-                (o.rn === "Runner" || o.rn.startsWith("Runner ") || _isMatchName(o.rn))) {
-                o.rn = selectionIdToRunner[o.selId];
-            }
-        });
+    // Upgrade any remaining placeholder names now that map may be populated
+    [...Matched, ...UnMatched].forEach(o => {
+        if (o.selId && selectionIdToRunner[o.selId] &&
+            (o.rn === "Runner" || o.rn.startsWith("Runner ") || _isMatchName(o.rn) || !o.rn)) {
+            o.rn = selectionIdToRunner[o.selId];
+        }
     });
 
     render();
 });
 
+// userUpdated — wallet + liable + settlement info
 socket.on("userUpdated", (data) => {
     if (!data) return;
     const bal    = Math.floor(data.wallet_balance ?? 0);

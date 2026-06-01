@@ -166,43 +166,59 @@
     }
 
 
- /* exgameblinker fix: inherit ki jagah transparent ya explicit color use karein */
-@keyframes animate {
-   0%, 100% {
-      background-color: red;
+ .exgameblinker{
+   animation: animate 8s linear infinite;
+ } 
+  
+ @keyframes animate{
+   0%{
+     background-color:red;
    }
-   25%, 75% {
-      background-color: transparent; /* inherit hata kar transparent lagaya taake browser load na le */
+   25%{
+     background-color:inherit;
    }
-}
+   50%{
+     background-color:inherit;
+   }
+   75%{
+     background-color:inherit;
+   }
+   100%{
+     background-color:red;
+   }
+ }
 
-.exgameblinker {
-   animation: animate 4s linear infinite; /* Speed thodi behtar ki taake jhatka na lage */
-} 
+    .Galaxyblinker {
+        position: relative;
+        z-index: 0;
+    }
 
-/* Galaxyblinker fix: Opacity jumps ko smooth karne ke liye steps barhaye */
-@keyframes animateGradient {
-    0%, 100% {
+        .Galaxyblinker::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: linear-gradient(90deg, #8a47ff 0%, #c36eff 100%);
+            opacity: 1;
+            animation: animateGradient 12s linear infinite;
+            transition: opacity 0.5s ease;
+        }
+
+    @keyframes animateGradient {
+        0%, 100%
+
+    {
         opacity: 1;
     }
-    45%, 55% {
-        opacity: 0; /* Smooth transition brackets add kiye */
-    }
-}
 
-.Galaxyblinker::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: -1;
-    background: linear-gradient(90deg, #8a47ff 0%, #c36eff 100%);
-    opacity: 1;
-    animation: animateGradient 6s ease-in-out infinite; /* linear ki jagah ease-in-out lagaya */
-    transition: opacity 0.5s ease;
-}
+    25%, 50%, 75% {
+        opacity: 0;
+    }
+
+    }
 /*  */
        .match-card {
   /* background-color: #1a1a1a; */
@@ -789,25 +805,24 @@
     GET /api/markets/live/:sport
   ============================================================ -->
 <script>
-async function getSportByMarketId(marketId) {
-  try {
-    const res  = await fetch(`${API_BASE}/markets/catalog2?id=${marketId}`);
-    const json = await res.json();
-    const data = json.data || json;
+  async function getSportByMarketId(marketId) {
+    try {
+      const res  = await fetch(`${API_BASE}/markets/catalog2?id=${marketId}`);
+      const json = await res.json();
+      console.log("Catalog2 API response:", json);
+      const data = json.data || json;
 
-    // Sirf tab title badlein agar eventName majood ho aur wo pehle se set na ho
-    if (data.eventName && document.title !== `${data.eventName} | BetPro`) {
-      document.title = `${data.eventName} | BetPro`;
-    } else if (data.match && document.title !== `${data.match} | BetPro`) {
-      document.title = `${data.match} | BetPro`;
+      const matchName = data.eventName || data.marketName || data.match || 'Unknown Match';
+      document.title = `${matchName} | BetPro`;
+
+      // sport name return karo taake related events load ho sakein
+      return data.eventType || data.sport?.name || null;
+
+    } catch (error) {
+      console.error("Error fetching sport by marketId:", error);
+      return null;
     }
-
-    return data.eventType || data.sport?.name || null;
-  } catch (error) {
-    console.error("Error fetching sport by marketId:", error);
-    return null;
   }
-}
 
   async function initMarketPage() {
     const urlParams = new URLSearchParams(window.location.search);

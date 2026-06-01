@@ -4417,6 +4417,41 @@ var Matched = [];
 var allRunners = [];
 var runnerPnL = {};
 var selectionIdToRunner = {};  // selectionId (string) → runnerName mapping
+var runnersReady = false;       // fetchRunners complete ho gaya?
+
+// Helper: kisi bhi order object se correct runner name nikalo
+function resolveRunnerName(o) {
+    const selId = String(o.selection_id || o.selectionId || o.selId || "");
+
+    // 1. selectionId map (most reliable — catalog se aaya hai)
+    if (selId && selectionIdToRunner[selId]) {
+        return selectionIdToRunner[selId];
+    }
+
+    // 2. runner_name field (backend kabhi kabhi sahi bhejta hai)
+    if (o.runner_name && o.runner_name.trim()) {
+        return o.runner_name.trim();
+    }
+
+    // 3. runnerName / event_name — check karo ke match name to nahi
+    const raw = (o.runnerName || o.event_name || "").trim();
+    if (raw) {
+        const knownRunners = Object.values(selectionIdToRunner);
+        // Agar known runners hain aur raw unme se koi nahi → match name hai, skip
+        if (knownRunners.length > 0) {
+            const isKnown = knownRunners.some(r =>
+                r.trim().toLowerCase() === raw.toLowerCase()
+            );
+            if (isKnown) return raw;
+            // Match name hai — selId fallback
+            return selId || raw;
+        }
+        // Map abhi empty — raw use karo (baad mein re-render theek kar dega)
+        return raw;
+    }
+
+    return selId || "";
+}
 
 // Window par expose karo taake Vue templates access kar sakein
 window.UnMatched   = UnMatched;
@@ -4762,26 +4797,9 @@ async function fetchMatched() {
         const list = json.data?.orders || json.orders || [];
         Matched = list.map(o => {
             const selId = String(o.selection_id || o.selectionId || "");
-            // Runner name resolve karo:
-            // 1) selectionId se map mein dekho (most reliable)
-            // 2) runner_name field
-            // 3) runnerName field — lekin agar match naam hai to skip
-            // 4) fallback selectionId string
-            let rn = selectionIdToRunner[selId] || o.runner_name || "";
-            if (!rn) {
-                // runnerName check karo — agar event_name se match karta hai to match name hai, use mat karo
-                const raw = o.runnerName || o.event_name || "";
-                // Agar selectionIdToRunner mein koi value hai aur raw value kisi bhi runner name se match nahi,
-                // to ye match name hai — selId fallback use karo
-                const knownRunners = Object.values(selectionIdToRunner);
-                const isMatchName = knownRunners.length > 0 && !knownRunners.some(r =>
-                    r.trim().toLowerCase() === raw.trim().toLowerCase()
-                );
-                rn = isMatchName ? (selectionIdToRunner[selId] || selId) : (raw || selId);
-            }
             return {
                 orderId:  String(o.request_id || o.orderId || o.requestId || ""),
-                rn:       rn,
+                rn:       resolveRunnerName(o),
                 selId:    selId,
                 mp:       parseFloat(o.price) || 0,
                 ms:       parseFloat(o.matched > 0 ? o.matched : o.size) || 0,
@@ -4813,6 +4831,14 @@ async function fetchRunners() {
                     selectionIdToRunner[String(r.selectionId)] = r.runnerName;
                 }
             });
+            runnersReady = true;
+
+            // Ab Matched mein jo galat runner names hain unhe fix karo
+            Matched = Matched.map(o => ({
+                ...o,
+                rn: selectionIdToRunner[o.selId] || o.rn
+            }));
+
             const marketRunners = market.runners.map(r => r.runnerName || String(r.selectionId || "")).filter(Boolean);
             allRunners = [...new Set([...allRunners, ...marketRunners])];
             updateRunnerPnL();
@@ -4888,7 +4914,7 @@ socket.on("ordersUpdated", (data) => {
         if (newO.status === "PENDING") {
             UnMatched.push({
                 orderId,
-                rn:    newO.runnerName || newO.event_name || newO.runner_name || "",
+                rn:    resolveRunnerName(newO),
                 selId: String(newO.selection_id || ""),
                 up:    newO.price,
                 us:    newO.size,
@@ -4900,7 +4926,7 @@ socket.on("ordersUpdated", (data) => {
             const side   = (newO.side || "").toUpperCase();
             Matched.push({
                 orderId,
-                rn:     newO.runnerName || newO.event_name || newO.runner_name || "",
+                rn:     resolveRunnerName(newO),
                 selId:  String(newO.selection_id || ""),
                 mp:     price,
                 ms:     size,
@@ -4952,11 +4978,11 @@ socket.on("userUpdated", (data) => {
 });
 
 // Auto Refresh bets + wallet har 5 second mein
-setInterval(() => {
-    if (matchId) {
-        fetchUnMatched();
-        fetchMatched();
-    }
+setInterval(async () => {
+    if (!matchId) return;
+    if (!runnersReady) await fetchRunners();
+    await fetchUnMatched();
+    await fetchMatched();
 }, 5000);
 
 // Wallet har 30 second mein refresh
@@ -4966,6 +4992,7 @@ setInterval(updateUserWallet, 30000);
 // mv2.min.js PlaceOrder success ke baad yeh call karo
 // taake bets aur PnL turant update ho
 window.onBetPlaced = async function() {
+    if (!runnersReady) await fetchRunners();
     await fetchUnMatched();
     await fetchMatched();
     updateVueRunnerPnL();
@@ -4989,12 +5016,14 @@ window.onBetPlaced = async function() {
                     if (resp && resp.success) {
                         // Bet successfully placed — 500ms baad refresh karo
                         setTimeout(async () => {
+                            if (!runnersReady) await fetchRunners();
                             await fetchUnMatched();
                             await fetchMatched();
                             updateVueRunnerPnL();
                         }, 500);
                         // Aur 2 second baad bhi (matching ka time)
                         setTimeout(async () => {
+                            if (!runnersReady) await fetchRunners();
                             await fetchUnMatched();
                             await fetchMatched();
                             updateVueRunnerPnL();
@@ -5036,12 +5065,14 @@ $(document).on('ajaxComplete', function(event, xhr, settings) {
             const resp = JSON.parse(xhr.responseText);
             if (resp && resp.success !== false) {
                 setTimeout(async function() {
+                    if (!runnersReady) await fetchRunners();
                     await fetchUnMatched();
                     await fetchMatched();
                     updateVueRunnerPnL();
                     await updateUserWallet();
                 }, 500);
                 setTimeout(async function() {
+                    if (!runnersReady) await fetchRunners();
                     await fetchUnMatched();
                     await fetchMatched();
                     updateVueRunnerPnL();

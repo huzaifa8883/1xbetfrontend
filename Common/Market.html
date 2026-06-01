@@ -4654,15 +4654,51 @@ function updateRunnerPnL() {
 function render() {
     updateRunnerPnL();
 
+    // ------------------------------------------------------------------
+    // RENDER-LEVEL ANTI-FLICKER HELPER
+    // Called at the very last moment before a name is written to the DOM.
+    // Even if a polluted string somehow survived every earlier guard, this
+    // function replaces it with the correct player name so the user never
+    // sees a match/event title in the sidebar tables.
+    // ------------------------------------------------------------------
+    function _safeDisplayName(o) {
+        // Layer 1 — use whatever is already stored on the object
+        let name = (o.rn || "").trim();
+
+        // Layer 2 — if empty or a match title, re-run the strict resolver
+        if (!name || _isMatchName(name)) {
+            name = resolveRunnerName(o);
+        }
+
+        // Layer 3 — resolver still returned a title or nothing:
+        //           force-pull from the selectionId → runnerName map
+        if (!name || _isMatchName(name)) {
+            const selKey = String(o.selId || o.selectionId || o.selection_id || "");
+            name = selectionIdToRunner[selKey] || "";
+        }
+
+        // Layer 4 — absolute safe fallback; NEVER writes a match title
+        if (!name || _isMatchName(name)) {
+            const selKey = String(o.selId || o.selectionId || o.selection_id || "");
+            name = selKey ? ("Runner " + selKey) : "Runner";
+        }
+
+        return name;
+    }
+    // ------------------------------------------------------------------
+
     // Unmatched bets table
     const ub = document.getElementById("unmatched-body");
     if (ub) {
         ub.innerHTML = "";
         UnMatched.forEach(o => {
+            // Sanitize at the last possible point before DOM write
+            const displayName = _safeDisplayName(o);
+
             const tr = document.createElement("tr");
             tr.className = (o.bs || "").toUpperCase() === "B" ? "back" : "lay";
             tr.innerHTML = `
-                <td>${o.rn || ''}</td>
+                <td>${displayName}</td>
                 <td>${o.up || ''}</td>
                 <td>${format(o.us)}</td>
                 <td><button class="btn-del" onclick="cancelOrder('${o.orderId}')">X</button></td>
@@ -4675,18 +4711,21 @@ function render() {
         if (cancelBtn) cancelBtn.style.display = UnMatched.length > 0 ? "inline-block" : "none";
     }
 
-    // Matched bets table — sirf Runner, Price, Size
+    // Matched bets table — Runner, Price, Size
     const mb = document.getElementById("matched-body");
     if (mb) {
         mb.innerHTML = "";
         Matched.forEach(o => {
+            // Sanitize at the last possible point before DOM write
+            const displayName = _safeDisplayName(o);
+
             const tr = document.createElement("tr");
             const side  = (o.bs || "").toUpperCase();
             tr.className = side === "B" ? "back" : "lay";
             const price  = parseFloat(o.mp || o.price || 0);
             const size   = parseFloat(o.ms || o.size || 0);
             tr.innerHTML = `
-                <td>${o.rn || ''}</td>
+                <td>${displayName}</td>
                 <td>${price.toFixed(2)}</td>
                 <td>${format(size)}</td>
             `;
@@ -5060,6 +5099,31 @@ socket.on("disconnect", () => {
 
 socket.on("ordersUpdated", (data) => {
     if (!data?.newOrders?.length) return;
+
+    // ---------------------------------------------------------
+    // PRE-PROCESSING SANITIZATION PASS — BUG 1 FIX (socket ingestion)
+    // Mutate each incoming order object in-place BEFORE any array
+    // push or render call.  This guarantees that the raw socket
+    // payload can never inject a "PlayerA v PlayerB" match-title
+    // string into the data pipeline, regardless of what the server
+    // sends in the runnerName / runner_name fields.
+    // ---------------------------------------------------------
+    data.newOrders.forEach(o => {
+        let validName = resolveRunnerName(o);
+        if (!validName || _isMatchName(validName)) {
+            const selKey = String(o.selectionId || o.selection_id || "");
+            validName = selectionIdToRunner[selKey] || "";
+        }
+        if (!validName || _isMatchName(validName)) {
+            const selKey = String(o.selectionId || o.selection_id || "");
+            validName = selKey ? ("Runner " + selKey) : "Runner";
+        }
+        // Overwrite both fields so every downstream reader gets clean data
+        o.runnerName  = validName;
+        o.runner_name = validName;
+        o.rn          = validName;
+    });
+    // ---------------------------------------------------------
 
     data.newOrders.forEach(newO => {
         const orderId    = String(newO.request_id || newO.orderId || newO.requestId);

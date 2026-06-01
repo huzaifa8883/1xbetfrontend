@@ -805,24 +805,25 @@
     GET /api/markets/live/:sport
   ============================================================ -->
 <script>
-  async function getSportByMarketId(marketId) {
-    try {
-      const res  = await fetch(`${API_BASE}/markets/catalog2?id=${marketId}`);
-      const json = await res.json();
-      console.log("Catalog2 API response:", json);
-      const data = json.data || json;
+async function getSportByMarketId(marketId) {
+  try {
+    const res  = await fetch(`${API_BASE}/markets/catalog2?id=${marketId}`);
+    const json = await res.json();
+    const data = json.data || json;
 
-      const matchName = data.eventName || data.marketName || data.match || 'Unknown Match';
-      document.title = `${matchName} | BetPro`;
-
-      // sport name return karo taake related events load ho sakein
-      return data.eventType || data.sport?.name || null;
-
-    } catch (error) {
-      console.error("Error fetching sport by marketId:", error);
-      return null;
+    // Sirf tab title badlein agar eventName majood ho aur wo pehle se set na ho
+    if (data.eventName && document.title !== `${data.eventName} | BetPro`) {
+      document.title = `${data.eventName} | BetPro`;
+    } else if (data.match && document.title !== `${data.match} | BetPro`) {
+      document.title = `${data.match} | BetPro`;
     }
+
+    return data.eventType || data.sport?.name || null;
+  } catch (error) {
+    console.error("Error fetching sport by marketId:", error);
+    return null;
   }
+}
 
   async function initMarketPage() {
     const urlParams = new URLSearchParams(window.location.search);

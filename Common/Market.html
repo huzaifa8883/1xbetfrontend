@@ -53,7 +53,7 @@
     </script>
 </head>
 <body class="bg-gray d-flex flex-column">
-<div class="main-page" id="main-layout">   <!-- ← id changed to main-layout to avoid Vue mount conflict -->
+<div class="main-page" id="app">   <!-- ← id="app" important for Vue -->
     <div class="row no-gutters">
             <div class="col-md-3 col-lg-2" id="sidebar">
                 <div class="logo-bar">
@@ -175,13 +175,13 @@
      background-color:red;
    }
    25%{
-     background-color:transparent;
+     background-color:inherit;
    }
    50%{
-     background-color:transparent;
+     background-color:inherit;
    }
    75%{
-     background-color:transparent;
+     background-color:inherit;
    }
    100%{
      background-color:red;
@@ -482,101 +482,7 @@
                 </div>
 
                 <div class="content-wrap body">
-
-<!-- ============================================================
-  VUE LIVE ODDS PANEL (id="app")
-  Purpose: Reactive, flicker-free runner cards fetched from
-           catalog2 API every 1.5s using Vue data binding.
-  All DOM updates go through Vue's virtual-DOM diffing, so
-  only changed text nodes are patched — zero full re-render.
-  ============================================================ -->
-<div id="app">
-  <div v-for="market in markets" :key="market.marketId" class="vue-market-block">
-    <!-- Market name header -->
-    <div class="vue-market-header" v-if="market.marketName">
-      <span class="vue-market-label">{{ market.marketName }}</span>
-    </div>
-    <!-- Runner rows -->
-    <div
-      v-for="runner in market.runners"
-      :key="runner.runnerName"
-      class="vue-runner-row"
-    >
-      <!-- Runner name -->
-      <span class="vue-runner-name">{{ runner.runnerName }}</span>
-
-      <!-- PnL amount — green if positive, red if negative -->
-      <span
-        v-if="runner.pnl !== 0"
-        class="vue-runner-pnl"
-        :class="runner.pnl >= 0 ? 'text-success' : 'text-danger'"
-      >
-        {{ runner.pnl >= 0 ? '+' : '' }}{{ runner.pnl }}
-      </span>
-
-      <!-- Back price button -->
-      <button class="vue-btn-back" disabled>
-        {{ runner.backPrice || '-' }}
-      </button>
-
-      <!-- Lay price button -->
-      <button class="vue-btn-lay" disabled>
-        {{ runner.layPrice || '-' }}
-      </button>
-    </div>
-  </div>
-</div>
-
-<style>
-  /* Vue Live Odds Panel styles */
-  #app .vue-market-block {
-    margin-bottom: 4px;
-  }
-  #app .vue-market-header {
-    background: #2b2f35;
-    padding: 4px 10px;
-    font-size: 12px;
-    color: #4dbd74;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-  }
-  #app .vue-runner-row {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 2px 8px;
-    font-size: 12px;
-    color: #fff;
-  }
-  #app .vue-runner-name {
-    flex: 1;
-    font-weight: 500;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  #app .vue-runner-pnl {
-    font-weight: 700;
-    min-width: 52px;
-    text-align: right;
-    font-size: 11px;
-  }
-  #app .text-success { color: #4dbd74 !important; }
-  #app .text-danger  { color: #e05555 !important; }
-  #app .vue-btn-back,
-  #app .vue-btn-lay {
-    border: none;
-    border-radius: 3px;
-    padding: 2px 10px;
-    font-size: 13px;
-    font-weight: 700;
-    cursor: default;
-    min-width: 50px;
-    text-align: center;
-  }
-  #app .vue-btn-back { background: #72bbef; color: #1a1a2e; }
-  #app .vue-btn-lay  { background: #faa9ba; color: #1a1a2e; }
-</style>
+                    
 
 <style>
 
@@ -1088,27 +994,18 @@
                 const container = document.getElementById('horseRaceContainer');
                 if (!container) return;
 
+                if ($(container).hasClass('slick-initialized')) $(container).slick('unslick');
+                container.innerHTML = '';
+
                 if (data.status === 'success' && data.data?.length > 0) {
-                    // Build HTML string in one pass — no per-element DOM mutation,
-                    // no innerHTML wipe inside the loop, prevents layout thrashing.
-                    const slidesHtml = data.data.map(match => {
-                        const timeStr = new Date(match.startTime).toLocaleTimeString('en-US', {
-                            hour: 'numeric', minute: '2-digit', hour12: true
-                        });
-                        return `<div class="chk11"><a href="/Common/Market.html?id=${match.marketId}" style="color:white;"><b class="chkmobile"><span class="slidedate market-time">${timeStr}</span><br><span class="slidename">${match.match}</span></b></a></div>`;
-                    }).join('');
-
-                    // Destroy existing slick ONLY if already initialized, then set HTML once
-                    if ($(container).hasClass('slick-initialized')) $(container).slick('unslick');
-                    container.innerHTML = slidesHtml;
-
-                    $(container).slick({
-                        slidesToShow: 8, slidesToScroll: 1, infinite: false, arrows: true,
-                        responsive: [
-                            { breakpoint: 768, settings: { slidesToShow: 3 } },
-                            { breakpoint: 480, settings: { slidesToShow: 2 } }
-                        ]
+                    data.data.forEach(match => {
+                        const timeStr = new Date(match.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                        const div = document.createElement('div');
+                        div.className = 'chk11';
+                        div.innerHTML = `<a href="/Common/Market.html?id=${match.marketId}" style="color:white;"><b>${timeStr}<br>${match.match}</b></a>`;
+                        container.appendChild(div);
                     });
+                    $(container).slick({ slidesToShow: 8, slidesToScroll: 1, infinite: false, arrows: true });
                 }
             } catch (err) {
                 console.error('Horse load error:', err);
@@ -4876,7 +4773,8 @@ async function fetchUnMatched() {
         const list = json.data?.orders || json.orders || [];
         UnMatched = list.map(o => ({
             orderId: String(o.request_id || o.orderId || o.requestId),
-            rn: o.runnerName || o.runner_name || o.event_name || String(o.selection_id || ""),
+            rn: _resolveToRunnerName(o),   // ← selectionIdToRunner map PEHLE check
+            selId: String(o.selection_id || o.selectionId || ""),
             up: parseFloat(o.price) || 0,
             us: parseFloat(o.size) || 0,
             bs: (o.side || o.type || "").toUpperCase()
@@ -4902,7 +4800,7 @@ async function fetchMatched() {
             const selId = String(o.selection_id || o.selectionId || "");
             return {
                 orderId:  String(o.request_id || o.orderId || o.requestId || ""),
-                rn:       resolveRunnerName(o),
+                rn:       _resolveToRunnerName(o),   // ← selectionIdToRunner map PEHLE check
                 selId:    selId,
                 mp:       parseFloat(o.price) || 0,
                 ms:       parseFloat(o.matched > 0 ? o.matched : o.size) || 0,
@@ -4928,28 +4826,83 @@ async function fetchRunners() {
         const json = await res.json();
         const market = json.data || json;
         if (market?.runners?.length) {
-            // selectionId → runnerName map banao
+            // selectionId → runnerName map REBUILD karo har baar
+            // Taake subMarkets aur toss runners bhi cover hon
             market.runners.forEach(r => {
                 if (r.selectionId && r.runnerName) {
-                    selectionIdToRunner[String(r.selectionId)] = r.runnerName;
+                    selectionIdToRunner[String(r.selectionId)] = r.runnerName.trim();
                 }
             });
+            // subMarkets ke runners bhi map mein daalo
+            const allSubRunners = [];
+            ['subMarkets','bookmakerMarkets','tossMarkets'].forEach(key => {
+                const arr = market[key] || [];
+                arr.forEach(sub => {
+                    (sub.runners || []).forEach(r => {
+                        if (r.selectionId && r.runnerName) {
+                            selectionIdToRunner[String(r.selectionId)] = r.runnerName.trim();
+                        }
+                        if (r.runnerName) allSubRunners.push(r.runnerName.trim());
+                    });
+                });
+            });
+
             runnersReady = true;
 
-            // Ab Matched mein jo galat runner names hain unhe fix karo
+            // Ab Matched aur UnMatched mein jo galat/missing runner names hain unhe fix karo
             Matched = Matched.map(o => ({
                 ...o,
-                rn: selectionIdToRunner[o.selId] || o.rn
+                rn: _resolveToRunnerName(o)
+            }));
+            UnMatched = UnMatched.map(o => ({
+                ...o,
+                rn: _resolveToRunnerName(o)
             }));
 
             const marketRunners = market.runners.map(r => r.runnerName || String(r.selectionId || "")).filter(Boolean);
-            allRunners = [...new Set([...allRunners, ...marketRunners])];
+            allRunners = [...new Set([...allRunners, ...marketRunners, ...allSubRunners])];
             updateRunnerPnL();
             render();
         }
     } catch (e) {
         console.error("fetchRunners error:", e);
     }
+}
+
+// Internal resolver — selectionIdToRunner map PEHLE check karo, phir fallback
+// Yeh function resolveRunnerName se alag hai: yeh SIRF confirmed runner names return karta hai
+// match/event name kabhi return nahi karta
+function _resolveToRunnerName(o) {
+    const selId = String(o.selection_id || o.selectionId || o.selId || "");
+
+    // 1. selectionId → runnerName map (MOST RELIABLE — catalog2 se aata hai)
+    if (selId && selectionIdToRunner[selId]) {
+        return selectionIdToRunner[selId];
+    }
+
+    // 2. runner_name field (backend ka dedicated runner field)
+    if (o.runner_name && o.runner_name.trim()) {
+        return o.runner_name.trim();
+    }
+
+    // 3. runnerName field — sirf tab use karo jab yeh koi known runner ho
+    const raw = (o.runnerName || "").trim();
+    if (raw) {
+        const knownRunners = Object.values(selectionIdToRunner);
+        if (knownRunners.length > 0) {
+            // Case-insensitive match karo known runners se
+            const match = knownRunners.find(r => r.trim().toLowerCase() === raw.toLowerCase());
+            if (match) return match; // Confirmed runner name
+            // raw known runners mein nahi — match name ho sakta hai, selId use karo
+            return selId ? `Runner ${selId}` : raw;
+        }
+        // Map abhi empty (runners load nahi hue) — raw rakhdo, baad mein fix hoga
+        return raw;
+    }
+
+    // 4. event_name kabhi bhi use mat karo — match name hai, runner name nahi
+    // Fallback: selId se generic label
+    return selId ? `Runner ${selId}` : "";
 }
 
 // ---------------------------
@@ -4992,11 +4945,12 @@ socket.on("connect", async () => {
 
     socket.emit("JoinMatch", { matchId: matchId }, async (ack) => {
         console.log("✅ JoinMatch ack:", ack);
+        // fetchRunners PEHLE — selectionIdToRunner map ready karo
+        // taake orders ke runner names sahi aayein pehle render se
         await fetchRunners();
         await fetchUnMatched();
         await fetchMatched();
         await updateUserWallet();
-        // Vue runners ko bhi update karo
         setTimeout(updateVueRunnerPnL, 500);
     });
 });
@@ -5017,7 +4971,7 @@ socket.on("ordersUpdated", (data) => {
         if (newO.status === "PENDING") {
             UnMatched.push({
                 orderId,
-                rn:    resolveRunnerName(newO),
+                rn:    _resolveToRunnerName(newO),   // ← fixed
                 selId: String(newO.selection_id || ""),
                 up:    newO.price,
                 us:    newO.size,
@@ -5029,7 +4983,7 @@ socket.on("ordersUpdated", (data) => {
             const side   = (newO.side || "").toUpperCase();
             Matched.push({
                 orderId,
-                rn:     resolveRunnerName(newO),
+                rn:     _resolveToRunnerName(newO),  // ← fixed
                 selId:  String(newO.selection_id || ""),
                 mp:     price,
                 ms:     size,
@@ -5083,7 +5037,9 @@ socket.on("userUpdated", (data) => {
 // Auto Refresh bets + wallet har 5 second mein
 setInterval(async () => {
     if (!matchId) return;
-    if (!runnersReady) await fetchRunners();
+    // fetchRunners HAMESHA call karo — map ko fresh rakhta hai
+    // aur existing orders ke runner names re-resolve karta hai
+    await fetchRunners();
     await fetchUnMatched();
     await fetchMatched();
 }, 5000);
@@ -5095,7 +5051,8 @@ setInterval(updateUserWallet, 30000);
 // mv2.min.js PlaceOrder success ke baad yeh call karo
 // taake bets aur PnL turant update ho
 window.onBetPlaced = async function() {
-    if (!runnersReady) await fetchRunners();
+    // fetchRunners PEHLE — map ready hona chahiye bet render se pehle
+    await fetchRunners();
     await fetchUnMatched();
     await fetchMatched();
     updateVueRunnerPnL();
@@ -6063,161 +6020,6 @@ Vue.component('runner-aggregate', {
 
 })();
 </script>
-<!-- ============================================================
-  VUE 3 LIVE ODDS APP — Fix 4
-  Mount point : #app  (inside .content-wrap.body)
-  Data        : reactive markets[] array
-  Polling     : fetchLiveOdds() every 1500ms via safe setInterval
-  PnL         : calls window.getRunnerAmounts(runnerName).net
-                which is defined by the PnL script above and
-                returns the current net position for each runner.
-  Anti-flicker: Vue's virtual-DOM diff patches only changed text
-                nodes — the full row HTML is NEVER wiped/rewritten.
-  ============================================================ -->
-<script>
-(function() {
-  'use strict';
-
-  // Wait for Vue 2 CDN (which is loaded just above in the footer area)
-  // and mount our supplementary reactive panel on #app.
-  // Note: The main MarketView is driven by mv2.min.js / bundle0a.js (Vue 2).
-  // Our #app instance is a separate, isolated Vue 2 instance that only
-  // manages the live-odds summary panel — it does NOT conflict with
-  // the MarketView instance mounted on #MarketView.
-
-  function waitForVue(cb) {
-    if (typeof Vue !== 'undefined') { cb(); return; }
-    var t = setInterval(function() {
-      if (typeof Vue !== 'undefined') { clearInterval(t); cb(); }
-    }, 100);
-  }
-
-  waitForVue(function() {
-    // Bail if the #app element was already claimed by another Vue instance
-    var appEl = document.getElementById('app');
-    if (!appEl || appEl.__vue__) return;
-
-    var MARKET_ID = new URLSearchParams(window.location.search).get('id');
-    var _pollTimer = null;
-
-    var liveOddsApp = new Vue({
-      el: '#app',
-
-      data: function() {
-        return {
-          markets:  [],
-          marketId: MARKET_ID
-        };
-      },
-
-      methods: {
-        // Fetch live odds from catalog2 and map to reactive markets array.
-        // Crucially we ASSIGN into existing runner objects (Object.assign)
-        // rather than replacing the array wholesale — Vue then diffs only
-        // the changed leaf nodes, so no row is destroyed and re-created.
-        fetchLiveOdds: async function() {
-          if (!this.marketId) return;
-          try {
-            var token = localStorage.getItem('token') || '';
-            var headers = token ? { 'Authorization': 'Bearer ' + token } : {};
-            var res  = await fetch(API_BASE + '/markets/catalog2?id=' + encodeURIComponent(this.marketId), { headers: headers });
-            if (!res.ok) return;
-            var json = await res.json();
-            var data = (json && json.data) ? json.data : json;
-
-            // Normalise to an array of markets
-            var incoming = [];
-            if (data && Array.isArray(data.runners)) {
-              // Single-market response
-              incoming = [{
-                marketId:   data.marketId   || this.marketId,
-                marketName: data.marketName || data.eventName || '',
-                runners:    data.runners    || []
-              }];
-            } else if (Array.isArray(data)) {
-              incoming = data;
-            }
-
-            // Map runners and inject PnL via getRunnerAmounts (safe fallback)
-            var self = this;
-            var mapped = incoming.map(function(mkt) {
-              var runners = (mkt.runners || []).map(function(r) {
-                var amounts = (typeof window.getRunnerAmounts === 'function')
-                  ? window.getRunnerAmounts(r.runnerName)
-                  : { net: 0 };
-                return {
-                  runnerName: r.runnerName  || '',
-                  backPrice:  r.price1      || r.back1Price || r.backPrice || null,
-                  layPrice:   r.lay1        || r.lay1Price  || r.layPrice  || null,
-                  pnl:        Math.round(amounts.net || 0)
-                };
-              });
-              return {
-                marketId:   mkt.marketId   || '',
-                marketName: mkt.marketName || mkt.eventName || '',
-                runners:    runners
-              };
-            });
-
-            // Diff-safe update: splice in place so Vue only patches what changed
-            if (mapped.length === 0) return;
-            if (this.markets.length === 0) {
-              // First load — just assign
-              this.markets = mapped;
-            } else {
-              // Subsequent polls — update fields in existing objects
-              for (var i = 0; i < mapped.length; i++) {
-                if (i >= this.markets.length) {
-                  this.markets.push(mapped[i]);
-                } else {
-                  var existMkt = this.markets[i];
-                  existMkt.marketName = mapped[i].marketName;
-                  for (var j = 0; j < mapped[i].runners.length; j++) {
-                    if (j >= existMkt.runners.length) {
-                      existMkt.runners.push(mapped[i].runners[j]);
-                    } else {
-                      Vue.set(existMkt.runners, j, mapped[i].runners[j]);
-                    }
-                  }
-                  // Trim extra runners if count dropped
-                  if (existMkt.runners.length > mapped[i].runners.length) {
-                    existMkt.runners.splice(mapped[i].runners.length);
-                  }
-                }
-              }
-              // Trim extra markets
-              if (this.markets.length > mapped.length) {
-                this.markets.splice(mapped.length);
-              }
-            }
-          } catch (err) {
-            console.warn('[LiveOdds] fetchLiveOdds error:', err.message);
-          }
-        }
-      },
-
-      mounted: function() {
-        var self = this;
-        // Immediate first fetch
-        this.fetchLiveOdds();
-        // Safe polling — 1500ms, no DOM wipe between ticks
-        _pollTimer = setInterval(function() {
-          self.fetchLiveOdds();
-        }, 1500);
-      },
-
-      beforeDestroy: function() {
-        if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
-      }
-    });
-
-    // Expose for debugging
-    window._liveOddsApp = liveOddsApp;
-    console.log('[LiveOdds] Vue live-odds panel mounted on #app');
-  });
-})();
-</script>
-
     <!-- getRunnerAmounts is defined in the main PNL script above -->
 </body>
 </html>

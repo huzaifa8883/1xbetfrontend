@@ -166,59 +166,43 @@
     }
 
 
- .exgameblinker{
-   animation: animate 8s linear infinite;
- } 
-  
- @keyframes animate{
-   0%{
-     background-color:red;
+ /* exgameblinker fix: inherit ki jagah transparent ya explicit color use karein */
+@keyframes animate {
+   0%, 100% {
+      background-color: red;
    }
-   25%{
-     background-color:inherit;
+   25%, 75% {
+      background-color: transparent; /* inherit hata kar transparent lagaya taake browser load na le */
    }
-   50%{
-     background-color:inherit;
-   }
-   75%{
-     background-color:inherit;
-   }
-   100%{
-     background-color:red;
-   }
- }
+}
 
-    .Galaxyblinker {
-        position: relative;
-        z-index: 0;
-    }
+.exgameblinker {
+   animation: animate 4s linear infinite; /* Speed thodi behtar ki taake jhatka na lage */
+} 
 
-        .Galaxyblinker::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -1;
-            background: linear-gradient(90deg, #8a47ff 0%, #c36eff 100%);
-            opacity: 1;
-            animation: animateGradient 12s linear infinite;
-            transition: opacity 0.5s ease;
-        }
-
-    @keyframes animateGradient {
-        0%, 100%
-
-    {
+/* Galaxyblinker fix: Opacity jumps ko smooth karne ke liye steps barhaye */
+@keyframes animateGradient {
+    0%, 100% {
         opacity: 1;
     }
-
-    25%, 50%, 75% {
-        opacity: 0;
+    45%, 55% {
+        opacity: 0; /* Smooth transition brackets add kiye */
     }
+}
 
-    }
+.Galaxyblinker::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    background: linear-gradient(90deg, #8a47ff 0%, #c36eff 100%);
+    opacity: 1;
+    animation: animateGradient 6s ease-in-out infinite; /* linear ki jagah ease-in-out lagaya */
+    transition: opacity 0.5s ease;
+}
 /*  */
        .match-card {
   /* background-color: #1a1a1a; */

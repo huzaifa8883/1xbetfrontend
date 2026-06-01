@@ -4470,76 +4470,93 @@ async function updateUserWallet() {
 }
 
 // ---------------------------
-// PNL CALCULATION
+// PNL CALCULATION — selectionId se match karo (runnerName mein match name aata tha)
 // ---------------------------
-function calculateRunnerPnL(runnerName) {
-    // ==============================================
-    // CORRECT EXCHANGE P&L LOGIC
-    // ==============================================
-    // BACK Runner A @ odds, stake S:
-    //   Runner A jeeta  => +profit = (odds-1)*S
-    //   Runner A haara  => -loss   = -S
-    //
-    // LAY Runner A @ odds, stake S:
-    //   Runner A jeeta  => -liability = -(odds-1)*S
-    //   Runner A haara  => +profit   = +S
-    //
-    // ifWin  = total P&L agar YEH runner jeeta
-    // ifLose = total P&L agar YEH runner haara (doosra koi jeeta)
-    // ==============================================
+function calculateRunnerPnL(selectionId) {
+    // Exchange P&L logic:
+    // Agar Runner A (selId=X) pe BACK bet:
+    //   - X jeeta  => profit = (odds-1) * stake
+    //   - X haara  => loss   = -stake
+    // Agar Runner A pe LAY bet:
+    //   - X jeeta  => loss   = -(odds-1) * stake
+    //   - X haara  => profit = +stake
 
-    const normalized = (runnerName || "").trim().toLowerCase();
-    let ifWin  = 0;
-    let ifLose = 0;
+    const selId = String(selectionId || "").trim();
+    if (!selId) return 0;
+
+    let pnlIfThisWins = 0;
 
     Matched.forEach(order => {
-        const rn    = (order.rn || order.runnerName || "").trim().toLowerCase();
+        const orderSelId = String(order.selId || order.selection_id || "").trim();
         const odds  = Number(order.mp || order.price || 0);
         const stake = Number(order.ms || order.size || 0);
         const side  = (order.bs || order.side || "").toUpperCase();
 
-        if (!rn || odds <= 1 || stake <= 0) return;
+        if (!orderSelId || odds <= 1 || stake <= 0) return;
 
-        if (rn === normalized) {
-            // Bet seedhi IS runner pe hai
-            if (side === "B") {
-                ifWin  += (odds - 1) * stake;   // jeeta   → profit
-                ifLose -= stake;                 // haara   → stake gaya
-            } else {
-                // LAY
-                ifWin  -= (odds - 1) * stake;   // jeeta   → liability
-                ifLose += stake;                 // haara   → stake mila
-            }
+        if (orderSelId === selId) {
+            // Is runner pe directly bet hai
+            if (side === "B") pnlIfThisWins += (odds - 1) * stake;
+            else              pnlIfThisWins -= (odds - 1) * stake;
         } else {
-            // Bet kisi DOOSRE runner pe hai
-            // Agar YEH runner jeeta → doosra haara
-            if (side === "B") {
-                ifWin  -= stake;                 // doosre pe back — stake gaya
-                ifLose += (odds - 1) * stake;   // doosra jeeta   → profit
-            } else {
-                // LAY doosre pe
-                ifWin  += stake;                 // doosra haara   → stake mila
-                ifLose -= (odds - 1) * stake;   // doosra jeeta   → liability
-            }
+            // Doosre runner pe bet hai — agar YEH jeeta to wo haara
+            if (side === "B") pnlIfThisWins -= stake;
+            else              pnlIfThisWins += stake;
         }
     });
 
-    return { ifWin: Math.round(ifWin), ifLose: Math.round(ifLose) };
+    return Math.round(pnlIfThisWins);
 }
 
 function updateRunnerPnL() {
-    const matchedRunners   = Matched.map(o => (o.rn || o.runnerName || "").trim()).filter(Boolean);
-    const unmatchedRunners = UnMatched.map(o => (o.rn || "").trim()).filter(Boolean);
-    allRunners = [...new Set([...allRunners, ...matchedRunners, ...unmatchedRunners])];
-
+    // selectionId → pnl map banao
     runnerPnL = {};
-    allRunners.forEach(runner => {
-        runnerPnL[runner] = calculateRunnerPnL(runner); // { ifWin, ifLose }
+    Matched.forEach(o => {
+        const selId = String(o.selId || o.selection_id || "").trim();
+        if (selId && runnerPnL[selId] === undefined) {
+            runnerPnL[selId] = calculateRunnerPnL(selId);
+        }
     });
-
-    window.allRunners = allRunners;
-    window.runnerPnL  = runnerPnL;
+    // window globals sync
+    window.runnerPnL = runnerPnL;
 }
+
+// ---------------------------
+// getRunnerAmounts — Vue template calls this with runnerName
+// ab selectionId se match karo via Catalog.runners lookup
+// ---------------------------
+window.getRunnerAmounts = function(runnerName) {
+    const normalized = (runnerName || "").trim().toLowerCase();
+    if (!normalized) return { ifWin: 0, ifLose: 0, net: 0 };
+
+    // Catalog se selectionId dhundo by runnerName
+    let selId = null;
+    try {
+        const vmEl = document.getElementById('app');
+        const vm = vmEl && vmEl.__vue__;
+        if (vm && vm.Catalog && Array.isArray(vm.Catalog.runners)) {
+            const found = vm.Catalog.runners.find(r =>
+                (r.runnerName || "").trim().toLowerCase() === normalized
+            );
+            if (found) selId = String(found.selectionId || "");
+        }
+    } catch(e) {}
+
+    // selId mil gaya — PnL lookup karo
+    if (selId && runnerPnL[selId] !== undefined) {
+        const ifWin = runnerPnL[selId];
+        return { ifWin, ifLose: 0, net: ifWin };
+    }
+
+    // Fallback: naam se bhi try karo (purane orders ke liye)
+    const nameKey = Object.keys(runnerPnL).find(k => k.trim().toLowerCase() === normalized);
+    if (nameKey !== undefined) {
+        const ifWin = runnerPnL[nameKey] || 0;
+        return { ifWin, ifLose: 0, net: ifWin };
+    }
+
+    return { ifWin: 0, ifLose: 0, net: 0 };
+};
 
 // ---------------------------
 // RENDER TABLES
@@ -4612,85 +4629,73 @@ function updateRunnerPnLTable() {
         return;
     }
 
-    const allRunnerNames = [...new Set(Matched.map(x => (x.rn || "").trim()).filter(Boolean))];
+    // selectionId → { name, ifWin } map
+    const runnerData = {};
+    const allSelIds = [...new Set(Matched.map(o => String(o.selId || "")).filter(Boolean))];
+
+    allSelIds.forEach(selId => {
+        // Runner ka display name dhundo
+        const order = Matched.find(o => String(o.selId || "") === selId);
+        const displayName = (order && order.rn && order.rn !== order.eventName)
+            ? order.rn
+            : selId;
+        runnerData[selId] = {
+            name:  displayName,
+            ifWin: calculateRunnerPnL(selId)
+        };
+    });
 
     tbody.innerHTML = "";
-    allRunnerNames.forEach(runner => {
-        const pnl    = calculateRunnerPnL(runner);
-        const ifWin  = pnl.ifWin;
-        const ifLose = pnl.ifLose;
-        const winColor  = ifWin  >= 0 ? "#4dbd74" : "#e05555";
+    Object.entries(runnerData).forEach(([selId, data]) => {
+        const net      = data.ifWin;
+        const ifLose   = -net;
+        const netColor  = net >= 0 ? "#4dbd74" : "#e05555";
         const loseColor = ifLose >= 0 ? "#4dbd74" : "#e05555";
         const tr = document.createElement("tr");
         tr.innerHTML = `
-            <td><strong>${runner}</strong></td>
-            <td style="color:${winColor};font-weight:700;">${ifWin  >= 0 ? '+' : ''}${format(ifWin)}</td>
+            <td><strong>${data.name}</strong></td>
+            <td style="color:${netColor};font-weight:700;">${net >= 0 ? '+' : ''}${format(net)}</td>
             <td style="color:${loseColor};font-weight:600;">${ifLose >= 0 ? '+' : ''}${format(ifLose)}</td>
-            <td style="color:${winColor};font-weight:700;">${ifWin  >= 0 ? '+' : ''}${format(ifWin)}</td>
+            <td style="color:${netColor};font-weight:700;">${net >= 0 ? '+' : ''}${format(net)}</td>
         `;
         tbody.appendChild(tr);
     });
 
-    if (panel) panel.style.display = allRunnerNames.length ? "block" : "none";
+    if (panel) panel.style.display = Object.keys(runnerData).length ? "block" : "none";
 }
 
 // ---------------------------
-// VUE RUNNER PNL — Vue ke runner objects ko directly update karo
-// taake runner naam ke neeche profit/liable show ho
+// VUE RUNNER PNL — Sirf MAIN MARKET runners update karo
+// subMarkets ko touch NAHI karo — wahan bets nahi hain
 // ---------------------------
 function updateVueRunnerPnL() {
     try {
-        let vmEl = document.getElementById('app') || document.getElementById('MarketView');
+        let vmEl = document.getElementById('app');
         let vm = vmEl && vmEl.__vue__;
-
-        if (!vm && vmEl) {
-            const children = vmEl.querySelectorAll('*');
-            for (let el of children) {
-                if (el.__vue__) { vm = el.__vue__; break; }
-            }
-        }
         if (!vm && vmEl) {
             let el = vmEl;
             while (el && !vm) { vm = el.__vue__; el = el.parentElement; }
         }
         if (!vm) return;
 
-        const lists = [
-            'subMarkets', 'BookmakerMarkets', 'TossMarkets',
-            'FancyMarkets', 'Fancy2Markets', 'FigureMarkets',
-            'OddFigureMarkets', 'OtherMarkets', 'OtherRaceMarkets'
-        ];
-
-        function updateRunnersInCatalog(catalog) {
-            if (!catalog || !Array.isArray(catalog.runners)) return;
-            catalog.runners.forEach(function(runner, idx) {
-                const rName = (runner.runnerName || "").trim();
-                if (!rName) return;
-                const normalized = rName.toLowerCase();
-                const key = Object.keys(runnerPnL).find(k => k.trim().toLowerCase() === normalized);
-                const pnl = key !== undefined ? runnerPnL[key] : { ifWin: 0, ifLose: 0 };
-                const ifWin  = (pnl && pnl.ifWin  !== undefined) ? pnl.ifWin  : 0;
-                const ifLose = (pnl && pnl.ifLose !== undefined) ? pnl.ifLose : 0;
-
-                // Sirf update karo agar value badli ho
-                if (runner.ifWin !== ifWin || runner.ifLose !== ifLose) {
-                    Vue.set(catalog.runners, idx, Object.assign({}, runner, {
-                        ifWin:  ifWin,
-                        ifLose: ifLose
+        // SIRF Catalog.runners (main Match Odds market) update karo
+        if (vm.Catalog && Array.isArray(vm.Catalog.runners)) {
+            vm.Catalog.runners.forEach(function(runner, idx) {
+                const selId = String(runner.selectionId || "").trim();
+                if (!selId) return;
+                const pnl = runnerPnL[selId] !== undefined ? runnerPnL[selId] : 0;
+                if (runner.ifWin !== pnl) {
+                    Vue.set(vm.Catalog.runners, idx, Object.assign({}, runner, {
+                        ifWin:  pnl,
+                        ifLose: 0
                     }));
                 }
             });
         }
 
-        if (vm.Catalog && Array.isArray(vm.Catalog.runners)) {
-            updateRunnersInCatalog(vm.Catalog);
-        }
+        // subMarkets, Fancy etc. ko intentionally skip karo
+        // Kyunki wahan alag market_id hota hai — unka PnL alag page pe calculate hoga
 
-        lists.forEach(function(listName) {
-            const markets = vm[listName];
-            if (!Array.isArray(markets)) return;
-            markets.forEach(function(catalog) { updateRunnersInCatalog(catalog); });
-        });
     } catch(e) {
         console.warn("[PnL] Vue update error:", e.message);
     }
@@ -4701,25 +4706,8 @@ window.addEventListener('runnerPnLUpdated', function() {
     updateVueRunnerPnL();
 });
 
-// ---------------------------
-// GLOBAL HELPER FOR VUE (getRunnerAmounts)
-// ---------------------------
-window.getRunnerAmounts = function(runnerName) {
-    if (!runnerName) return { ifWin: 0, ifLose: 0, net: 0 };
-    const normalized = (runnerName || "").trim().toLowerCase();
 
-    if (!allRunners.some(r => r.trim().toLowerCase() === normalized)) {
-        allRunners.push(runnerName.trim());
-        updateRunnerPnL();
-    }
 
-    const key = Object.keys(runnerPnL).find(k => k.trim().toLowerCase() === normalized);
-    const pnl = key !== undefined ? runnerPnL[key] : { ifWin: 0, ifLose: 0 };
-    const ifWin  = (pnl && pnl.ifWin  !== undefined) ? pnl.ifWin  : 0;
-    const ifLose = (pnl && pnl.ifLose !== undefined) ? pnl.ifLose : 0;
-
-    return { ifWin, ifLose, net: ifWin };
-};
 
 // ---------------------------
 // FETCH FUNCTIONS

@@ -4275,15 +4275,39 @@ new Vue({
   },
 
   methods: {
-    upsertOrders(targetList, newOrders, status) {
+   upsertOrders(targetList, newOrders, status) {
       const map = {};
       targetList.forEach(o => { map[o.orderId] = o; });
 
       newOrders.forEach(o => {
         const id = String(o.request_id || o.orderId || o.requestId);
+        
+        // --- RUNNER NAME FIX FOR FLICKERING ---
+        let finalRunnerName = o.runnerName || o.rn || "";
+        
+        // Agar backend ghalati se poora match ya event name bhej raha hai (e.g. "Player A v Player B")
+        if (!finalRunnerName || finalRunnerName.includes(' v ') || finalRunnerName.includes(' vs ') || finalRunnerName.includes(' - ')) {
+          // 1. Pehle check karein ke kya hum selectionId se sahi naam nikal sakte hain
+          if (o.selectionId && window.selectionIdToRunner && window.selectionIdToRunner[o.selectionId]) {
+            finalRunnerName = window.selectionIdToRunner[o.selectionId];
+          } 
+          // 2. Agar page par resolveRunnerName function pehle se bana hua hai toh use use karein
+          else if (typeof this.resolveRunnerName === 'function') {
+            const resolved = this.resolveRunnerName(o);
+            if (resolved && !resolved.includes(' v ') && !resolved.includes(' vs ')) {
+              finalRunnerName = resolved;
+            }
+          }
+          // 3. Agar kuch bhi na mile toh safe side selectionId ya purana saved name (agar user ne update kiya ho) rkhlein
+          if (!finalRunnerName || finalRunnerName.includes(' v ') || finalRunnerName.includes(' vs ')) {
+            finalRunnerName = map[id] ? map[id].rn : (o.selectionId || "Runner");
+          }
+        }
+        // --------------------------------------
+
         map[id] = {
           orderId: id,
-          rn: o.runnerName || o.selectionId,
+          rn: finalRunnerName, // Ab yahan humne fully filtered clean player name set kar diya hai
           up: o.price,
           us: o.size,
           mp: o.price,
@@ -4296,7 +4320,6 @@ new Vue({
 
       return Object.values(map);
     },
-
     async fetchUnMatched() {
       try {
         const token = localStorage.getItem("token");

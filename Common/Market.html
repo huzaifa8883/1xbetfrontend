@@ -4473,19 +4473,24 @@ async function updateUserWallet() {
 // PNL CALCULATION
 // ---------------------------
 function calculateRunnerPnL(runnerName) {
-    // Exchange P&L logic:
-    // Agar Runner A pe BACK bet lagao:
-    //   - Runner A jeeta  => profit = (odds-1) * stake
-    //   - Runner A haara  => loss   = -stake  (kisi bhi doosre runner ke jeetne pe)
+    // ==============================================
+    // CORRECT EXCHANGE P&L LOGIC
+    // ==============================================
+    // BACK Runner A @ odds, stake S:
+    //   Runner A jeeta  => +profit = (odds-1)*S
+    //   Runner A haara  => -loss   = -S
     //
-    // Agar Runner A pe LAY bet lagao:
-    //   - Runner A jeeta  => loss   = -(odds-1) * stake
-    //   - Runner A haara  => profit = +stake
+    // LAY Runner A @ odds, stake S:
+    //   Runner A jeeta  => -liability = -(odds-1)*S
+    //   Runner A haara  => +profit   = +S
+    //
+    // ifWin  = total P&L agar YEH runner jeeta
+    // ifLose = total P&L agar YEH runner haara (doosra koi jeeta)
+    // ==============================================
 
     const normalized = (runnerName || "").trim().toLowerCase();
-
-    // Sirf Matched orders se calculate karo
-    let pnlIfThisWins = 0;
+    let ifWin  = 0;
+    let ifLose = 0;
 
     Matched.forEach(order => {
         const rn    = (order.rn || order.runnerName || "").trim().toLowerCase();
@@ -4496,31 +4501,42 @@ function calculateRunnerPnL(runnerName) {
         if (!rn || odds <= 1 || stake <= 0) return;
 
         if (rn === normalized) {
-            // Is runner pe directly bet hai
-            if (side === "B") pnlIfThisWins += (odds - 1) * stake;  // jeeta to profit
-            else              pnlIfThisWins -= (odds - 1) * stake;  // jeeta to liability
+            // Bet seedhi IS runner pe hai
+            if (side === "B") {
+                ifWin  += (odds - 1) * stake;   // jeeta   → profit
+                ifLose -= stake;                 // haara   → stake gaya
+            } else {
+                // LAY
+                ifWin  -= (odds - 1) * stake;   // jeeta   → liability
+                ifLose += stake;                 // haara   → stake mila
+            }
         } else {
-            // Doosre runner pe bet hai — agar YEH runner jeeta to doosra haara
-            if (side === "B") pnlIfThisWins -= stake;    // doosre pe back tha — stake gaya
-            else              pnlIfThisWins += stake;    // doosre pe lay tha — stake mila
+            // Bet kisi DOOSRE runner pe hai
+            // Agar YEH runner jeeta → doosra haara
+            if (side === "B") {
+                ifWin  -= stake;                 // doosre pe back — stake gaya
+                ifLose += (odds - 1) * stake;   // doosra jeeta   → profit
+            } else {
+                // LAY doosre pe
+                ifWin  += stake;                 // doosra haara   → stake mila
+                ifLose -= (odds - 1) * stake;   // doosra jeeta   → liability
+            }
         }
     });
 
-    return Math.round(pnlIfThisWins);
+    return { ifWin: Math.round(ifWin), ifLose: Math.round(ifLose) };
 }
 
 function updateRunnerPnL() {
-    // Matched aur UnMatched dono se runner names lo
     const matchedRunners   = Matched.map(o => (o.rn || o.runnerName || "").trim()).filter(Boolean);
     const unmatchedRunners = UnMatched.map(o => (o.rn || "").trim()).filter(Boolean);
     allRunners = [...new Set([...allRunners, ...matchedRunners, ...unmatchedRunners])];
 
     runnerPnL = {};
     allRunners.forEach(runner => {
-        runnerPnL[runner] = calculateRunnerPnL(runner);
+        runnerPnL[runner] = calculateRunnerPnL(runner); // { ifWin, ifLose }
     });
 
-    // window globals sync karo taake Vue/duplicate scripts access kar sakein
     window.allRunners = allRunners;
     window.runnerPnL  = runnerPnL;
 }
@@ -4596,52 +4612,26 @@ function updateRunnerPnLTable() {
         return;
     }
 
-    // Per-runner aggregate: agar yeh runner jeeta to net kya hoga
-    const runnerData = {};
-
-    Matched.forEach(o => {
-        const rn    = (o.rn || "").trim();
-        if (!rn) return;
-        const side  = (o.bs || "").toUpperCase();
-        const price = parseFloat(o.mp || o.price || 0);
-        const size  = parseFloat(o.ms || o.size || 0);
-
-        // For every other runner: what happens to THIS runner if THAT runner wins?
-        // We store pnl[thisRunner] = net if thisRunner wins
-        const allRunnerNames = [...new Set(Matched.map(x => (x.rn || "").trim()).filter(Boolean))];
-
-        allRunnerNames.forEach(winRunner => {
-            if (!runnerData[winRunner]) runnerData[winRunner] = { ifWin: 0, ifLose: 0 };
-
-            if (rn === winRunner) {
-                // This bet's runner wins
-                if (side === "B") runnerData[winRunner].ifWin += (price - 1) * size;
-                else              runnerData[winRunner].ifWin -= (price - 1) * size;
-            } else {
-                // This bet's runner loses (winRunner won)
-                if (side === "B") runnerData[winRunner].ifWin -= size;
-                else              runnerData[winRunner].ifWin += size;
-            }
-        });
-    });
+    const allRunnerNames = [...new Set(Matched.map(x => (x.rn || "").trim()).filter(Boolean))];
 
     tbody.innerHTML = "";
-    Object.entries(runnerData).forEach(([runner, pnl]) => {
-        const net      = Math.round(pnl.ifWin);
-        const ifLose   = -net; // if this runner loses, opposite happens
-        const netColor = net >= 0 ? "#4dbd74" : "#e05555";
+    allRunnerNames.forEach(runner => {
+        const pnl    = calculateRunnerPnL(runner);
+        const ifWin  = pnl.ifWin;
+        const ifLose = pnl.ifLose;
+        const winColor  = ifWin  >= 0 ? "#4dbd74" : "#e05555";
         const loseColor = ifLose >= 0 ? "#4dbd74" : "#e05555";
         const tr = document.createElement("tr");
         tr.innerHTML = `
             <td><strong>${runner}</strong></td>
-            <td style="color:${netColor};font-weight:700;">${net >= 0 ? '+' : ''}${format(net)}</td>
+            <td style="color:${winColor};font-weight:700;">${ifWin  >= 0 ? '+' : ''}${format(ifWin)}</td>
             <td style="color:${loseColor};font-weight:600;">${ifLose >= 0 ? '+' : ''}${format(ifLose)}</td>
-            <td style="color:${netColor};font-weight:700;">${net >= 0 ? '+' : ''}${format(net)}</td>
+            <td style="color:${winColor};font-weight:700;">${ifWin  >= 0 ? '+' : ''}${format(ifWin)}</td>
         `;
         tbody.appendChild(tr);
     });
 
-    if (panel) panel.style.display = Object.keys(runnerData).length ? "block" : "none";
+    if (panel) panel.style.display = allRunnerNames.length ? "block" : "none";
 }
 
 // ---------------------------
@@ -4650,30 +4640,21 @@ function updateRunnerPnLTable() {
 // ---------------------------
 function updateVueRunnerPnL() {
     try {
-        // Vue instance dhundo — pehle app, phir MarketView, phir koi bhi vue-mounted element
         let vmEl = document.getElementById('app') || document.getElementById('MarketView');
         let vm = vmEl && vmEl.__vue__;
 
-        // Agar direct element pe nahi mila to child elements check karo
         if (!vm && vmEl) {
             const children = vmEl.querySelectorAll('*');
             for (let el of children) {
                 if (el.__vue__) { vm = el.__vue__; break; }
             }
         }
-
-        // Root tak bhi try karo
         if (!vm && vmEl) {
             let el = vmEl;
-            while (el && !vm) {
-                vm = el.__vue__;
-                el = el.parentElement;
-            }
+            while (el && !vm) { vm = el.__vue__; el = el.parentElement; }
         }
-
         if (!vm) return;
 
-        // Sab market arrays loop karo — Catalog.runners bhi include karo
         const lists = [
             'subMarkets', 'BookmakerMarkets', 'TossMarkets',
             'FancyMarkets', 'Fancy2Markets', 'FigureMarkets',
@@ -4687,17 +4668,20 @@ function updateVueRunnerPnL() {
                 if (!rName) return;
                 const normalized = rName.toLowerCase();
                 const key = Object.keys(runnerPnL).find(k => k.trim().toLowerCase() === normalized);
-                const pnl = key !== undefined ? (runnerPnL[key] || 0) : 0;
-                if (runner.ifWin !== pnl) {
+                const pnl = key !== undefined ? runnerPnL[key] : { ifWin: 0, ifLose: 0 };
+                const ifWin  = (pnl && pnl.ifWin  !== undefined) ? pnl.ifWin  : 0;
+                const ifLose = (pnl && pnl.ifLose !== undefined) ? pnl.ifLose : 0;
+
+                // Sirf update karo agar value badli ho
+                if (runner.ifWin !== ifWin || runner.ifLose !== ifLose) {
                     Vue.set(catalog.runners, idx, Object.assign({}, runner, {
-                        ifWin:  pnl,
-                        ifLose: 0
+                        ifWin:  ifWin,
+                        ifLose: ifLose
                     }));
                 }
             });
         }
 
-        // Catalog.runners (main market)
         if (vm.Catalog && Array.isArray(vm.Catalog.runners)) {
             updateRunnersInCatalog(vm.Catalog);
         }
@@ -4705,9 +4689,7 @@ function updateVueRunnerPnL() {
         lists.forEach(function(listName) {
             const markets = vm[listName];
             if (!Array.isArray(markets)) return;
-            markets.forEach(function(catalog) {
-                updateRunnersInCatalog(catalog);
-            });
+            markets.forEach(function(catalog) { updateRunnersInCatalog(catalog); });
         });
     } catch(e) {
         console.warn("[PnL] Vue update error:", e.message);
@@ -4726,39 +4708,17 @@ window.getRunnerAmounts = function(runnerName) {
     if (!runnerName) return { ifWin: 0, ifLose: 0, net: 0 };
     const normalized = (runnerName || "").trim().toLowerCase();
 
-    // Runner ko list mein add karo agar nahi hai
     if (!allRunners.some(r => r.trim().toLowerCase() === normalized)) {
-        allRunners.push(runnerName);
+        allRunners.push(runnerName.trim());
         updateRunnerPnL();
     }
 
-    // ifWin = agar yeh runner jeeta to P&L
-    const key    = Object.keys(runnerPnL).find(k => k.trim().toLowerCase() === normalized);
-    const ifWin  = key !== undefined ? (runnerPnL[key] || 0) : 0;
+    const key = Object.keys(runnerPnL).find(k => k.trim().toLowerCase() === normalized);
+    const pnl = key !== undefined ? runnerPnL[key] : { ifWin: 0, ifLose: 0 };
+    const ifWin  = (pnl && pnl.ifWin  !== undefined) ? pnl.ifWin  : 0;
+    const ifLose = (pnl && pnl.ifLose !== undefined) ? pnl.ifLose : 0;
 
-    // ifLose = agar yeh runner haara to P&L
-    // Seedha calculate karo: back pe yeh runner haara = -stake loss
-    // Lay pe yeh runner haara = +stake profit
-    let ifLose = 0;
-    Matched.forEach(order => {
-        const rn    = (order.rn || "").trim().toLowerCase();
-        const odds  = Number(order.mp || 0);
-        const stake = Number(order.ms || 0);
-        const side  = (order.bs || "").toUpperCase();
-        if (!rn || odds <= 1 || stake <= 0) return;
-
-        if (rn === normalized) {
-            // Is runner pe directly bet thi — yeh haara
-            if (side === "B") ifLose -= stake;              // back — stake gaya
-            else              ifLose += stake;              // lay — stake mila
-        } else {
-            // Doosre runner pe bet thi — woh jeeta (yeh haara)
-            if (side === "B") ifLose += (odds - 1) * stake; // doosre pe back jeeta — profit
-            else              ifLose -= (odds - 1) * stake; // doosre pe lay jeeta — liability
-        }
-    });
-
-    return { ifWin: Math.round(ifWin), ifLose: Math.round(ifLose), net: Math.round(ifWin) };
+    return { ifWin, ifLose, net: ifWin };
 };
 
 // ---------------------------

@@ -4748,8 +4748,10 @@ async function fetchUnMatched() {
     }
 }
 
-// selectionId → runnerName mapping — fetchRunners() se populate hoga
+// selectionId → runnerName map (fetchRunners se populate hoga, flicker rokne ke liye)
 window.selectionIdMap = {};
+// Flag: catalog load hua ya nahi
+window.catalogLoaded = false;
 
 async function fetchMatched() {
     if (!matchId) return;
@@ -4763,20 +4765,20 @@ async function fetchMatched() {
         const json = await res.json();
         const list = json.data?.orders || json.orders || [];
         Matched = list.map(o => {
-            const selId   = String(o.selection_id || "");
-            // selectionIdMap se runner name resolve karo (backend match ka naam bhejta hai)
-            const rnFromMap = selId ? (window.selectionIdMap[selId] || null) : null;
+            const selId     = String(o.selection_id || "");
+            // selectionIdMap se proper runner name lo — backend match ka naam bhejta hai
+            const fromMap   = selId ? (window.selectionIdMap[selId] || "") : "";
             const rnRaw     = o.runner_name || o.runnerName || o.event_name || selId || "";
-            const looksLikeMatchName = rnRaw.toLowerCase().includes(" v ");
-            const rn = rnFromMap || (looksLikeMatchName ? selId : rnRaw);
+            // Agar raw name mein " v " ho — ye match ka naam hai, map prefer karo
+            const isMatchName = rnRaw.toLowerCase().includes(" v ");
+            const rn = fromMap || (isMatchName ? (selId || rnRaw) : rnRaw);
             return {
                 orderId:  String(o.request_id || o.orderId || o.requestId),
-                rn:       rn,
-                selId:    selId,
+                rn,
+                selId,
                 mp:       parseFloat(o.price) || 0,
                 ms:       parseFloat(o.matched > 0 ? o.matched : o.size) || 0,
                 bs:       (o.side || o.type || "").toUpperCase(),
-                // Pre-computed from backend if available
                 profit:   parseFloat(o.profit || 0),
                 liable:   parseFloat(o.liable || 0),
             };
@@ -4798,12 +4800,13 @@ async function fetchRunners() {
         const json = await res.json();
         const market = json.data || json;
         if (market?.runners?.length) {
-            // selectionId → runnerName map banao
+            // selectionIdMap banao — fetchMatched mein runner name resolve hogi
             market.runners.forEach(r => {
                 if (r.selectionId && r.runnerName) {
                     window.selectionIdMap[String(r.selectionId)] = r.runnerName;
                 }
             });
+            window.catalogLoaded = true;
             const marketRunners = market.runners.map(r => r.runnerName || String(r.selectionId || "")).filter(Boolean);
             allRunners = [...new Set([...allRunners, ...marketRunners])];
             updateRunnerPnL();
@@ -4877,10 +4880,13 @@ socket.on("ordersUpdated", (data) => {
         Matched   = Matched.filter(o => o.orderId !== orderId);
 
         if (newO.status === "PENDING") {
+            const _selIdP = String(newO.selection_id || "");
+            const _rnRawP = newO.runner_name || newO.runnerName || newO.event_name || _selIdP || "";
+            const _isMatchP = _rnRawP.toLowerCase().includes(" v ");
             UnMatched.push({
                 orderId,
-                rn:    newO.runnerName || newO.event_name || newO.runner_name || "",
-                selId: String(newO.selection_id || ""),
+                rn:    (window.selectionIdMap[_selIdP]) || (_isMatchP ? _selIdP : _rnRawP),
+                selId: _selIdP,
                 up:    newO.price,
                 us:    newO.size,
                 bs:    (newO.side || "").toUpperCase()
@@ -4889,10 +4895,13 @@ socket.on("ordersUpdated", (data) => {
             const price  = parseFloat(newO.price || 0);
             const size   = parseFloat(newO.matched > 0 ? newO.matched : newO.size || 0);
             const side   = (newO.side || "").toUpperCase();
+            const _selIdM = String(newO.selection_id || "");
+            const _rnRawM = newO.runner_name || newO.runnerName || newO.event_name || _selIdM || "";
+            const _isMatchM = _rnRawM.toLowerCase().includes(" v ");
             Matched.push({
                 orderId,
-                rn:     newO.runnerName || newO.event_name || newO.runner_name || "",
-                selId:  String(newO.selection_id || ""),
+                rn:     (window.selectionIdMap[_selIdM]) || (_isMatchM ? _selIdM : _rnRawM),
+                selId:  _selIdM,
                 mp:     price,
                 ms:     size,
                 bs:     side,
@@ -4943,8 +4952,10 @@ socket.on("userUpdated", (data) => {
 });
 
 // Auto Refresh bets + wallet har 5 second mein
-setInterval(() => {
+setInterval(async () => {
     if (matchId) {
+        // Agar catalog nahi load hua to pehle load karo (runner names ke liye)
+        if (!window.catalogLoaded) await fetchRunners();
         fetchUnMatched();
         fetchMatched();
     }

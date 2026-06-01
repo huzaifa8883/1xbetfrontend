@@ -1661,20 +1661,9 @@
   </span>
 </div> -->
 <div class="runner-position">
-  <span v-if="getRunnerAmounts(runner.runnerName).ifWin >= 0">
-    <span class="runner-position-pos">
+  <span>
+    <span :class="getRunnerAmounts(runner.runnerName).ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
       <strong>{{ getRunnerAmounts(runner.runnerName).ifWin | format }}</strong>
-    </span>
-    <span class="position-minus" v-if="getRunnerAmounts(runner.runnerName).ifLose != null && getRunnerAmounts(runner.runnerName).ifLose != 0">
-      <strong>{{ getRunnerAmounts(runner.runnerName).ifLose | format }}</strong>
-    </span>
-  </span>
-  <span v-else>
-    <span class="position-minus">
-      <strong>{{ getRunnerAmounts(runner.runnerName).ifWin | format }}</strong>
-    </span>
-    <span class="runner-position-pos" v-if="getRunnerAmounts(runner.runnerName).ifLose != null && getRunnerAmounts(runner.runnerName).ifLose != 0">
-      <strong>{{ getRunnerAmounts(runner.runnerName).ifLose | format }}</strong>
     </span>
   </span>
   <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -4428,15 +4417,11 @@ var Matched = [];
 var allRunners = [];
 var runnerPnL = {};
 
-// SubMarkets ki bets: { marketId: [ {rn, mp, ms, bs}, ... ] }
-var subMarketBets = {};
-
 // Window par expose karo taake Vue templates access kar sakein
-window.UnMatched      = UnMatched;
-window.Matched        = Matched;
-window.allRunners     = allRunners;
-window.runnerPnL      = runnerPnL;
-window.subMarketBets  = subMarketBets;
+window.UnMatched   = UnMatched;
+window.Matched     = Matched;
+window.allRunners  = allRunners;
+window.runnerPnL   = runnerPnL;
 
 // ---------------------------
 // Utilities
@@ -4653,60 +4638,6 @@ function updateRunnerPnLTable() {
 // VUE RUNNER PNL — Vue ke runner objects ko directly update karo
 // taake runner naam ke neeche profit/liable show ho
 // ---------------------------
-
-// Kisi bhi market ki bets se ek runner ka PnL calculate karo
-function calculateRunnerPnLFromBets(runnerName, bets) {
-    const normalized = (runnerName || "").trim().toLowerCase();
-    let ifWin  = 0;
-    let ifLose = 0;
-    bets.forEach(function(order) {
-        const rn    = (order.rn || order.runnerName || "").trim().toLowerCase();
-        const odds  = Number(order.mp || order.price || 0);
-        const stake = Number(order.ms || order.size || 0);
-        const side  = (order.bs || order.side || "").toUpperCase();
-        if (!rn || odds <= 1 || stake <= 0) return;
-        if (rn === normalized) {
-            if (side === "B") { ifWin += (odds-1)*stake; ifLose -= stake; }
-            else              { ifWin -= (odds-1)*stake; ifLose += stake; }
-        } else {
-            if (side === "B") { ifWin -= stake;           ifLose += (odds-1)*stake; }
-            else              { ifWin += stake;           ifLose -= (odds-1)*stake; }
-        }
-    });
-    return { ifWin: Math.round(ifWin), ifLose: Math.round(ifLose) };
-}
-
-// SubMarket ki bets fetch karo (ek dafa, cache karo)
-async function fetchSubMarketBets(mktId) {
-    if (!mktId || subMarketBets[mktId] !== undefined) return; // already cached
-    subMarketBets[mktId] = []; // placeholder prevent double-fetch
-    const tk = localStorage.getItem('token') || localStorage.getItem('wex3authtoken') || token || '';
-    if (!tk) return;
-    try {
-        const res = await fetch(`${ordersUrl}/orders/matched?marketId=${mktId}`, {
-            headers: { "Authorization": "Bearer " + tk }
-        });
-        if (!res.ok) return;
-        const json = await res.json();
-        const list = json.data?.orders || json.orders || [];
-        subMarketBets[mktId] = list.map(function(o) {
-            return {
-                rn:  o.runnerName || o.runner_name || o.event_name || String(o.selection_id || ""),
-                mp:  parseFloat(o.price) || 0,
-                ms:  parseFloat(o.matched > 0 ? o.matched : o.size) || 0,
-                bs:  (o.side || o.type || "").toUpperCase(),
-            };
-        });
-        window.subMarketBets = subMarketBets;
-        console.log(`[SubMarket] Fetched ${subMarketBets[mktId].length} bets for marketId=${mktId}`);
-        // Re-update Vue runners after fetch
-        updateVueRunnerPnL();
-    } catch(e) {
-        console.warn("[SubMarket] fetchSubMarketBets error:", mktId, e.message);
-        subMarketBets[mktId] = []; // empty so we dont retry infinitely
-    }
-}
-
 function updateVueRunnerPnL() {
     try {
         let vmEl = document.getElementById('app') || document.getElementById('MarketView');
@@ -4724,29 +4655,24 @@ function updateVueRunnerPnL() {
         }
         if (!vm) return;
 
-        // Main Catalog (Match Odds) — global runnerPnL use karo (matchId ki bets)
-        function updateRunnersInCatalog(catalog, betsOverride) {
+        const lists = [
+            'subMarkets', 'BookmakerMarkets', 'TossMarkets',
+            'FancyMarkets', 'Fancy2Markets', 'FigureMarkets',
+            'OddFigureMarkets', 'OtherMarkets', 'OtherRaceMarkets'
+        ];
+
+        function updateRunnersInCatalog(catalog) {
             if (!catalog || !Array.isArray(catalog.runners)) return;
-            const bets = betsOverride || null;
             catalog.runners.forEach(function(runner, idx) {
                 const rName = (runner.runnerName || "").trim();
                 if (!rName) return;
+                const normalized = rName.toLowerCase();
+                const key = Object.keys(runnerPnL).find(k => k.trim().toLowerCase() === normalized);
+                const pnl = key !== undefined ? runnerPnL[key] : { ifWin: 0, ifLose: 0 };
+                const ifWin  = (pnl && pnl.ifWin  !== undefined) ? pnl.ifWin  : 0;
+                const ifLose = (pnl && pnl.ifLose !== undefined) ? pnl.ifLose : 0;
 
-                let ifWin, ifLose;
-                if (bets !== null) {
-                    // SubMarket: us market ki specific bets se calculate karo
-                    const pnl = calculateRunnerPnLFromBets(rName, bets);
-                    ifWin  = pnl.ifWin;
-                    ifLose = pnl.ifLose;
-                } else {
-                    // Main catalog: global runnerPnL use karo
-                    const normalized = rName.toLowerCase();
-                    const key = Object.keys(runnerPnL).find(k => k.trim().toLowerCase() === normalized);
-                    const pnl = key !== undefined ? runnerPnL[key] : { ifWin: 0, ifLose: 0 };
-                    ifWin  = (pnl && pnl.ifWin  !== undefined) ? pnl.ifWin  : 0;
-                    ifLose = (pnl && pnl.ifLose !== undefined) ? pnl.ifLose : 0;
-                }
-
+                // Sirf update karo agar value badli ho
                 if (runner.ifWin !== ifWin || runner.ifLose !== ifLose) {
                     Vue.set(catalog.runners, idx, Object.assign({}, runner, {
                         ifWin:  ifWin,
@@ -4756,44 +4682,15 @@ function updateVueRunnerPnL() {
             });
         }
 
-        // Main Catalog (Match Odds)
         if (vm.Catalog && Array.isArray(vm.Catalog.runners)) {
-            updateRunnersInCatalog(vm.Catalog, null);
+            updateRunnersInCatalog(vm.Catalog);
         }
 
-        // SubMarkets — har market ki alag bets use karo
-        const subLists = ['subMarkets'];
-        subLists.forEach(function(listName) {
+        lists.forEach(function(listName) {
             const markets = vm[listName];
             if (!Array.isArray(markets)) return;
-            markets.forEach(function(catalog) {
-                const mktId = catalog.marketId || catalog.id || '';
-                if (mktId) {
-                    if (subMarketBets[mktId] === undefined) {
-                        // Async fetch karo, baad mein update hoga
-                        fetchSubMarketBets(mktId);
-                        return;
-                    }
-                    updateRunnersInCatalog(catalog, subMarketBets[mktId]);
-                } else {
-                    // marketId nahi hai — fallback to global
-                    updateRunnersInCatalog(catalog, null);
-                }
-            });
+            markets.forEach(function(catalog) { updateRunnersInCatalog(catalog); });
         });
-
-        // Other markets (BookmakerMarkets, FancyMarkets etc.) — global PnL use karo
-        const otherLists = [
-            'BookmakerMarkets', 'TossMarkets',
-            'FancyMarkets', 'Fancy2Markets', 'FigureMarkets',
-            'OddFigureMarkets', 'OtherMarkets', 'OtherRaceMarkets'
-        ];
-        otherLists.forEach(function(listName) {
-            const markets = vm[listName];
-            if (!Array.isArray(markets)) return;
-            markets.forEach(function(catalog) { updateRunnersInCatalog(catalog, null); });
-        });
-
     } catch(e) {
         console.warn("[PnL] Vue update error:", e.message);
     }
@@ -4851,6 +4748,9 @@ async function fetchUnMatched() {
     }
 }
 
+// selectionId → runnerName mapping — fetchRunners() se populate hoga
+window.selectionIdMap = {};
+
 async function fetchMatched() {
     if (!matchId) return;
     const tk = localStorage.getItem('token') || localStorage.getItem('wex3authtoken') || token;
@@ -4862,17 +4762,25 @@ async function fetchMatched() {
         if (!res.ok) return;
         const json = await res.json();
         const list = json.data?.orders || json.orders || [];
-        Matched = list.map(o => ({
-            orderId:  String(o.request_id || o.orderId || o.requestId),
-            rn:       o.runnerName || o.runner_name || o.event_name || String(o.selection_id || ""),
-            selId:    String(o.selection_id || ""),
-            mp:       parseFloat(o.price) || 0,
-            ms:       parseFloat(o.matched > 0 ? o.matched : o.size) || 0,
-            bs:       (o.side || o.type || "").toUpperCase(),
-            // Pre-computed from backend if available
-            profit:   parseFloat(o.profit || 0),
-            liable:   parseFloat(o.liable || 0),
-        }));
+        Matched = list.map(o => {
+            const selId   = String(o.selection_id || "");
+            // selectionIdMap se runner name resolve karo (backend match ka naam bhejta hai)
+            const rnFromMap = selId ? (window.selectionIdMap[selId] || null) : null;
+            const rnRaw     = o.runner_name || o.runnerName || o.event_name || selId || "";
+            const looksLikeMatchName = rnRaw.toLowerCase().includes(" v ");
+            const rn = rnFromMap || (looksLikeMatchName ? selId : rnRaw);
+            return {
+                orderId:  String(o.request_id || o.orderId || o.requestId),
+                rn:       rn,
+                selId:    selId,
+                mp:       parseFloat(o.price) || 0,
+                ms:       parseFloat(o.matched > 0 ? o.matched : o.size) || 0,
+                bs:       (o.side || o.type || "").toUpperCase(),
+                // Pre-computed from backend if available
+                profit:   parseFloat(o.profit || 0),
+                liable:   parseFloat(o.liable || 0),
+            };
+        });
         render();
     } catch (e) {
         console.error("fetchMatched error:", e);
@@ -4890,6 +4798,12 @@ async function fetchRunners() {
         const json = await res.json();
         const market = json.data || json;
         if (market?.runners?.length) {
+            // selectionId → runnerName map banao
+            market.runners.forEach(r => {
+                if (r.selectionId && r.runnerName) {
+                    window.selectionIdMap[String(r.selectionId)] = r.runnerName;
+                }
+            });
             const marketRunners = market.runners.map(r => r.runnerName || String(r.selectionId || "")).filter(Boolean);
             allRunners = [...new Set([...allRunners, ...marketRunners])];
             updateRunnerPnL();
@@ -4985,12 +4899,6 @@ socket.on("ordersUpdated", (data) => {
                 profit: parseFloat(newO.profit || 0),
                 liable: parseFloat(newO.liable || 0),
             });
-            // SubMarket ki bet hai — us market ka cache clear karo taake fresh fetch ho
-            const newMktId = String(newO.marketId || newO.market_id || newO.matchId || "");
-            if (newMktId && newMktId !== matchId && subMarketBets[newMktId] !== undefined) {
-                delete subMarketBets[newMktId]; // cache invalidate — next update pe fresh fetch hoga
-                window.subMarketBets = subMarketBets;
-            }
         }
     });
     render();

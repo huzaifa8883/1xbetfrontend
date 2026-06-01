@@ -1661,9 +1661,20 @@
   </span>
 </div> -->
 <div class="runner-position">
-  <span>
-    <span :class="getRunnerAmounts(runner.runnerName).ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
+  <span v-if="getRunnerAmounts(runner.runnerName).ifWin >= 0">
+    <span class="runner-position-pos">
       <strong>{{ getRunnerAmounts(runner.runnerName).ifWin | format }}</strong>
+    </span>
+    <span class="position-minus" v-if="getRunnerAmounts(runner.runnerName).ifLose != null && getRunnerAmounts(runner.runnerName).ifLose != 0">
+      <strong>{{ getRunnerAmounts(runner.runnerName).ifLose | format }}</strong>
+    </span>
+  </span>
+  <span v-else>
+    <span class="position-minus">
+      <strong>{{ getRunnerAmounts(runner.runnerName).ifWin | format }}</strong>
+    </span>
+    <span class="runner-position-pos" v-if="getRunnerAmounts(runner.runnerName).ifLose != null && getRunnerAmounts(runner.runnerName).ifLose != 0">
+      <strong>{{ getRunnerAmounts(runner.runnerName).ifLose | format }}</strong>
     </span>
   </span>
   <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -4417,11 +4428,15 @@ var Matched = [];
 var allRunners = [];
 var runnerPnL = {};
 
+// SubMarkets ki bets: { marketId: [ {rn, mp, ms, bs}, ... ] }
+var subMarketBets = {};
+
 // Window par expose karo taake Vue templates access kar sakein
-window.UnMatched   = UnMatched;
-window.Matched     = Matched;
-window.allRunners  = allRunners;
-window.runnerPnL   = runnerPnL;
+window.UnMatched      = UnMatched;
+window.Matched        = Matched;
+window.allRunners     = allRunners;
+window.runnerPnL      = runnerPnL;
+window.subMarketBets  = subMarketBets;
 
 // ---------------------------
 // Utilities
@@ -4492,15 +4507,7 @@ function calculateRunnerPnL(runnerName) {
     let ifWin  = 0;
     let ifLose = 0;
 
-    // *** KEY FIX: sirf current market (matchId) ki bets use karo ***
-    // Agar order mein mktId hai aur matchId se match nahi karta — skip karo
-    // Yeh ensure karta hai SET 1 / SET BETTING ki bets Match Odds PnL mein nahi aayein
-    const currentMktId = (matchId || "").trim();
-
     Matched.forEach(order => {
-        // Market filter: agar order ka marketId alag hai to skip
-        if (order.mktId && currentMktId && order.mktId !== currentMktId) return;
-
         const rn    = (order.rn || order.runnerName || "").trim().toLowerCase();
         const odds  = Number(order.mp || order.price || 0);
         const stake = Number(order.ms || order.size || 0);
@@ -4620,12 +4627,7 @@ function updateRunnerPnLTable() {
         return;
     }
 
-    // Sirf current market ki bets se runners nikalo
-    const currentMktId = (matchId || "").trim();
-    const currentMarketBets = Matched.filter(x =>
-        !x.mktId || !currentMktId || x.mktId === currentMktId
-    );
-    const allRunnerNames = [...new Set(currentMarketBets.map(x => (x.rn || "").trim()).filter(Boolean))];
+    const allRunnerNames = [...new Set(Matched.map(x => (x.rn || "").trim()).filter(Boolean))];
 
     tbody.innerHTML = "";
     allRunnerNames.forEach(runner => {
@@ -4651,6 +4653,60 @@ function updateRunnerPnLTable() {
 // VUE RUNNER PNL — Vue ke runner objects ko directly update karo
 // taake runner naam ke neeche profit/liable show ho
 // ---------------------------
+
+// Kisi bhi market ki bets se ek runner ka PnL calculate karo
+function calculateRunnerPnLFromBets(runnerName, bets) {
+    const normalized = (runnerName || "").trim().toLowerCase();
+    let ifWin  = 0;
+    let ifLose = 0;
+    bets.forEach(function(order) {
+        const rn    = (order.rn || order.runnerName || "").trim().toLowerCase();
+        const odds  = Number(order.mp || order.price || 0);
+        const stake = Number(order.ms || order.size || 0);
+        const side  = (order.bs || order.side || "").toUpperCase();
+        if (!rn || odds <= 1 || stake <= 0) return;
+        if (rn === normalized) {
+            if (side === "B") { ifWin += (odds-1)*stake; ifLose -= stake; }
+            else              { ifWin -= (odds-1)*stake; ifLose += stake; }
+        } else {
+            if (side === "B") { ifWin -= stake;           ifLose += (odds-1)*stake; }
+            else              { ifWin += stake;           ifLose -= (odds-1)*stake; }
+        }
+    });
+    return { ifWin: Math.round(ifWin), ifLose: Math.round(ifLose) };
+}
+
+// SubMarket ki bets fetch karo (ek dafa, cache karo)
+async function fetchSubMarketBets(mktId) {
+    if (!mktId || subMarketBets[mktId] !== undefined) return; // already cached
+    subMarketBets[mktId] = []; // placeholder prevent double-fetch
+    const tk = localStorage.getItem('token') || localStorage.getItem('wex3authtoken') || token || '';
+    if (!tk) return;
+    try {
+        const res = await fetch(`${ordersUrl}/orders/matched?marketId=${mktId}`, {
+            headers: { "Authorization": "Bearer " + tk }
+        });
+        if (!res.ok) return;
+        const json = await res.json();
+        const list = json.data?.orders || json.orders || [];
+        subMarketBets[mktId] = list.map(function(o) {
+            return {
+                rn:  o.runnerName || o.runner_name || o.event_name || String(o.selection_id || ""),
+                mp:  parseFloat(o.price) || 0,
+                ms:  parseFloat(o.matched > 0 ? o.matched : o.size) || 0,
+                bs:  (o.side || o.type || "").toUpperCase(),
+            };
+        });
+        window.subMarketBets = subMarketBets;
+        console.log(`[SubMarket] Fetched ${subMarketBets[mktId].length} bets for marketId=${mktId}`);
+        // Re-update Vue runners after fetch
+        updateVueRunnerPnL();
+    } catch(e) {
+        console.warn("[SubMarket] fetchSubMarketBets error:", mktId, e.message);
+        subMarketBets[mktId] = []; // empty so we dont retry infinitely
+    }
+}
+
 function updateVueRunnerPnL() {
     try {
         let vmEl = document.getElementById('app') || document.getElementById('MarketView');
@@ -4668,24 +4724,29 @@ function updateVueRunnerPnL() {
         }
         if (!vm) return;
 
-        const lists = [
-            'subMarkets', 'BookmakerMarkets', 'TossMarkets',
-            'FancyMarkets', 'Fancy2Markets', 'FigureMarkets',
-            'OddFigureMarkets', 'OtherMarkets', 'OtherRaceMarkets'
-        ];
-
-        function updateRunnersInCatalog(catalog) {
+        // Main Catalog (Match Odds) — global runnerPnL use karo (matchId ki bets)
+        function updateRunnersInCatalog(catalog, betsOverride) {
             if (!catalog || !Array.isArray(catalog.runners)) return;
+            const bets = betsOverride || null;
             catalog.runners.forEach(function(runner, idx) {
                 const rName = (runner.runnerName || "").trim();
                 if (!rName) return;
-                const normalized = rName.toLowerCase();
-                const key = Object.keys(runnerPnL).find(k => k.trim().toLowerCase() === normalized);
-                const pnl = key !== undefined ? runnerPnL[key] : { ifWin: 0, ifLose: 0 };
-                const ifWin  = (pnl && pnl.ifWin  !== undefined) ? pnl.ifWin  : 0;
-                const ifLose = (pnl && pnl.ifLose !== undefined) ? pnl.ifLose : 0;
 
-                // Sirf update karo agar value badli ho
+                let ifWin, ifLose;
+                if (bets !== null) {
+                    // SubMarket: us market ki specific bets se calculate karo
+                    const pnl = calculateRunnerPnLFromBets(rName, bets);
+                    ifWin  = pnl.ifWin;
+                    ifLose = pnl.ifLose;
+                } else {
+                    // Main catalog: global runnerPnL use karo
+                    const normalized = rName.toLowerCase();
+                    const key = Object.keys(runnerPnL).find(k => k.trim().toLowerCase() === normalized);
+                    const pnl = key !== undefined ? runnerPnL[key] : { ifWin: 0, ifLose: 0 };
+                    ifWin  = (pnl && pnl.ifWin  !== undefined) ? pnl.ifWin  : 0;
+                    ifLose = (pnl && pnl.ifLose !== undefined) ? pnl.ifLose : 0;
+                }
+
                 if (runner.ifWin !== ifWin || runner.ifLose !== ifLose) {
                     Vue.set(catalog.runners, idx, Object.assign({}, runner, {
                         ifWin:  ifWin,
@@ -4695,15 +4756,44 @@ function updateVueRunnerPnL() {
             });
         }
 
+        // Main Catalog (Match Odds)
         if (vm.Catalog && Array.isArray(vm.Catalog.runners)) {
-            updateRunnersInCatalog(vm.Catalog);
+            updateRunnersInCatalog(vm.Catalog, null);
         }
 
-        lists.forEach(function(listName) {
+        // SubMarkets — har market ki alag bets use karo
+        const subLists = ['subMarkets'];
+        subLists.forEach(function(listName) {
             const markets = vm[listName];
             if (!Array.isArray(markets)) return;
-            markets.forEach(function(catalog) { updateRunnersInCatalog(catalog); });
+            markets.forEach(function(catalog) {
+                const mktId = catalog.marketId || catalog.id || '';
+                if (mktId) {
+                    if (subMarketBets[mktId] === undefined) {
+                        // Async fetch karo, baad mein update hoga
+                        fetchSubMarketBets(mktId);
+                        return;
+                    }
+                    updateRunnersInCatalog(catalog, subMarketBets[mktId]);
+                } else {
+                    // marketId nahi hai — fallback to global
+                    updateRunnersInCatalog(catalog, null);
+                }
+            });
         });
+
+        // Other markets (BookmakerMarkets, FancyMarkets etc.) — global PnL use karo
+        const otherLists = [
+            'BookmakerMarkets', 'TossMarkets',
+            'FancyMarkets', 'Fancy2Markets', 'FigureMarkets',
+            'OddFigureMarkets', 'OtherMarkets', 'OtherRaceMarkets'
+        ];
+        otherLists.forEach(function(listName) {
+            const markets = vm[listName];
+            if (!Array.isArray(markets)) return;
+            markets.forEach(function(catalog) { updateRunnersInCatalog(catalog, null); });
+        });
+
     } catch(e) {
         console.warn("[PnL] Vue update error:", e.message);
     }
@@ -4779,8 +4869,6 @@ async function fetchMatched() {
             mp:       parseFloat(o.price) || 0,
             ms:       parseFloat(o.matched > 0 ? o.matched : o.size) || 0,
             bs:       (o.side || o.type || "").toUpperCase(),
-            // marketId store karo taake sirf current market ki bets PnL mein aayein
-            mktId:    String(o.marketId || o.market_id || o.matchId || ""),
             // Pre-computed from backend if available
             profit:   parseFloat(o.profit || 0),
             liable:   parseFloat(o.liable || 0),
@@ -4894,10 +4982,15 @@ socket.on("ordersUpdated", (data) => {
                 mp:     price,
                 ms:     size,
                 bs:     side,
-                mktId:  String(newO.marketId || newO.market_id || newO.matchId || ""),
                 profit: parseFloat(newO.profit || 0),
                 liable: parseFloat(newO.liable || 0),
             });
+            // SubMarket ki bet hai — us market ka cache clear karo taake fresh fetch ho
+            const newMktId = String(newO.marketId || newO.market_id || newO.matchId || "");
+            if (newMktId && newMktId !== matchId && subMarketBets[newMktId] !== undefined) {
+                delete subMarketBets[newMktId]; // cache invalidate — next update pe fresh fetch hoga
+                window.subMarketBets = subMarketBets;
+            }
         }
     });
     render();

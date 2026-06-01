@@ -4280,40 +4280,51 @@ new Vue({
       targetList.forEach(o => { map[o.orderId] = o; });
 
       newOrders.forEach(o => {
-        const id = String(o.request_id || o.orderId || o.requestId);
-        
-        // --- RUNNER NAME FIX FOR FLICKERING ---
-        let finalRunnerName = o.runnerName || o.rn || "";
-        
-        // Agar backend ghalati se poora match ya event name bhej raha hai (e.g. "Player A v Player B")
-        if (!finalRunnerName || finalRunnerName.includes(' v ') || finalRunnerName.includes(' vs ') || finalRunnerName.includes(' - ')) {
-          // 1. Pehle check karein ke kya hum selectionId se sahi naam nikal sakte hain
-          if (o.selectionId && window.selectionIdToRunner && window.selectionIdToRunner[o.selectionId]) {
-            finalRunnerName = window.selectionIdToRunner[o.selectionId];
-          } 
-          // 2. Agar page par resolveRunnerName function pehle se bana hua hai toh use use karein
-          else if (typeof this.resolveRunnerName === 'function') {
-            const resolved = this.resolveRunnerName(o);
-            if (resolved && !resolved.includes(' v ') && !resolved.includes(' vs ')) {
-              finalRunnerName = resolved;
-            }
-          }
-          // 3. Agar kuch bhi na mile toh safe side selectionId ya purana saved name (agar user ne update kiya ho) rkhlein
-          if (!finalRunnerName || finalRunnerName.includes(' v ') || finalRunnerName.includes(' vs ')) {
-            finalRunnerName = map[id] ? map[id].rn : (o.selectionId || "Runner");
+        const id    = String(o.request_id || o.orderId || o.requestId);
+        const selId = String(o.selection_id || o.selectionId || o.selId || "");
+
+        // -------------------------------------------------------
+        // STRICT ANTI-FLICKER GUARD — BUG 1 FIX (upsertOrders)
+        // Step 1: run through the global resolveRunnerName resolver
+        //         which prioritises selectionIdToRunner map first.
+        // Step 2: if the result is still a match/event title, pull
+        //         directly from the selectionIdToRunner map.
+        // Step 3: if map is empty / not populated yet, retain the
+        //         previously stored valid name from the existing map
+        //         entry.  NEVER persist a string that contains ' v ',
+        //         ' vs ' or the dash separator ' - '.
+        // -------------------------------------------------------
+        let finalRunnerName = (typeof resolveRunnerName === "function")
+          ? resolveRunnerName(o)
+          : (o.runner_name || o.rn || o.runnerName || "").trim();
+
+        // Guard: if resolveRunnerName still returned a polluted title
+        if (!finalRunnerName || (typeof _isMatchName === "function" && _isMatchName(finalRunnerName))) {
+          // Try selectionIdToRunner map directly
+          const mapStore = window.selectionIdToRunner || {};
+          if (selId && mapStore[selId]) {
+            finalRunnerName = mapStore[selId];
+          } else if (map[id] && map[id].rn && !(typeof _isMatchName === "function" && _isMatchName(map[id].rn))) {
+            // Retain the previously saved clean name — do NOT overwrite with noise
+            finalRunnerName = map[id].rn;
+          } else {
+            // Absolute safe fallback: show selectionId, never the match title
+            finalRunnerName = selId ? ("Runner " + selId) : "Runner";
           }
         }
-        // --------------------------------------
+        // -------------------------------------------------------
 
         map[id] = {
-          orderId: id,
-          rn: finalRunnerName, // Ab yahan humne fully filtered clean player name set kar diya hai
-          up: o.price,
-          us: o.size,
-          mp: o.price,
-          ms: o.size,
-          bs: (o.side || o.type || "").toUpperCase(),
-          matchId: o.matchId || o.marketId,
+          orderId:  id,
+          rn:       finalRunnerName,   // GUARANTEED clean player/runner name
+          selId:    selId,
+          up:       o.price,
+          us:       o.size,
+          mp:       o.price,
+          ms:       o.size,
+          bs:       (o.side || o.type || "").toUpperCase(),
+          matchId:  o.matchId || o.marketId,
+          mktId:    String(o.marketId || o.market_id || ""),
           status
         };
       });
@@ -4362,10 +4373,28 @@ new Vue({
       if (!data || !Array.isArray(data.newOrders)) return;
 
       const unmatched = data.newOrders.filter(o => o.status === "PENDING");
-      const matched = data.newOrders.filter(o => o.status === "MATCHED");
+      const matched   = data.newOrders.filter(o => o.status === "MATCHED");
 
       this.UnMatched = this.upsertOrders(this.UnMatched, unmatched, "PENDING");
-      this.Matched = this.upsertOrders(this.Matched, matched, "MATCHED");
+      this.Matched   = this.upsertOrders(this.Matched,   matched,   "MATCHED");
+
+      // Post-upsert safety sweep — block any residual match-name leak
+      // before Vue's reactivity propagates the change to the DOM.
+      const mapStore = window.selectionIdToRunner || {};
+      [this.Matched, this.UnMatched].forEach(list => {
+        list.forEach(o => {
+          if (!o.rn || (typeof _isMatchName === "function" && _isMatchName(o.rn))) {
+            const fromMap = o.selId && mapStore[o.selId] ? mapStore[o.selId] : null;
+            o.rn = fromMap
+              || (typeof resolveRunnerName === "function" ? resolveRunnerName(o) : "")
+              || (o.selId ? ("Runner " + o.selId) : "Runner");
+            // Hard-stop: still polluted
+            if (typeof _isMatchName === "function" && _isMatchName(o.rn)) {
+              o.rn = o.selId ? ("Runner " + o.selId) : "Runner";
+            }
+          }
+        });
+      });
 
       console.log("🟢 UI updated via socket:", this.UnMatched.length, this.Matched.length);
     }
@@ -4411,47 +4440,7 @@ new Vue({
 });
 </script> -->
 
-<script>
-    function upsertOrders(targetList, newOrders, status) {
-    const map = {};
-    targetList.forEach(o => { map[o.orderId] = o; });
 
-    newOrders.forEach(o => {
-        const id = String(o.request_id || o.orderId || o.requestId || "");
-        if (!id) return;
-
-        // --- ANTI-FLICKER GUARD FOR SOCKET / LIVE UPDATES ---
-        let finalRunnerName = resolveRunnerName(o);
-
-        // Agar resolve hone ke baad bhi poora Match Name (' v ') aa raha hai
-        if (!finalRunnerName || _isMatchName(finalRunnerName)) {
-            const selId = String(o.selection_id || o.selectionId || o.selId || "");
-            if (selId && selectionIdToRunner[selId]) {
-                finalRunnerName = selectionIdToRunner[selId];
-            } else {
-                // Agar map mein nahi hai, to purana saved name retain karein, match name nahi
-                finalRunnerName = map[id] ? map[id].rn : (o.runnerName || "Runner " + selId);
-            }
-        }
-        // ----------------------------------------------------
-
-        map[id] = {
-            orderId: id,
-            rn: finalRunnerName, // strictly clean name
-            selId: String(o.selection_id || o.selectionId || o.selId || ""),
-            mktId: String(o.marketId || o.market_id || matchId),
-            mp: parseFloat(o.price || o.mp || 0),
-            ms: parseFloat(o.matched > 0 ? o.matched : (o.size || o.ms || 0)),
-            bs: (o.side || o.type || o.bs || "").toUpperCase(),
-            profit: parseFloat(o.profit || 0),
-            liable: parseFloat(o.liable || 0),
-            status: status
-        };
-    });
-
-    return Object.values(map);
-}
-</script>
 <script>
 // ============================================================
 // BACKEND URLS — server.js ke routes ke mutabiq
@@ -4901,27 +4890,31 @@ async function fetchMatched() {
         if (!res.ok) return;
         const json = await res.json();
         const list = json.data?.orders || json.orders || [];
-        
+
         Matched = list.map(o => {
             const selId = String(o.selection_id || o.selectionId || o.selId || "");
-            
-            // --- ANTI-FLICKER RIGID CHECK ---
+
+            // -------------------------------------------------------
+            // STRICT ANTI-FLICKER — fetchMatched BUG 1 FIX
+            // Step 1: resolve through strict resolver (map-first)
+            // Step 2: if still polluted, force-pull from map
+            // Step 3: never allow a match/event title into .rn
+            // -------------------------------------------------------
             let cleanRunnerName = resolveRunnerName(o);
-            
-            // Agar resolve hone ke baad bhi ghalati se poora Match Name (v) aa gaya ho
-            if (!cleanRunnerName || cleanRunnerName.includes(' v ') || cleanRunnerName.includes(' vs ') || cleanRunnerName.includes(' - ')) {
-                // To fir target data map se forcefully correct name pull karein
-                if (selId && window.selectionIdToRunner && window.selectionIdToRunner[selId]) {
-                    cleanRunnerName = window.selectionIdToRunner[selId];
+
+            if (!cleanRunnerName || _isMatchName(cleanRunnerName)) {
+                if (selId && selectionIdToRunner[selId]) {
+                    cleanRunnerName = selectionIdToRunner[selId];
                 } else {
-                    cleanRunnerName = "Runner " + selId; // Agar map khali ho tab bhi match name na dikhaye
+                    // Safe fallback — selectionId label, never match name
+                    cleanRunnerName = selId ? ("Runner " + selId) : "Runner";
                 }
             }
-            // ---------------------------------
+            // -------------------------------------------------------
 
             return {
                 orderId:  String(o.request_id || o.orderId || o.requestId || ""),
-                rn:       cleanRunnerName, // Ab yahan 100% sirf Player/Runner name hi jayega
+                rn:       cleanRunnerName,   // GUARANTEED: only player/runner name
                 selId:    selId,
                 mktId:    String(o.marketId || o.market_id || matchId),
                 mp:       parseFloat(o.price) || 0,
@@ -4931,6 +4924,17 @@ async function fetchMatched() {
                 liable:   parseFloat(o.liable || 0),
             };
         });
+
+        // Post-map sweep: guard against any stale/polluted entries
+        Matched.forEach(o => {
+            if (!o.rn || _isMatchName(o.rn)) {
+                o.rn = selectionIdToRunner[o.selId] || resolveRunnerName(o);
+                if (!o.rn || _isMatchName(o.rn)) {
+                    o.rn = o.selId ? ("Runner " + o.selId) : "Runner";
+                }
+            }
+        });
+
         render();
     } catch (e) {
         console.error("fetchMatched error:", e);
@@ -5058,32 +5062,45 @@ socket.on("ordersUpdated", (data) => {
     if (!data?.newOrders?.length) return;
 
     data.newOrders.forEach(newO => {
-        const orderId = String(newO.request_id || newO.orderId || newO.requestId);
+        const orderId    = String(newO.request_id || newO.orderId || newO.requestId);
+        const orderSelId = String(newO.selection_id || newO.selectionId || "");
+        const orderMktId = String(newO.marketId || newO.market_id || matchId);
+
         UnMatched = UnMatched.filter(o => o.orderId !== orderId);
         Matched   = Matched.filter(o => o.orderId !== orderId);
 
-        // BUG 2 FIX: capture mktId from the incoming order payload
-        const orderMktId = String(newO.marketId || newO.market_id || matchId);
+        // ---------------------------------------------------------
+        // SOCKET SANITIZATION — BUG 1 FIX
+        // Always resolve through the strict resolveRunnerName helper
+        // so that raw event-name strings from the socket payload can
+        // never write a "PlayerA v PlayerB" string into .rn.
+        // ---------------------------------------------------------
+        let safeRn = resolveRunnerName(newO);
+        if (!safeRn || _isMatchName(safeRn)) {
+            safeRn = (selectionIdToRunner[orderSelId])
+                   || (orderSelId ? ("Runner " + orderSelId) : "Runner");
+        }
+        // ---------------------------------------------------------
 
         if (newO.status === "PENDING") {
             UnMatched.push({
                 orderId,
-                rn:    resolveRunnerName(newO),
-                selId: String(newO.selection_id || ""),
-                mktId: orderMktId,      // BUG 2 FIX
+                rn:    safeRn,
+                selId: orderSelId,
+                mktId: orderMktId,
                 up:    newO.price,
                 us:    newO.size,
                 bs:    (newO.side || "").toUpperCase()
             });
         } else if (newO.status === "MATCHED") {
-            const price  = parseFloat(newO.price || 0);
-            const size   = parseFloat(newO.matched > 0 ? newO.matched : newO.size || 0);
-            const side   = (newO.side || "").toUpperCase();
+            const price = parseFloat(newO.price || 0);
+            const size  = parseFloat(newO.matched > 0 ? newO.matched : newO.size || 0);
+            const side  = (newO.side || "").toUpperCase();
             Matched.push({
                 orderId,
-                rn:     resolveRunnerName(newO),
-                selId:  String(newO.selection_id || ""),
-                mktId:  orderMktId,     // BUG 2 FIX
+                rn:     safeRn,
+                selId:  orderSelId,
+                mktId:  orderMktId,
                 mp:     price,
                 ms:     size,
                 bs:     side,
@@ -5092,6 +5109,32 @@ socket.on("ordersUpdated", (data) => {
             });
         }
     });
+
+    // ---------------------------------------------------------
+    // POST-PUSH SAFETY SWEEP — last line of defence before render.
+    // If any .rn is still a match/event name (e.g. because the
+    // selectionIdToRunner map had not yet been populated when the
+    // order arrived), correct it now before the DOM is touched.
+    // ---------------------------------------------------------
+    Matched.forEach(o => {
+        if (!o.rn || _isMatchName(o.rn)) {
+            o.rn = selectionIdToRunner[o.selId] || resolveRunnerName(o);
+            // Final hard-stop: still polluted → use safe label
+            if (!o.rn || _isMatchName(o.rn)) {
+                o.rn = o.selId ? ("Runner " + o.selId) : "Runner";
+            }
+        }
+    });
+    UnMatched.forEach(o => {
+        if (!o.rn || _isMatchName(o.rn)) {
+            o.rn = selectionIdToRunner[o.selId] || resolveRunnerName(o);
+            if (!o.rn || _isMatchName(o.rn)) {
+                o.rn = o.selId ? ("Runner " + o.selId) : "Runner";
+            }
+        }
+    });
+    // ---------------------------------------------------------
+
     render();
 });
 

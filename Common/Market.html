@@ -29,6 +29,17 @@
         center a {
             font-size: 13px;
         }
+
+        /* Default: runner P&L numbers hidden (show only when actual bets placed via .has-pnl class) */
+        .runner-position .runner-position-pos,
+        .runner-position .position-minus {
+            display: none;
+        }
+        /* PnL script adds .has-pnl class when real bet amounts exist */
+        .runner-position.has-pnl .runner-position-pos,
+        .runner-position.has-pnl .position-minus {
+            display: inline;
+        }
     </style>
 
     <script>
@@ -37,10 +48,10 @@
         const LiquidityRate = 35;
 
         // getRunnerAmounts stub — Vue template render ke liye zaroori
-        // Main PnL script baad mein isko override karega with real data
+        // Returns special sentinel: ifWin=null hides the display via v-if
         // BUG 2 FIX: accepts optional second param forMarketId (ignored in stub)
         window.getRunnerAmounts = function(runnerName, forMarketId) {
-            return { ifWin: 0, ifLose: 0, net: 0 };
+            return { ifWin: null, ifLose: null, net: null };
         };
         // mv2.min.js svc_prefix use karta hai catalog2 / orders calls ke liye
         const SsocketUrl = "https://1xbetbackend.work.gd/signalr";
@@ -1662,12 +1673,7 @@
   </span>
 </div> -->
 <div class="runner-position">
-  <span>
-    <span :class="getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
-      <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin | format }}</strong>
-    </span>
-  </span>
-  <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
+  <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal; color: #ccc; font-size: 12px;">
     <span v-if="runner.metadataDict != null && runner.metadataDict.STALL_DRAW !== undefined && runner.metadataDict.STALL_DRAW != null">
       ({{ runner.metadataDict.STALL_DRAW }})
     </span>
@@ -6064,12 +6070,38 @@ Vue.component('runner-aggregate', {
       elapsed += 300;
     }
 
+    // Horse Race (7) aur Greyhound (4339) ke liye additional markets show nahi karne
+    const vm = getVm();
+    if (vm && vm.Catalog && vm.Catalog.eventTypeId) {
+      const eid = String(vm.Catalog.eventTypeId);
+      if (eid === '7' || eid === '4339') {
+        console.log('[Markets] Horse/Greyhound — additional markets disabled');
+        return;
+      }
+    }
+
     // Step 2: eventId resolve karo
     const eventId = await resolveEventId();
     if (!eventId) {
       console.warn('[Markets] ❌ eventId resolve nahi hua');
       return;
     }
+
+    // catalog2 se eventTypeId check karo (agar Vue abhi tak mount nahi hua)
+    try {
+      if (MARKET_ID) {
+        const r = await fetch(`${API_BASE}/markets/catalog2?id=${encodeURIComponent(MARKET_ID)}`);
+        if (r.ok) {
+          const j = await r.json();
+          const eid = String((j.data || j).eventTypeId || '');
+          if (eid === '7' || eid === '4339') {
+            console.log('[Markets] Horse/Greyhound (catalog2) — additional markets disabled');
+            return;
+          }
+        }
+      }
+    } catch(e) { /* ignore */ }
+
     console.log(`[Markets] eventId=${eventId}, marketId=${MARKET_ID}`);
 
     const token   = localStorage.getItem('token') || '';

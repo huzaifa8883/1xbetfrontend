@@ -4719,19 +4719,18 @@ async function updateUserWallet() {
 // ------------------------------------------------------------------
 function calculateRunnerPnL(runnerName, forMarketId) {
     const normalized  = (runnerName || "").trim().toLowerCase();
-    // forMarketId: if provided, restrict to orders for that market only
-    // if not provided (legacy call), use all orders (backward-compat)
     const useMarketFilter = !!forMarketId;
 
     let ifWin  = 0;
     let ifLose = 0;
 
-    // Collect all runner names in the target market so we can compute
-    // the "if this runner wins, all others lose" cross-market P&L correctly
+    // BUG 2 FIX: sirf us specific market ke orders filter karo
     const marketOrders = Matched.filter(order => {
         if (!useMarketFilter) return true;
         return String(order.mktId || matchId) === String(forMarketId);
     });
+
+    if (!marketOrders.length) return { ifWin: 0, ifLose: 0 };
 
     marketOrders.forEach(order => {
         const rn    = (order.rn || order.runnerName || "").trim().toLowerCase();
@@ -4742,6 +4741,7 @@ function calculateRunnerPnL(runnerName, forMarketId) {
         if (!rn || odds <= 1 || stake <= 0) return;
 
         if (rn === normalized) {
+            // Is runner par direct bet
             if (side === "B") {
                 ifWin  += (odds - 1) * stake;
                 ifLose -= stake;
@@ -4750,6 +4750,8 @@ function calculateRunnerPnL(runnerName, forMarketId) {
                 ifLose += stake;
             }
         } else {
+            // Doosre runner par bet — cross-runner effect
+            // ONLY apply agar dono same market ke runners hain (already filtered by marketOrders)
             if (side === "B") {
                 ifWin  -= stake;
                 ifLose += (odds - 1) * stake;
@@ -5067,7 +5069,7 @@ async function fetchUnMatched() {
     const tk = localStorage.getItem('token') || localStorage.getItem('wex3authtoken') || token;
     if (!tk) return;
     try {
-        const res = await fetch(`${ordersUrl}/orders/pending`, {
+        const res = await fetch(`${ordersUrl}/orders/pending?marketId=${encodeURIComponent(matchId)}`, {
             headers: { "Authorization": "Bearer " + tk }
         });
         if (!res.ok) return;
@@ -5122,7 +5124,7 @@ async function fetchMatched() {
     const tk = localStorage.getItem('token') || localStorage.getItem('wex3authtoken') || token;
     if (!tk) return;
     try {
-        const res = await fetch(`${ordersUrl}/orders/matched`, {
+        const res = await fetch(`${ordersUrl}/orders/matched?marketId=${encodeURIComponent(matchId)}`, {
             headers: { "Authorization": "Bearer " + tk }
         });
         if (!res.ok) return;
@@ -5317,6 +5319,9 @@ socket.on("ordersUpdated", (data) => {
         const orderId    = String(newO.request_id || newO.orderId || newO.requestId);
         const orderSelId = String(newO.selection_id || newO.selectionId || "");
         const orderMktId = String(newO.marketId || newO.market_id || matchId);
+
+        // BUG 1 FIX: sirf us match ke orders process karo
+        if (orderMktId !== String(matchId)) return;
 
         // RULE: if we already confirmed a real name in memory, NEVER replace it
         const inMem = [...Matched, ...UnMatched].find(x => x.orderId === orderId);

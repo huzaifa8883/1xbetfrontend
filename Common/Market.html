@@ -27,10 +27,29 @@
             display: inline-block;
             width: 22px;
             height: 22px;
+            min-width: 22px;
             border-radius: 2px;
             border: 1px solid rgba(255,255,255,0.3);
             vertical-align: middle;
             flex-shrink: 0;
+            align-self: center;
+            position: relative;
+            top: 0;
+        }
+        /* Selector checkbox aur silk image bhi vertically center */
+        .runner-runner .selector {
+            align-self: center !important;
+        }
+        .runner-runner > img.ml-2 {
+            align-self: center !important;
+            width: 24px !important;
+            height: 24px !important;
+            object-fit: contain;
+        }
+        /* Runner name row — flex center */
+        .runner-runner .runner-name {
+            display: flex !important;
+            align-items: center !important;
         }
 
         center a {
@@ -1692,9 +1711,7 @@
     </span>
   </span>
   <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
-    <span v-if="runner.metadataDict != null && runner.metadataDict.STALL_DRAW !== undefined && runner.metadataDict.STALL_DRAW != null">
-      ({{runner.metadataDict.STALL_DRAW }})
-    </span>
+
     {{ runner.jockeyName }}
   </span>
   <span v-if="Catalog.bettingType === 'LINE'">
@@ -1708,9 +1725,7 @@
     </span>
   </span>
   <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
-    <span v-if="runner.metadataDict != null && runner.metadataDict.STALL_DRAW !== undefined && runner.metadataDict.STALL_DRAW != null">
-      ({{ runner.metadataDict.STALL_DRAW }})
-    </span>
+
     {{ runner.jockeyName }}
   </span>
   <span v-if="Catalog.bettingType === 'LINE'">
@@ -1851,9 +1866,7 @@
                     </span>
                 </span>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
-                    <span v-if="runner.metadataDict != null && runner.metadataDict.STALL_DRAW !== undefined && runner.metadataDict.STALL_DRAW != null">
-                        ({{runner.metadataDict.STALL_DRAW }})
-                    </span>
+
                     {{ runner.jockeyName }}
                 </span>
                 <span v-if="Catalog.bettingType === 'LINE'">
@@ -1987,9 +2000,7 @@
                     </span>
                 </span>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
-                    <span v-if="runner.metadataDict != null && runner.metadataDict.STALL_DRAW !== undefined && runner.metadataDict.STALL_DRAW != null">
-                        ({{runner.metadataDict.STALL_DRAW }})
-                    </span>
+
                     {{ runner.jockeyName }}
                 </span>
                 <span v-if="Catalog.bettingType === 'LINE'">
@@ -2122,9 +2133,7 @@
                     </span>
                 </span>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
-                    <span v-if="runner.metadataDict != null && runner.metadataDict.STALL_DRAW !== undefined && runner.metadataDict.STALL_DRAW != null">
-                        ({{runner.metadataDict.STALL_DRAW }})
-                    </span>
+
                     {{ runner.jockeyName }}
                 </span>
                 <span v-if="Catalog.bettingType === 'LINE'">
@@ -2258,9 +2267,7 @@
                     </span>
                 </span>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
-                    <span v-if="runner.metadataDict != null && runner.metadataDict.STALL_DRAW !== undefined && runner.metadataDict.STALL_DRAW != null">
-                        ({{runner.metadataDict.STALL_DRAW }})
-                    </span>
+
                     {{ runner.jockeyName }}
                 </span>
                 <span v-if="Catalog.bettingType === 'LINE'">
@@ -2393,9 +2400,7 @@
                     </span>
                 </span>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
-                    <span v-if="runner.metadataDict != null && runner.metadataDict.STALL_DRAW !== undefined && runner.metadataDict.STALL_DRAW != null">
-                        ({{runner.metadataDict.STALL_DRAW }})
-                    </span>
+
                     {{ runner.jockeyName }}
                 </span>
                 <span v-if="Catalog.bettingType === 'LINE'">
@@ -2605,9 +2610,7 @@
                     </span>
                 </span>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
-                    <span v-if="runner.metadataDict != null && runner.metadataDict.STALL_DRAW !== undefined && runner.metadataDict.STALL_DRAW != null">
-                        ({{runner.metadataDict.STALL_DRAW }})
-                    </span>
+
                     {{ runner.jockeyName }}
                 </span>
                 <span v-if="Catalog.bettingType === 'LINE'">
@@ -2748,9 +2751,7 @@
                     </span>
                 </span>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
-                    <span v-if="runner.metadataDict != null && runner.metadataDict.STALL_DRAW !== undefined && runner.metadataDict.STALL_DRAW != null">
-                        ({{runner.metadataDict.STALL_DRAW }})
-                    </span>
+
                     {{ runner.jockeyName }}
                 </span>
                 <span v-if="Catalog.bettingType === 'LINE'">
@@ -2885,9 +2886,7 @@
                     </span>
                 </span>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
-                    <span v-if="runner.metadataDict != null && runner.metadataDict.STALL_DRAW !== undefined && runner.metadataDict.STALL_DRAW != null">
-                        ({{runner.metadataDict.STALL_DRAW }})
-                    </span>
+
                     {{ runner.jockeyName }}
                 </span>
                 <span v-if="Catalog.bettingType === 'LINE'">
@@ -3021,9 +3020,7 @@
                     </span>
                 </span>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
-                    <span v-if="runner.metadataDict != null && runner.metadataDict.STALL_DRAW !== undefined && runner.metadataDict.STALL_DRAW != null">
-                        ({{runner.metadataDict.STALL_DRAW }})
-                    </span>
+
                     {{ runner.jockeyName }}
                 </span>
                 <span v-if="Catalog.bettingType === 'LINE'">
@@ -3158,9 +3155,7 @@
                     </span>
                 </span>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
-                    <span v-if="runner.metadataDict != null && runner.metadataDict.STALL_DRAW !== undefined && runner.metadataDict.STALL_DRAW != null">
-                        ({{runner.metadataDict.STALL_DRAW }})
-                    </span>
+
                     {{ runner.jockeyName }}
                 </span>
                 <span v-if="Catalog.bettingType === 'LINE'">
@@ -3295,9 +3290,7 @@
                     </span>
                 </span>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
-                    <span v-if="runner.metadataDict != null && runner.metadataDict.STALL_DRAW !== undefined && runner.metadataDict.STALL_DRAW != null">
-                        ({{runner.metadataDict.STALL_DRAW }})
-                    </span>
+
                     {{ runner.jockeyName }}
                 </span>
                 <span v-if="Catalog.bettingType === 'LINE'">
@@ -3510,9 +3503,7 @@
                     </span>
                 </span>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
-                    <span v-if="runner.metadataDict != null && runner.metadataDict.STALL_DRAW !== undefined && runner.metadataDict.STALL_DRAW != null">
-                        ({{runner.metadataDict.STALL_DRAW }})
-                    </span>
+
                     {{ runner.jockeyName }}
                 </span>
                 <span v-if="Catalog.bettingType === 'LINE'">
@@ -3651,9 +3642,7 @@
                     </span>
                 </span>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
-                    <span v-if="runner.metadataDict != null && runner.metadataDict.STALL_DRAW !== undefined && runner.metadataDict.STALL_DRAW != null">
-                        ({{runner.metadataDict.STALL_DRAW }})
-                    </span>
+
                     {{ runner.jockeyName }}
                 </span>
                 <span v-if="Catalog.bettingType === 'LINE'">
@@ -6064,7 +6053,7 @@ Vue.component('runner-aggregate', {
       ls3:    r.lay?.[2]?.size   ?? r.ls3    ?? '-',
       ifWin:  r.ifWin  || 0,
       ifLose: r.ifLose || 0,
-      jockeyName:   r.jockeyName  || null,
+      jockeyName:   (r.jockeyName || null) ? (r.jockeyName).replace(/^\s*\(\d+\)\s*/, '').trim() || null : null,
       silkColor:    r.silkColor   || r.silkUrl || null,
       clothNumber:  r.clothNumber || null,
       metadataDict: r.metadataDict || null,

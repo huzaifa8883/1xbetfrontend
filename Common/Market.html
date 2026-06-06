@@ -74,27 +74,33 @@
         };
 
         // Horse/Greyhound runner cloth color — pehle screenshot ki tarah colored box
-        window.getClothColor = function(clothNum) {
-            var colors = {
-                1: '#E63946',  // Red
-                2: '#FFFFFF',  // White
-                3: '#1D3557',  // Dark Blue
-                4: '#F4A261',  // Yellow/Orange
-                5: '#2A9D8F',  // Green
-                6: '#000000',  // Black
-                7: '#F72585',  // Hot Pink
-                8: '#F77F00',  // Orange
-                9: '#8338EC',  // Purple
-                10: '#0077B6', // Blue
-                11: '#06D6A0', // Mint
-                12: '#FFB703', // Gold
-                13: '#E9C46A', // Light Yellow
-                14: '#E76F51', // Coral
-                15: '#118AB2', // Teal Blue
-                16: '#073B4C', // Dark Teal
-            };
-            var n = parseInt(clothNum) || 1;
-            return colors[n] || colors[(((n - 1) % 16) + 1)] || '#888888';
+        // getClothColor(clothNum, sortPriority)
+        // clothNum = runner.clothNumber (may be null for some tracks)
+        // sortPriority = runner.sortPriority (always present from Betfair — 1,2,3...)
+        window.getClothColor = function(clothNum, sortPriority) {
+            var colors = [
+                '#E63946',  // 1 Red
+                '#FFFFFF',  // 2 White
+                '#1D3557',  // 3 Dark Blue
+                '#F4A261',  // 4 Yellow/Orange
+                '#2A9D8F',  // 5 Green
+                '#111111',  // 6 Black
+                '#F72585',  // 7 Hot Pink
+                '#F77F00',  // 8 Orange
+                '#8338EC',  // 9 Purple
+                '#0077B6',  // 10 Blue
+                '#06D6A0',  // 11 Mint
+                '#FFB703',  // 12 Gold
+                '#E9C46A',  // 13 Light Yellow
+                '#E76F51',  // 14 Coral
+                '#118AB2',  // 15 Teal Blue
+                '#073B4C',  // 16 Dark Teal
+            ];
+            // clothNumber pehle try karo, warna sortPriority use karo
+            var n = parseInt(clothNum);
+            if (isNaN(n) || n < 1) n = parseInt(sortPriority);
+            if (isNaN(n) || n < 1) n = 1;
+            return colors[(n - 1) % colors.length];
         };
         // mv2.min.js svc_prefix use karta hai catalog2 / orders calls ke liye
         const SsocketUrl = "https://1xbetbackend.work.gd/signalr";
@@ -1665,10 +1671,10 @@
               v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
-        <img class="ml-2" :src="runner.silkColor" v-if="runner.silkColor" style="width:24px;height:24px;" />
-        <span v-else-if="runner.clothNumber || Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
+        <img class="ml-2" :src="runner.silkColor" v-if="runner.silkColor && (Catalog.eventTypeId==7 || Catalog.eventTypeId==4339)" style="width:22px;height:22px;object-fit:contain;" />
+        <span v-if="!runner.silkColor && (Catalog.eventTypeId==7 || Catalog.eventTypeId==4339)"
               class="ml-2 runner-cloth-color"
-              :style="{background: getClothColor(runner.clothNumber)}">
+              :style="{background: getClothColor(runner.clothNumber, runner.sortPriority)}">
         </span>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -1824,10 +1830,10 @@
               v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
-        <img class="ml-2" :src="runner.silkColor" v-if="runner.silkColor" style="width:24px;height:24px;" />
-        <span v-else-if="runner.clothNumber || Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
+        <img class="ml-2" :src="runner.silkColor" v-if="runner.silkColor && (Catalog.eventTypeId==7 || Catalog.eventTypeId==4339)" style="width:22px;height:22px;object-fit:contain;" />
+        <span v-if="!runner.silkColor && (Catalog.eventTypeId==7 || Catalog.eventTypeId==4339)"
               class="ml-2 runner-cloth-color"
-              :style="{background: getClothColor(runner.clothNumber)}">
+              :style="{background: getClothColor(runner.clothNumber, runner.sortPriority)}">
         </span>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -1958,10 +1964,10 @@
               v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
-        <img class="ml-2" :src="runner.silkColor" v-if="runner.silkColor" style="width:24px;height:24px;" />
-        <span v-else-if="runner.clothNumber || Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
+        <img class="ml-2" :src="runner.silkColor" v-if="runner.silkColor && (Catalog.eventTypeId==7 || Catalog.eventTypeId==4339)" style="width:22px;height:22px;object-fit:contain;" />
+        <span v-if="!runner.silkColor && (Catalog.eventTypeId==7 || Catalog.eventTypeId==4339)"
               class="ml-2 runner-cloth-color"
-              :style="{background: getClothColor(runner.clothNumber)}">
+              :style="{background: getClothColor(runner.clothNumber, runner.sortPriority)}">
         </span>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -2091,10 +2097,10 @@
               v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
-        <img class="ml-2" :src="runner.silkColor" v-if="runner.silkColor" style="width:24px;height:24px;" />
-        <span v-else-if="runner.clothNumber || Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
+        <img class="ml-2" :src="runner.silkColor" v-if="runner.silkColor && (Catalog.eventTypeId==7 || Catalog.eventTypeId==4339)" style="width:22px;height:22px;object-fit:contain;" />
+        <span v-if="!runner.silkColor && (Catalog.eventTypeId==7 || Catalog.eventTypeId==4339)"
               class="ml-2 runner-cloth-color"
-              :style="{background: getClothColor(runner.clothNumber)}">
+              :style="{background: getClothColor(runner.clothNumber, runner.sortPriority)}">
         </span>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -2225,10 +2231,10 @@
               v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
-        <img class="ml-2" :src="runner.silkColor" v-if="runner.silkColor" style="width:24px;height:24px;" />
-        <span v-else-if="runner.clothNumber || Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
+        <img class="ml-2" :src="runner.silkColor" v-if="runner.silkColor && (Catalog.eventTypeId==7 || Catalog.eventTypeId==4339)" style="width:22px;height:22px;object-fit:contain;" />
+        <span v-if="!runner.silkColor && (Catalog.eventTypeId==7 || Catalog.eventTypeId==4339)"
               class="ml-2 runner-cloth-color"
-              :style="{background: getClothColor(runner.clothNumber)}">
+              :style="{background: getClothColor(runner.clothNumber, runner.sortPriority)}">
         </span>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -2358,10 +2364,10 @@
               v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
-        <img class="ml-2" :src="runner.silkColor" v-if="runner.silkColor" style="width:24px;height:24px;" />
-        <span v-else-if="runner.clothNumber || Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
+        <img class="ml-2" :src="runner.silkColor" v-if="runner.silkColor && (Catalog.eventTypeId==7 || Catalog.eventTypeId==4339)" style="width:22px;height:22px;object-fit:contain;" />
+        <span v-if="!runner.silkColor && (Catalog.eventTypeId==7 || Catalog.eventTypeId==4339)"
               class="ml-2 runner-cloth-color"
-              :style="{background: getClothColor(runner.clothNumber)}">
+              :style="{background: getClothColor(runner.clothNumber, runner.sortPriority)}">
         </span>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -2568,10 +2574,10 @@
               v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
-        <img class="ml-2" :src="runner.silkColor" v-if="runner.silkColor" style="width:24px;height:24px;" />
-        <span v-else-if="runner.clothNumber || Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
+        <img class="ml-2" :src="runner.silkColor" v-if="runner.silkColor && (Catalog.eventTypeId==7 || Catalog.eventTypeId==4339)" style="width:22px;height:22px;object-fit:contain;" />
+        <span v-if="!runner.silkColor && (Catalog.eventTypeId==7 || Catalog.eventTypeId==4339)"
               class="ml-2 runner-cloth-color"
-              :style="{background: getClothColor(runner.clothNumber)}">
+              :style="{background: getClothColor(runner.clothNumber, runner.sortPriority)}">
         </span>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -2709,10 +2715,10 @@
               v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
-        <img class="ml-2" :src="runner.silkColor" v-if="runner.silkColor" style="width:24px;height:24px;" />
-        <span v-else-if="runner.clothNumber || Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
+        <img class="ml-2" :src="runner.silkColor" v-if="runner.silkColor && (Catalog.eventTypeId==7 || Catalog.eventTypeId==4339)" style="width:22px;height:22px;object-fit:contain;" />
+        <span v-if="!runner.silkColor && (Catalog.eventTypeId==7 || Catalog.eventTypeId==4339)"
               class="ml-2 runner-cloth-color"
-              :style="{background: getClothColor(runner.clothNumber)}">
+              :style="{background: getClothColor(runner.clothNumber, runner.sortPriority)}">
         </span>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -2844,10 +2850,10 @@
               v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
-        <img class="ml-2" :src="runner.silkColor" v-if="runner.silkColor" style="width:24px;height:24px;" />
-        <span v-else-if="runner.clothNumber || Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
+        <img class="ml-2" :src="runner.silkColor" v-if="runner.silkColor && (Catalog.eventTypeId==7 || Catalog.eventTypeId==4339)" style="width:22px;height:22px;object-fit:contain;" />
+        <span v-if="!runner.silkColor && (Catalog.eventTypeId==7 || Catalog.eventTypeId==4339)"
               class="ml-2 runner-cloth-color"
-              :style="{background: getClothColor(runner.clothNumber)}">
+              :style="{background: getClothColor(runner.clothNumber, runner.sortPriority)}">
         </span>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -2978,10 +2984,10 @@
               v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
-        <img class="ml-2" :src="runner.silkColor" v-if="runner.silkColor" style="width:24px;height:24px;" />
-        <span v-else-if="runner.clothNumber || Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
+        <img class="ml-2" :src="runner.silkColor" v-if="runner.silkColor && (Catalog.eventTypeId==7 || Catalog.eventTypeId==4339)" style="width:22px;height:22px;object-fit:contain;" />
+        <span v-if="!runner.silkColor && (Catalog.eventTypeId==7 || Catalog.eventTypeId==4339)"
               class="ml-2 runner-cloth-color"
-              :style="{background: getClothColor(runner.clothNumber)}">
+              :style="{background: getClothColor(runner.clothNumber, runner.sortPriority)}">
         </span>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -3113,10 +3119,10 @@
               v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
-        <img class="ml-2" :src="runner.silkColor" v-if="runner.silkColor" style="width:24px;height:24px;" />
-        <span v-else-if="runner.clothNumber || Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
+        <img class="ml-2" :src="runner.silkColor" v-if="runner.silkColor && (Catalog.eventTypeId==7 || Catalog.eventTypeId==4339)" style="width:22px;height:22px;object-fit:contain;" />
+        <span v-if="!runner.silkColor && (Catalog.eventTypeId==7 || Catalog.eventTypeId==4339)"
               class="ml-2 runner-cloth-color"
-              :style="{background: getClothColor(runner.clothNumber)}">
+              :style="{background: getClothColor(runner.clothNumber, runner.sortPriority)}">
         </span>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -3248,10 +3254,10 @@
               v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
-        <img class="ml-2" :src="runner.silkColor" v-if="runner.silkColor" style="width:24px;height:24px;" />
-        <span v-else-if="runner.clothNumber || Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
+        <img class="ml-2" :src="runner.silkColor" v-if="runner.silkColor && (Catalog.eventTypeId==7 || Catalog.eventTypeId==4339)" style="width:22px;height:22px;object-fit:contain;" />
+        <span v-if="!runner.silkColor && (Catalog.eventTypeId==7 || Catalog.eventTypeId==4339)"
               class="ml-2 runner-cloth-color"
-              :style="{background: getClothColor(runner.clothNumber)}">
+              :style="{background: getClothColor(runner.clothNumber, runner.sortPriority)}">
         </span>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -3461,10 +3467,10 @@
               v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
-        <img class="ml-2" :src="runner.silkColor" v-if="runner.silkColor" style="width:24px;height:24px;" />
-        <span v-else-if="runner.clothNumber || Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
+        <img class="ml-2" :src="runner.silkColor" v-if="runner.silkColor && (Catalog.eventTypeId==7 || Catalog.eventTypeId==4339)" style="width:22px;height:22px;object-fit:contain;" />
+        <span v-if="!runner.silkColor && (Catalog.eventTypeId==7 || Catalog.eventTypeId==4339)"
               class="ml-2 runner-cloth-color"
-              :style="{background: getClothColor(runner.clothNumber)}">
+              :style="{background: getClothColor(runner.clothNumber, runner.sortPriority)}">
         </span>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -3600,10 +3606,10 @@
               v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
-        <img class="ml-2" :src="runner.silkColor" v-if="runner.silkColor" style="width:24px;height:24px;" />
-        <span v-else-if="runner.clothNumber || Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
+        <img class="ml-2" :src="runner.silkColor" v-if="runner.silkColor && (Catalog.eventTypeId==7 || Catalog.eventTypeId==4339)" style="width:22px;height:22px;object-fit:contain;" />
+        <span v-if="!runner.silkColor && (Catalog.eventTypeId==7 || Catalog.eventTypeId==4339)"
               class="ml-2 runner-cloth-color"
-              :style="{background: getClothColor(runner.clothNumber)}">
+              :style="{background: getClothColor(runner.clothNumber, runner.sortPriority)}">
         </span>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -6056,6 +6062,7 @@ Vue.component('runner-aggregate', {
       jockeyName:   (r.jockeyName || null) ? (r.jockeyName).replace(/^\s*\(\d+\)\s*/, '').trim() || null : null,
       silkColor:    r.silkColor   || r.silkUrl || null,
       clothNumber:  r.clothNumber || null,
+      sortPriority: r.sortPriority || null,
       metadataDict: r.metadataDict || null,
       indB1: r.indB1 || '',
       indL1: r.indL1 || '',

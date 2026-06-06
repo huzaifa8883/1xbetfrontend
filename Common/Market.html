@@ -1662,7 +1662,12 @@
   </span>
 </div> -->
 <div class="runner-position">
-  <span class="runner-jockey-name" v-if="runner.jockeyName != null" style="font-weight:normal; color:#ccc; font-size:12px;">
+  <span>
+    <span :class="getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
+      <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin | format }}</strong>
+    </span>
+  </span>
+  <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
     <span v-if="runner.metadataDict != null && runner.metadataDict.STALL_DRAW !== undefined && runner.metadataDict.STALL_DRAW != null">
       ({{ runner.metadataDict.STALL_DRAW }})
     </span>
@@ -5967,7 +5972,7 @@ Vue.component('runner-aggregate', {
       ifWin:  r.ifWin  || 0,
       ifLose: r.ifLose || 0,
       jockeyName:   r.jockeyName  || null,
-      silkColor:    r.silkColor   || null,
+      silkColor:    r.silkColor   || r.silkUrl || null,
       clothNumber:  r.clothNumber || null,
       metadataDict: r.metadataDict || null,
       indB1: r.indB1 || '',
@@ -6059,32 +6064,20 @@ Vue.component('runner-aggregate', {
       elapsed += 300;
     }
 
-    // Horse Race (7) aur Greyhound (4339) ke liye extra markets bilkul nahi
-    const _vm = getVm();
-    if (_vm && _vm.Catalog && _vm.Catalog.eventTypeId) {
-      const _eid = String(_vm.Catalog.eventTypeId);
-      if (_eid === '7' || _eid === '4339') {
-        console.log('[Markets] Horse/Greyhound — additional markets disabled');
+    // Horse Race (eventTypeId=7) aur Greyhound (eventTypeId=4339) ke liye
+    // sirf ek WIN market dikhana hai — koi additional markets inject nahi karne
+    const vm = getVm();
+    if (vm && vm.Catalog) {
+      // Catalog mein eventTypeId set hone ka wait karo
+      let tries = 0;
+      while (!vm.Catalog.eventTypeId && tries++ < 20) {
+        await new Promise(r => setTimeout(r, 200));
+      }
+      const eid = String(vm.Catalog.eventTypeId || '');
+      if (eid === '7' || eid === '4339') {
+        console.log('[Markets] Horse/Greyhound — additional markets nahi load honge');
         return;
       }
-    }
-    // Agar Vue abhi mount nahi hua — catalog2 se eventTypeId check karo
-    if (MARKET_ID) {
-      try {
-        const _tk = localStorage.getItem('token') || '';
-        const _r  = await fetch(
-          API_BASE + '/markets/catalog2?id=' + encodeURIComponent(MARKET_ID),
-          { headers: _tk ? { Authorization: 'Bearer ' + _tk } : {} }
-        );
-        if (_r.ok) {
-          const _j   = await _r.json();
-          const _eid = String((_j.data || _j).eventTypeId || '');
-          if (_eid === '7' || _eid === '4339') {
-            console.log('[Markets] Horse/Greyhound (catalog2) — additional markets disabled');
-            return;
-          }
-        }
-      } catch (_e) { /* ignore */ }
     }
 
     // Step 2: eventId resolve karo

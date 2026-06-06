@@ -923,7 +923,18 @@ document.addEventListener("DOMContentLoaded", async () => {
           listContainer.innerHTML = '<li style="color:white;">No live greyhound races found.</li>';
           return;
         }
-        filtered.forEach(match => {
+
+        // Deduplicate by track name + start time minute
+        const seen = new Set();
+        const unique = filtered.filter(match => {
+          const timeKey = match.startTime ? match.startTime.substring(0, 16) : '';
+          const key = `${match.match}__${timeKey}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+
+        unique.forEach(match => {
           const li = document.createElement('li');
           li.classList.add('match-card');
 
@@ -972,7 +983,18 @@ document.addEventListener("DOMContentLoaded", async () => {
           listContainer.innerHTML = '<li style="color:white;">No live horse matches found.</li>';
           return;
         }
-        filtered.forEach(match => {
+
+        // Deduplicate by track name + start time minute
+        const seen = new Set();
+        const unique = filtered.filter(match => {
+          const timeKey = match.startTime ? match.startTime.substring(0, 16) : '';
+          const key = `${match.match}__${timeKey}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+
+        unique.forEach(match => {
           const li = document.createElement('li');
           li.classList.add('match-card');
 
@@ -1003,6 +1025,31 @@ document.addEventListener("DOMContentLoaded", async () => {
 </script>
 
 <!-- ✅ Horse Slick Slider -->
+<style>
+  /* Custom arrow icons for horse & greyhound slick sliders */
+  #horseRaceContainer .slick-prev,
+  #horseRaceContainer .slick-next,
+  #greyhoundRaceContainer .slick-prev,
+  #greyhoundRaceContainer .slick-next {
+    width: 28px;
+    height: 28px;
+    z-index: 10;
+  }
+  #horseRaceContainer .slick-prev:before,
+  #greyhoundRaceContainer .slick-prev:before {
+    content: '◀';
+    font-size: 16px;
+    color: white;
+    opacity: 0.9;
+  }
+  #horseRaceContainer .slick-next:before,
+  #greyhoundRaceContainer .slick-next:before {
+    content: '▶';
+    font-size: 16px;
+    color: white;
+    opacity: 0.9;
+  }
+</style>
 <script>
   async function loadHorseLiveData() {
     try {
@@ -1019,15 +1066,25 @@ document.addEventListener("DOMContentLoaded", async () => {
       container.innerHTML = '';
 
       if (data.success && Array.isArray(data.data) && data.data.length > 0) {
-        data.data.forEach(match => {
+        // Deduplicate: same track + same time = same event, rakhna sirf ek
+        const seen = new Set();
+        const unique = data.data.filter(match => {
           const startTime = new Date(match.startTime);
+          const timeKey = startTime.toISOString().substring(0, 16); // YYYY-MM-DDTHH:MM
+          const key = `${match.match}__${timeKey}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+
+        unique.forEach(match => {
+          const startTime = new Date(match.startTime);
+          // Sirf time dikhao, date nahi
           const localTime = startTime.toLocaleTimeString('en-US', {
             hour: 'numeric',
             minute: '2-digit',
             hour12: true
           }).toLowerCase();
-
-          const utcTime = startTime.toISOString();
 
           const div = document.createElement('div');
           div.className = 'chk11';
@@ -1038,7 +1095,6 @@ document.addEventListener("DOMContentLoaded", async () => {
             <a href="/Common/Market.html?id=${match.marketId}" style="color:white; width:auto;">
               <b class="chkmobile">
                 <span class="slidedate market-time">${localTime}</span>
-                <span class="d-none utctime" data-format="h:mm A">${utcTime}</span>
                 <br>
                 <span class='slidename'>${match.match}</span>
               </b>
@@ -1053,9 +1109,12 @@ document.addEventListener("DOMContentLoaded", async () => {
           slidesToScroll: 1,
           infinite: false,
           arrows: true,
+          prevArrow: '<button type="button" class="slick-prev"></button>',
+          nextArrow: '<button type="button" class="slick-next"></button>',
           responsive: [
-            { breakpoint: 768, settings: { slidesToShow: 3 }},
-            { breakpoint: 480, settings: { slidesToShow: 2 }}
+            { breakpoint: 1024, settings: { slidesToShow: 6 }},
+            { breakpoint: 768,  settings: { slidesToShow: 3 }},
+            { breakpoint: 480,  settings: { slidesToShow: 3 }}
           ]
         });
 
@@ -1087,15 +1146,25 @@ document.addEventListener("DOMContentLoaded", async () => {
       container.innerHTML = '';
 
       if (data.success && Array.isArray(data.data) && data.data.length > 0) {
-        data.data.forEach(match => {
+        // Deduplicate: same track + same time = same event, rakhna sirf ek
+        const seen = new Set();
+        const unique = data.data.filter(match => {
           const startTime = new Date(match.startTime);
+          const timeKey = startTime.toISOString().substring(0, 16); // YYYY-MM-DDTHH:MM
+          const key = `${match.match}__${timeKey}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+
+        unique.forEach(match => {
+          const startTime = new Date(match.startTime);
+          // Sirf time dikhao, date nahi
           const localTime = startTime.toLocaleTimeString('en-US', {
             hour: 'numeric',
             minute: '2-digit',
             hour12: true
           }).toLowerCase();
-
-          const utcTime = startTime.toISOString();
 
           const div = document.createElement('div');
           div.className = 'chk11';
@@ -1106,7 +1175,6 @@ document.addEventListener("DOMContentLoaded", async () => {
             <a href="/Common/Market.html?id=${match.marketId}" style="color:white; width:auto;">
               <b class="chkmobile">
                 <span class="slidedate market-time">${localTime}</span>
-                <span class="d-none utctime" data-format="h:mm A">${utcTime}</span>
                 <br>
                 <span class='slidename'>${match.match}</span>
               </b>
@@ -1121,9 +1189,12 @@ document.addEventListener("DOMContentLoaded", async () => {
           slidesToScroll: 1,
           infinite: false,
           arrows: true,
+          prevArrow: '<button type="button" class="slick-prev"></button>',
+          nextArrow: '<button type="button" class="slick-next"></button>',
           responsive: [
-            { breakpoint: 768, settings: { slidesToShow: 3 }},
-            { breakpoint: 480, settings: { slidesToShow: 2 }}
+            { breakpoint: 1024, settings: { slidesToShow: 6 }},
+            { breakpoint: 768,  settings: { slidesToShow: 3 }},
+            { breakpoint: 480,  settings: { slidesToShow: 3 }}
           ]
         });
 

@@ -22,6 +22,17 @@
             min-height: 91.7vh;
         }
 
+        /* Horse/Greyhound runner color box — pehle screenshot ki tarah */
+        .runner-cloth-color {
+            display: inline-block;
+            width: 22px;
+            height: 22px;
+            border-radius: 2px;
+            border: 1px solid rgba(255,255,255,0.3);
+            vertical-align: middle;
+            flex-shrink: 0;
+        }
+
         center a {
             color: white;
         }
@@ -41,6 +52,30 @@
         // BUG 2 FIX: accepts optional second param forMarketId (ignored in stub)
         window.getRunnerAmounts = function(runnerName, forMarketId) {
             return { ifWin: 0, ifLose: 0, net: 0 };
+        };
+
+        // Horse/Greyhound runner cloth color — pehle screenshot ki tarah colored box
+        window.getClothColor = function(clothNum) {
+            var colors = {
+                1: '#E63946',  // Red
+                2: '#FFFFFF',  // White
+                3: '#1D3557',  // Dark Blue
+                4: '#F4A261',  // Yellow/Orange
+                5: '#2A9D8F',  // Green
+                6: '#000000',  // Black
+                7: '#F72585',  // Hot Pink
+                8: '#F77F00',  // Orange
+                9: '#8338EC',  // Purple
+                10: '#0077B6', // Blue
+                11: '#06D6A0', // Mint
+                12: '#FFB703', // Gold
+                13: '#E9C46A', // Light Yellow
+                14: '#E76F51', // Coral
+                15: '#118AB2', // Teal Blue
+                16: '#073B4C', // Dark Teal
+            };
+            var n = parseInt(clothNum) || 1;
+            return colors[n] || colors[(((n - 1) % 16) + 1)] || '#888888';
         };
         // mv2.min.js svc_prefix use karta hai catalog2 / orders calls ke liye
         const SsocketUrl = "https://1xbetbackend.work.gd/signalr";
@@ -1399,11 +1434,12 @@
                             <a class="tablink btn btn-primary" id="Fancy2tab" v-if="Fancy2Markets.length > 0" href="#" onclick="MarketTab('Fancy2')">Fancy-2</a>
                             <a class="tablink btn btn-primary" id="Figuretab" v-if="FigureMarkets.length > 0" href="#" onclick="MarketTab('Figure')">Figure</a>
                             <a class="tablink btn btn-primary" id="OddFiguretab" v-if="OddFigureMarkets.length > 0" href="#" onclick="MarketTab('OddFigure')">Even-Odd</a>
-                            <a class="tablink btn btn-primary" id="Othertab" v-if="OtherMarkets.length > 0" href="#" onclick="MarketTab('Other')">Others</a>
+                            <a class="tablink btn btn-primary" id="Othertab" v-if="OtherMarkets.length > 0 && Catalog.eventTypeId != 7 && Catalog.eventTypeId != 4339" href="#" onclick="MarketTab('Other')">Others</a>
 
                             <a class="tablink btn btn-primary" href="#"
                                v-bind:id="'race' + index + 'tab'"
                                v-for="(Catalog, index) in OtherRaceMarkets"
+                               v-if="Catalog.eventTypeId != 7 && Catalog.eventTypeId != 4339"
                                v-on:click="ShowTab('race', index)">
                                 {{ Catalog.marketName }}
                             </a>
@@ -1607,10 +1643,14 @@
          v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
-              v-show="Catalog.eventTypeId===7 || Catalog.eventTypeId===4339"
+              v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
-        <img class="ml-2" :src="runner.silkColor" v-show="runner.silkColor !== null" />
+        <img class="ml-2" :src="runner.silkColor" v-if="runner.silkColor" style="width:24px;height:24px;" />
+        <span v-else-if="runner.clothNumber || Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
+              class="ml-2 runner-cloth-color"
+              :style="{background: getClothColor(runner.clothNumber)}">
+        </span>
         <h3 class="runner-name">
             <div class="runner-info">
                 <span class="clippable runner-display-name">
@@ -1766,10 +1806,14 @@
          v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
-              v-show="Catalog.eventTypeId===7 || Catalog.eventTypeId===4339"
+              v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
-        <img class="ml-2" :src="runner.silkColor" v-show="runner.silkColor !== null" />
+        <img class="ml-2" :src="runner.silkColor" v-if="runner.silkColor" style="width:24px;height:24px;" />
+        <span v-else-if="runner.clothNumber || Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
+              class="ml-2 runner-cloth-color"
+              :style="{background: getClothColor(runner.clothNumber)}">
+        </span>
         <h3 class="runner-name">
             <div class="runner-info">
                 <span class="clippable runner-display-name">
@@ -1898,10 +1942,14 @@
          v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
-              v-show="Catalog.eventTypeId===7 || Catalog.eventTypeId===4339"
+              v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
-        <img class="ml-2" :src="runner.silkColor" v-show="runner.silkColor !== null" />
+        <img class="ml-2" :src="runner.silkColor" v-if="runner.silkColor" style="width:24px;height:24px;" />
+        <span v-else-if="runner.clothNumber || Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
+              class="ml-2 runner-cloth-color"
+              :style="{background: getClothColor(runner.clothNumber)}">
+        </span>
         <h3 class="runner-name">
             <div class="runner-info">
                 <span class="clippable runner-display-name">
@@ -2029,10 +2077,14 @@
          v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
-              v-show="Catalog.eventTypeId===7 || Catalog.eventTypeId===4339"
+              v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
-        <img class="ml-2" :src="runner.silkColor" v-show="runner.silkColor !== null" />
+        <img class="ml-2" :src="runner.silkColor" v-if="runner.silkColor" style="width:24px;height:24px;" />
+        <span v-else-if="runner.clothNumber || Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
+              class="ml-2 runner-cloth-color"
+              :style="{background: getClothColor(runner.clothNumber)}">
+        </span>
         <h3 class="runner-name">
             <div class="runner-info">
                 <span class="clippable runner-display-name">
@@ -2161,10 +2213,14 @@
          v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
-              v-show="Catalog.eventTypeId===7 || Catalog.eventTypeId===4339"
+              v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
-        <img class="ml-2" :src="runner.silkColor" v-show="runner.silkColor !== null" />
+        <img class="ml-2" :src="runner.silkColor" v-if="runner.silkColor" style="width:24px;height:24px;" />
+        <span v-else-if="runner.clothNumber || Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
+              class="ml-2 runner-cloth-color"
+              :style="{background: getClothColor(runner.clothNumber)}">
+        </span>
         <h3 class="runner-name">
             <div class="runner-info">
                 <span class="clippable runner-display-name">
@@ -2292,10 +2348,14 @@
          v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
-              v-show="Catalog.eventTypeId===7 || Catalog.eventTypeId===4339"
+              v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
-        <img class="ml-2" :src="runner.silkColor" v-show="runner.silkColor !== null" />
+        <img class="ml-2" :src="runner.silkColor" v-if="runner.silkColor" style="width:24px;height:24px;" />
+        <span v-else-if="runner.clothNumber || Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
+              class="ml-2 runner-cloth-color"
+              :style="{background: getClothColor(runner.clothNumber)}">
+        </span>
         <h3 class="runner-name">
             <div class="runner-info">
                 <span class="clippable runner-display-name">
@@ -2500,10 +2560,14 @@
          v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
-              v-show="Catalog.eventTypeId===7 || Catalog.eventTypeId===4339"
+              v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
-        <img class="ml-2" :src="runner.silkColor" v-show="runner.silkColor !== null" />
+        <img class="ml-2" :src="runner.silkColor" v-if="runner.silkColor" style="width:24px;height:24px;" />
+        <span v-else-if="runner.clothNumber || Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
+              class="ml-2 runner-cloth-color"
+              :style="{background: getClothColor(runner.clothNumber)}">
+        </span>
         <h3 class="runner-name">
             <div class="runner-info">
                 <span class="clippable runner-display-name">
@@ -2639,10 +2703,14 @@
          v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
-              v-show="Catalog.eventTypeId===7 || Catalog.eventTypeId===4339"
+              v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
-        <img class="ml-2" :src="runner.silkColor" v-show="runner.silkColor !== null" />
+        <img class="ml-2" :src="runner.silkColor" v-if="runner.silkColor" style="width:24px;height:24px;" />
+        <span v-else-if="runner.clothNumber || Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
+              class="ml-2 runner-cloth-color"
+              :style="{background: getClothColor(runner.clothNumber)}">
+        </span>
         <h3 class="runner-name">
             <div class="runner-info">
                 <span class="clippable runner-display-name">
@@ -2772,10 +2840,14 @@
          v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
-              v-show="Catalog.eventTypeId===7 || Catalog.eventTypeId===4339"
+              v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
-        <img class="ml-2" :src="runner.silkColor" v-show="runner.silkColor !== null" />
+        <img class="ml-2" :src="runner.silkColor" v-if="runner.silkColor" style="width:24px;height:24px;" />
+        <span v-else-if="runner.clothNumber || Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
+              class="ml-2 runner-cloth-color"
+              :style="{background: getClothColor(runner.clothNumber)}">
+        </span>
         <h3 class="runner-name">
             <div class="runner-info">
                 <span class="clippable runner-display-name">
@@ -2904,10 +2976,14 @@
          v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
-              v-show="Catalog.eventTypeId===7 || Catalog.eventTypeId===4339"
+              v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
-        <img class="ml-2" :src="runner.silkColor" v-show="runner.silkColor !== null" />
+        <img class="ml-2" :src="runner.silkColor" v-if="runner.silkColor" style="width:24px;height:24px;" />
+        <span v-else-if="runner.clothNumber || Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
+              class="ml-2 runner-cloth-color"
+              :style="{background: getClothColor(runner.clothNumber)}">
+        </span>
         <h3 class="runner-name">
             <div class="runner-info">
                 <span class="clippable runner-display-name">
@@ -3037,10 +3113,14 @@
          v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
-              v-show="Catalog.eventTypeId===7 || Catalog.eventTypeId===4339"
+              v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
-        <img class="ml-2" :src="runner.silkColor" v-show="runner.silkColor !== null" />
+        <img class="ml-2" :src="runner.silkColor" v-if="runner.silkColor" style="width:24px;height:24px;" />
+        <span v-else-if="runner.clothNumber || Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
+              class="ml-2 runner-cloth-color"
+              :style="{background: getClothColor(runner.clothNumber)}">
+        </span>
         <h3 class="runner-name">
             <div class="runner-info">
                 <span class="clippable runner-display-name">
@@ -3170,10 +3250,14 @@
          v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
-              v-show="Catalog.eventTypeId===7 || Catalog.eventTypeId===4339"
+              v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
-        <img class="ml-2" :src="runner.silkColor" v-show="runner.silkColor !== null" />
+        <img class="ml-2" :src="runner.silkColor" v-if="runner.silkColor" style="width:24px;height:24px;" />
+        <span v-else-if="runner.clothNumber || Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
+              class="ml-2 runner-cloth-color"
+              :style="{background: getClothColor(runner.clothNumber)}">
+        </span>
         <h3 class="runner-name">
             <div class="runner-info">
                 <span class="clippable runner-display-name">
@@ -3381,10 +3465,14 @@
          v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
-              v-show="Catalog.eventTypeId===7 || Catalog.eventTypeId===4339"
+              v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
-        <img class="ml-2" :src="runner.silkColor" v-show="runner.silkColor !== null" />
+        <img class="ml-2" :src="runner.silkColor" v-if="runner.silkColor" style="width:24px;height:24px;" />
+        <span v-else-if="runner.clothNumber || Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
+              class="ml-2 runner-cloth-color"
+              :style="{background: getClothColor(runner.clothNumber)}">
+        </span>
         <h3 class="runner-name">
             <div class="runner-info">
                 <span class="clippable runner-display-name">
@@ -3486,6 +3574,7 @@
 
                     <div class="tabcontent"
                          v-for="(Catalog, index) in OtherRaceMarkets"
+                         v-if="Catalog.eventTypeId != 7 && Catalog.eventTypeId != 4339"
                          v-bind:id="'race' + index">
                            
 <div class="market-titlebar">
@@ -3517,10 +3606,14 @@
          v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
-              v-show="Catalog.eventTypeId===7 || Catalog.eventTypeId===4339"
+              v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
-        <img class="ml-2" :src="runner.silkColor" v-show="runner.silkColor !== null" />
+        <img class="ml-2" :src="runner.silkColor" v-if="runner.silkColor" style="width:24px;height:24px;" />
+        <span v-else-if="runner.clothNumber || Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
+              class="ml-2 runner-cloth-color"
+              :style="{background: getClothColor(runner.clothNumber)}">
+        </span>
         <h3 class="runner-name">
             <div class="runner-info">
                 <span class="clippable runner-display-name">
@@ -6316,6 +6409,83 @@ Vue.component('runner-aggregate', {
 
   // Page load ke 1.5 sekond baad start karo
   setTimeout(startAdminFilter, 1500);
+
+})();
+</script>
+
+<!-- ==================== HORSE/GREYHOUND MARKET CLEANER ==================== -->
+<script>
+(function() {
+  'use strict';
+
+  // Horse Race (7) aur Greyhound (4339) ke liye OtherMarkets aur OtherRaceMarkets
+  // clear karo — ye sub-markets nahi dikhne chahiye (sirf WIN market chahiye)
+
+  function getVm() {
+    const el = document.getElementById('MarketView') || document.getElementById('app');
+    return el ? el.__vue__ : null;
+  }
+
+  function clearRaceExtraMarkets(vm) {
+    const eid = String(vm.Catalog && vm.Catalog.eventTypeId || '');
+    if (eid !== '7' && eid !== '4339') return; // sirf horse/greyhound ke liye
+
+    ['OtherMarkets', 'OtherRaceMarkets', 'BookmakerMarkets',
+     'TossMarkets', 'FancyMarkets', 'Fancy2Markets',
+     'FigureMarkets', 'OddFigureMarkets'].forEach(function(prop) {
+      if (vm[prop] && vm[prop].length > 0) {
+        vm[prop].splice(0, vm[prop].length);
+        console.log('[RaceCleaner] Cleared:', prop);
+      }
+    });
+  }
+
+  // getClothColor ko Vue methods mein add karo taake template mein call ho sake
+  (function patchVueMethods() {
+    function tryPatch() {
+      const el = document.getElementById('MarketView') || document.getElementById('app');
+      const vm = el && el.__vue__;
+      if (!vm) { setTimeout(tryPatch, 300); return; }
+      if (!vm.getClothColor) {
+        vm.$options.methods = vm.$options.methods || {};
+        vm.$options.methods.getClothColor = window.getClothColor;
+        // Vue 2 mein direct property set karo
+        vm.getClothColor = window.getClothColor;
+        console.log('[RaceCleaner] getClothColor Vue method added');
+      }
+    }
+    setTimeout(tryPatch, 500);
+  })();
+
+  async function startRaceCleaner() {
+    let waited = 0;
+    while (!getVm() && waited < 8000) {
+      await new Promise(r => setTimeout(r, 300));
+      waited += 300;
+    }
+    const vm = getVm();
+    if (!vm) return;
+
+    // eventTypeId set hone ka wait karo
+    let tries = 0;
+    while (tries++ < 40) {
+      if (vm.Catalog && vm.Catalog.eventTypeId) break;
+      await new Promise(r => setTimeout(r, 200));
+    }
+
+    // Ek baar turant clear karo
+    clearRaceExtraMarkets(vm);
+
+    // Phir 10 seconds tak har 500ms watch karo (mv2 dobara set kar sakta hai)
+    let elapsed = 0;
+    const guard = setInterval(function() {
+      elapsed += 500;
+      if (elapsed > 10000) { clearInterval(guard); return; }
+      clearRaceExtraMarkets(vm);
+    }, 500);
+  }
+
+  setTimeout(startRaceCleaner, 1000);
 
 })();
 </script>

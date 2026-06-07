@@ -4719,16 +4719,49 @@ async function updateUserWallet() {
 // ------------------------------------------------------------------
 function calculateRunnerPnL(runnerName, forMarketId) {
     const normalized  = (runnerName || "").trim().toLowerCase();
-    const useMarketFilter = !!forMarketId;
 
     let ifWin  = 0;
     let ifLose = 0;
 
-    // BUG 2 FIX: sirf us specific market ke orders filter karo
-    const marketOrders = Matched.filter(order => {
-        if (!useMarketFilter) return true;
-        return String(order.mktId || matchId) === String(forMarketId);
-    });
+    // Strategy:
+    // 1. Pehle try karo strict market filter (backend ne marketId per-order bheja ho)
+    // 2. Agar koi order nahi mila, fallback: runner name match karo bina market filter ke
+    //    (yeh tab hota hai jab backend per-order marketId nahi bhejta aur sab orders ko
+    //     matchId default mil jaata hai — sub-market runners ke liye yeh zaruri hai)
+
+    let marketOrders = [];
+    if (forMarketId) {
+        // Try strict market filter
+        marketOrders = Matched.filter(order =>
+            String(order.mktId) === String(forMarketId)
+        );
+        // Agar kuch nahi mila AND forMarketId === matchId nahi (matlab sub-market hai),
+        // fallback: runner name se dhundo (market-agnostic)
+        if (!marketOrders.length) {
+            marketOrders = Matched.filter(order =>
+                (order.rn || order.runnerName || "").trim().toLowerCase() === normalized
+            );
+            // Agar ab bhi kuch nahi, true empty return
+            if (!marketOrders.length) return { ifWin: 0, ifLose: 0 };
+            // Runner-name matched orders mein sirf is runner ke direct bets count karo
+            marketOrders.forEach(order => {
+                const odds  = Number(order.mp || order.price || 0);
+                const stake = Number(order.ms || order.size || 0);
+                const side  = (order.bs || order.side || "").toUpperCase();
+                if (odds <= 1 || stake <= 0) return;
+                if (side === "B") {
+                    ifWin  += (odds - 1) * stake;
+                    ifLose -= stake;
+                } else {
+                    ifWin  -= (odds - 1) * stake;
+                    ifLose += stake;
+                }
+            });
+            return { ifWin: Math.round(ifWin), ifLose: Math.round(ifLose) };
+        }
+    } else {
+        marketOrders = Matched;
+    }
 
     if (!marketOrders.length) return { ifWin: 0, ifLose: 0 };
 
@@ -4750,8 +4783,7 @@ function calculateRunnerPnL(runnerName, forMarketId) {
                 ifLose += stake;
             }
         } else {
-            // Doosre runner par bet — cross-runner effect
-            // ONLY apply agar dono same market ke runners hain (already filtered by marketOrders)
+            // Same market mein doosre runner ki bet — cross-runner effect
             if (side === "B") {
                 ifWin  -= stake;
                 ifLose += (odds - 1) * stake;
@@ -5069,7 +5101,7 @@ async function fetchUnMatched() {
     const tk = localStorage.getItem('token') || localStorage.getItem('wex3authtoken') || token;
     if (!tk) return;
     try {
-        const res = await fetch(`${ordersUrl}/orders/pending?marketId=${encodeURIComponent(matchId)}`, {
+        const res = await fetch(`${ordersUrl}/orders/pending`, {
             headers: { "Authorization": "Bearer " + tk }
         });
         if (!res.ok) return;
@@ -5124,7 +5156,7 @@ async function fetchMatched() {
     const tk = localStorage.getItem('token') || localStorage.getItem('wex3authtoken') || token;
     if (!tk) return;
     try {
-        const res = await fetch(`${ordersUrl}/orders/matched?marketId=${encodeURIComponent(matchId)}`, {
+        const res = await fetch(`${ordersUrl}/orders/matched`, {
             headers: { "Authorization": "Bearer " + tk }
         });
         if (!res.ok) return;
@@ -5320,8 +5352,9 @@ socket.on("ordersUpdated", (data) => {
         const orderSelId = String(newO.selection_id || newO.selectionId || "");
         const orderMktId = String(newO.marketId || newO.market_id || matchId);
 
-        // BUG 1 FIX: sirf us match ke orders process karo
-        if (orderMktId !== String(matchId)) return;
+        // Is match ya uski kisi bhi sub-market ka order hona chahiye
+        // Sub-markets ke alag marketId hote hain, sirf clearly doosre event ke orders skip karo
+        // (Backend already eventId se filter karke bhejta hai via JoinMatch)
 
         // RULE: if we already confirmed a real name in memory, NEVER replace it
         const inMem = [...Matched, ...UnMatched].find(x => x.orderId === orderId);

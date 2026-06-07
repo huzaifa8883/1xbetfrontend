@@ -4600,6 +4600,7 @@ var Matched = [];
 var allRunners = [];
 var runnerPnL = {};
 var selectionIdToRunner = {};  // selectionId (string) → runnerName mapping
+var allowedMarketIds = new Set(); // is match + sub-markets ke marketIds (filter ke liye)
 var runnersReady = false;       // fetchRunners complete ho gaya?
 
 // ------------------------------------------------------------------
@@ -5112,7 +5113,21 @@ async function fetchUnMatched() {
         const prev = {};
         UnMatched.forEach(o => { prev[o.orderId] = o; });
 
-        UnMatched = list.map(o => {
+        // FILTER: sirf is match ya uski sub-markets ke bets rakho
+        const filteredPending = list.filter(o => {
+            const oMktId = String(o.marketId || o.market_id || '');
+            const oEventId = String(o.eventId || o.event_id || '');
+            if (allowedMarketIds.size > 0) {
+                if (oMktId && allowedMarketIds.has(oMktId)) return true;
+                if (oEventId && allowedMarketIds._eventId && oEventId === allowedMarketIds._eventId) return true;
+                if (!oMktId && selectionIdToRunner[String(o.selection_id || o.selectionId || '')]) return true;
+                if (!oMktId) return true;
+                return false;
+            }
+            return true;
+        });
+
+        UnMatched = filteredPending.map(o => {
             const selId   = String(o.selection_id || o.selectionId || o.selId || "");
             const orderId = String(o.request_id || o.orderId || o.requestId);
             const existing = prev[orderId];
@@ -5167,7 +5182,27 @@ async function fetchMatched() {
         const prev = {};
         Matched.forEach(o => { prev[o.orderId] = o; });
 
-        Matched = list.map(o => {
+        // FILTER: sirf is match ya uski sub-markets ke bets rakho
+        const filteredList = list.filter(o => {
+            const oMktId = String(o.marketId || o.market_id || '');
+            const oEventId = String(o.eventId || o.event_id || '');
+            // Agar allowedMarketIds populated hai, use karo
+            if (allowedMarketIds.size > 0) {
+                // marketId whitelist mein ho
+                if (oMktId && allowedMarketIds.has(oMktId)) return true;
+                // eventId match karta ho
+                if (oEventId && allowedMarketIds._eventId && oEventId === allowedMarketIds._eventId) return true;
+                // marketId bilkul nahi aya backend se — selectionId se check karo
+                if (!oMktId && selectionIdToRunner[String(o.selection_id || o.selectionId || '')]) return true;
+                // marketId nahi aya aur selection bhi nahi — include karo (safe fallback)
+                if (!oMktId) return true;
+                return false;
+            }
+            // allowedMarketIds abhi populate nahi hua — sab include karo (initial load)
+            return true;
+        });
+
+        Matched = filteredList.map(o => {
             const selId   = String(o.selection_id || o.selectionId || o.selId || "");
             const orderId = String(o.request_id || o.orderId || o.requestId || "");
             const existing = prev[orderId];
@@ -5240,14 +5275,27 @@ async function fetchRunners() {
             'fancyMarkets', 'fancy2Markets', 'figureMarkets',
             'oddFigureMarkets', 'otherMarkets'
         ];
+
+        // FILTER FIX: is match + uski sub-markets ke sab marketIds collect karo
+        // taake fetchMatched mein sirf inhi ki bets show hon
+        allowedMarketIds.clear();
+        allowedMarketIds.add(String(matchId));
+
         subKeys.forEach(key => {
             const arr = market[key];
             if (Array.isArray(arr)) {
                 arr.forEach(sub => {
                     if (Array.isArray(sub.runners)) allRunnerSources.push(...sub.runners);
+                    // Sub-market ka marketId whitelist mein add karo
+                    const subMktId = String(sub.marketId || sub.market_id || '');
+                    if (subMktId) allowedMarketIds.add(subMktId);
                 });
             }
         });
+
+        // Main market ki eventId bhi store karo (agar ho)
+        if (market.eventId) allowedMarketIds._eventId = String(market.eventId);
+        console.log('[Filter] Allowed marketIds:', [...allowedMarketIds]);
 
         if (allRunnerSources.length > 0) {
             // Rebuild map completely on every call so stale entries are cleared
@@ -5352,9 +5400,13 @@ socket.on("ordersUpdated", (data) => {
         const orderSelId = String(newO.selection_id || newO.selectionId || "");
         const orderMktId = String(newO.marketId || newO.market_id || matchId);
 
-        // Is match ya uski kisi bhi sub-market ka order hona chahiye
-        // Sub-markets ke alag marketId hote hain, sirf clearly doosre event ke orders skip karo
-        // (Backend already eventId se filter karke bhejta hai via JoinMatch)
+        // FILTER: sirf is match ya sub-markets ke orders process karo
+        if (allowedMarketIds.size > 0 && orderMktId) {
+            const oEventId = String(newO.eventId || newO.event_id || '');
+            const isAllowed = allowedMarketIds.has(orderMktId)
+                || (oEventId && allowedMarketIds._eventId && oEventId === allowedMarketIds._eventId);
+            if (!isAllowed) return; // doosre match ka order — skip karo
+        }
 
         // RULE: if we already confirmed a real name in memory, NEVER replace it
         const inMem = [...Matched, ...UnMatched].find(x => x.orderId === orderId);

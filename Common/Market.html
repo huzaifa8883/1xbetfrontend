@@ -4774,16 +4774,35 @@ function calculateRunnerPnL(runnerName, forMarketId) {
                 ifLose += stake;
             }
         } else if (applyCrossRunner) {
-            // Doosre runner par bet — cross-runner effect (sirf 3+ runner markets mein)
+            // Cross-runner effect: doosre runner par bet ka is runner par asar
+            // ifWin  = "YEH runner jeet e" scenario
+            // ifLose = "YEH runner haare" scenario
+            // Back bet on OTHER runner:
+            //   Other wins (THIS loses) => bet wins => THIS ifLose -= stake
+            //   Other loses (THIS wins) => bet loses => THIS ifWin -= (odds-1)*stake  [wait, no]
+            // Correct exchange logic (2-runner market, zero-sum):
+            //   Back WI @ 2, stake 2000 => WI: ifWin=+2000, ifLose=-2000
+            //   SL (opposite):            ifWin=-2000, ifLose=+2000
+            // So for THIS runner (SL), OTHER runner (WI) has a Back bet:
+            //   THIS ifWin  = -(odds-1)*stake   (WI wins means SL loses)
+            //   THIS ifLose = +stake             (WI loses means SL wins, stake returned to SL's side)
             if (side === "B") {
-                ifWin  -= stake;
-                ifLose += (odds - 1) * stake;
+                ifWin  -= (odds - 1) * stake;
+                ifLose += stake;
             } else {
-                ifWin  += stake;
-                ifLose -= (odds - 1) * stake;
+                // Lay on OTHER runner:
+                // WI laid => WI loses is good for layer => SL winning = bad for layer
+                // THIS ifWin  = +stake (if WI loses/SL wins, lay wins)  NO wait...
+                // Lay WI @ 2, stake 2000: WI wins => layer pays (odds-1)*stake; WI loses => layer gets stake
+                // SL perspective (zero-sum opposite):
+                //   SL wins (WI loses) => THIS ifWin = -(odds-1)*stake (layer of WI loses)? No...
+                // Zero-sum: Lay WI = Back SL (in 2-runner market)
+                // So Lay WI @ 2, stake 2000 = effectively Back SL @ 2, stake 2000
+                // SL: ifWin = +(odds-1)*stake, ifLose = -stake
+                ifWin  += (odds - 1) * stake;
+                ifLose -= stake;
             }
         }
-        // 2-runner market mein doosre runner ki bet is runner ke PnL par affect nahi karti
     });
 
     return { ifWin: Math.round(ifWin), ifLose: Math.round(ifLose) };

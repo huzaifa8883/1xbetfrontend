@@ -813,20 +813,24 @@ new Vue({
         // API response: { success, data: { orders: [...] } }
         const rawList = json?.data?.orders || json?.orders || [];
 
-        this.bets = rawList
-          .filter(o => o.status !== "SETTLED" && o.status !== "VOIDED" && o.status !== "CANCELLED")
-          .map((o, index) => ({
+        // SETTLED/VOIDED/CANCELLED bets filter karo — sirf active bets dikhao
+        const activeBets = rawList.filter(o => {
+          const st = (o.status || "").toUpperCase();
+          return st === "MATCHED" || st === "PENDING" || st === "UNMATCHED";
+        });
+
+        this.bets = activeBets.map((o, index) => ({
             index:    index + 1,
             event:    o.event_name || o.eventName || o.event || "-",
             runner:   o.runner_name || o.runnerName || "-",
             marketId: o.market_id  || o.marketId   || "",
-            side:     (() => { const s = (o.side || "").toUpperCase(); return s; })(),
+            side:     (o.side || "").toUpperCase(),
             position: (o.type || o.side || "").toUpperCase(),
             price:    parseFloat(o.price || 0).toFixed(2),
             amount:   parseFloat(o.size  || 0),
-            status:   o.status,
+            status:   (o.status || "").toUpperCase(),
             placed:   o.created_at ? new Date(o.created_at).toLocaleString() : "-",
-            updated:  o.status === "MATCHED" && (o.updated_at || o.created_at)
+            updated:  o.updated_at || o.created_at
                         ? new Date(o.updated_at || o.created_at).toLocaleString()
                         : "-"
           }));
@@ -846,12 +850,12 @@ new Vue({
     if (typeof io !== 'undefined') {
       try {
         const _sock = io("https://1xbetbackend.work.gd");
-        _sock.on("marketSettled", () => {
-          console.log("[BetHistory] marketSettled — refreshing bets");
-          this.fetchBetsHistory();
-        });
-        _sock.on("ordersUpdated", () => {
-          this.fetchBetsHistory();
+        // Multiple event names try karo
+        ["marketSettled", "ordersUpdated", "orderSettled", "betSettled", "marketClosed", "settled"].forEach(ev => {
+          _sock.on(ev, () => {
+            console.log("[BetHistory] socket event:", ev, "— refreshing");
+            this.fetchBetsHistory();
+          });
         });
       } catch(e) { console.warn("[BetHistory] Socket init failed:", e.message); }
     }

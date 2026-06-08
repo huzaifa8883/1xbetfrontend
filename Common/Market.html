@@ -5069,7 +5069,15 @@ async function fetchUnMatched() {
     const tk = localStorage.getItem('token') || localStorage.getItem('wex3authtoken') || token;
     if (!tk) return;
     try {
-        const res = await fetch(`${ordersUrl}/orders/pending?marketId=${encodeURIComponent(matchId)}`, {
+        // BUG FIX: marketId filter hataya — sirf main Match Odds orders nahi,
+        // balke Toss aur baaki sub-markets ke orders bhi fetch karne ke liye
+        // eventId se filter karo (jo saare sub-markets cover karta hai)
+        const vm = (document.getElementById('app') || document.getElementById('MarketView') || {}).__vue__;
+        const evId = (vm && vm.Catalog && vm.Catalog.eventId) ? vm.Catalog.eventId : null;
+        const fetchUrl = evId
+            ? `${ordersUrl}/orders/pending?eventId=${encodeURIComponent(evId)}`
+            : `${ordersUrl}/orders/pending`;
+        const res = await fetch(fetchUrl, {
             headers: { "Authorization": "Bearer " + tk }
         });
         if (!res.ok) return;
@@ -5124,7 +5132,13 @@ async function fetchMatched() {
     const tk = localStorage.getItem('token') || localStorage.getItem('wex3authtoken') || token;
     if (!tk) return;
     try {
-        const res = await fetch(`${ordersUrl}/orders/matched?marketId=${encodeURIComponent(matchId)}`, {
+        // BUG FIX: marketId filter hataya — Toss aur sub-markets ke orders bhi include honge
+        const vm = (document.getElementById('app') || document.getElementById('MarketView') || {}).__vue__;
+        const evId = (vm && vm.Catalog && vm.Catalog.eventId) ? vm.Catalog.eventId : null;
+        const fetchUrl = evId
+            ? `${ordersUrl}/orders/matched?eventId=${encodeURIComponent(evId)}`
+            : `${ordersUrl}/orders/matched`;
+        const res = await fetch(fetchUrl, {
             headers: { "Authorization": "Bearer " + tk }
         });
         if (!res.ok) return;
@@ -5320,8 +5334,15 @@ socket.on("ordersUpdated", (data) => {
         const orderSelId = String(newO.selection_id || newO.selectionId || "");
         const orderMktId = String(newO.marketId || newO.market_id || matchId);
 
-        // BUG 1 FIX: sirf us match ke orders process karo
-        if (orderMktId !== String(matchId)) return;
+        // BUG FIX: matchId strict filter hataya — Toss aur sub-markets ke orders
+        // alag marketId se aate hain, isliye sirf eventId match check karo
+        // Agar koi bhi order is event page ka hai to process karo
+        const vm2 = (document.getElementById('app') || document.getElementById('MarketView') || {}).__vue__;
+        const pageEventId = vm2 && vm2.Catalog && vm2.Catalog.eventId
+                          ? String(vm2.Catalog.eventId) : null;
+        const orderEventId = String(newO.eventId || newO.event_id || "");
+        // Reject sirf tab karo jab dono eventId present hain aur different hain
+        if (pageEventId && orderEventId && orderEventId !== pageEventId) return;
 
         // RULE: if we already confirmed a real name in memory, NEVER replace it
         const inMem = [...Matched, ...UnMatched].find(x => x.orderId === orderId);

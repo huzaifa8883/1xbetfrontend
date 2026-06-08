@@ -614,7 +614,7 @@
               <th>#</th>
               <th>Date</th>
               <th>Description</th>
-              <th>Amount</th>
+              <th>P&amp;L</th>
               <th>Balance</th>
             </tr>
           </thead>
@@ -624,10 +624,10 @@
               <td>{{ i + 1 }}</td>
               <td>{{ row.date }}</td>
               <td style="color:#00b181;">{{ row.description }}</td>
-              <td :style="{ color: row.amount > 0 ? '#28a745' : row.amount < 0 ? '#dc3545' : 'inherit' }">
+              <td :class="{'text-success': row.amount > 0, 'text-danger': row.amount < 0}">
                 <span v-if="row.amount > 0">+{{ row.amount.toLocaleString() }}</span>
                 <span v-else-if="row.amount < 0">{{ row.amount.toLocaleString() }}</span>
-                <span v-else>0</span>
+                <span v-else>-</span>
               </td>
               <td>{{ row.balance.toLocaleString() }}</td>
             </tr>
@@ -891,14 +891,10 @@
             return betDate >= filterFrom && betDate <= filterTo;
           });
 
-          // Step 4: Opening balance reverse-calculate karo (saare settled se, filter se pehle)
-          let runningBalance = currentWallet;
-          for (let i = allSettled.length - 1; i >= allSettled.indexOf(settled[0] || allSettled[allSettled.length-1]); i--) {
-            const pnl = allSettled[i]?.settlementPnL;
-            if (pnl !== null && pnl !== undefined) runningBalance -= pnl;
-          }
+          // Running balance 0 se shuru hoga
+          let runningBalance = 0;
 
-          // Step 5: Agar koi settled bet nahi (filter ke baad)
+          // Step 5: Agar koi data nahi
           if (!settled.length && !deposits.length) {
             this.ledger = [{
               date:        new Date(user.created_at || Date.now()).toLocaleString(),
@@ -911,7 +907,7 @@
             return;
           }
 
-          // Step 6: Opening balance row
+          // Step 6: Opening balance row — hamesha 0
           const rows = [{
             date:        new Date(user.created_at || Date.now()).toLocaleString(),
             description: "Opening Balance",
@@ -922,7 +918,6 @@
           }];
 
           // Step 7: Deposits ko rows mein shamil karo
-          let runningBalance = 0;
           for (const dep of deposits) {
             const depDate = new Date(dep.created_at || dep.date);
             if (filterFrom && filterTo && (depDate < filterFrom || depDate > filterTo)) continue;
@@ -1009,7 +1004,11 @@ window.updateDates = function() {
   }, 100);
   return false; // form submit rokein
 };
+
 </script>
+
+<!-- ✅ Vue.js CDN — statement ke liye zaroori -->
+<script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
 
     <script type="text/javascript" src="https://wurfl.io/wurfl.js"></script>
     <script type="text/javascript" src="/dist/bundle0a.js"></script>
@@ -1018,33 +1017,6 @@ window.updateDates = function() {
         const token = getCookie('wexscktoken');
         const sess = getCookie('wex3authtoken');
         const reft = getCookie('wex3reftoken');
-    </script>
-
-    <script src="/lib/datatables/datatables.min.js"></script>
-    <script>
-        $(document).ready(function () {
-            var tblLed = $("#tableLedger").DataTable({
-                "order": [[0, "asc"]],
-                dom: "<'row'<'col-sm-2'l><'col-sm-5'B><'col-sm-5'f>>" +
-                    "<'row'<'col-sm-12'tr>>" +
-                    "<'row'<'col-sm-5'i><'col-sm-7'p>>",
-                columnDefs: [
-                    { responsivePriority: 1, targets: 0 },
-                    { responsivePriority: 2, targets: 2 },
-                    { "type": "date", "targets": [1] }
-                ],
-                buttons: [
-                    { extend: 'print', text: '<i class=""> Print</i>', title: 'BetPro - Account Ledger', titleAttr: 'Copy' },
-                    { extend: 'excelHtml5', text: '<i class=""> Excel</i>', title: 'BetPro - Account Ledger', titleAttr: 'Excel' },
-                    { extend: 'pdfHtml5', text: '<i class=""> PDF</i>', title: 'BetPro - Account Ledger', titleAttr: 'PDF' }
-                ]
-            });
-            if (typeof IsMobile === 'function' && IsMobile()) {
-                new $.fn.dataTable.Responsive(tblLed, {
-                    details: { display: $.fn.dataTable.Responsive.display.childRowImmediate }
-                });
-            }
-        });
     </script>
 
     <script>

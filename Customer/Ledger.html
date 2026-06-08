@@ -770,6 +770,22 @@
         const reft = getCookie('wex3reftoken');
     </script>
     <script>
+// ✅ Statement Calendar: Aaj ki date auto-set karo
+(function() {
+  const now = new Date();
+  const fromDate = new Date(now);
+  fromDate.setHours(0, 0, 0, 0);
+  const toDate = new Date(now);
+  toDate.setHours(23, 59, 59, 0);
+  // First page load mein date set ho
+  document.addEventListener("DOMContentLoaded", function() {
+    const fromInput = document.getElementById("From");
+    const toInput = document.getElementById("To");
+    if (fromInput && fromInput.value.includes("2025-06")) fromInput.value = fromDate.toISOString();
+    if (toInput && toInput.value.includes("2025-06")) toInput.value = toDate.toISOString();
+  });
+})();
+
 // ============================================================
 // STATEMENT / LEDGER — SETTLED bets se account statement
 // Uses /orders/settled API — winning_selection_id ke saath
@@ -803,48 +819,89 @@
           const user     = userData?.data?.user || userData?.data || userData?.user || {};
           const currentWallet = parseFloat(user.wallet_balance || 0);
 
-          // Step 2: Settled bets fetch karo (nayi /settled route)
-          const res      = await fetch(_STMT_API + "/orders/settled?limit=500", {
+          // Step 2: Date filter — calendar se "From" aur "To" lo
+          const fromInput = document.getElementById('From');
+          const toInput   = document.getElementById('To');
+          const filterFrom = fromInput ? new Date(fromInput.value) : null;
+          const filterTo   = toInput   ? new Date(toInput.value)   : null;
+
+          // Step 3: Settled bets fetch karo
+          const res  = await fetch(_STMT_API + "/orders/settled?limit=500", {
             headers: { "Authorization": "Bearer " + token }
           });
-          const json     = await res.json();
-          const settled  = (json?.data?.orders || json?.orders || [])
+          const json = await res.json();
+
+          // Deposits bhi fetch karo (agar API available hai)
+          let deposits = [];
+          try {
+            const depRes  = await fetch(_STMT_API + "/transactions?type=deposit&limit=500", {
+              headers: { "Authorization": "Bearer " + token }
+            });
+            const depJson = await depRes.json();
+            deposits = depJson?.data?.transactions || depJson?.transactions || [];
+          } catch(e) { /* deposit API nahi hai to skip */ }
+
+          const allSettled = (json?.data?.orders || json?.orders || [])
             .sort((a, b) => new Date(a.settled_at || a.updated_at) - new Date(b.settled_at || b.updated_at));
 
-          if (!settled.length) {
-            // No settled bets — opening balance hi dikhao
+          // Date filter apply karo
+          const settled = allSettled.filter(bet => {
+            if (!filterFrom || !filterTo) return true;
+            const betDate = new Date(bet.settled_at || bet.updated_at || bet.created_at);
+            return betDate >= filterFrom && betDate <= filterTo;
+          });
+
+          // Step 4: Opening balance reverse-calculate karo (saare settled se, filter se pehle)
+          let runningBalance = currentWallet;
+          for (let i = allSettled.length - 1; i >= allSettled.indexOf(settled[0] || allSettled[allSettled.length-1]); i--) {
+            const pnl = allSettled[i]?.settlementPnL;
+            if (pnl !== null && pnl !== undefined) runningBalance -= pnl;
+          }
+
+          // Step 5: Agar koi settled bet nahi (filter ke baad)
+          if (!settled.length && !deposits.length) {
             this.ledger = [{
               date:        new Date(user.created_at || Date.now()).toLocaleString(),
               description: "Opening Balance",
               amount:      0,
               balance:     currentWallet,
-              isOpen:      true
+              isOpen:      true,
+              type:        'open'
             }];
             return;
           }
 
-          // Step 3: Opening balance reverse-calculate karo
-          let runningBalance = currentWallet;
-          for (let i = settled.length - 1; i >= 0; i--) {
-            const pnl = settled[i].settlementPnL;
-            if (pnl !== null && pnl !== undefined) runningBalance -= pnl;
-          }
-          const openingBalance = runningBalance;
-
-          // Step 4: Ledger rows build karo
+          // Step 6: Opening balance row
           const rows = [{
             date:        new Date(user.created_at || Date.now()).toLocaleString(),
             description: "Opening Balance",
             amount:      0,
-            balance:     parseFloat(openingBalance.toFixed(2)),
-            isOpen:      true
+            balance:     parseFloat(runningBalance.toFixed(2)),
+            isOpen:      true,
+            type:        'open'
           }];
 
+          // Step 7: Deposits ko rows mein shamil karo
+          for (const dep of deposits) {
+            const depDate = new Date(dep.created_at || dep.date);
+            if (filterFrom && filterTo && (depDate < filterFrom || depDate > filterTo)) continue;
+            const depAmount = parseFloat(dep.amount || 0);
+            runningBalance += depAmount;
+            rows.push({
+              date:        depDate.toLocaleString(),
+              description: "\uD83D\uDCB0 Deposit — " + depAmount.toLocaleString() + " credited to account",
+              amount:      parseFloat(depAmount.toFixed(2)),
+              balance:     parseFloat(runningBalance.toFixed(2)),
+              isOpen:      false,
+              type:        'deposit'
+            });
+          }
+
+          // Step 8: Settled bets rows
           for (const bet of settled) {
             const pnl = (bet.settlementPnL !== null && bet.settlementPnL !== undefined)
               ? bet.settlementPnL
               : (() => {
-                  // Fallback: local compute
                   const price = parseFloat(bet.price || 0);
                   const size  = parseFloat(bet.matched || bet.size || 0);
                   const isWin = String(bet.selection_id || bet.selectionId)
@@ -858,15 +915,17 @@
                 })();
 
             runningBalance += pnl;
+            const pnlLabel = pnl > 0 ? "Profit: +" + pnl.toFixed(2) : pnl < 0 ? "Loss: " + pnl.toFixed(2) : "Break Even";
 
             rows.push({
               date:        new Date(bet.settled_at || bet.updated_at || bet.created_at).toLocaleString(),
               description: (bet.event_name || bet.eventName || bet.event || "Match Result")
                          + " — " + (bet.runner_name || bet.runnerName || "")
-                         + " (" + (bet.side || "") + " @" + parseFloat(bet.price).toFixed(2) + ")",
+                         + " (" + (bet.side || "") + " @" + parseFloat(bet.price || 0).toFixed(2) + ") | " + pnlLabel,
               amount:      parseFloat(pnl.toFixed(2)),
               balance:     parseFloat(runningBalance.toFixed(2)),
-              isOpen:      false
+              isOpen:      false,
+              type:        pnl >= 0 ? 'win' : 'loss'
             });
           }
 
@@ -896,6 +955,19 @@
     }
   });
 })();
+
+// ✅ Submit button: dates update karo aur Vue ledger refresh karo (page reload nahi)
+window.updateDates = function() {
+  // datetimepicker se hidden inputs already update ho jaate hain via datetimepicker events
+  // Sirf Vue instance ka fetchLedger call karna hai
+  setTimeout(function() {
+    var vueApp = document.getElementById('ledgerApp')?.__vue__;
+    if (vueApp && vueApp.fetchLedger) {
+      vueApp.fetchLedger();
+    }
+  }, 100);
+  return false; // form submit rokein
+};
 </script>e html>
 <html lang="en">
 <head>

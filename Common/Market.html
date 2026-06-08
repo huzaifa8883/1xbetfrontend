@@ -5356,6 +5356,58 @@ socket.on("userUpdated", (data) => {
     }
 });
 
+// ✅ marketSettled — market close hone par matched bets clear karo
+// Settlement ke baad bets statement page pe chale jaate hain
+socket.on("marketSettled", async (data) => {
+    console.log("[Market] marketSettled event:", data);
+
+    // Sirf is market ke settled orders hataao
+    const settledMktId = String(data?.marketId || matchId || "");
+
+    if (settledMktId) {
+        // Matched bets mein se is market ki sab bets hataao
+        Matched   = Matched.filter(o => String(o.mktId || "") !== settledMktId);
+        UnMatched = UnMatched.filter(o => String(o.mktId || "") !== settledMktId);
+    } else {
+        // agar marketId nahi to sab hataao (fallback)
+        Matched   = [];
+        UnMatched = [];
+    }
+
+    // runnerPnL reset karo is market ke liye
+    Object.keys(runnerPnL).forEach(key => {
+        if (key.startsWith(settledMktId + "||")) delete runnerPnL[key];
+    });
+    window.runnerPnL = runnerPnL;
+
+    render();
+    updateVueRunnerPnL();
+    await updateUserWallet();
+
+    // Re-fetch from server to confirm (1 second delay)
+    setTimeout(async () => {
+        await fetchUnMatched();
+        await fetchMatched();
+        updateVueRunnerPnL();
+    }, 1000);
+});
+
+// ✅ marketVoided — same cleanup
+socket.on("marketVoided", async (data) => {
+    console.log("[Market] marketVoided event:", data);
+    const voidedMktId = String(data?.marketId || matchId || "");
+    if (voidedMktId) {
+        Matched   = Matched.filter(o => String(o.mktId || "") !== voidedMktId);
+        UnMatched = UnMatched.filter(o => String(o.mktId || "") !== voidedMktId);
+    } else {
+        Matched   = [];
+        UnMatched = [];
+    }
+    render();
+    await updateUserWallet();
+    setTimeout(async () => { await fetchUnMatched(); await fetchMatched(); }, 1000);
+});
+
 // Auto Refresh bets + wallet har 5 second mein
 setInterval(async () => {
     if (!matchId) return;

@@ -1724,22 +1724,9 @@
   </span>
 </div> -->
 <div class="runner-position">
-  <span v-if="getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin !== 0 || getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose !== 0">
-    <span v-if="getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin >= 0">
-      <span class="runner-position-pos">
-        <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin | format }}</strong>
-      </span>
-      <span class="position-minus" v-if="getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose != null && getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose !== 0">
-        <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose | format }}</strong>
-      </span>
-    </span>
-    <span v-else>
-      <span class="position-minus">
-        <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin | format }}</strong>
-      </span>
-      <span class="runner-position-pos" v-if="getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose != null && getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose !== 0">
-        <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose | format }}</strong>
-      </span>
+  <span v-if="getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin !== 0">
+    <span :class="getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
+      <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin | format }}</strong>
     </span>
   </span>
   <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -1867,20 +1854,9 @@
             </span>-->
             </div>
             <div class="runner-position">
-                <template v-if="runner.ifWin !== 0 || (runner.ifLose != null && runner.ifLose !== 0)">
-                <span v-if="runner.ifWin >= 0">
-                    <span class="runner-position-pos">
-                        <strong>{{ runner.ifWin | format }}</strong>
-                    </span>
-                    <span class="position-minus" v-if="runner.ifLose != null && runner.ifLose != 0">
-                        <strong>{{ runner.ifLose | format }}</strong>
-                    </span>
-                </span>
-                <span v-else>
-                    <span class="position-minus"><strong>{{ runner.ifWin | format }}</strong></span>
-                    <span class="runner-position-pos" v-if="runner.ifLose != null && runner.ifLose != 0">
-                        <strong>{{ runner.ifLose | format }}</strong>
-                    </span>
+                <template v-if="runner.ifWin !== 0">
+                <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
+                    <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -2002,20 +1978,9 @@
             </span>-->
             </div>
             <div class="runner-position">
-                <template v-if="runner.ifWin !== 0 || (runner.ifLose != null && runner.ifLose !== 0)">
-                <span v-if="runner.ifWin >= 0">
-                    <span class="runner-position-pos">
-                        <strong>{{ runner.ifWin | format }}</strong>
-                    </span>
-                    <span class="position-minus" v-if="runner.ifLose != null && runner.ifLose != 0">
-                        <strong>{{ runner.ifLose | format }}</strong>
-                    </span>
-                </span>
-                <span v-else>
-                    <span class="position-minus"><strong>{{ runner.ifWin | format }}</strong></span>
-                    <span class="runner-position-pos" v-if="runner.ifLose != null && runner.ifLose != 0">
-                        <strong>{{ runner.ifLose | format }}</strong>
-                    </span>
+                <template v-if="runner.ifWin !== 0">
+                <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
+                    <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -2136,20 +2101,9 @@
             </span>-->
             </div>
             <div class="runner-position">
-                <template v-if="runner.ifWin !== 0 || (runner.ifLose != null && runner.ifLose !== 0)">
-                <span v-if="runner.ifWin >= 0">
-                    <span class="runner-position-pos">
-                        <strong>{{ runner.ifWin | format }}</strong>
-                    </span>
-                    <span class="position-minus" v-if="runner.ifLose != null && runner.ifLose != 0">
-                        <strong>{{ runner.ifLose | format }}</strong>
-                    </span>
-                </span>
-                <span v-else>
-                    <span class="position-minus"><strong>{{ runner.ifWin | format }}</strong></span>
-                    <span class="runner-position-pos" v-if="runner.ifLose != null && runner.ifLose != 0">
-                        <strong>{{ runner.ifLose | format }}</strong>
-                    </span>
+                <template v-if="runner.ifWin !== 0">
+                <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
+                    <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -2271,20 +2225,9 @@
             </span>-->
             </div>
             <div class="runner-position">
-                <template v-if="runner.ifWin !== 0 || (runner.ifLose != null && runner.ifLose !== 0)">
-                <span v-if="runner.ifWin >= 0">
-                    <span class="runner-position-pos">
-                        <strong>{{ runner.ifWin | format }}</strong>
-                    </span>
-                    <span class="position-minus" v-if="runner.ifLose != null && runner.ifLose != 0">
-                        <strong>{{ runner.ifLose | format }}</strong>
-                    </span>
-                </span>
-                <span v-else>
-                    <span class="position-minus"><strong>{{ runner.ifWin | format }}</strong></span>
-                    <span class="runner-position-pos" v-if="runner.ifLose != null && runner.ifLose != 0">
-                        <strong>{{ runner.ifLose | format }}</strong>
-                    </span>
+                <template v-if="runner.ifWin !== 0">
+                <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
+                    <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -2405,20 +2348,9 @@
             </span>-->
             </div>
             <div class="runner-position">
-                <template v-if="runner.ifWin !== 0 || (runner.ifLose != null && runner.ifLose !== 0)">
-                <span v-if="runner.ifWin >= 0">
-                    <span class="runner-position-pos">
-                        <strong>{{ runner.ifWin | format }}</strong>
-                    </span>
-                    <span class="position-minus" v-if="runner.ifLose != null && runner.ifLose != 0">
-                        <strong>{{ runner.ifLose | format }}</strong>
-                    </span>
-                </span>
-                <span v-else>
-                    <span class="position-minus"><strong>{{ runner.ifWin | format }}</strong></span>
-                    <span class="runner-position-pos" v-if="runner.ifLose != null && runner.ifLose != 0">
-                        <strong>{{ runner.ifLose | format }}</strong>
-                    </span>
+                <template v-if="runner.ifWin !== 0">
+                <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
+                    <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -2616,20 +2548,9 @@
             </span>-->
             </div>
             <div class="runner-position">
-                <template v-if="runner.ifWin !== 0 || (runner.ifLose != null && runner.ifLose !== 0)">
-                <span v-if="runner.ifWin >= 0">
-                    <span class="runner-position-pos">
-                        <strong>{{ runner.ifWin | format }}</strong>
-                    </span>
-                    <span class="position-minus" v-if="runner.ifLose != null && runner.ifLose != 0">
-                        <strong>{{ runner.ifLose | format }}</strong>
-                    </span>
-                </span>
-                <span v-else>
-                    <span class="position-minus"><strong>{{ runner.ifWin | format }}</strong></span>
-                    <span class="runner-position-pos" v-if="runner.ifLose != null && runner.ifLose != 0">
-                        <strong>{{ runner.ifLose | format }}</strong>
-                    </span>
+                <template v-if="runner.ifWin !== 0">
+                <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
+                    <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -2758,20 +2679,9 @@
             </span>-->
             </div>
             <div class="runner-position">
-                <template v-if="runner.ifWin !== 0 || (runner.ifLose != null && runner.ifLose !== 0)">
-                <span v-if="runner.ifWin >= 0">
-                    <span class="runner-position-pos">
-                        <strong>{{ runner.ifWin | format }}</strong>
-                    </span>
-                    <span class="position-minus" v-if="runner.ifLose != null && runner.ifLose != 0">
-                        <strong>{{ runner.ifLose | format }}</strong>
-                    </span>
-                </span>
-                <span v-else>
-                    <span class="position-minus"><strong>{{ runner.ifWin | format }}</strong></span>
-                    <span class="runner-position-pos" v-if="runner.ifLose != null && runner.ifLose != 0">
-                        <strong>{{ runner.ifLose | format }}</strong>
-                    </span>
+                <template v-if="runner.ifWin !== 0">
+                <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
+                    <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -2894,20 +2804,9 @@
             </span>-->
             </div>
             <div class="runner-position">
-                <template v-if="runner.ifWin !== 0 || (runner.ifLose != null && runner.ifLose !== 0)">
-                <span v-if="runner.ifWin >= 0">
-                    <span class="runner-position-pos">
-                        <strong>{{ runner.ifWin | format }}</strong>
-                    </span>
-                    <span class="position-minus" v-if="runner.ifLose != null && runner.ifLose != 0">
-                        <strong>{{ runner.ifLose | format }}</strong>
-                    </span>
-                </span>
-                <span v-else>
-                    <span class="position-minus"><strong>{{ runner.ifWin | format }}</strong></span>
-                    <span class="runner-position-pos" v-if="runner.ifLose != null && runner.ifLose != 0">
-                        <strong>{{ runner.ifLose | format }}</strong>
-                    </span>
+                <template v-if="runner.ifWin !== 0">
+                <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
+                    <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -3029,20 +2928,9 @@
             </span>-->
             </div>
             <div class="runner-position">
-                <template v-if="runner.ifWin !== 0 || (runner.ifLose != null && runner.ifLose !== 0)">
-                <span v-if="runner.ifWin >= 0">
-                    <span class="runner-position-pos">
-                        <strong>{{ runner.ifWin | format }}</strong>
-                    </span>
-                    <span class="position-minus" v-if="runner.ifLose != null && runner.ifLose != 0">
-                        <strong>{{ runner.ifLose | format }}</strong>
-                    </span>
-                </span>
-                <span v-else>
-                    <span class="position-minus"><strong>{{ runner.ifWin | format }}</strong></span>
-                    <span class="runner-position-pos" v-if="runner.ifLose != null && runner.ifLose != 0">
-                        <strong>{{ runner.ifLose | format }}</strong>
-                    </span>
+                <template v-if="runner.ifWin !== 0">
+                <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
+                    <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -3165,20 +3053,9 @@
             </span>-->
             </div>
             <div class="runner-position">
-                <template v-if="runner.ifWin !== 0 || (runner.ifLose != null && runner.ifLose !== 0)">
-                <span v-if="runner.ifWin >= 0">
-                    <span class="runner-position-pos">
-                        <strong>{{ runner.ifWin | format }}</strong>
-                    </span>
-                    <span class="position-minus" v-if="runner.ifLose != null && runner.ifLose != 0">
-                        <strong>{{ runner.ifLose | format }}</strong>
-                    </span>
-                </span>
-                <span v-else>
-                    <span class="position-minus"><strong>{{ runner.ifWin | format }}</strong></span>
-                    <span class="runner-position-pos" v-if="runner.ifLose != null && runner.ifLose != 0">
-                        <strong>{{ runner.ifLose | format }}</strong>
-                    </span>
+                <template v-if="runner.ifWin !== 0">
+                <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
+                    <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -3301,20 +3178,9 @@
             </span>-->
             </div>
             <div class="runner-position">
-                <template v-if="runner.ifWin !== 0 || (runner.ifLose != null && runner.ifLose !== 0)">
-                <span v-if="runner.ifWin >= 0">
-                    <span class="runner-position-pos">
-                        <strong>{{ runner.ifWin | format }}</strong>
-                    </span>
-                    <span class="position-minus" v-if="runner.ifLose != null && runner.ifLose != 0">
-                        <strong>{{ runner.ifLose | format }}</strong>
-                    </span>
-                </span>
-                <span v-else>
-                    <span class="position-minus"><strong>{{ runner.ifWin | format }}</strong></span>
-                    <span class="runner-position-pos" v-if="runner.ifLose != null && runner.ifLose != 0">
-                        <strong>{{ runner.ifLose | format }}</strong>
-                    </span>
+                <template v-if="runner.ifWin !== 0">
+                <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
+                    <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -3515,20 +3381,9 @@
             </span>-->
             </div>
             <div class="runner-position">
-                <template v-if="runner.ifWin !== 0 || (runner.ifLose != null && runner.ifLose !== 0)">
-                <span v-if="runner.ifWin >= 0">
-                    <span class="runner-position-pos">
-                        <strong>{{ runner.ifWin | format }}</strong>
-                    </span>
-                    <span class="position-minus" v-if="runner.ifLose != null && runner.ifLose != 0">
-                        <strong>{{ runner.ifLose | format }}</strong>
-                    </span>
-                </span>
-                <span v-else>
-                    <span class="position-minus"><strong>{{ runner.ifWin | format }}</strong></span>
-                    <span class="runner-position-pos" v-if="runner.ifLose != null && runner.ifLose != 0">
-                        <strong>{{ runner.ifLose | format }}</strong>
-                    </span>
+                <template v-if="runner.ifWin !== 0">
+                <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
+                    <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -3655,20 +3510,9 @@
             </span>-->
             </div>
             <div class="runner-position">
-                <template v-if="runner.ifWin !== 0 || (runner.ifLose != null && runner.ifLose !== 0)">
-                <span v-if="runner.ifWin >= 0">
-                    <span class="runner-position-pos">
-                        <strong>{{ runner.ifWin | format }}</strong>
-                    </span>
-                    <span class="position-minus" v-if="runner.ifLose != null && runner.ifLose != 0">
-                        <strong>{{ runner.ifLose | format }}</strong>
-                    </span>
-                </span>
-                <span v-else>
-                    <span class="position-minus"><strong>{{ runner.ifWin | format }}</strong></span>
-                    <span class="runner-position-pos" v-if="runner.ifLose != null && runner.ifLose != 0">
-                        <strong>{{ runner.ifLose | format }}</strong>
-                    </span>
+                <template v-if="runner.ifWin !== 0">
+                <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
+                    <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">

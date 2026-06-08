@@ -644,11 +644,11 @@
             </thead>
             <tbody>
               <tr v-for="bet in bets" :key="bet.index"
-                  :style="{ backgroundColor: bet.side === 'BACK' ? '#8dd2f0' : '#feabb2' }">
+                  :style="{ backgroundColor: (bet.side === 'BACK' || bet.side === 'B') ? '#8dd2f0' : '#feabb2' }">
                 <td>{{ bet.index }}</td>
                 <td>{{ bet.event }}</td>
                 <td>{{ bet.runner }}</td>
-                <td><strong>{{ bet.side }}</strong></td>
+                <td><strong>{{ bet.side === 'B' ? 'BACK' : bet.side === 'L' ? 'LAY' : bet.side }}</strong></td>
                 <td>{{ bet.price }}</td>
                 <td>{{ bet.amount }}</td>
                 <td>
@@ -814,13 +814,13 @@ new Vue({
         const rawList = json?.data?.orders || json?.orders || [];
 
         this.bets = rawList
-          .filter(o => o.status === "MATCHED" || o.status === "PENDING")
+          .filter(o => o.status !== "SETTLED" && o.status !== "VOIDED" && o.status !== "CANCELLED")
           .map((o, index) => ({
             index:    index + 1,
             event:    o.event_name || o.eventName || o.event || "-",
             runner:   o.runner_name || o.runnerName || "-",
             marketId: o.market_id  || o.marketId   || "",
-            side:     (o.side || "").toUpperCase(),
+            side:     (() => { const s = (o.side || "").toUpperCase(); return s; })(),
             position: (o.type || o.side || "").toUpperCase(),
             price:    parseFloat(o.price || 0).toFixed(2),
             amount:   parseFloat(o.size  || 0),
@@ -857,7 +857,7 @@ new Vue({
     }
 
     // Periodic refresh har 30 second (fallback)
-    setInterval(() => this.fetchBetsHistory(), 30000);
+    setInterval(() => this.fetchBetsHistory(), 10000); // 10s refresh — settled bets jaldi gayab ho
   }
 });
 </script>

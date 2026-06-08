@@ -780,13 +780,15 @@ new Vue({
         });
         const userData = await userRes.json();
 
-        // ✅ Fetch all bets
-        const res = await fetch(ordersurl + "/all", {
+        // ✅ Fetch all settled orders
+        const res = await fetch(ordersurl + "/all?status=SETTLED", {
           headers: { "Authorization": "Bearer " + token }
         });
-        const allOrders = await res.json();
+        const resData = await res.json();
+        // ✅ API response mein orders array hota hai
+        const allOrders = resData.data?.orders || resData.orders || resData || [];
 
-        // ✅ Filter only settled bets
+        // ✅ Filter only settled bets, sorted oldest first
         const settledBets = allOrders
           .filter(o => o.status === "SETTLED")
           .sort((a, b) => new Date(a.settled_at || a.updated_at) - new Date(b.settled_at || b.updated_at));
@@ -802,33 +804,36 @@ new Vue({
 
         for (const bet of settledBets) {
           const price = Number(bet.price);
-          const size = Number(bet.size);
+          // ✅ winning_selection_id ab DB se seedha aata hai
+          const selId = String(bet.selection_id || bet.selectionId || "");
+          const winId = String(bet.winning_selection_id || bet.winningSelectionId || "");
+          const effectiveSize = Number(bet.matched > 0 ? bet.matched : bet.size);
           let profitOrLoss = 0;
 
-          if (bet.selectionId === bet.winningSelectionId) {
-            profitOrLoss = bet.side === "B" ? (price - 1) * size : -(price - 1) * size;
-          } else {
-            profitOrLoss = bet.side === "B" ? -size : size;
+          if (winId && selId === winId) {
+            profitOrLoss = bet.side === "B" ? (price - 1) * effectiveSize : -(price - 1) * effectiveSize;
+          } else if (winId) {
+            profitOrLoss = bet.side === "B" ? -effectiveSize : effectiveSize;
           }
 
           runningBalance += profitOrLoss;
 
           ledgerRows.push({
             date: new Date(bet.settled_at || bet.updated_at || bet.created_at).toLocaleString(),
-            description: bet.event || "Match Result",
-            amount: profitOrLoss,
-            balance: runningBalance
+            description: bet.event_name || bet.eventName || bet.event || "Match Result",
+            runner: bet.runner_name || bet.runnerName || "—",
+            side: bet.side,
+            price: bet.price,
+            stake: effectiveSize,
+            amount: parseFloat(profitOrLoss.toFixed(2)),
+            balance: parseFloat(runningBalance.toFixed(2)),
+            won: winId && selId === winId
           });
         }
 
-        // ✅ Reflect pending (liable) bets on running balance only
-        if (userData?.user?.liable) {
-          runningBalance -= Number(userData.user.liable);
-        }
-
         this.ledger = ledgerRows;
-        console.log("🪙 Opening Balance (fixed):", this.openingBalance);
-        console.log("💰 Running Balance after settled + liable:", runningBalance);
+        console.log("🪙 Opening Balance:", this.openingBalance);
+        console.log("💰 Running Balance after settled:", runningBalance);
 
       } catch (err) {
         console.error("Error fetching ledger:", err);
@@ -863,29 +868,33 @@ new Vue({
         const userData = await userRes.json();
         const latestWalletBalance = Number(userData?.user?.wallet_balance) || 0;
 
-        // Fetch all bets
-        const res = await fetch(ordersurl + "/all", {
+        // Fetch all settled bets
+        const res = await fetch(ordersurl + "/all?status=SETTLED", {
           headers: { "Authorization": "Bearer " + token }
         });
-        const allOrders = await res.json();
+        const resData = await res.json();
+        // ✅ API response mein orders array hota hai
+        const allOrders = resData.data?.orders || resData.orders || resData || [];
 
-        // Filter only settled bets
+        // ✅ Filter SETTLED bets, oldest first
         const settledBets = allOrders
           .filter(o => o.status === "SETTLED")
           .sort((a, b) => new Date(a.settled_at || a.updated_at) - new Date(b.settled_at || b.updated_at));
 
-        // Reverse-calculate opening balance
+        // ✅ Reverse-calculate opening balance using winning_selection_id
         let openingBalance = latestWalletBalance;
         for (let i = settledBets.length - 1; i >= 0; i--) {
           const bet = settledBets[i];
           const price = Number(bet.price);
-          const size = Number(bet.size);
+          const effectiveSize = Number(bet.matched > 0 ? bet.matched : bet.size);
+          const selId = String(bet.selection_id || bet.selectionId || "");
+          const winId = String(bet.winning_selection_id || bet.winningSelectionId || "");
           let profitOrLoss = 0;
 
-          if (bet.selectionId === bet.winningSelectionId) {
-            profitOrLoss = bet.side === "B" ? (price - 1) * size : -(price - 1) * size;
-          } else {
-            profitOrLoss = bet.side === "B" ? -size : size;
+          if (winId && selId === winId) {
+            profitOrLoss = bet.side === "B" ? (price - 1) * effectiveSize : -(price - 1) * effectiveSize;
+          } else if (winId) {
+            profitOrLoss = bet.side === "B" ? -effectiveSize : effectiveSize;
           }
 
           openingBalance -= profitOrLoss;
@@ -893,34 +902,41 @@ new Vue({
 
         let runningBalance = openingBalance;
 
-        // Build ledger
+        // ✅ Build ledger
         const ledgerRows = [{
           date: new Date(userData?.user?.created_at || Date.now()).toLocaleString(),
           description: "Opening Balance",
           amount: 0,
-          balance: runningBalance,
+          balance: parseFloat(runningBalance.toFixed(2)),
           isMatch: false
         }];
 
         for (const bet of settledBets) {
           const price = Number(bet.price);
-          const size = Number(bet.size);
+          const effectiveSize = Number(bet.matched > 0 ? bet.matched : bet.size);
+          const selId = String(bet.selection_id || bet.selectionId || "");
+          const winId = String(bet.winning_selection_id || bet.winningSelectionId || "");
           let profitOrLoss = 0;
 
-          if (bet.selectionId === bet.winningSelectionId) {
-            profitOrLoss = bet.side === "B" ? (price - 1) * size : -(price - 1) * size;
-          } else {
-            profitOrLoss = bet.side === "B" ? -size : size;
+          if (winId && selId === winId) {
+            profitOrLoss = bet.side === "B" ? (price - 1) * effectiveSize : -(price - 1) * effectiveSize;
+          } else if (winId) {
+            profitOrLoss = bet.side === "B" ? -effectiveSize : effectiveSize;
           }
 
           runningBalance += profitOrLoss;
 
           ledgerRows.push({
             date: new Date(bet.settled_at || bet.updated_at || bet.created_at).toLocaleString(),
-            description: bet.event || "Match Result",
-            amount: profitOrLoss,
-            balance: runningBalance,
-            isMatch: !!bet.event
+            description: bet.event_name || bet.eventName || bet.event || "Match Result",
+            runner: bet.runner_name || bet.runnerName || "—",
+            side: bet.side,
+            price: bet.price,
+            stake: effectiveSize,
+            amount: parseFloat(profitOrLoss.toFixed(2)),
+            balance: parseFloat(runningBalance.toFixed(2)),
+            isMatch: true,
+            won: winId && selId === winId
           });
         }
 

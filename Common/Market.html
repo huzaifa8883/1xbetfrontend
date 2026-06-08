@@ -1725,8 +1725,21 @@
 </div> -->
 <div class="runner-position">
   <span v-if="getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin !== 0 || getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose !== 0">
-    <span :class="getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
-      <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin | format }}</strong>
+    <span v-if="getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin >= 0">
+      <span class="runner-position-pos">
+        <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin | format }}</strong>
+      </span>
+      <span class="position-minus" v-if="getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose != null && getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose !== 0">
+        <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose | format }}</strong>
+      </span>
+    </span>
+    <span v-else>
+      <span class="position-minus">
+        <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin | format }}</strong>
+      </span>
+      <span class="runner-position-pos" v-if="getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose != null && getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose !== 0">
+        <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose | format }}</strong>
+      </span>
     </span>
   </span>
   <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -4736,14 +4749,12 @@ function calculateRunnerPnL(runnerName, forMarketId) {
 
     if (!marketOrders.length) return { ifWin: 0, ifLose: 0 };
 
-    // Count unique runners in this market's orders (to detect 2-runner markets like Toss)
-    const uniqueRunnersInMarket = new Set(
-        marketOrders.map(o => (o.rn || o.runnerName || "").trim().toLowerCase()).filter(Boolean)
-    );
-    // 2-runner market (Toss etc.) mein cross-runner effect NAHI lagana —
-    // kyunki doosre runner ki bet sirf usi runner ka PnL dikhaye,
-    // cross-bleeding se galat "2,000 -2,000" wala pattern aata hai.
-    const applyCrossRunner = uniqueRunnersInMarket.size > 2;
+    // Cross-runner effect HAMESHA lagao — yeh exchange betting ka basic logic hai.
+    // Back West Indies @ 2, stake 2000:
+    //   West Indies: ifWin = +2000, ifLose = -2000
+    //   Sri Lanka:   ifWin = -2000, ifLose = +2000  <- yeh cross-runner effect hai
+    // Iske bina Sri Lanka ka PnL zero dikhe ga jo galat hai.
+    const applyCrossRunner = true;
 
     marketOrders.forEach(order => {
         const rn    = (order.rn || order.runnerName || "").trim().toLowerCase();

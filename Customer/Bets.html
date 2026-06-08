@@ -618,29 +618,44 @@
             <a href="/Customer/StarOrders">Star Casino</a>
           </p>
 
-          <table id="tableLedger" class="table table-striped table-bordered dt-responsive nowrap" style="width:100%;">
+          <!-- Loading / Error states -->
+          <div v-if="loading" style="color:#fff; padding:12px;">Loading bets...</div>
+          <div v-if="error"   style="color:#e55; padding:12px;">{{ error }}</div>
+          <div v-if="!loading && bets.length === 0" style="color:#aaa; padding:12px;">
+            Koi active bet nahi hai.
+          </div>
+
+          <table v-if="!loading && bets.length > 0"
+                 id="tableLedger"
+                 class="table table-striped table-bordered dt-responsive nowrap"
+                 style="width:100%;">
             <thead>
               <tr>
                 <th>#</th>
                 <th>Event</th>
                 <th>Runner</th>
+                <th>Side</th>
                 <th>Price</th>
                 <th>Amount</th>
-                <th>Position</th>
+                <th>Status</th>
                 <th>Placed</th>
                 <th>Updated</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="bet in bets" :key="bet.index"
-                 :style="{ backgroundColor: bet.position === 'BACK' ? '#8dd2f0' : '#feabb2' }">
-
+                  :style="{ backgroundColor: bet.side === 'BACK' ? '#8dd2f0' : '#feabb2' }">
                 <td>{{ bet.index }}</td>
                 <td>{{ bet.event }}</td>
-                <td>{{  bet.runner }}</td>
+                <td>{{ bet.runner }}</td>
+                <td><strong>{{ bet.side }}</strong></td>
                 <td>{{ bet.price }}</td>
                 <td>{{ bet.amount }}</td>
-                <td>{{ bet.position }}</td>
+                <td>
+                  <span :style="{ color: bet.status === 'MATCHED' ? '#4dbd74' : '#f0ad4e', fontWeight: '700' }">
+                    {{ bet.status }}
+                  </span>
+                </td>
                 <td>{{ bet.placed }}</td>
                 <td>{{ bet.updated }}</td>
               </tr>
@@ -767,48 +782,82 @@
     <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
 
 <script>
+// ============================================================
+// BET HISTORY — MATCHED + PENDING bets dikhao
+// SETTLED bets yahan nahi dikhte (wo statement page pe jaate hain)
+// Socket: marketSettled event pe bets refresh karo
+// ============================================================
+const _BH_API = ordersUrl + "/v1";
+
 new Vue({
   el: '#app',
   data: {
-    bets: []
+    bets: [],
+    loading: false,
+    error: null
   },
   methods: {
-    fetchBetsHistory() {
-      const token = localStorage.getItem("token");
-      return fetch(ordersUrl + "/orders/all", {
-        headers: { "Authorization": "Bearer " + token }
-      })
-      .then(r => r.json())
-      .then(data => {
-        // ✅ API response mein orders array hota hai
-        const list = data.data?.orders || data.orders || data || [];
+    async fetchBetsHistory() {
+      this.loading = true;
+      this.error   = null;
+      const token  = localStorage.getItem("token");
+      if (!token) { this.loading = false; return; }
 
-        // ✅ Sirf MATCHED bets dikhao (PENDING, SETTLED, CANCELLED nahi)
-        const matchedBets = list.filter(o => o.status === "MATCHED");
+      try {
+        // /orders/all ab sirf PENDING + MATCHED return karta hai (SETTLED excluded)
+        const res  = await fetch(_BH_API + "/orders/all", {
+          headers: { "Authorization": "Bearer " + token }
+        });
+        const json = await res.json();
 
-        this.bets = matchedBets.map((o, index) => ({
-          index: index + 1,
-          event: o.eventName || o.event_name || o.event || "—",
-          runner: o.runnerName || o.runner_name || "—",
-          price: o.price,
-          amount: o.matched > 0 ? o.matched : o.size,
-          position: (o.side || o.type || "").toUpperCase(),
-          profit: o.side === "B"
-            ? parseFloat(((o.price - 1) * (o.matched > 0 ? o.matched : o.size)).toFixed(2))
-            : parseFloat((o.matched > 0 ? o.matched : o.size).toFixed(2)),
-          liable: o.side === "B"
-            ? parseFloat((o.matched > 0 ? o.matched : o.size).toFixed(2))
-            : parseFloat(((o.price - 1) * (o.matched > 0 ? o.matched : o.size)).toFixed(2)),
-          placed: new Date(o.created_at).toLocaleString(),
-          matched: new Date(o.updated_at || o.created_at).toLocaleString(),
-          status: o.status
-        }));
-      })
-      .catch(err => console.error("Error fetching bets history:", err));
+        // API response: { success, data: { orders: [...] } }
+        const rawList = json?.data?.orders || json?.orders || [];
+
+        this.bets = rawList
+          .filter(o => o.status === "MATCHED" || o.status === "PENDING")
+          .map((o, index) => ({
+            index:    index + 1,
+            event:    o.event_name || o.eventName || o.event || "-",
+            runner:   o.runner_name || o.runnerName || "-",
+            marketId: o.market_id  || o.marketId   || "",
+            side:     (o.side || "").toUpperCase(),
+            position: (o.type || o.side || "").toUpperCase(),
+            price:    parseFloat(o.price || 0).toFixed(2),
+            amount:   parseFloat(o.size  || 0),
+            status:   o.status,
+            placed:   o.created_at ? new Date(o.created_at).toLocaleString() : "-",
+            updated:  o.status === "MATCHED" && (o.updated_at || o.created_at)
+                        ? new Date(o.updated_at || o.created_at).toLocaleString()
+                        : "-"
+          }));
+      } catch (err) {
+        console.error("Error fetching bets history:", err);
+        this.error = "Bets load karne mein masla aaya.";
+      } finally {
+        this.loading = false;
+      }
     }
   },
   mounted() {
     this.fetchBetsHistory();
+
+    // ✅ Socket: settlement ke baad bets automatically refresh ho jayein
+    // aur SETTLED bets yahan se gayab ho jayein
+    if (typeof io !== 'undefined') {
+      try {
+        const _sock = io("https://1xbetbackend.work.gd");
+        _sock.on("marketSettled", () => {
+          console.log("[BetHistory] marketSettled — refreshing bets");
+          this.fetchBetsHistory();
+        });
+        _sock.on("ordersUpdated", () => {
+          this.fetchBetsHistory();
+        });
+      } catch(e) { console.warn("[BetHistory] Socket init failed:", e.message); }
+    }
+
+    // Periodic refresh har 30 second (fallback)
+    setInterval(() => this.fetchBetsHistory(), 30000);
   }
 });
 </script>

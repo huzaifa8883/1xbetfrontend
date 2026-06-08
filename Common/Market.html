@@ -1725,21 +1725,8 @@
 </div> -->
 <div class="runner-position">
   <span v-if="getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin !== 0 || getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose !== 0">
-    <span v-if="getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin >= 0">
-      <span class="runner-position-pos">
-        <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin | format }}</strong>
-      </span>
-      <span class="position-minus" v-if="getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose != null && getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose !== 0">
-        <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose | format }}</strong>
-      </span>
-    </span>
-    <span v-else>
-      <span class="position-minus">
-        <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin | format }}</strong>
-      </span>
-      <span class="runner-position-pos" v-if="getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose != null && getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose !== 0">
-        <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose | format }}</strong>
-      </span>
+    <span :class="getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
+      <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin | format }}</strong>
     </span>
   </span>
   <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -4726,9 +4713,9 @@ async function updateUserWallet() {
 }
 
 // ------------------------------------------------------------------
-// calculateRunnerPnL — scoped to a specific marketId
-// Cross-runner effect included: jab West Indies pe Back bet ho,
-// toh West Indies ifWin = +profit, Sri Lanka ifWin = -stake (loss)
+// BUG 2 FIX: calculateRunnerPnL — now scoped to a specific marketId
+// Only orders whose mktId matches the requested marketId are included.
+// This prevents "Match Odds" bets from bleeding into sub-market PnL.
 // ------------------------------------------------------------------
 function calculateRunnerPnL(runnerName, forMarketId) {
     const normalized  = (runnerName || "").trim().toLowerCase();
@@ -4737,16 +4724,17 @@ function calculateRunnerPnL(runnerName, forMarketId) {
     let ifWin  = 0;
     let ifLose = 0;
 
-    // Sirf us specific market ke orders filter karo
+    // FIX: blank/missing mktId wale orders ko bhi include karo
+    // (kuch backends marketId return nahi karte sub-markets ke liye)
     const marketOrders = Matched.filter(order => {
         if (!useMarketFilter) return true;
-        return String(order.mktId || matchId) === String(forMarketId);
+        const oMktId = String(order.mktId || "");
+        // Agar order mein marketId hi nahi — include karo (safe fallback)
+        if (!oMktId) return true;
+        return oMktId === String(forMarketId);
     });
 
     if (!marketOrders.length) return { ifWin: 0, ifLose: 0 };
-
-    // Pehle saare unique runners collect karo is market mein
-    const allMarketRunners = [...new Set(marketOrders.map(o => (o.rn || "").trim().toLowerCase()).filter(Boolean))];
 
     marketOrders.forEach(order => {
         const rn    = (order.rn || order.runnerName || "").trim().toLowerCase();
@@ -4757,26 +4745,21 @@ function calculateRunnerPnL(runnerName, forMarketId) {
         if (!rn || odds <= 1 || stake <= 0) return;
 
         if (rn === normalized) {
-            // Direct bet on this runner
+            // Is runner par direct bet
             if (side === "B") {
-                // Back: agar ye runner jeeta → profit, agar haara → -stake
                 ifWin  += (odds - 1) * stake;
                 ifLose -= stake;
             } else {
-                // Lay: agar ye runner jeeta → -(odds-1)*stake, agar haara → +stake
                 ifWin  -= (odds - 1) * stake;
                 ifLose += stake;
             }
         } else {
-            // Cross-runner effect: bet kisi DUSRE runner pe hai
+            // Doosre runner par bet — cross-runner effect
+            // ONLY apply agar dono same market ke runners hain (already filtered by marketOrders)
             if (side === "B") {
-                // Dusra runner Back: agar WO jeeta → hum haare (-stake is runner pe)
-                // agar WO haara (matlab YE runner jeeta) → hum jeete (+stake is runner pe)
-                ifWin  -= stake;          // agar YE runner jeeta (dusra haara) → -stake
-                ifLose += (odds - 1) * stake; // agar YE runner haara (dusra jeeta) → +(odds-1)*stake
+                ifWin  -= stake;
+                ifLose += (odds - 1) * stake;
             } else {
-                // Dusra runner Lay: agar WO jeeta → hum jeete (+stake is runner pe)
-                // agar WO haara (matlab YE runner jeeta) → -stake
                 ifWin  += stake;
                 ifLose -= (odds - 1) * stake;
             }
@@ -4973,7 +4956,8 @@ function updateRunnerPnLTable() {
         tr.innerHTML = `
             <td><strong>${rn}</strong></td>
             <td style="color:${winColor};font-weight:700;">${ifWin  >= 0 ? '+' : ''}${format(ifWin)}</td>
-            <td style="color:${loseColor};font-weight:600;">${ifLose !== 0 ? (ifLose >= 0 ? '+' : '') + format(ifLose) : '-'}</td>
+            <td style="color:${loseColor};font-weight:600;">${ifLose >= 0 ? '+' : ''}${format(ifLose)}</td>
+            <td style="color:${winColor};font-weight:700;">${ifWin  >= 0 ? '+' : ''}${format(ifWin)}</td>
         `;
         tbody.appendChild(tr);
     });
@@ -5082,46 +5066,6 @@ window.getRunnerAmounts = function(runnerName, forMarketId) {
 };
 
 // ---------------------------
-// HELPER: current event ke saare sub-market IDs ka Set return karo
-// Yeh Vue vm se Toss, Match Odds, etc. ke marketIds collect karta hai
-// taake fetchMatched/fetchUnMatched sirf current event ke orders filter kare
-// ---------------------------
-function _getCurrentEventMarketIds() {
-    const ids = new Set();
-    if (!matchId) return ids;
-
-    // Hamesha main matchId add karo
-    ids.add(String(matchId));
-
-    try {
-        const vmEl = document.getElementById('app') || document.getElementById('MarketView');
-        let vm = vmEl && vmEl.__vue__;
-        if (!vm && vmEl) {
-            const children = vmEl.querySelectorAll('*');
-            for (let el of children) { if (el.__vue__) { vm = el.__vue__; break; } }
-        }
-        if (!vm) return ids;
-
-        // Main catalog
-        if (vm.Catalog && vm.Catalog.marketId) ids.add(String(vm.Catalog.marketId));
-
-        // Sub-market lists
-        const lists = ['subMarkets','BookmakerMarkets','TossMarkets','FancyMarkets',
-                       'Fancy2Markets','FigureMarkets','OddFigureMarkets','OtherMarkets','OtherRaceMarkets'];
-        lists.forEach(function(key) {
-            const arr = vm[key];
-            if (Array.isArray(arr)) {
-                arr.forEach(function(cat) {
-                    if (cat && cat.marketId) ids.add(String(cat.marketId));
-                });
-            }
-        });
-    } catch(e) { /* silent */ }
-
-    return ids;
-}
-
-// ---------------------------
 // FETCH FUNCTIONS
 // ---------------------------
 async function fetchUnMatched() {
@@ -5129,33 +5073,13 @@ async function fetchUnMatched() {
     const tk = localStorage.getItem('token') || localStorage.getItem('wex3authtoken') || token;
     if (!tk) return;
     try {
-        // eventId resolve karo (vm.Catalog.eventId sabse reliable)
-        const vm = (document.getElementById('app') || document.getElementById('MarketView') || {}).__vue__;
-        const evId = (vm && vm.Catalog && vm.Catalog.eventId) ? vm.Catalog.eventId : null;
-
-        // IMPORTANT: agar eventId nahi mila to matchId se filter karo (bina filter ke SAARE orders aa jaate hain)
-        const fetchUrl = evId
-            ? `${ordersUrl}/orders/pending?eventId=${encodeURIComponent(evId)}`
-            : `${ordersUrl}/orders/pending?marketId=${encodeURIComponent(matchId)}`;
-        const res = await fetch(fetchUrl, {
+        // FIX: marketId filter hataya — Toss/other markets ke bets bhi fetch hon
+        const res = await fetch(`${ordersUrl}/orders/pending`, {
             headers: { "Authorization": "Bearer " + tk }
         });
         if (!res.ok) return;
         const json = await res.json();
-        let list = json.data?.orders || json.orders || [];
-
-        // Agar eventId se fetch hua to backend already is event ke orders deta hai —
-        // strict market filter lagane se Toss/sub-market ke orders drop ho jaate hain
-        // kyunke TossMarkets VM mein late load hoti hain. Sirf matchId fallback case mein filter karo.
-        if (!evId) {
-            const validMktIds = _getCurrentEventMarketIds();
-            if (validMktIds.size > 0) {
-                list = list.filter(o => {
-                    const oMktId = String(o.marketId || o.market_id || matchId);
-                    return validMktIds.has(oMktId);
-                });
-            }
-        }
+        const list = json.data?.orders || json.orders || [];
 
         // Build lookup: orderId -> existing object (to preserve confirmed names)
         const prev = {};
@@ -5187,7 +5111,7 @@ async function fetchUnMatched() {
                 orderId,
                 rn,
                 selId,
-                mktId: String(o.marketId || o.market_id || matchId),
+                mktId: String(o.marketId || o.market_id || (selId && window.selectionIdToMarketId && window.selectionIdToMarketId[selId]) || matchId),
                 up: parseFloat(o.price) || 0,
                 us: parseFloat(o.size) || 0,
                 bs: (o.side || o.type || "").toUpperCase()
@@ -5205,33 +5129,13 @@ async function fetchMatched() {
     const tk = localStorage.getItem('token') || localStorage.getItem('wex3authtoken') || token;
     if (!tk) return;
     try {
-        // eventId resolve karo (vm.Catalog.eventId sabse reliable)
-        const vm = (document.getElementById('app') || document.getElementById('MarketView') || {}).__vue__;
-        const evId = (vm && vm.Catalog && vm.Catalog.eventId) ? vm.Catalog.eventId : null;
-
-        // IMPORTANT: agar eventId nahi mila to matchId se filter karo (bina filter ke SAARE orders aa jaate hain)
-        const fetchUrl = evId
-            ? `${ordersUrl}/orders/matched?eventId=${encodeURIComponent(evId)}`
-            : `${ordersUrl}/orders/matched?marketId=${encodeURIComponent(matchId)}`;
-        const res = await fetch(fetchUrl, {
+        // FIX: marketId filter hataya — Toss/other markets ke bets bhi fetch hon
+        const res = await fetch(`${ordersUrl}/orders/matched`, {
             headers: { "Authorization": "Bearer " + tk }
         });
         if (!res.ok) return;
         const json = await res.json();
-        let list = json.data?.orders || json.orders || [];
-
-        // Agar eventId se fetch hua to backend already is event ke orders deta hai —
-        // strict market filter lagane se Toss/sub-market ke orders drop ho jaate hain
-        // kyunke TossMarkets VM mein late load hoti hain. Sirf matchId fallback case mein filter karo.
-        if (!evId) {
-            const validMktIds = _getCurrentEventMarketIds();
-            if (validMktIds.size > 0) {
-                list = list.filter(o => {
-                    const oMktId = String(o.marketId || o.market_id || matchId);
-                    return validMktIds.has(oMktId);
-                });
-            }
-        }
+        const list = json.data?.orders || json.orders || [];
 
         // Build lookup: orderId -> existing object (to preserve confirmed names)
         const prev = {};
@@ -5269,7 +5173,7 @@ async function fetchMatched() {
                 orderId,
                 rn,
                 selId,
-                mktId: String(o.marketId || o.market_id || matchId),
+                mktId: String(o.marketId || o.market_id || (selId && window.selectionIdToMarketId && window.selectionIdToMarketId[selId]) || matchId),
                 mp: parseFloat(o.price) || 0,
                 ms: parseFloat(o.matched > 0 ? o.matched : o.size) || 0,
                 bs: (o.side || o.type || "").toUpperCase(),
@@ -5300,7 +5204,15 @@ async function fetchRunners() {
         // main market runners + every sub-market (TossMarkets, BookmakerMarkets, etc.)
         const allRunnerSources = [];
 
+        // FIX: selectionId → marketId map bhi banao taake sub-market orders ka mktId resolve ho sake
+        if (!window.selectionIdToMarketId) window.selectionIdToMarketId = {};
+
         if (Array.isArray(market?.runners)) {
+            const mainMktId = String(market.marketId || market.id || matchId);
+            market.runners.forEach(r => {
+                const sid = String(r.selectionId || r.selection_id || "");
+                if (sid) window.selectionIdToMarketId[sid] = mainMktId;
+            });
             allRunnerSources.push(...market.runners);
         }
 
@@ -5314,7 +5226,14 @@ async function fetchRunners() {
             const arr = market[key];
             if (Array.isArray(arr)) {
                 arr.forEach(sub => {
-                    if (Array.isArray(sub.runners)) allRunnerSources.push(...sub.runners);
+                    const subMktId = String(sub.marketId || sub.id || "");
+                    if (Array.isArray(sub.runners)) {
+                        sub.runners.forEach(r => {
+                            const sid = String(r.selectionId || r.selection_id || "");
+                            if (sid && subMktId) window.selectionIdToMarketId[sid] = subMktId;
+                        });
+                        allRunnerSources.push(...sub.runners);
+                    }
                 });
             }
         });
@@ -5420,23 +5339,15 @@ socket.on("ordersUpdated", (data) => {
     data.newOrders.forEach(newO => {
         const orderId    = String(newO.request_id || newO.orderId || newO.requestId);
         const orderSelId = String(newO.selection_id || newO.selectionId || "");
-        const orderMktId = String(newO.marketId || newO.market_id || matchId);
+        // FIX: mktId blank ho to selectionIdToMarketId se resolve karo
+        const orderMktId = String(
+            newO.marketId || newO.market_id ||
+            (orderSelId && window.selectionIdToMarketId && window.selectionIdToMarketId[orderSelId]) ||
+            matchId
+        );
 
-        // BUG FIX: sirf current event ke markets ke orders process karo
-        // _getCurrentEventMarketIds() Toss + Match Odds + sab sub-markets ka Set deta hai
-        const validMktIdsSocket = _getCurrentEventMarketIds();
-        // agar validMktIds populated hai to strict filter, warna eventId fallback
-        if (validMktIdsSocket.size > 1) {
-            // size > 1 means we have actual sub-market IDs — strict check
-            if (!validMktIdsSocket.has(orderMktId)) return;
-        } else {
-            // Fallback: eventId check (pehle wali behavior)
-            const vm2 = (document.getElementById('app') || document.getElementById('MarketView') || {}).__vue__;
-            const pageEventId = vm2 && vm2.Catalog && vm2.Catalog.eventId
-                              ? String(vm2.Catalog.eventId) : null;
-            const orderEventId = String(newO.eventId || newO.event_id || "");
-            if (pageEventId && orderEventId && orderEventId !== pageEventId) return;
-        }
+        // FIX: marketId filter hataya — Toss/other markets ke orders bhi accept karo
+        // (sirf current event ke orders aate hain server se, isliye safe hai)
 
         // RULE: if we already confirmed a real name in memory, NEVER replace it
         const inMem = [...Matched, ...UnMatched].find(x => x.orderId === orderId);

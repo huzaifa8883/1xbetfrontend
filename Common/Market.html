@@ -4581,13 +4581,16 @@ function calculateRunnerPnL(runnerName, forMarketId) {
     let ifWin  = 0;
     let ifLose = 0;
 
-    // FIX: blank/missing mktId wale orders ko bhi include karo
-    // (kuch backends marketId return nahi karte sub-markets ke liye)
+    // STRICT MARKET FILTER:
+    // Sirf wahi orders include karo jinka mktId exactly forMarketId se match kare.
+    // Blank mktId wale orders SIRF tab include karo jab forMarketId bhi main matchId ho —
+    // warna Match Odds bets sub-markets (Toss, Bookmaker) pe bhi dikhne lagte hain.
+    const isMainMarket = !forMarketId || String(forMarketId) === String(matchId);
     const marketOrders = Matched.filter(order => {
         if (!useMarketFilter) return true;
         const oMktId = String(order.mktId || "");
-        // Agar order mein marketId hi nahi — include karo (safe fallback)
-        if (!oMktId) return true;
+        // Blank mktId = main market ka order — sirf main market filter mein include karo
+        if (!oMktId) return isMainMarket;
         return oMktId === String(forMarketId);
     });
 
@@ -4878,9 +4881,12 @@ function updateVueRunnerPnL() {
 
         // BUG 2 FIX: pass the catalog's own marketId so we only apply PnL
         // from orders that belong to THIS specific market, not all markets
+        // STRICT: agar marketId missing ho to matchId fallback NAHI — us market ko skip karo
         function updateRunnersInCatalog(catalog) {
             if (!catalog || !Array.isArray(catalog.runners)) return;
-            const mktId = String(catalog.marketId || matchId);
+            // Sub-market ke liye catalog.marketId zaroori hai — agar nahi to PnL pollute hoga
+            const mktId = catalog.marketId ? String(catalog.marketId) : null;
+            if (!mktId) return; // marketId nahi = update nahi (safe)
 
             catalog.runners.forEach(function(runner, idx) {
                 const rName = (runner.runnerName || "").trim();
@@ -4904,7 +4910,10 @@ function updateVueRunnerPnL() {
         }
 
         if (vm.Catalog && Array.isArray(vm.Catalog.runners)) {
-            updateRunnersInCatalog(vm.Catalog);
+            // Main catalog (Match Odds) — iska marketId = matchId
+            const mainCatalog = Object.assign({}, vm.Catalog,
+                { marketId: vm.Catalog.marketId || matchId });
+            updateRunnersInCatalog(mainCatalog);
         }
 
         lists.forEach(function(listName) {

@@ -781,8 +781,9 @@
   document.addEventListener("DOMContentLoaded", function() {
     const fromInput = document.getElementById("From");
     const toInput = document.getElementById("To");
-    if (fromInput && fromInput.value.includes("2025-06")) fromInput.value = fromDate.toISOString();
-    if (toInput && toInput.value.includes("2025-06")) toInput.value = toDate.toISOString();
+    // Hamesha current date set karo (hardcoded dates override)
+    if (fromInput) fromInput.value = fromDate.toISOString();
+    if (toInput)   toInput.value   = toDate.toISOString();
   });
 })();
 
@@ -825,11 +826,30 @@
           const filterFrom = fromInput ? new Date(fromInput.value) : null;
           const filterTo   = toInput   ? new Date(toInput.value)   : null;
 
-          // Step 3: Settled bets fetch karo
-          const res  = await fetch(_STMT_API + "/orders/settled?limit=500", {
-            headers: { "Authorization": "Bearer " + token }
-          });
-          const json = await res.json();
+          // Step 3: Settled bets fetch karo — multiple routes try karo
+          let allSettledRaw = [];
+          
+          // Route 1: /orders/settled
+          try {
+            const res1 = await fetch(_STMT_API + "/orders/settled?limit=500", {
+              headers: { "Authorization": "Bearer " + token }
+            });
+            const j1 = await res1.json();
+            const r1 = j1?.data?.orders || j1?.orders || [];
+            allSettledRaw = allSettledRaw.concat(r1);
+          } catch(e) { console.warn("[Statement] /orders/settled failed:", e.message); }
+
+          // Route 2: /orders/all — status=SETTLED filter
+          try {
+            const res2 = await fetch(_STMT_API + "/orders/all?status=SETTLED&limit=500", {
+              headers: { "Authorization": "Bearer " + token }
+            });
+            const j2 = await res2.json();
+            const r2 = (j2?.data?.orders || j2?.orders || []).filter(o => o.status === "SETTLED");
+            // Duplicate IDs avoid karo
+            const existingIds = new Set(allSettledRaw.map(o => o.id || o._id));
+            allSettledRaw = allSettledRaw.concat(r2.filter(o => !existingIds.has(o.id || o._id)));
+          } catch(e) { console.warn("[Statement] /orders/all?status=SETTLED failed:", e.message); }
 
           // Deposits bhi fetch karo (agar API available hai)
           let deposits = [];
@@ -841,7 +861,7 @@
             deposits = depJson?.data?.transactions || depJson?.transactions || [];
           } catch(e) { /* deposit API nahi hai to skip */ }
 
-          const allSettled = (json?.data?.orders || json?.orders || [])
+          const allSettled = allSettledRaw
             .sort((a, b) => new Date(a.settled_at || a.updated_at) - new Date(b.settled_at || b.updated_at));
 
           // Date filter apply karo

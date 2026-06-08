@@ -5310,6 +5310,43 @@ socket.on("ordersUpdated", (data) => {
 });
 
 // userUpdated — wallet + liable + settlement info
+socket.on("marketSettled", (data) => {
+    if (!data || !data.marketId) return;
+    const mktId = String(data.marketId);
+
+    // ✅ Is market ki sab MATCHED bets hata do — settlement ho gayi
+    Matched   = Matched.filter(o => String(o.mktId) !== mktId);
+    UnMatched = UnMatched.filter(o => String(o.mktId) !== mktId);
+
+    // Vue matched bets bhi clear karo
+    if (typeof vueApp !== "undefined" && vueApp) {
+        vueApp.Matched   = vueApp.Matched.filter(o => String(o.mktId || o.marketId) !== mktId);
+        vueApp.UnMatched = vueApp.UnMatched.filter(o => String(o.mktId || o.marketId) !== mktId);
+    }
+
+    // UI counters update
+    const mcEl = document.querySelector("[data-matched-count]") || document.getElementById("matched-count");
+    if (mcEl) mcEl.textContent = Matched.length;
+
+    console.log(`✅ marketSettled: Cleared all bets for market ${mktId}. Matched remaining: ${Matched.length}`);
+});
+
+socket.on("marketVoided", (data) => {
+    if (!data || !data.marketId) return;
+    const mktId = String(data.marketId);
+
+    // ✅ Is market ki sab bets hata do
+    Matched   = Matched.filter(o => String(o.mktId) !== mktId);
+    UnMatched = UnMatched.filter(o => String(o.mktId) !== mktId);
+
+    if (typeof vueApp !== "undefined" && vueApp) {
+        vueApp.Matched   = vueApp.Matched.filter(o => String(o.mktId || o.marketId) !== mktId);
+        vueApp.UnMatched = vueApp.UnMatched.filter(o => String(o.mktId || o.marketId) !== mktId);
+    }
+
+    console.log(`⚠️ marketVoided: Cleared all bets for market ${mktId}`);
+});
+
 socket.on("userUpdated", (data) => {
     if (!data) return;
     const bal    = Math.floor(data.wallet_balance ?? 0);

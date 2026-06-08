@@ -33,7 +33,7 @@
 
     <script>
         const pricesUrl = "https://prices9.mgs11.com/api";
-        const ordersUrl = "https://orders.mgs11.com/api";
+        const ordersUrl = "https://1XBETBACKEND.WORK.GD/api";
         const LiquidityRate = 35;
         const SsocketUrl = "https://orders-ws2.mgs11.com/signalr";
         const uwsUrl = "https://orders-ws2.mgs11.com/usershub";
@@ -614,7 +614,7 @@
               <th>#</th>
               <th>Date</th>
               <th>Description</th>
-              <th>P&amp;L</th>
+              <th>Amount</th>
               <th>Balance</th>
             </tr>
           </thead>
@@ -624,10 +624,10 @@
               <td>{{ i + 1 }}</td>
               <td>{{ row.date }}</td>
               <td style="color:#00b181;">{{ row.description }}</td>
-              <td :class="{'text-success': row.amount > 0, 'text-danger': row.amount < 0}">
+              <td :style="{ color: row.amount > 0 ? '#28a745' : row.amount < 0 ? '#dc3545' : 'inherit' }">
                 <span v-if="row.amount > 0">+{{ row.amount.toLocaleString() }}</span>
                 <span v-else-if="row.amount < 0">{{ row.amount.toLocaleString() }}</span>
-                <span v-else>-</span>
+                <span v-else>0</span>
               </td>
               <td>{{ row.balance.toLocaleString() }}</td>
             </tr>
@@ -904,7 +904,7 @@
               date:        new Date(user.created_at || Date.now()).toLocaleString(),
               description: "Opening Balance",
               amount:      0,
-              balance:     currentWallet,
+              balance:     0,
               isOpen:      true,
               type:        'open'
             }];
@@ -916,12 +916,13 @@
             date:        new Date(user.created_at || Date.now()).toLocaleString(),
             description: "Opening Balance",
             amount:      0,
-            balance:     parseFloat(runningBalance.toFixed(2)),
+            balance:     0,
             isOpen:      true,
             type:        'open'
           }];
 
           // Step 7: Deposits ko rows mein shamil karo
+          let runningBalance = 0;
           for (const dep of deposits) {
             const depDate = new Date(dep.created_at || dep.date);
             if (filterFrom && filterTo && (depDate < filterFrom || depDate > filterTo)) continue;
@@ -1007,7 +1008,8 @@ window.updateDates = function() {
     }
   }, 100);
   return false; // form submit rokein
-
+};
+</script>
 
     <script type="text/javascript" src="https://wurfl.io/wurfl.js"></script>
     <script type="text/javascript" src="/dist/bundle0a.js"></script>

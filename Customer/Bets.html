@@ -779,21 +779,29 @@ new Vue({
         headers: { "Authorization": "Bearer " + token }
       })
       .then(r => r.json())
-      .then(list => {
-        // 🩵 Sirf active bets rakho (jo CLOSED/SETTLED nahi hain)
-        const activeBets = list.filter(o => o.status !== "CLOSED" && o.status !== "SETTLED");
+      .then(data => {
+        // ✅ API response mein orders array hota hai
+        const list = data.data?.orders || data.orders || data || [];
 
-        this.bets = activeBets.map((o, index) => ({
+        // ✅ Sirf MATCHED bets dikhao (PENDING, SETTLED, CANCELLED nahi)
+        const matchedBets = list.filter(o => o.status === "MATCHED");
+
+        this.bets = matchedBets.map((o, index) => ({
           index: index + 1,
-          event: o.event,
-          runner: o.runnerName,
+          event: o.eventName || o.event_name || o.event || "—",
+          runner: o.runnerName || o.runner_name || "—",
           price: o.price,
-          amount: o.size,
-          position: (o.type || "").toUpperCase(),
+          amount: o.matched > 0 ? o.matched : o.size,
+          position: (o.side || o.type || "").toUpperCase(),
+          profit: o.side === "B"
+            ? parseFloat(((o.price - 1) * (o.matched > 0 ? o.matched : o.size)).toFixed(2))
+            : parseFloat((o.matched > 0 ? o.matched : o.size).toFixed(2)),
+          liable: o.side === "B"
+            ? parseFloat((o.matched > 0 ? o.matched : o.size).toFixed(2))
+            : parseFloat(((o.price - 1) * (o.matched > 0 ? o.matched : o.size)).toFixed(2)),
           placed: new Date(o.created_at).toLocaleString(),
-          updated: o.status === "MATCHED"
-            ? new Date(o.updated_at || o.created_at).toLocaleString()
-            : "-"
+          matched: new Date(o.updated_at || o.created_at).toLocaleString(),
+          status: o.status
         }));
       })
       .catch(err => console.error("Error fetching bets history:", err));

@@ -872,19 +872,46 @@ new Vue({
 <script>
 // ✅ BetHistory: Calendar mein aaj ki date auto-set karo
 (function() {
+  function fmtDisplay(d) {
+    var mo = d.getMonth()+1, dy = d.getDate(), yr = d.getFullYear();
+    var hr = d.getHours(), mn = d.getMinutes(), ampm = hr >= 12 ? 'PM' : 'AM';
+    hr = hr % 12 || 12;
+    return mo+"/"+dy+"/"+yr+" "+hr+":"+String(mn).padStart(2,'0')+" "+ampm;
+  }
+
   const now = new Date();
   const fromDate = new Date(now);
   fromDate.setHours(0, 0, 0, 0);
   const toDate = new Date(now);
   toDate.setHours(23, 59, 59, 0);
-  const fromInput = document.getElementById("From");
-  const toInput   = document.getElementById("To");
-  if (fromInput) fromInput.value = fromDate.toISOString();
-  if (toInput)   toInput.value   = toDate.toISOString();
-  const fromSpan = document.getElementById("fromUtcSpan");
-  const toSpan   = document.getElementById("toUtcSpan");
-  if (fromSpan) fromSpan.textContent = fromDate.toISOString();
-  if (toSpan)   toSpan.textContent   = toDate.toISOString();
+
+  document.addEventListener("DOMContentLoaded", function() {
+    // Hidden inputs
+    var fi = document.getElementById("From");
+    var ti = document.getElementById("To");
+    if (fi) fi.value = fromDate.toISOString();
+    if (ti) ti.value = toDate.toISOString();
+
+    // Visible display inputs
+    var df = document.getElementById("DisplayFrom");
+    var dt = document.getElementById("DisplayTo");
+    if (df) df.value = fmtDisplay(fromDate);
+    if (dt) dt.value = fmtDisplay(toDate);
+
+    // UTC spans
+    var fromSpan = document.getElementById("fromUtcSpan");
+    var toSpan   = document.getElementById("toUtcSpan");
+    if (fromSpan) fromSpan.textContent = fromDate.toISOString();
+    if (toSpan)   toSpan.textContent   = toDate.toISOString();
+
+    // Datetimepicker plugin update
+    try {
+      if (typeof $ !== 'undefined') {
+        .datetimepicker('date', fromDate);
+        .datetimepicker('date', toDate);
+      }
+    } catch(e) {}
+  });
 })();
 </script>
 

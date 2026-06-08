@@ -566,7 +566,7 @@
                             </div>
                         </div>
                         <span class="market-time d-none"></span>
-                        <span class="d-none utctime" data-format="M/D/YYYY h:mm A">
+                        <span class="d-none utctime" data-format="M/D/YYYY h:mm A" id="fromUtcSpan">
                             2025-07-01T19:00:00.0000000Z
                         </span>
                         <input type="hidden" name="From" id="From" value="2025-07-01T19:00:00.0000000Z" />
@@ -583,7 +583,7 @@
                             </div>
                         </div>
                         <span class="market-time d-none"></span>
-                        <span class="d-none utctime" data-format="M/D/YYYY h:mm A">
+                        <span class="d-none utctime" data-format="M/D/YYYY h:mm A" id="toUtcSpan">
                             2025-07-02T18:59:59.0000000Z
                         </span>
                         <input type="hidden" name="To" id="To" value="2025-07-02T18:59:59.0000000Z" />
@@ -864,6 +864,25 @@ new Vue({
 
     <script type="text/javascript" src="https://wurfl.io/wurfl.js"></script>
     <script type="text/javascript" src="/dist/bundle0a.js?7200"></script>
+
+<script>
+// ✅ BetHistory: Calendar mein aaj ki date auto-set karo
+(function() {
+  const now = new Date();
+  const fromDate = new Date(now);
+  fromDate.setHours(0, 0, 0, 0);
+  const toDate = new Date(now);
+  toDate.setHours(23, 59, 59, 0);
+  const fromInput = document.getElementById("From");
+  const toInput   = document.getElementById("To");
+  if (fromInput) fromInput.value = fromDate.toISOString();
+  if (toInput)   toInput.value   = toDate.toISOString();
+  const fromSpan = document.getElementById("fromUtcSpan");
+  const toSpan   = document.getElementById("toUtcSpan");
+  if (fromSpan) fromSpan.textContent = fromDate.toISOString();
+  if (toSpan)   toSpan.textContent   = toDate.toISOString();
+})();
+</script>
 
 
     <script>

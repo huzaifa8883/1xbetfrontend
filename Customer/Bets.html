@@ -943,29 +943,40 @@ new Vue({
     this.fetchBetsHistory();
 
     // ✅ Socket: settlement ke baad bets automatically refresh ho jayein
-    // aur SETTLED bets yahan se gayab ho jayein
     if (typeof io !== 'undefined') {
       try {
         const _sock = io("https://1xbetbackend.work.gd");
-        // Multiple event names try karo
-        ["marketSettled", "ordersUpdated", "orderSettled", "betSettled", "marketClosed", "settled"].forEach(ev => {
+        const _tk   = localStorage.getItem("token");
+
+        // ── User room join karo — userUpdated tab milega ──
+        _sock.on("connect", () => {
+          if (_tk) {
+            _sock.emit("JoinUser", { token: _tk }, (ack) => {
+              console.log("[BetHistory] JoinUser ack:", ack);
+            });
+          }
+        });
+
+        // Global market events
+        ["marketSettled", "orderSettled", "betSettled", "marketClosed", "settled"].forEach(ev => {
           _sock.on(ev, () => {
             console.log("[BetHistory] socket event:", ev, "— refreshing");
             this.fetchBetsHistory();
           });
         });
-        // userUpdated: settlement payload aaye to bhi refresh karo
+
+        // userUpdated: settlement payload aaye to refresh karo (room-based)
         _sock.on("userUpdated", (data) => {
-          if (data && data.event === 'settlement') {
-            console.log("[BetHistory] userUpdated settlement — refreshing");
+          if (data && (data.event === 'settlement' || data.event === 'void')) {
+            console.log("[BetHistory] userUpdated", data.event, "— refreshing");
             this.fetchBetsHistory();
           }
         });
       } catch(e) { console.warn("[BetHistory] Socket init failed:", e.message); }
     }
 
-    // Periodic refresh har 30 second (fallback)
-    setInterval(() => this.fetchBetsHistory(), 10000); // 10s refresh — settled bets jaldi gayab ho
+    // Periodic refresh har 10 second (guaranteed fallback)
+    setInterval(() => this.fetchBetsHistory(), 10000);
   }
 });
 </script>

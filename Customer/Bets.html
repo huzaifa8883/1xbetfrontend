@@ -638,7 +638,6 @@
                 <th>Side</th>
                 <th>Price</th>
                 <th>Amount</th>
-                <th>Status</th>
                 <th>Placed</th>
                 <th>Updated</th>
               </tr>
@@ -652,11 +651,6 @@
                 <td><strong>{{ bet.side === 'B' ? 'BACK' : bet.side === 'L' ? 'LAY' : bet.side }}</strong></td>
                 <td>{{ bet.price }}</td>
                 <td>{{ bet.amount }}</td>
-                <td>
-                  <span :style="{ color: bet.status === 'MATCHED' ? '#4dbd74' : '#f0ad4e', fontWeight: '700' }">
-                    {{ bet.status }}
-                  </span>
-                </td>
                 <td>{{ bet.placed }}</td>
                 <td>{{ bet.updated }}</td>
               </tr>
@@ -2046,22 +2040,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     <script type="text/javascript" src="https://cdn.datatables.net/1.10.19/js/dataTables.bootstrap4.min.js"></script>
     <script type="text/javascript" src="https://cdn.datatables.net/responsive/2.2.3/js/dataTables.responsive.min.js"></script>
     <script>
-        $(document).ready(function () {
-            $("#tableLedger").DataTable({
-                "order": [[0, "asc"]],
-                responsive: {
-                    details: {
-                        display: $.fn.dataTable.Responsive.display.childRowImmediate,
-                        type: 'none',
-                        target: ''
-                    }
-                },
-                columnDefs: [
-                    { responsivePriority: 1, targets: 0 },
-                    { responsivePriority: 2, targets: 2 }
-                ]
-            });
-        });
+        /* DataTable #tableLedger pe nahi chalana — Vue woh DOM control karta hai.
+           Dono sath chalte hain to UI flip hota hai refresh pe. */
     </script>
 
 

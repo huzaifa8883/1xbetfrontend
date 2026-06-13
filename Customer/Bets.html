@@ -625,10 +625,10 @@
             Koi active bet nahi hai.
           </div>
 
-          <!-- ===== DESKTOP TABLE ===== -->
+          <!-- ===== DESKTOP TABLE (id changed so no DataTable picks it up) ===== -->
           <table v-if="!loading && bets.length > 0"
-                 id="tableLedger"
-                 class="table table-striped table-bordered dt-responsive nowrap bh-desktop-table"
+                 id="vueBetsTable"
+                 class="table table-striped table-bordered nowrap bh-desktop-table"
                  style="width:100%;">
             <thead>
               <tr>
@@ -666,13 +666,11 @@
           <!-- ===== MOBILE CARDS ===== -->
           <div v-if="!loading && bets.length > 0" class="bh-mobile-cards">
             <div v-for="bet in bets" :key="'m'+bet.index" class="bh-card">
-              <!-- Runner header row — pink (LAY) or blue (BACK) -->
               <div class="bh-card-header"
                    :style="{ backgroundColor: (bet.side === 'BACK' || bet.side === 'B') ? '#8dd2f0' : '#feabb2' }">
                 <span class="bh-card-num">{{ bet.index }}</span>
                 <span class="bh-card-runner">{{ bet.runner }}</span>
               </div>
-              <!-- Detail rows -->
               <div class="bh-card-body">
                 <div class="bh-card-row">
                   <span class="bh-card-label">Event</span>
@@ -703,11 +701,9 @@
           </div>
 
           <style>
-            /* Desktop: show table, hide cards */
             .bh-mobile-cards { display: none; }
             .bh-desktop-table { display: table; }
 
-            /* Mobile: hide table, show cards */
             @media screen and (max-width: 767px) {
               .bh-desktop-table { display: none !important; }
               .bh-mobile-cards  { display: block; }
@@ -720,7 +716,6 @@
                 background: #fff;
                 font-size: 14px;
               }
-
               .bh-card-header {
                 display: flex;
                 align-items: center;
@@ -728,41 +723,30 @@
                 gap: 12px;
                 border-bottom: 1px solid #ccc;
               }
-
               .bh-card-num {
                 font-weight: 700;
                 font-size: 15px;
                 color: #333;
                 min-width: 20px;
               }
-
               .bh-card-runner {
                 font-size: 15px;
                 color: #333;
               }
-
-              .bh-card-body {
-                padding: 4px 0;
-              }
-
+              .bh-card-body { padding: 4px 0; }
               .bh-card-row {
                 display: flex;
                 align-items: baseline;
                 padding: 7px 12px;
                 border-bottom: 1px solid #f0f0f0;
               }
-
-              .bh-card-row:last-child {
-                border-bottom: none;
-              }
-
+              .bh-card-row:last-child { border-bottom: none; }
               .bh-card-label {
                 font-weight: 700;
                 color: #333;
                 min-width: 90px;
                 font-size: 14px;
               }
-
               .bh-card-value {
                 color: #555;
                 font-size: 14px;
@@ -2053,24 +2037,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     <script type="text/javascript" src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.js"></script>
     <script type="text/javascript" src="https://cdn.datatables.net/1.10.19/js/dataTables.bootstrap4.min.js"></script>
     <script type="text/javascript" src="https://cdn.datatables.net/responsive/2.2.3/js/dataTables.responsive.min.js"></script>
-    <script>
-        $(document).ready(function () {
-            $("#tableLedger").DataTable({
-                "order": [[0, "asc"]],
-                responsive: {
-                    details: {
-                        display: $.fn.dataTable.Responsive.display.childRowImmediate,
-                        type: 'none',
-                        target: ''
-                    }
-                },
-                columnDefs: [
-                    { responsivePriority: 1, targets: 0 },
-                    { responsivePriority: 2, targets: 2 }
-                ]
-            });
-        });
-    </script>
+    <!-- DataTable on #tableLedger removed — Vue v-for handles rows, DataTable conflicts and causes stale UI on refresh -->
 
 
     <script>

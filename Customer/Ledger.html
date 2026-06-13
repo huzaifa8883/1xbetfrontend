@@ -761,6 +761,8 @@
            
         </div>
     </footer>
+    <!-- ✅ Vue.js CDN — NEW VUE() se pehle load hona zaroori hai -->
+    <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
     <script type="text/javascript" src="https://wurfl.io/wurfl.js"></script>
     <script type="text/javascript" src="/dist/bundle0a.js"></script>
 
@@ -846,30 +848,17 @@
           const filterFrom = fromInput ? new Date(fromInput.value) : null;
           const filterTo   = toInput   ? new Date(toInput.value)   : null;
 
-          // Step 3: Settled bets fetch karo — multiple routes try karo
+          // Step 3: Settled bets fetch karo
           let allSettledRaw = [];
           
-          // Route 1: /orders/settled
+          // Route 1: /orders/settled (primary + only route)
           try {
             const res1 = await fetch(_STMT_API + "/orders/settled?limit=500", {
               headers: { "Authorization": "Bearer " + token }
             });
             const j1 = await res1.json();
-            const r1 = j1?.data?.orders || j1?.orders || [];
-            allSettledRaw = allSettledRaw.concat(r1);
+            allSettledRaw = j1?.data?.orders || j1?.orders || [];
           } catch(e) { console.warn("[Statement] /orders/settled failed:", e.message); }
-
-          // Route 2: /orders/all — status=SETTLED filter
-          try {
-            const res2 = await fetch(_STMT_API + "/orders/all?status=SETTLED&limit=500", {
-              headers: { "Authorization": "Bearer " + token }
-            });
-            const j2 = await res2.json();
-            const r2 = (j2?.data?.orders || j2?.orders || []).filter(o => o.status === "SETTLED");
-            // Duplicate IDs avoid karo
-            const existingIds = new Set(allSettledRaw.map(o => o.id || o._id));
-            allSettledRaw = allSettledRaw.concat(r2.filter(o => !existingIds.has(o.id || o._id)));
-          } catch(e) { console.warn("[Statement] /orders/all?status=SETTLED failed:", e.message); }
 
           // Deposits bhi fetch karo (agar API available hai)
           let deposits = [];
@@ -986,6 +975,13 @@
             console.log("[Statement] marketSettled — refreshing ledger");
             this.fetchLedger();
           });
+          // userUpdated: settlement payload aaye to bhi refresh karo
+          _sock.on("userUpdated", (data) => {
+            if (data && data.event === 'settlement') {
+              console.log("[Statement] userUpdated settlement — refreshing ledger");
+              this.fetchLedger();
+            }
+          });
         } catch(e) { console.warn("[Statement] Socket init failed:", e.message); }
       }
     }
@@ -1007,9 +1003,7 @@ window.updateDates = function() {
 
 </script>
 
-<!-- ✅ Vue.js CDN — statement ke liye zaroori -->
-<script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
-
+<!-- Vue CDN upar load ho chuka hai -->
     <script type="text/javascript" src="https://wurfl.io/wurfl.js"></script>
     <script type="text/javascript" src="/dist/bundle0a.js"></script>
 

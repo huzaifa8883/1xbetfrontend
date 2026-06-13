@@ -954,6 +954,13 @@ new Vue({
             this.fetchBetsHistory();
           });
         });
+        // userUpdated: settlement payload aaye to bhi refresh karo
+        _sock.on("userUpdated", (data) => {
+          if (data && data.event === 'settlement') {
+            console.log("[BetHistory] userUpdated settlement — refreshing");
+            this.fetchBetsHistory();
+          }
+        });
       } catch(e) { console.warn("[BetHistory] Socket init failed:", e.message); }
     }
 

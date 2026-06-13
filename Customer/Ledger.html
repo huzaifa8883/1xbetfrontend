@@ -971,14 +971,24 @@
       if (typeof io !== 'undefined') {
         try {
           const _sock = io("https://1xbetbackend.work.gd");
+          const _tk   = localStorage.getItem("token");
+
+          // ── User room join karo ──
+          _sock.on("connect", () => {
+            if (_tk) {
+              _sock.emit("JoinUser", { token: _tk }, (ack) => {
+                console.log("[Statement] JoinUser ack:", ack);
+              });
+            }
+          });
+
           _sock.on("marketSettled", () => {
             console.log("[Statement] marketSettled — refreshing ledger");
             this.fetchLedger();
           });
-          // userUpdated: settlement payload aaye to bhi refresh karo
           _sock.on("userUpdated", (data) => {
-            if (data && data.event === 'settlement') {
-              console.log("[Statement] userUpdated settlement — refreshing ledger");
+            if (data && (data.event === 'settlement' || data.event === 'void')) {
+              console.log("[Statement] userUpdated", data.event, "— refreshing ledger");
               this.fetchLedger();
             }
           });

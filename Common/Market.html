@@ -5042,6 +5042,12 @@ async function fetchMatched() {
         const json = await res.json();
         let list = json.data?.orders || json.orders || [];
 
+        // ── FIXED: SETTLED/CANCELLED bets kabhi matched table mein nahi aani ──
+        list = list.filter(o => {
+            const st = (o.status || "").toUpperCase();
+            return st === "MATCHED" || st === "";
+        });
+
         // Client-side filter: sirf current match ke marketIds wale orders
         if (window.allMarketIds && window.allMarketIds.size > 0) {
             list = list.filter(o => {
@@ -5361,18 +5367,20 @@ socket.on("userUpdated", (data) => {
 socket.on("marketSettled", async (data) => {
     console.log("[Market] marketSettled event:", data);
 
-    // Sirf is market ke settled orders hataao
     const settledMktId = String(data?.marketId || matchId || "");
 
-    if (settledMktId) {
-        // Matched bets mein se is market ki sab bets hataao
-        Matched   = Matched.filter(o => String(o.mktId || "") !== settledMktId);
-        UnMatched = UnMatched.filter(o => String(o.mktId || "") !== settledMktId);
-    } else {
-        // agar marketId nahi to sab hataao (fallback)
-        Matched   = [];
-        UnMatched = [];
-    }
+    // ── FIXED: mktId blank bhi ho sakta hai — dono cases handle karo ──
+    // Case 1: mktId match kare → hataao
+    // Case 2: mktId blank ho (assign nahi hua tha) → matchId se compare karo
+    // Case 3: koi bhi case — server se re-fetch karo, wahi ground truth hai
+    Matched   = Matched.filter(o => {
+        const oMkt = String(o.mktId || matchId); // blank = main market
+        return oMkt !== settledMktId;
+    });
+    UnMatched = UnMatched.filter(o => {
+        const oMkt = String(o.mktId || matchId);
+        return oMkt !== settledMktId;
+    });
 
     // runnerPnL reset karo is market ke liye
     Object.keys(runnerPnL).forEach(key => {
@@ -5384,12 +5392,14 @@ socket.on("marketSettled", async (data) => {
     updateVueRunnerPnL();
     await updateUserWallet();
 
-    // Re-fetch from server to confirm (1 second delay)
+    // ── Re-fetch from server — ground truth confirm karo ──
+    // Server ab sirf MATCHED status wali bets return karta hai
+    // SETTLED ho chuki bets khud-ba-khud nahi aayengi
     setTimeout(async () => {
         await fetchUnMatched();
         await fetchMatched();
         updateVueRunnerPnL();
-    }, 1000);
+    }, 1500);
 });
 
 // ✅ marketVoided — same cleanup

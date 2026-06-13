@@ -625,9 +625,10 @@
             Koi active bet nahi hai.
           </div>
 
+          <!-- Desktop Table (hidden on mobile) -->
           <table v-if="!loading && bets.length > 0"
                  id="tableLedger"
-                 class="table table-striped table-bordered dt-responsive nowrap"
+                 class="table table-striped table-bordered dt-responsive nowrap bh-desktop-table"
                  style="width:100%;">
             <thead>
               <tr>
@@ -661,6 +662,106 @@
               </tr>
             </tbody>
           </table>
+
+          <!-- Mobile Card Layout (screenshot jesa) -->
+          <div v-if="!loading && bets.length > 0" class="bh-mobile-cards">
+            <div v-for="bet in bets" :key="'m-' + bet.index" class="bh-bet-card"
+                 :class="(bet.side === 'BACK' || bet.side === 'B') ? 'bh-back-card' : 'bh-lay-card'">
+              <!-- Runner row (pink/blue highlight like screenshot) -->
+              <div class="bh-runner-row"
+                   :style="{ backgroundColor: (bet.side === 'BACK' || bet.side === 'B') ? '#8dd2f0' : '#feabb2' }">
+                <span class="bh-index">{{ bet.index }}</span>
+                <span class="bh-runner-name">{{ bet.runner }}</span>
+              </div>
+              <!-- Details rows -->
+              <div class="bh-detail-row">
+                <span class="bh-label">Event</span>
+                <span class="bh-value">{{ bet.event }}</span>
+              </div>
+              <div class="bh-detail-row">
+                <span class="bh-label">Price</span>
+                <span class="bh-value">{{ bet.price }}</span>
+              </div>
+              <div class="bh-detail-row">
+                <span class="bh-label">Amount</span>
+                <span class="bh-value">{{ bet.amount }}</span>
+              </div>
+              <div class="bh-detail-row">
+                <span class="bh-label">Position</span>
+                <span class="bh-value">{{ bet.position || 0 }}</span>
+              </div>
+              <div class="bh-detail-row">
+                <span class="bh-label">Placed</span>
+                <span class="bh-value">{{ bet.placed }}</span>
+              </div>
+              <div class="bh-detail-row">
+                <span class="bh-label">Updated</span>
+                <span class="bh-value">{{ bet.updated }}</span>
+              </div>
+            </div>
+          </div>
+
+          <style>
+            /* Desktop table - normal screens pe dikhao */
+            .bh-mobile-cards { display: none; }
+
+            @media screen and (max-width: 767px) {
+              /* Mobile pe table chupao, cards dikhao */
+              .bh-desktop-table { display: none !important; }
+              .bh-mobile-cards  { display: block; }
+
+              .bh-bet-card {
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                margin-bottom: 12px;
+                overflow: hidden;
+                background: #fff;
+                font-size: 14px;
+              }
+
+              /* Runner header row - exactly like screenshot */
+              .bh-runner-row {
+                display: flex;
+                align-items: center;
+                padding: 10px 14px;
+                font-size: 15px;
+                font-weight: 500;
+                color: #222;
+                border-bottom: 1px solid rgba(0,0,0,0.08);
+              }
+              .bh-index {
+                font-weight: 700;
+                margin-right: 16px;
+                min-width: 20px;
+                color: #333;
+              }
+              .bh-runner-name {
+                flex: 1;
+              }
+
+              /* Each detail row - bold label left, value right */
+              .bh-detail-row {
+                display: flex;
+                justify-content: space-between;
+                padding: 7px 14px;
+                border-bottom: 1px solid #f0f0f0;
+                color: #333;
+              }
+              .bh-detail-row:last-child {
+                border-bottom: none;
+              }
+              .bh-label {
+                font-weight: 700;
+                color: #222;
+                min-width: 80px;
+              }
+              .bh-value {
+                color: #444;
+                text-align: right;
+                word-break: break-word;
+              }
+            }
+          </style>
 
         </div>
       </div>

@@ -5042,10 +5042,10 @@ async function fetchMatched() {
         const json = await res.json();
         let list = json.data?.orders || json.orders || [];
 
-        // ── FIXED: SETTLED/CANCELLED bets kabhi matched table mein nahi aani ──
+        // ── SETTLED/CANCELLED bets kabhi matched table mein nahi aani ──
         list = list.filter(o => {
-            const st = (o.status || "").toUpperCase();
-            return st === "MATCHED" || st === "";
+            const st = (o.status || '').toUpperCase();
+            return st === 'MATCHED' || st === '';
         });
 
         // Client-side filter: sirf current match ke marketIds wale orders
@@ -5177,6 +5177,30 @@ async function fetchRunners() {
             });
 
             runnersReady = true;
+
+            // ── AUTO-CLEAR: Market CLOSED + winner detect ────────────────
+            // Agar backend settlement thoda late kare, frontend khud bets
+            // clear kar deta hai aur bethistory refresh ka signal deta hai
+            const mktStatus  = (market?.status || market?.marketStatus || '').toUpperCase();
+            const winnerRunner = allRunnerSources.find(r =>
+                (r.status || r.runnerStatus || '').toUpperCase() === 'WINNER'
+            );
+            if (mktStatus === 'CLOSED' && winnerRunner) {
+                const winSelId = String(winnerRunner.selectionId || winnerRunner.selection_id || '');
+                const mainMktId = String(market.marketId || market.id || matchId);
+                console.log(`[Market] CLOSED detected via poll — winner=${winSelId}, market=${mainMktId}`);
+
+                // UI se MATCHED/UNMATCHED bets hataao (backend settle hone tak)
+                Matched   = Matched.filter(o => String(o.mktId || matchId) !== mainMktId);
+                UnMatched = UnMatched.filter(o => String(o.mktId || matchId) !== mainMktId);
+
+                // runnerPnL clear karo
+                Object.keys(runnerPnL).forEach(key => {
+                    if (key.startsWith(mainMktId + '||')) delete runnerPnL[key];
+                });
+                window.runnerPnL = runnerPnL;
+            }
+            // ────────────────────────────────────────────────────────────
 
             // Upgrade placeholder names now that selectionIdToRunner map is populated.
             // ONLY upgrade "Runner ..." placeholders — never touch confirmed real names.
@@ -5362,27 +5386,16 @@ socket.on("userUpdated", (data) => {
     }
 });
 
-// ✅ marketSettled — market close hone par matched bets clear karo
-// Settlement ke baad bets statement page pe chale jaate hain
 socket.on("marketSettled", async (data) => {
     console.log("[Market] marketSettled event:", data);
 
     const settledMktId = String(data?.marketId || matchId || "");
 
-    // ── FIXED: mktId blank bhi ho sakta hai — dono cases handle karo ──
-    // Case 1: mktId match kare → hataao
-    // Case 2: mktId blank ho (assign nahi hua tha) → matchId se compare karo
-    // Case 3: koi bhi case — server se re-fetch karo, wahi ground truth hai
-    Matched   = Matched.filter(o => {
-        const oMkt = String(o.mktId || matchId); // blank = main market
-        return oMkt !== settledMktId;
-    });
-    UnMatched = UnMatched.filter(o => {
-        const oMkt = String(o.mktId || matchId);
-        return oMkt !== settledMktId;
-    });
+    // ── FIXED: mktId blank bhi ho sakta hai — blank = main market ──
+    Matched   = Matched.filter(o => String(o.mktId || matchId) !== settledMktId);
+    UnMatched = UnMatched.filter(o => String(o.mktId || matchId) !== settledMktId);
 
-    // runnerPnL reset karo is market ke liye
+    // runnerPnL reset
     Object.keys(runnerPnL).forEach(key => {
         if (key.startsWith(settledMktId + "||")) delete runnerPnL[key];
     });
@@ -5392,9 +5405,7 @@ socket.on("marketSettled", async (data) => {
     updateVueRunnerPnL();
     await updateUserWallet();
 
-    // ── Re-fetch from server — ground truth confirm karo ──
-    // Server ab sirf MATCHED status wali bets return karta hai
-    // SETTLED ho chuki bets khud-ba-khud nahi aayengi
+    // Re-fetch to confirm — SETTLED orders ab API se nahi aayenge
     setTimeout(async () => {
         await fetchUnMatched();
         await fetchMatched();

@@ -504,11 +504,7 @@
 
                 <div class="content-wrap body">
                     <link rel="stylesheet" href="/css/all.css" />
-<link rel="stylesheet" href="https://cdn.datatables.net/1.10.19/css/dataTables.bootstrap4.min.css" />
-
 <div class="table-wrap">
-    
-<link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.2.3/css/responsive.dataTables.min.css" />
 <style>
     @media screen and (max-width: 635px) {
         .mobilehide {
@@ -604,6 +600,67 @@
 </div>
 
 </div>
+<style>
+/* ===== MOBILE BET CARDS (screenshot style) ===== */
+.bet-cards-mobile {
+  display: none;
+}
+@media screen and (max-width: 767px) {
+  .bet-cards-mobile { display: block; }
+  .bet-table-desktop { display: none !important; }
+}
+
+.bet-card {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  overflow: hidden;
+  background: #fff;
+}
+
+/* Runner header row - pink for LAY, blue for BACK */
+.bet-card-header {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  font-weight: 600;
+  font-size: 14px;
+  color: #333;
+}
+.bet-card-header .bet-num {
+  min-width: 28px;
+  font-weight: 700;
+  color: #555;
+}
+.bet-card-header.back-bet { background-color: #8dd2f0; }
+.bet-card-header.lay-bet  { background-color: #feabb2; }
+
+/* Detail rows inside card */
+.bet-card-body {
+  padding: 0;
+}
+.bet-card-row {
+  display: flex;
+  border-top: 1px solid #e8e8e8;
+  font-size: 13px;
+  padding: 5px 12px;
+  background: #fff;
+}
+.bet-card-row .label {
+  font-weight: 700;
+  width: 90px;
+  min-width: 90px;
+  color: #333;
+}
+.bet-card-row .value {
+  color: #444;
+  flex: 1;
+}
+.bet-card-row.alt-row {
+  background: #fafafa;
+}
+</style>
+
 <div id="app">
   <div class="table-wrap">
     <div>
@@ -625,135 +682,82 @@
             Koi active bet nahi hai.
           </div>
 
-          <!-- ===== DESKTOP TABLE (id changed so no DataTable picks it up) ===== -->
-          <table v-if="!loading && bets.length > 0"
-                 id="vueBetsTable"
-                 class="table table-striped table-bordered nowrap bh-desktop-table"
-                 style="width:100%;">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Event</th>
-                <th>Runner</th>
-                <th>Side</th>
-                <th>Price</th>
-                <th>Amount</th>
-                <th>Status</th>
-                <th>Placed</th>
-                <th>Updated</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="bet in bets" :key="bet.index"
-                  :style="{ backgroundColor: (bet.side === 'BACK' || bet.side === 'B') ? '#8dd2f0' : '#feabb2' }">
-                <td>{{ bet.index }}</td>
-                <td>{{ bet.event }}</td>
-                <td>{{ bet.runner }}</td>
-                <td><strong>{{ bet.side === 'B' ? 'BACK' : bet.side === 'L' ? 'LAY' : bet.side }}</strong></td>
-                <td>{{ bet.price }}</td>
-                <td>{{ bet.amount }}</td>
-                <td>
-                  <span :style="{ color: bet.status === 'MATCHED' ? '#4dbd74' : '#f0ad4e', fontWeight: '700' }">
-                    {{ bet.status }}
-                  </span>
-                </td>
-                <td>{{ bet.placed }}</td>
-                <td>{{ bet.updated }}</td>
-              </tr>
-            </tbody>
-          </table>
+          <!-- ===== DESKTOP TABLE ===== -->
+          <div class="bet-table-desktop" v-if="!loading && bets.length > 0">
+            <table id="tableLedger"
+                   class="table table-striped table-bordered nowrap"
+                   style="width:100%;">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Event</th>
+                  <th>Runner</th>
+                  <th>Side</th>
+                  <th>Price</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                  <th>Placed</th>
+                  <th>Updated</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="bet in bets" :key="'d-'+bet.index"
+                    :style="{ backgroundColor: (bet.side === 'BACK' || bet.side === 'B') ? '#8dd2f0' : '#feabb2' }">
+                  <td>{{ bet.index }}</td>
+                  <td>{{ bet.event }}</td>
+                  <td>{{ bet.runner }}</td>
+                  <td><strong>{{ bet.side === 'B' ? 'BACK' : bet.side === 'L' ? 'LAY' : bet.side }}</strong></td>
+                  <td>{{ bet.price }}</td>
+                  <td>{{ bet.amount }}</td>
+                  <td>
+                    <span :style="{ color: bet.status === 'MATCHED' ? '#4dbd74' : '#f0ad4e', fontWeight: '700' }">
+                      {{ bet.status }}
+                    </span>
+                  </td>
+                  <td>{{ bet.placed }}</td>
+                  <td>{{ bet.updated }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
 
-          <!-- ===== MOBILE CARDS ===== -->
-          <div v-if="!loading && bets.length > 0" class="bh-mobile-cards">
-            <div v-for="bet in bets" :key="'m'+bet.index" class="bh-card">
-              <div class="bh-card-header"
-                   :style="{ backgroundColor: (bet.side === 'BACK' || bet.side === 'B') ? '#8dd2f0' : '#feabb2' }">
-                <span class="bh-card-num">{{ bet.index }}</span>
-                <span class="bh-card-runner">{{ bet.runner }}</span>
+          <!-- ===== MOBILE CARDS (screenshot style) ===== -->
+          <div class="bet-cards-mobile" v-if="!loading && bets.length > 0">
+            <div class="bet-card" v-for="bet in bets" :key="'m-'+bet.index">
+              <!-- Runner header -->
+              <div class="bet-card-header" :class="(bet.side === 'BACK' || bet.side === 'B') ? 'back-bet' : 'lay-bet'">
+                <span class="bet-num">{{ bet.index }}</span>
+                <span>{{ bet.runner }}</span>
               </div>
-              <div class="bh-card-body">
-                <div class="bh-card-row">
-                  <span class="bh-card-label">Event</span>
-                  <span class="bh-card-value">{{ bet.event }}</span>
+              <!-- Detail rows -->
+              <div class="bet-card-body">
+                <div class="bet-card-row">
+                  <span class="label">Event</span>
+                  <span class="value">{{ bet.event }}</span>
                 </div>
-                <div class="bh-card-row">
-                  <span class="bh-card-label">Price</span>
-                  <span class="bh-card-value">{{ bet.price }}</span>
+                <div class="bet-card-row alt-row">
+                  <span class="label">Price</span>
+                  <span class="value">{{ bet.price }}</span>
                 </div>
-                <div class="bh-card-row">
-                  <span class="bh-card-label">Amount</span>
-                  <span class="bh-card-value">{{ bet.amount }}</span>
+                <div class="bet-card-row">
+                  <span class="label">Amount</span>
+                  <span class="value">{{ bet.amount }}</span>
                 </div>
-                <div class="bh-card-row">
-                  <span class="bh-card-label">Position</span>
-                  <span class="bh-card-value">{{ bet.side === 'B' ? 'BACK' : bet.side === 'L' ? 'LAY' : bet.side }}</span>
+                <div class="bet-card-row alt-row">
+                  <span class="label">Position</span>
+                  <span class="value">{{ bet.position }}</span>
                 </div>
-                <div class="bh-card-row">
-                  <span class="bh-card-label">Placed</span>
-                  <span class="bh-card-value">{{ bet.placed }}</span>
+                <div class="bet-card-row">
+                  <span class="label">Placed</span>
+                  <span class="value">{{ bet.placed }}</span>
                 </div>
-                <div class="bh-card-row">
-                  <span class="bh-card-label">Updated</span>
-                  <span class="bh-card-value">{{ bet.updated }}</span>
+                <div class="bet-card-row alt-row">
+                  <span class="label">Updated</span>
+                  <span class="value">{{ bet.updated }}</span>
                 </div>
               </div>
             </div>
           </div>
-
-          <style>
-            .bh-mobile-cards { display: none; }
-            .bh-desktop-table { display: table; }
-
-            @media screen and (max-width: 767px) {
-              .bh-desktop-table { display: none !important; }
-              .bh-mobile-cards  { display: block; }
-
-              .bh-card {
-                border: 1px solid #ddd;
-                margin-bottom: 14px;
-                border-radius: 4px;
-                overflow: hidden;
-                background: #fff;
-                font-size: 14px;
-              }
-              .bh-card-header {
-                display: flex;
-                align-items: center;
-                padding: 10px 12px;
-                gap: 12px;
-                border-bottom: 1px solid #ccc;
-              }
-              .bh-card-num {
-                font-weight: 700;
-                font-size: 15px;
-                color: #333;
-                min-width: 20px;
-              }
-              .bh-card-runner {
-                font-size: 15px;
-                color: #333;
-              }
-              .bh-card-body { padding: 4px 0; }
-              .bh-card-row {
-                display: flex;
-                align-items: baseline;
-                padding: 7px 12px;
-                border-bottom: 1px solid #f0f0f0;
-              }
-              .bh-card-row:last-child { border-bottom: none; }
-              .bh-card-label {
-                font-weight: 700;
-                color: #333;
-                min-width: 90px;
-                font-size: 14px;
-              }
-              .bh-card-value {
-                color: #555;
-                font-size: 14px;
-                flex: 1;
-              }
-            }
-          </style>
 
         </div>
       </div>
@@ -2034,10 +2038,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 </script>
     
-    <script type="text/javascript" src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.js"></script>
-    <script type="text/javascript" src="https://cdn.datatables.net/1.10.19/js/dataTables.bootstrap4.min.js"></script>
-    <script type="text/javascript" src="https://cdn.datatables.net/responsive/2.2.3/js/dataTables.responsive.min.js"></script>
-    <!-- DataTable on #tableLedger removed — Vue v-for handles rows, DataTable conflicts and causes stale UI on refresh -->
+    <!-- DataTable removed: Vue manages the table directly to avoid stale UI on refresh -->
 
 
     <script>

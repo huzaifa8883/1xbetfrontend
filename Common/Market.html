@@ -5042,12 +5042,6 @@ async function fetchMatched() {
         const json = await res.json();
         let list = json.data?.orders || json.orders || [];
 
-        // ── SETTLED/CANCELLED bets kabhi matched table mein nahi aani ──
-        list = list.filter(o => {
-            const st = (o.status || '').toUpperCase();
-            return st === 'MATCHED' || st === '';
-        });
-
         // Client-side filter: sirf current match ke marketIds wale orders
         if (window.allMarketIds && window.allMarketIds.size > 0) {
             list = list.filter(o => {
@@ -5177,30 +5171,6 @@ async function fetchRunners() {
             });
 
             runnersReady = true;
-
-            // ── AUTO-CLEAR: Market CLOSED + winner detect ────────────────
-            // Agar backend settlement thoda late kare, frontend khud bets
-            // clear kar deta hai aur bethistory refresh ka signal deta hai
-            const mktStatus  = (market?.status || market?.marketStatus || '').toUpperCase();
-            const winnerRunner = allRunnerSources.find(r =>
-                (r.status || r.runnerStatus || '').toUpperCase() === 'WINNER'
-            );
-            if (mktStatus === 'CLOSED' && winnerRunner) {
-                const winSelId = String(winnerRunner.selectionId || winnerRunner.selection_id || '');
-                const mainMktId = String(market.marketId || market.id || matchId);
-                console.log(`[Market] CLOSED detected via poll — winner=${winSelId}, market=${mainMktId}`);
-
-                // UI se MATCHED/UNMATCHED bets hataao (backend settle hone tak)
-                Matched   = Matched.filter(o => String(o.mktId || matchId) !== mainMktId);
-                UnMatched = UnMatched.filter(o => String(o.mktId || matchId) !== mainMktId);
-
-                // runnerPnL clear karo
-                Object.keys(runnerPnL).forEach(key => {
-                    if (key.startsWith(mainMktId + '||')) delete runnerPnL[key];
-                });
-                window.runnerPnL = runnerPnL;
-            }
-            // ────────────────────────────────────────────────────────────
 
             // Upgrade placeholder names now that selectionIdToRunner map is populated.
             // ONLY upgrade "Runner ..." placeholders — never touch confirmed real names.
@@ -5386,16 +5356,25 @@ socket.on("userUpdated", (data) => {
     }
 });
 
+// ✅ marketSettled — market close hone par matched bets clear karo
+// Settlement ke baad bets statement page pe chale jaate hain
 socket.on("marketSettled", async (data) => {
     console.log("[Market] marketSettled event:", data);
 
+    // Sirf is market ke settled orders hataao
     const settledMktId = String(data?.marketId || matchId || "");
 
-    // ── FIXED: mktId blank bhi ho sakta hai — blank = main market ──
-    Matched   = Matched.filter(o => String(o.mktId || matchId) !== settledMktId);
-    UnMatched = UnMatched.filter(o => String(o.mktId || matchId) !== settledMktId);
+    if (settledMktId) {
+        // Matched bets mein se is market ki sab bets hataao
+        Matched   = Matched.filter(o => String(o.mktId || "") !== settledMktId);
+        UnMatched = UnMatched.filter(o => String(o.mktId || "") !== settledMktId);
+    } else {
+        // agar marketId nahi to sab hataao (fallback)
+        Matched   = [];
+        UnMatched = [];
+    }
 
-    // runnerPnL reset
+    // runnerPnL reset karo is market ke liye
     Object.keys(runnerPnL).forEach(key => {
         if (key.startsWith(settledMktId + "||")) delete runnerPnL[key];
     });
@@ -5405,12 +5384,12 @@ socket.on("marketSettled", async (data) => {
     updateVueRunnerPnL();
     await updateUserWallet();
 
-    // Re-fetch to confirm — SETTLED orders ab API se nahi aayenge
+    // Re-fetch from server to confirm (1 second delay)
     setTimeout(async () => {
         await fetchUnMatched();
         await fetchMatched();
         updateVueRunnerPnL();
-    }, 1500);
+    }, 1000);
 });
 
 // ✅ marketVoided — same cleanup
@@ -5437,11 +5416,6 @@ setInterval(async () => {
     await fetchMatched();
 
     // FIX 3: VUE LAZY RENDERING SAFEGUARD — periodic repair loop.
-    // On every tick, scan Matched + UnMatched and upgrade any order whose
-    // .rn is still a placeholder or match title now that the
-    // selectionIdToRunner map may have been populated since last fetch.
-    // Once a real confirmed name is written, it is frozen here so that
-    // the next raw streaming payload cannot downgrade it back.
     [Matched, UnMatched].forEach(list => {
         list.forEach(o => {
             if (!o.rn || o.rn === "Runner" || o.rn.startsWith("Runner ") || _isMatchName(o.rn)) {
@@ -5452,6 +5426,50 @@ setInterval(async () => {
         });
     });
 }, 5000);
+
+// ── AUTO-SETTLE TRIGGER ────────────────────────────────────────────
+// Jab market CLOSED detect ho to backend ko auto-settle trigger karo
+// Backend khud betfair se winner detect karega
+let _autoSettleTriggered = false;
+
+async function triggerAutoSettle() {
+    if (_autoSettleTriggered || !matchId) return;
+    const tk = localStorage.getItem('token') || getCookie('wexscktoken') || '';
+    if (!tk) return;
+
+    try {
+        const res = await fetch(`${ordersUrl}/orders/auto-settle/${encodeURIComponent(matchId)}`, {
+            method:  'POST',
+            headers: { 'Authorization': 'Bearer ' + tk, 'Content-Type': 'application/json' }
+        });
+        if (res.ok) {
+            _autoSettleTriggered = true;
+            console.log('[Market] Auto-settle triggered for', matchId);
+            // 3 second baad bets refresh karo
+            setTimeout(async () => {
+                await fetchUnMatched();
+                await fetchMatched();
+                await updateUserWallet();
+                updateVueRunnerPnL();
+            }, 3000);
+        }
+    } catch (e) {
+        console.warn('[Market] Auto-settle trigger failed:', e.message);
+    }
+}
+
+// Catalog status poll: CLOSED detect hone par auto-settle trigger karo
+setInterval(async () => {
+    if (_autoSettleTriggered || !matchId) return;
+    const vm = document.getElementById('app')?.__vue__;
+    if (!vm) return;
+    const status = (vm.Catalog?.status || '').toUpperCase();
+    if (status === 'CLOSED') {
+        console.log('[Market] Catalog status=CLOSED detected — triggering auto-settle');
+        await triggerAutoSettle();
+    }
+}, 3000);
+// ──────────────────────────────────────────────────────────────────
 
 // Wallet har 30 second mein refresh
 setInterval(updateUserWallet, 30000);

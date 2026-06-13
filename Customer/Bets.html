@@ -625,153 +625,151 @@
             Koi active bet nahi hai.
           </div>
 
-          <!-- Mobile Card Style — screenshot jaisa design -->
-          <style>
-            .bh-show-entries {
-              display: flex;
-              align-items: center;
-              gap: 8px;
-              margin-bottom: 10px;
-              font-size: 14px;
-              color: #333;
-            }
-            .bh-show-entries select {
-              border: 1px solid #ccc;
-              border-radius: 4px;
-              padding: 2px 6px;
-              font-size: 14px;
-            }
-            .bh-search-row {
-              display: flex;
-              align-items: center;
-              gap: 8px;
-              margin-bottom: 12px;
-              font-size: 14px;
-              color: #333;
-            }
-            .bh-search-row input {
-              flex: 1;
-              border: 1px solid #ccc;
-              border-radius: 4px;
-              padding: 5px 8px;
-              font-size: 14px;
-              outline: none;
-            }
-            .bh-bet-card {
-              border: 1px solid #ddd;
-              border-radius: 4px;
-              margin-bottom: 10px;
-              overflow: hidden;
-              background: #fff;
-            }
-            .bh-bet-header {
-              display: flex;
-              align-items: center;
-              padding: 10px 12px;
-              font-size: 15px;
-              font-weight: 600;
-              color: #333;
-              border-bottom: 1px solid #ddd;
-            }
-            .bh-bet-header .bh-index {
-              min-width: 28px;
-              font-weight: 700;
-              color: #333;
-            }
-            .bh-bet-header .bh-runner-name {
-              flex: 1;
-            }
-            .bh-bet-body {
-              padding: 0;
-            }
-            .bh-bet-row {
-              display: flex;
-              padding: 7px 12px;
-              border-bottom: 1px solid #f0f0f0;
-              font-size: 14px;
-            }
-            .bh-bet-row:last-child {
-              border-bottom: none;
-            }
-            .bh-bet-label {
-              font-weight: 700;
-              min-width: 90px;
-              color: #333;
-            }
-            .bh-bet-value {
-              color: #333;
-              flex: 1;
-            }
-            /* BACK = light blue header, LAY = light pink header */
-            .bh-header-back {
-              background-color: #8dd2f0;
-            }
-            .bh-header-lay {
-              background-color: #feabb2;
-            }
-          </style>
+          <!-- ===== DESKTOP TABLE ===== -->
+          <table v-if="!loading && bets.length > 0"
+                 id="tableLedger"
+                 class="table table-striped table-bordered dt-responsive nowrap bh-desktop-table"
+                 style="width:100%;">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Event</th>
+                <th>Runner</th>
+                <th>Side</th>
+                <th>Price</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th>Placed</th>
+                <th>Updated</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="bet in bets" :key="bet.index"
+                  :style="{ backgroundColor: (bet.side === 'BACK' || bet.side === 'B') ? '#8dd2f0' : '#feabb2' }">
+                <td>{{ bet.index }}</td>
+                <td>{{ bet.event }}</td>
+                <td>{{ bet.runner }}</td>
+                <td><strong>{{ bet.side === 'B' ? 'BACK' : bet.side === 'L' ? 'LAY' : bet.side }}</strong></td>
+                <td>{{ bet.price }}</td>
+                <td>{{ bet.amount }}</td>
+                <td>
+                  <span :style="{ color: bet.status === 'MATCHED' ? '#4dbd74' : '#f0ad4e', fontWeight: '700' }">
+                    {{ bet.status }}
+                  </span>
+                </td>
+                <td>{{ bet.placed }}</td>
+                <td>{{ bet.updated }}</td>
+              </tr>
+            </tbody>
+          </table>
 
-          <div v-if="!loading && bets.length > 0">
-            <!-- Show entries -->
-            <div class="bh-show-entries">
-              Show
-              <select v-model="pageSize">
-                <option value="10">10</option>
-                <option value="25">25</option>
-                <option value="50">50</option>
-                <option value="100">100</option>
-              </select>
-              entries
-            </div>
-
-            <!-- Search -->
-            <div class="bh-search-row">
-              <span>Search:</span>
-              <input type="text" v-model="searchQuery" placeholder="" />
-            </div>
-
-            <!-- Cards -->
-            <div v-for="bet in filteredBets" :key="bet.index" class="bh-bet-card">
-              <!-- Header row: # + Runner (colored by BACK/LAY) -->
-              <div class="bh-bet-header"
-                   :class="(bet.side === 'BACK' || bet.side === 'B') ? 'bh-header-back' : 'bh-header-lay'">
-                <span class="bh-index">{{ bet.index }}</span>
-                <span class="bh-runner-name">{{ bet.runner }}</span>
+          <!-- ===== MOBILE CARDS ===== -->
+          <div v-if="!loading && bets.length > 0" class="bh-mobile-cards">
+            <div v-for="bet in bets" :key="'m'+bet.index" class="bh-card">
+              <!-- Runner header row — pink (LAY) or blue (BACK) -->
+              <div class="bh-card-header"
+                   :style="{ backgroundColor: (bet.side === 'BACK' || bet.side === 'B') ? '#8dd2f0' : '#feabb2' }">
+                <span class="bh-card-num">{{ bet.index }}</span>
+                <span class="bh-card-runner">{{ bet.runner }}</span>
               </div>
               <!-- Detail rows -->
-              <div class="bh-bet-body">
-                <div class="bh-bet-row">
-                  <span class="bh-bet-label">Event</span>
-                  <span class="bh-bet-value">{{ bet.event }}</span>
+              <div class="bh-card-body">
+                <div class="bh-card-row">
+                  <span class="bh-card-label">Event</span>
+                  <span class="bh-card-value">{{ bet.event }}</span>
                 </div>
-                <div class="bh-bet-row">
-                  <span class="bh-bet-label">Price</span>
-                  <span class="bh-bet-value">{{ bet.price }}</span>
+                <div class="bh-card-row">
+                  <span class="bh-card-label">Price</span>
+                  <span class="bh-card-value">{{ bet.price }}</span>
                 </div>
-                <div class="bh-bet-row">
-                  <span class="bh-bet-label">Amount</span>
-                  <span class="bh-bet-value">{{ bet.amount }}</span>
+                <div class="bh-card-row">
+                  <span class="bh-card-label">Amount</span>
+                  <span class="bh-card-value">{{ bet.amount }}</span>
                 </div>
-                <div class="bh-bet-row">
-                  <span class="bh-bet-label">Position</span>
-                  <span class="bh-bet-value">{{ bet.position || 0 }}</span>
+                <div class="bh-card-row">
+                  <span class="bh-card-label">Position</span>
+                  <span class="bh-card-value">{{ bet.side === 'B' ? 'BACK' : bet.side === 'L' ? 'LAY' : bet.side }}</span>
                 </div>
-                <div class="bh-bet-row">
-                  <span class="bh-bet-label">Placed</span>
-                  <span class="bh-bet-value">{{ bet.placed }}</span>
+                <div class="bh-card-row">
+                  <span class="bh-card-label">Placed</span>
+                  <span class="bh-card-value">{{ bet.placed }}</span>
                 </div>
-                <div class="bh-bet-row">
-                  <span class="bh-bet-label">Updated</span>
-                  <span class="bh-bet-value">{{ bet.updated }}</span>
+                <div class="bh-card-row">
+                  <span class="bh-card-label">Updated</span>
+                  <span class="bh-card-value">{{ bet.updated }}</span>
                 </div>
               </div>
             </div>
-
-            <!-- No results after search -->
-            <div v-if="filteredBets.length === 0" style="color:#aaa; padding:12px; text-align:center;">
-              Koi bet nahi mili.
-            </div>
           </div>
+
+          <style>
+            /* Desktop: show table, hide cards */
+            .bh-mobile-cards { display: none; }
+            .bh-desktop-table { display: table; }
+
+            /* Mobile: hide table, show cards */
+            @media screen and (max-width: 767px) {
+              .bh-desktop-table { display: none !important; }
+              .bh-mobile-cards  { display: block; }
+
+              .bh-card {
+                border: 1px solid #ddd;
+                margin-bottom: 14px;
+                border-radius: 4px;
+                overflow: hidden;
+                background: #fff;
+                font-size: 14px;
+              }
+
+              .bh-card-header {
+                display: flex;
+                align-items: center;
+                padding: 10px 12px;
+                gap: 12px;
+                border-bottom: 1px solid #ccc;
+              }
+
+              .bh-card-num {
+                font-weight: 700;
+                font-size: 15px;
+                color: #333;
+                min-width: 20px;
+              }
+
+              .bh-card-runner {
+                font-size: 15px;
+                color: #333;
+              }
+
+              .bh-card-body {
+                padding: 4px 0;
+              }
+
+              .bh-card-row {
+                display: flex;
+                align-items: baseline;
+                padding: 7px 12px;
+                border-bottom: 1px solid #f0f0f0;
+              }
+
+              .bh-card-row:last-child {
+                border-bottom: none;
+              }
+
+              .bh-card-label {
+                font-weight: 700;
+                color: #333;
+                min-width: 90px;
+                font-size: 14px;
+              }
+
+              .bh-card-value {
+                color: #555;
+                font-size: 14px;
+                flex: 1;
+              }
+            }
+          </style>
 
         </div>
       </div>
@@ -905,22 +903,7 @@ new Vue({
   data: {
     bets: [],
     loading: false,
-    error: null,
-    searchQuery: '',
-    pageSize: 10
-  },
-  computed: {
-    filteredBets() {
-      const q = this.searchQuery.toLowerCase().trim();
-      const list = q
-        ? this.bets.filter(b =>
-            (b.runner || '').toLowerCase().includes(q) ||
-            (b.event  || '').toLowerCase().includes(q) ||
-            (b.status || '').toLowerCase().includes(q)
-          )
-        : this.bets;
-      return list.slice(0, this.pageSize);
-    }
+    error: null
   },
   methods: {
     async fetchBetsHistory() {

@@ -953,7 +953,6 @@ new Vue({
         _sock.on("connect", () => {
           if (_tk) {
             try {
-              // JWT payload se userId nikalo (base64 decode)
               const payload = JSON.parse(atob(_tk.split('.')[1]));
               const uid = payload.id || payload.userId || payload.sub;
               if (uid) {
@@ -1049,7 +1048,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (!token) return;
 
   try {
-    const res = await fetch("https://1XBETBACKEND.WORK.GD/api/users/latest", {
+    const res = await fetch("https://1XBETBACKEND.WORK.GD/api/v1/users/latest", {
       headers: { "Authorization": "Bearer " + token }
     });
     const data = await res.json();
@@ -1084,7 +1083,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 <script>
   async function loadgreyhoundMatches() {
     try {
-      const response = await fetch('https://1XBETBACKEND.WORK.GD/api/markets/live/greyhound');
+      const response = await fetch('https://1XBETBACKEND.WORK.GD/api/v1/markets/live/greyhound');
       const result = await response.json();
 
       const listContainer = document.querySelector('.greyhounditems');
@@ -1131,7 +1130,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 <script>
   async function loadhorseMatches() {
     try {
-      const response = await fetch('https://1XBETBACKEND.WORK.GD/api/markets/live/horse');
+      const response = await fetch('https://1XBETBACKEND.WORK.GD/api/v1/markets/live/horse');
       const result = await response.json();
 
       const listContainer = document.querySelector('.horseEventList');
@@ -1175,7 +1174,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 <script>
   async function loadHorseLiveData() {
     try {
-      const res = await fetch('https://1XBETBACKEND.WORK.GD/api/markets/live/horse');
+      const res = await fetch('https://1XBETBACKEND.WORK.GD/api/v1/markets/live/horse');
       const data = await res.json();
 
       const container = document.getElementById('horseRaceContainer');
@@ -1246,7 +1245,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 <script>
   async function loadgreyhoundLiveData() {
     try {
-      const res = await fetch('https://1XBETBACKEND.WORK.GD/api/markets/live/greyhound');
+      const res = await fetch('https://1XBETBACKEND.WORK.GD/api/v1/markets/live/greyhound');
       const data = await res.json();
 
       const container = document.getElementById('greyhoundRaceContainer');
@@ -1329,7 +1328,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   async function loadTennisMatches() {
     try {
-      const response = await fetch('https://1XBETBACKEND.WORK.GD/api/markets/live/tennis');
+      const response = await fetch('https://1XBETBACKEND.WORK.GD/api/v1/markets/live/tennis');
       const result = await response.json();
 
       if (result.status === 'success' && result.data.length > 0) {
@@ -1394,7 +1393,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   async function loadFootballMatches() {
     try {
-      const response = await fetch('https://1XBETBACKEND.WORK.GD/api/markets/live/football');
+      const response = await fetch('https://1XBETBACKEND.WORK.GD/api/v1/markets/live/football');
       const result = await response.json();
 
       // ✅ Update cache only if API returns non-empty matches
@@ -1459,7 +1458,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   async function loadCricketMatches() {
     try {
-      const response = await fetch('https://1XBETBACKEND.WORK.GD/api/markets/live/cricket');
+      const response = await fetch('https://1XBETBACKEND.WORK.GD/api/v1/markets/live/cricket');
       const result = await response.json();
 
       const ul = document.querySelector('.cricketEventList');
@@ -1504,7 +1503,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 <script>
   async function loadCricketMatches() {
     try {
-      const response = await fetch('https://1XBETBACKEND.WORK.GD/api/markets/live/cricket');
+      const response = await fetch('https://1XBETBACKEND.WORK.GD/api/v1/markets/live/cricket');
       const result = await response.json();
 
       const tbody = document.getElementById('cricketMatchContainer');
@@ -1623,7 +1622,7 @@ tbody.appendChild(row);
 <script>
   async function loadInPlayCricketMatches() {
     try {
-      const response = await fetch('https://1XBETBACKEND.WORK.GD/api/markets/live/cricket');
+      const response = await fetch('https://1XBETBACKEND.WORK.GD/api/v1/markets/live/cricket');
       const result = await response.json();
 
       const tbody = document.getElementById('inPlayMatchesContainer');
@@ -1712,7 +1711,7 @@ tbody.appendChild(row);
 <script>
   async function loadfootballoddsMatches() {
     try {
-      const response = await fetch('https://1XBETBACKEND.WORK.GD/api/markets/live/football');
+      const response = await fetch('https://1XBETBACKEND.WORK.GD/api/v1/markets/live/football');
       const result = await response.json();
 
       const tbody = document.getElementById('footballMatchContainer');
@@ -1831,7 +1830,7 @@ tbody.appendChild(row);
 <script>
   async function loadInPlayfootballMatches() {
     try {
-      const response = await fetch('https://1XBETBACKEND.WORK.GD/api/markets/live/football');
+      const response = await fetch('https://1XBETBACKEND.WORK.GD/api/v1/markets/live/football');
       const result = await response.json();
 
       const tbody = document.getElementById('inPlayfootballContainer');
@@ -1918,7 +1917,7 @@ tbody.appendChild(row);
 <script>
   async function loadtennisoddsMatches() {
     try {
-      const response = await fetch('https://1XBETBACKEND.WORK.GD/api/markets/live/tennis');
+      const response = await fetch('https://1XBETBACKEND.WORK.GD/api/v1/markets/live/tennis');
       const result = await response.json();
 
       const tbody = document.getElementById('tennisMatchContainer');
@@ -2037,7 +2036,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (!token) return;
 
   try {
-    const res = await fetch("https://1XBETBACKEND.WORK.GD/api/users/latest", {
+    const res = await fetch("https://1XBETBACKEND.WORK.GD/api/v1/users/latest", {
       headers: { "Authorization": "Bearer " + token }
     });
     const data = await res.json();

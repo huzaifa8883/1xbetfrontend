@@ -949,11 +949,18 @@ new Vue({
         const _tk   = localStorage.getItem("token");
 
         // ── User room join karo — userUpdated tab milega ──
+        // Server pe "JoinUserRoom" event hai (server.js dekho)
         _sock.on("connect", () => {
           if (_tk) {
-            _sock.emit("JoinUser", { token: _tk }, (ack) => {
-              console.log("[BetHistory] JoinUser ack:", ack);
-            });
+            try {
+              // JWT payload se userId nikalo (base64 decode)
+              const payload = JSON.parse(atob(_tk.split('.')[1]));
+              const uid = payload.id || payload.userId || payload.sub;
+              if (uid) {
+                _sock.emit("JoinUserRoom", uid);
+                console.log("[BetHistory] JoinUserRoom:", uid);
+              }
+            } catch(e) { console.warn("[BetHistory] userId extract failed:", e.message); }
           }
         });
 

@@ -981,12 +981,21 @@
       const listContainer = document.querySelector('.greyhounditems');
       listContainer.innerHTML = '';
 
-      if (result.status === 'success' && result.data.length > 0) {
-        result.data.forEach(match => {
+      const rawData = (result.success || result.status === 'success') ? result.data : null;
+      if (rawData && rawData.length > 0) {
+        const now = new Date();
+        const twoHoursAgo = new Date(now.getTime() - 2 * 3600_000);
+        const relevant = rawData.filter(m => new Date(m.startTime) >= twoHoursAgo);
+
+        if (relevant.length === 0) {
+          listContainer.innerHTML = '<li style="color:white;">No live greyhound races found.</li>';
+          return;
+        }
+        relevant.forEach(match => {
           const li      = document.createElement('li');
           li.classList.add('match-card');
           const timeStr = new Date(match.startTime).toLocaleTimeString('en-US', {
-            hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'UTC'
+            hour: 'numeric', minute: '2-digit', hour12: true
           }).toLowerCase();
           li.textContent  = `${timeStr} ${match.match}`;
           li.style.cursor = 'pointer';
@@ -1018,12 +1027,21 @@
       const listContainer = document.querySelector('.horseEventList');
       listContainer.innerHTML = '';
 
-      if (result.status === 'success' && result.data.length > 0) {
-        result.data.forEach(match => {
+      const rawData = (result.success || result.status === 'success') ? result.data : null;
+      if (rawData && rawData.length > 0) {
+        const now = new Date();
+        const twoHoursAgo = new Date(now.getTime() - 2 * 3600_000);
+        const relevant = rawData.filter(m => new Date(m.startTime) >= twoHoursAgo);
+
+        if (relevant.length === 0) {
+          listContainer.innerHTML = '<li style="color:white;">No live horse matches found.</li>';
+          return;
+        }
+        relevant.forEach(match => {
           const li      = document.createElement('li');
           li.classList.add('match-card');
           const timeStr = new Date(match.startTime).toLocaleTimeString('en-US', {
-            hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'UTC'
+            hour: 'numeric', minute: '2-digit', hour12: true
           }).toLowerCase();
           li.textContent  = `${timeStr} ${match.match}`;
           li.style.cursor = 'pointer';
@@ -1443,6 +1461,89 @@
                                             <label class="form-check-label" for="IsDisplayOn">Keep Display On</label>
                                         </div>
                                     </p>
+
+<!-- ✅ Horse/Greyhound Race Timer — Remaining countdown before start, Elapsed after start -->
+<script>
+(function() {
+  'use strict';
+
+  var _raceTimerInterval = null;
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+
+  function formatTimer(totalSeconds) {
+    var sign = totalSeconds < 0 ? '-' : '';
+    var abs  = Math.abs(totalSeconds);
+    var h    = Math.floor(abs / 3600);
+    var m    = Math.floor((abs % 3600) / 60);
+    var s    = abs % 60;
+    return sign + pad(h) + ':' + pad(m) + ':' + pad(s);
+  }
+
+  function startRaceTimer(startTimeIso) {
+    if (_raceTimerInterval) clearInterval(_raceTimerInterval);
+
+    var el = document.getElementById('race-timer-display');
+    if (!el) return;
+
+    function tick() {
+      var now  = Date.now();
+      var st   = new Date(startTimeIso).getTime();
+      var diff = Math.floor((st - now) / 1000); // positive = remaining, negative = elapsed
+
+      if (diff > 0) {
+        el.textContent = 'Remaining : ' + formatTimer(diff);
+        el.style.color = '#ffc107'; // amber — race aane wali hai
+      } else {
+        el.textContent = 'Elapsed : ' + formatTimer(-diff);
+        el.style.color = '#4dbd74'; // green — race chal rahi hai / ho gayi
+      }
+    }
+
+    tick();
+    _raceTimerInterval = setInterval(tick, 1000);
+  }
+
+  // Vue instance aane ka wait karo, phir Catalog.marketStartTime se timer start karo
+  function tryStartTimer() {
+    var el = document.getElementById('MarketView') || document.getElementById('app');
+    var vm = el && el.__vue__;
+    if (!vm) { setTimeout(tryStartTimer, 400); return; }
+
+    // eventTypeId check karo — sirf horse (7) aur greyhound (4339) ke liye
+    function checkAndStart() {
+      var eid = vm.Catalog && String(vm.Catalog.eventTypeId);
+      if (!eid) { setTimeout(checkAndStart, 400); return; }
+      if (eid !== '7' && eid !== '4339') return; // cricket/tennis mein timer nahi chahiye
+
+      // startTime — Catalog.marketStartTime ya Catalog.startTime
+      var startTime = vm.Catalog.marketStartTime || vm.Catalog.startTime;
+      if (!startTime) { setTimeout(checkAndStart, 500); return; }
+
+      // Timer display element inject karo (agar pehle se nahi hai)
+      var timerEl = document.getElementById('race-timer-display');
+      if (!timerEl) {
+        timerEl = document.createElement('p');
+        timerEl.id = 'race-timer-display';
+        timerEl.style.cssText = 'font-size:14px; font-weight:bold; margin:2px 0;';
+        // .tb-top-text ke andar insert karo
+        var tbTop = document.querySelector('.tb-top-text');
+        if (tbTop) tbTop.appendChild(timerEl);
+      }
+
+      startRaceTimer(startTime);
+    }
+
+    checkAndStart();
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(tryStartTimer, 800);
+  });
+  // Agar DOMContentLoaded chhoot gaya
+  if (document.readyState !== 'loading') setTimeout(tryStartTimer, 800);
+})();
+</script>
                                 </div>
                             </div>
                         </div>
@@ -4300,14 +4401,7 @@ new Vue({
         };
       });
 
-      // Only keep orders that are present in the fresh response for this
-      // status. Anything settled/removed on the backend (status changed
-      // away from PENDING/MATCHED) will disappear here too, instead of
-      // staying stuck forever in this.Matched / this.UnMatched.
-      const freshIds = new Set(
-        newOrders.map(o => String(o.request_id || o.orderId || o.requestId))
-      );
-      return Object.values(map).filter(o => freshIds.has(String(o.orderId)));
+      return Object.values(map);
     },
     async fetchUnMatched() {
       try {

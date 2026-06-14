@@ -974,11 +974,17 @@
           const _tk   = localStorage.getItem("token");
 
           // ── User room join karo ──
+          // Server pe "JoinUserRoom" event hai (server.js dekho)
           _sock.on("connect", () => {
             if (_tk) {
-              _sock.emit("JoinUser", { token: _tk }, (ack) => {
-                console.log("[Statement] JoinUser ack:", ack);
-              });
+              try {
+                const payload = JSON.parse(atob(_tk.split('.')[1]));
+                const uid = payload.id || payload.userId || payload.sub;
+                if (uid) {
+                  _sock.emit("JoinUserRoom", uid);
+                  console.log("[Statement] JoinUserRoom:", uid);
+                }
+              } catch(e) { console.warn("[Statement] userId extract failed:", e.message); }
             }
           });
 

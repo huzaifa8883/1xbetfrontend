@@ -4300,7 +4300,14 @@ new Vue({
         };
       });
 
-      return Object.values(map);
+      // Only keep orders that are present in the fresh response for this
+      // status. Anything settled/removed on the backend (status changed
+      // away from PENDING/MATCHED) will disappear here too, instead of
+      // staying stuck forever in this.Matched / this.UnMatched.
+      const freshIds = new Set(
+        newOrders.map(o => String(o.request_id || o.orderId || o.requestId))
+      );
+      return Object.values(map).filter(o => freshIds.has(String(o.orderId)));
     },
     async fetchUnMatched() {
       try {

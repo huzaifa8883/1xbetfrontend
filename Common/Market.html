@@ -22,19 +22,29 @@
             min-height: 91.7vh;
         }
 
-        /* Horse/Greyhound runner color box — pehle screenshot ki tarah */
-        .runner-cloth-color {
+        /* Horse/Greyhound — Betfair silk image */
+        .runner-silk-img {
             display: inline-block;
-            width: 22px;
-            height: 22px;
-            min-width: 22px;
-            border-radius: 2px;
-            border: 1px solid rgba(255,255,255,0.3);
+            width: 28px;
+            height: 28px;
+            min-width: 28px;
+            object-fit: contain;
             vertical-align: middle;
             flex-shrink: 0;
             align-self: center;
-            position: relative;
-            top: 0;
+            border-radius: 2px;
+        }
+        /* Fallback color box (jab silk image na ho) */
+        .runner-silk-fallback {
+            display: inline-block;
+            width: 28px;
+            height: 28px;
+            min-width: 28px;
+            border-radius: 3px;
+            border: 1px solid rgba(255,255,255,0.25);
+            vertical-align: middle;
+            flex-shrink: 0;
+            align-self: center;
         }
         /* Selector checkbox aur silk image bhi vertically center */
         .runner-runner .selector {
@@ -73,19 +83,34 @@
             return { ifWin: 0, ifLose: 0, net: 0 };
         };
 
-        // Horse/Greyhound runner cloth color
-        // Ab controller se runner.clothColor directly aata hai (always set, null nahi)
-        // Ye function sirf fallback ke tor pe rakha hai agar koi purana code call kare
+        // Horse/Greyhound runner cloth color — pehle screenshot ki tarah colored box
+        // getClothColor(clothNum, sortPriority)
+        // clothNum = runner.clothNumber (may be null for some tracks)
+        // sortPriority = runner.sortPriority (always present from Betfair — 1,2,3...)
         window.getClothColor = function(clothNum, sortPriority) {
-            var RACE_COLORS = [
-                '#E63946','#FFFFFF','#1D3557','#F4D03F','#2ECC71','#111111','#F39C12','#8E44AD',
-                '#16A085','#E74C3C','#3498DB','#F1C40F','#E67E22','#1ABC9C','#95A5A6','#2C3E50',
-                '#C0392B','#7F8C8D','#27AE60','#D35400',
+            var colors = [
+                '#E63946',  // 1 Red
+                '#FFFFFF',  // 2 White
+                '#1D3557',  // 3 Dark Blue
+                '#F4A261',  // 4 Yellow/Orange
+                '#2A9D8F',  // 5 Green
+                '#111111',  // 6 Black
+                '#F72585',  // 7 Hot Pink
+                '#F77F00',  // 8 Orange
+                '#8338EC',  // 9 Purple
+                '#0077B6',  // 10 Blue
+                '#06D6A0',  // 11 Mint
+                '#FFB703',  // 12 Gold
+                '#E9C46A',  // 13 Light Yellow
+                '#E76F51',  // 14 Coral
+                '#118AB2',  // 15 Teal Blue
+                '#073B4C',  // 16 Dark Teal
             ];
+            // clothNumber pehle try karo, warna sortPriority use karo
             var n = parseInt(clothNum);
             if (isNaN(n) || n < 1) n = parseInt(sortPriority);
             if (isNaN(n) || n < 1) n = 1;
-            return RACE_COLORS[(n - 1) % RACE_COLORS.length];
+            return colors[(n - 1) % colors.length];
         };
         // mv2.min.js svc_prefix use karta hai catalog2 / orders calls ke liye
         const SsocketUrl = "https://1xbetbackend.work.gd/signalr";
@@ -1757,10 +1782,16 @@
               v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
-        <span v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
-              class="ml-2 runner-cloth-color"
-              :style="{background: runner.clothColor || '#E63946'}">
-        </span>
+        <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
+        <img v-if="runner.silkColor || runner.silkUrl"
+             :src="runner.silkColor || runner.silkUrl"
+             class="ml-2 runner-silk-img"
+             :alt="runner.clothNumber || runner.sortPriority"
+             @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
+        <span v-else
+              class="ml-2 runner-silk-fallback"
+              :style="{background: runner.clothColor || '#E63946'}"></span>
+        </template>
         <h3 class="runner-name">
             <div class="runner-info">
                 <span class="clippable runner-display-name">
@@ -1914,10 +1945,16 @@
               v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
-        <span v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
-              class="ml-2 runner-cloth-color"
-              :style="{background: runner.clothColor || '#E63946'}">
-        </span>
+        <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
+        <img v-if="runner.silkColor || runner.silkUrl"
+             :src="runner.silkColor || runner.silkUrl"
+             class="ml-2 runner-silk-img"
+             :alt="runner.clothNumber || runner.sortPriority"
+             @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
+        <span v-else
+              class="ml-2 runner-silk-fallback"
+              :style="{background: runner.clothColor || '#E63946'}"></span>
+        </template>
         <h3 class="runner-name">
             <div class="runner-info">
                 <span class="clippable runner-display-name">
@@ -2038,10 +2075,16 @@
               v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
-        <span v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
-              class="ml-2 runner-cloth-color"
-              :style="{background: runner.clothColor || '#E63946'}">
-        </span>
+        <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
+        <img v-if="runner.silkColor || runner.silkUrl"
+             :src="runner.silkColor || runner.silkUrl"
+             class="ml-2 runner-silk-img"
+             :alt="runner.clothNumber || runner.sortPriority"
+             @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
+        <span v-else
+              class="ml-2 runner-silk-fallback"
+              :style="{background: runner.clothColor || '#E63946'}"></span>
+        </template>
         <h3 class="runner-name">
             <div class="runner-info">
                 <span class="clippable runner-display-name">
@@ -2161,10 +2204,16 @@
               v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
-        <span v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
-              class="ml-2 runner-cloth-color"
-              :style="{background: runner.clothColor || '#E63946'}">
-        </span>
+        <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
+        <img v-if="runner.silkColor || runner.silkUrl"
+             :src="runner.silkColor || runner.silkUrl"
+             class="ml-2 runner-silk-img"
+             :alt="runner.clothNumber || runner.sortPriority"
+             @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
+        <span v-else
+              class="ml-2 runner-silk-fallback"
+              :style="{background: runner.clothColor || '#E63946'}"></span>
+        </template>
         <h3 class="runner-name">
             <div class="runner-info">
                 <span class="clippable runner-display-name">
@@ -2285,10 +2334,16 @@
               v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
-        <span v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
-              class="ml-2 runner-cloth-color"
-              :style="{background: runner.clothColor || '#E63946'}">
-        </span>
+        <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
+        <img v-if="runner.silkColor || runner.silkUrl"
+             :src="runner.silkColor || runner.silkUrl"
+             class="ml-2 runner-silk-img"
+             :alt="runner.clothNumber || runner.sortPriority"
+             @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
+        <span v-else
+              class="ml-2 runner-silk-fallback"
+              :style="{background: runner.clothColor || '#E63946'}"></span>
+        </template>
         <h3 class="runner-name">
             <div class="runner-info">
                 <span class="clippable runner-display-name">
@@ -2408,10 +2463,16 @@
               v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
-        <span v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
-              class="ml-2 runner-cloth-color"
-              :style="{background: runner.clothColor || '#E63946'}">
-        </span>
+        <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
+        <img v-if="runner.silkColor || runner.silkUrl"
+             :src="runner.silkColor || runner.silkUrl"
+             class="ml-2 runner-silk-img"
+             :alt="runner.clothNumber || runner.sortPriority"
+             @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
+        <span v-else
+              class="ml-2 runner-silk-fallback"
+              :style="{background: runner.clothColor || '#E63946'}"></span>
+        </template>
         <h3 class="runner-name">
             <div class="runner-info">
                 <span class="clippable runner-display-name">
@@ -2608,10 +2669,16 @@
               v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
-        <span v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
-              class="ml-2 runner-cloth-color"
-              :style="{background: runner.clothColor || '#E63946'}">
-        </span>
+        <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
+        <img v-if="runner.silkColor || runner.silkUrl"
+             :src="runner.silkColor || runner.silkUrl"
+             class="ml-2 runner-silk-img"
+             :alt="runner.clothNumber || runner.sortPriority"
+             @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
+        <span v-else
+              class="ml-2 runner-silk-fallback"
+              :style="{background: runner.clothColor || '#E63946'}"></span>
+        </template>
         <h3 class="runner-name">
             <div class="runner-info">
                 <span class="clippable runner-display-name">
@@ -2739,10 +2806,16 @@
               v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
-        <span v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
-              class="ml-2 runner-cloth-color"
-              :style="{background: runner.clothColor || '#E63946'}">
-        </span>
+        <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
+        <img v-if="runner.silkColor || runner.silkUrl"
+             :src="runner.silkColor || runner.silkUrl"
+             class="ml-2 runner-silk-img"
+             :alt="runner.clothNumber || runner.sortPriority"
+             @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
+        <span v-else
+              class="ml-2 runner-silk-fallback"
+              :style="{background: runner.clothColor || '#E63946'}"></span>
+        </template>
         <h3 class="runner-name">
             <div class="runner-info">
                 <span class="clippable runner-display-name">
@@ -2864,10 +2937,16 @@
               v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
-        <span v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
-              class="ml-2 runner-cloth-color"
-              :style="{background: runner.clothColor || '#E63946'}">
-        </span>
+        <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
+        <img v-if="runner.silkColor || runner.silkUrl"
+             :src="runner.silkColor || runner.silkUrl"
+             class="ml-2 runner-silk-img"
+             :alt="runner.clothNumber || runner.sortPriority"
+             @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
+        <span v-else
+              class="ml-2 runner-silk-fallback"
+              :style="{background: runner.clothColor || '#E63946'}"></span>
+        </template>
         <h3 class="runner-name">
             <div class="runner-info">
                 <span class="clippable runner-display-name">
@@ -2988,10 +3067,16 @@
               v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
-        <span v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
-              class="ml-2 runner-cloth-color"
-              :style="{background: runner.clothColor || '#E63946'}">
-        </span>
+        <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
+        <img v-if="runner.silkColor || runner.silkUrl"
+             :src="runner.silkColor || runner.silkUrl"
+             class="ml-2 runner-silk-img"
+             :alt="runner.clothNumber || runner.sortPriority"
+             @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
+        <span v-else
+              class="ml-2 runner-silk-fallback"
+              :style="{background: runner.clothColor || '#E63946'}"></span>
+        </template>
         <h3 class="runner-name">
             <div class="runner-info">
                 <span class="clippable runner-display-name">
@@ -3113,10 +3198,16 @@
               v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
-        <span v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
-              class="ml-2 runner-cloth-color"
-              :style="{background: runner.clothColor || '#E63946'}">
-        </span>
+        <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
+        <img v-if="runner.silkColor || runner.silkUrl"
+             :src="runner.silkColor || runner.silkUrl"
+             class="ml-2 runner-silk-img"
+             :alt="runner.clothNumber || runner.sortPriority"
+             @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
+        <span v-else
+              class="ml-2 runner-silk-fallback"
+              :style="{background: runner.clothColor || '#E63946'}"></span>
+        </template>
         <h3 class="runner-name">
             <div class="runner-info">
                 <span class="clippable runner-display-name">
@@ -3238,10 +3329,16 @@
               v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
-        <span v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
-              class="ml-2 runner-cloth-color"
-              :style="{background: runner.clothColor || '#E63946'}">
-        </span>
+        <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
+        <img v-if="runner.silkColor || runner.silkUrl"
+             :src="runner.silkColor || runner.silkUrl"
+             class="ml-2 runner-silk-img"
+             :alt="runner.clothNumber || runner.sortPriority"
+             @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
+        <span v-else
+              class="ml-2 runner-silk-fallback"
+              :style="{background: runner.clothColor || '#E63946'}"></span>
+        </template>
         <h3 class="runner-name">
             <div class="runner-info">
                 <span class="clippable runner-display-name">
@@ -3441,10 +3538,16 @@
               v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
-        <span v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
-              class="ml-2 runner-cloth-color"
-              :style="{background: runner.clothColor || '#E63946'}">
-        </span>
+        <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
+        <img v-if="runner.silkColor || runner.silkUrl"
+             :src="runner.silkColor || runner.silkUrl"
+             class="ml-2 runner-silk-img"
+             :alt="runner.clothNumber || runner.sortPriority"
+             @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
+        <span v-else
+              class="ml-2 runner-silk-fallback"
+              :style="{background: runner.clothColor || '#E63946'}"></span>
+        </template>
         <h3 class="runner-name">
             <div class="runner-info">
                 <span class="clippable runner-display-name">
@@ -3570,10 +3673,16 @@
               v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
-        <span v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
-              class="ml-2 runner-cloth-color"
-              :style="{background: runner.clothColor || '#E63946'}">
-        </span>
+        <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
+        <img v-if="runner.silkColor || runner.silkUrl"
+             :src="runner.silkColor || runner.silkUrl"
+             class="ml-2 runner-silk-img"
+             :alt="runner.clothNumber || runner.sortPriority"
+             @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
+        <span v-else
+              class="ml-2 runner-silk-fallback"
+              :style="{background: runner.clothColor || '#E63946'}"></span>
+        </template>
         <h3 class="runner-name">
             <div class="runner-info">
                 <span class="clippable runner-display-name">
@@ -6182,45 +6291,36 @@ Vue.component('runner-aggregate', {
   /* ── Runner normalizer ── */
   function normalizeRunners(runners) {
     if (!Array.isArray(runners)) return [];
-    const RACE_COLORS = [
-      '#E63946','#FFFFFF','#1D3557','#F4D03F','#2ECC71','#111111','#F39C12','#8E44AD',
-      '#16A085','#E74C3C','#3498DB','#F1C40F','#E67E22','#1ABC9C','#95A5A6','#2C3E50',
-      '#C0392B','#7F8C8D','#27AE60','#D35400',
-    ];
-    return runners.map(r => {
-      const cNum = r.clothNumber || null;
-      const sP   = r.sortPriority || null;
-      const posN = parseInt(cNum) || parseInt(sP) || 1;
-      return {
-        selectionId:  r.selectionId  || r.id    || Math.random(),
-        runnerName:   r.runnerName   || r.name  || 'Runner',
-        status:       r.status       || 'ACTIVE',
-        price1: r.back?.[0]?.price ?? r.price1 ?? '-',
-        price2: r.back?.[1]?.price ?? r.price2 ?? '-',
-        price3: r.back?.[2]?.price ?? r.price3 ?? '-',
-        size1:  r.back?.[0]?.size  ?? r.size1  ?? '-',
-        size2:  r.back?.[1]?.size  ?? r.size2  ?? '-',
-        size3:  r.back?.[2]?.size  ?? r.size3  ?? '-',
-        lay1:   r.lay?.[0]?.price  ?? r.lay1   ?? '-',
-        lay2:   r.lay?.[1]?.price  ?? r.lay2   ?? '-',
-        lay3:   r.lay?.[2]?.price  ?? r.lay3   ?? '-',
-        ls1:    r.lay?.[0]?.size   ?? r.ls1    ?? '-',
-        ls2:    r.lay?.[1]?.size   ?? r.ls2    ?? '-',
-        ls3:    r.lay?.[2]?.size   ?? r.ls3    ?? '-',
-        ifWin:  r.ifWin  || 0,
-        ifLose: r.ifLose || 0,
-        jockeyName:   (r.jockeyName || null) ? r.jockeyName.replace(/^\s*\(\d+\)\s*/, '').trim() || null : null,
-        silkColor:    r.silkColor   || r.silkUrl || null,
-        clothNumber:  cNum,
-        sortPriority: sP,
-        // clothColor — controller se aata hai (always set), fallback here bhi hai
-        clothColor:   r.clothColor || RACE_COLORS[(posN - 1) % RACE_COLORS.length],
-        metadataDict: r.metadataDict || null,
-        indB1: r.indB1 || '',
-        indL1: r.indL1 || '',
-        marketId: r.marketId || null,
-      };
-    });
+    return runners.map(r => ({
+      selectionId:  r.selectionId  || r.id    || Math.random(),
+      runnerName:   r.runnerName   || r.name  || 'Runner',
+      status:       r.status       || 'ACTIVE',
+      price1: r.back?.[0]?.price ?? r.price1 ?? '-',
+      price2: r.back?.[1]?.price ?? r.price2 ?? '-',
+      price3: r.back?.[2]?.price ?? r.price3 ?? '-',
+      size1:  r.back?.[0]?.size  ?? r.size1  ?? '-',
+      size2:  r.back?.[1]?.size  ?? r.size2  ?? '-',
+      size3:  r.back?.[2]?.size  ?? r.size3  ?? '-',
+      lay1:   r.lay?.[0]?.price  ?? r.lay1   ?? '-',
+      lay2:   r.lay?.[1]?.price  ?? r.lay2   ?? '-',
+      lay3:   r.lay?.[2]?.price  ?? r.lay3   ?? '-',
+      ls1:    r.lay?.[0]?.size   ?? r.ls1    ?? '-',
+      ls2:    r.lay?.[1]?.size   ?? r.ls2    ?? '-',
+      ls3:    r.lay?.[2]?.size   ?? r.ls3    ?? '-',
+      ifWin:  r.ifWin  || 0,
+      ifLose: r.ifLose || 0,
+      jockeyName:   (r.jockeyName || null) ? (r.jockeyName).replace(/^\s*\(\d+\)\s*/, '').trim() || null : null,
+      // Silk image — Betfair SILK_URL se aata hai (BPExch ki tarah image show hogi)
+      silkUrl:      r.silkUrl   || r.silkColor || null,
+      silkColor:    r.silkUrl   || r.silkColor || null,  // backward compat
+      clothNumber:  r.clothNumber || null,
+      sortPriority: r.sortPriority || null,
+      clothColor:   r.clothColor  || null,   // position-based fallback color
+      metadataDict: r.metadataDict || null,
+      indB1: r.indB1 || '',
+      indL1: r.indL1 || '',
+      marketId: r.marketId || null,
+    }));
   }
 
   /* ── Market normalizer ── */

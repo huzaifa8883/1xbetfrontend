@@ -34,7 +34,7 @@
             <div style="min-width:80px; max-width:80px;">
                 <a href="javascript:void(0)" style="text-decoration : none; color:inherit;">
                     <div id="owlitemactive1t">
-                        <div><i id="inplayTotalCount" style="margin-left: 54px;">0</i></div>
+                        <div><i id="inplayTotalCount" style="margin-left: 54px;"></i></div>
                         <i class="material-icons">timer</i>
                         <div style="margin-top:-2px;">Inplay</div>
                     </div>

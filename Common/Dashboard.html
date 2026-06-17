@@ -217,7 +217,12 @@
             content: '' !important;
             display: none !important;
         }
-        /* Arrow positioning fix — vertically center karo */
+        /* Arrow positioning fix — slides ke bahar rakho arrows */
+        .horse-slider-wrapper,
+        .greyhound-slider-wrapper {
+            position: relative;
+            padding: 0 32px;
+        }
         #horseRaceContainer,
         #greyhoundRaceContainer {
             position: relative;
@@ -238,11 +243,11 @@
         }
         #horseRaceContainer .slick-prev,
         #greyhoundRaceContainer .slick-prev {
-            left: 0px;
+            left: -30px;
         }
         #horseRaceContainer .slick-next,
         #greyhoundRaceContainer .slick-next {
-            right: 0px;
+            right: -30px;
         }
 
         .cricketEventList {
@@ -1070,6 +1075,15 @@ document.addEventListener("DOMContentLoaded", async () => {
       const container = document.getElementById('horseRaceContainer');
       if (!container) return;
 
+      // Wrapper inject karo agar nahi hai
+      let wrapper = container.closest('.horse-slider-wrapper');
+      if (!wrapper) {
+        wrapper = document.createElement('div');
+        wrapper.className = 'horse-slider-wrapper';
+        container.parentNode.insertBefore(wrapper, container);
+        wrapper.appendChild(container);
+      }
+
       if ($(container).hasClass('slick-initialized')) {
         $(container).slick('unslick');
       }
@@ -1080,8 +1094,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         const now = new Date();
         const thirtyMinAgo = new Date(now.getTime() - 30 * 60_000);
 
-        // Sirf current time ke 30 min pehle se aage ke events dikhao
-        const relevant = data.data.filter(m => new Date(m.startTime) >= thirtyMinAgo);
+        // startTime UTC hai — Z append karo agar nahi hai taake sahi parse ho
+        const relevant = data.data.filter(m => {
+          const raw = m.startTime;
+          const st = new Date(raw.endsWith('Z') || raw.includes('+') ? raw : raw + 'Z');
+          return st >= thirtyMinAgo;
+        });
 
         if (relevant.length === 0) {
           container.innerHTML = `<div style="text-align:center; color:white;">No upcoming races found.</div>`;
@@ -1150,6 +1168,15 @@ document.addEventListener("DOMContentLoaded", async () => {
       const container = document.getElementById('greyhoundRaceContainer');
       if (!container) return;
 
+      // Wrapper inject karo agar nahi hai
+      let wrapper = container.closest('.greyhound-slider-wrapper');
+      if (!wrapper) {
+        wrapper = document.createElement('div');
+        wrapper.className = 'greyhound-slider-wrapper';
+        container.parentNode.insertBefore(wrapper, container);
+        wrapper.appendChild(container);
+      }
+
       if ($(container).hasClass('slick-initialized')) {
         $(container).slick('unslick');
       }
@@ -1160,14 +1187,19 @@ document.addEventListener("DOMContentLoaded", async () => {
         const now = new Date();
         const thirtyMinAgo = new Date(now.getTime() - 30 * 60_000);
 
-        // Sirf current time ke 30 min pehle se aage ke events dikhao
-        const relevant = data.data.filter(m => new Date(m.startTime) >= thirtyMinAgo);
+        // startTime UTC hai — Z append karo agar nahi hai
+        const relevant = data.data.filter(m => {
+          const raw = m.startTime;
+          const st = new Date(raw.endsWith('Z') || raw.includes('+') ? raw : raw + 'Z');
+          return st >= thirtyMinAgo;
+        });
 
         if (relevant.length === 0) {
           container.innerHTML = `<div style="text-align:center; color:white;">No upcoming races found.</div>`;
         } else {
           relevant.forEach(match => {
-            const startTime = new Date(match.startTime);
+            const raw = match.startTime;
+            const startTime = new Date(raw.endsWith('Z') || raw.includes('+') ? raw : raw + 'Z');
             const localTime = startTime.toLocaleTimeString('en-US', {
               hour: 'numeric',
               minute: '2-digit',

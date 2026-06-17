@@ -1031,96 +1031,87 @@ document.addEventListener("DOMContentLoaded", async () => {
   /* ── Race Section Wrapper ─────────────────────────── */
   .race-section-wrap {
     position: relative;
-    margin-bottom: 10px;
+    display: flex;
+    align-items: stretch;
+    background: #1a2332;   /* same dark navy as existing dashboard rows */
   }
 
-  /* Arrow buttons */
+  /* Arrow buttons — match existing dashboard chevron style */
   .race-arrow-btn {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: 10;
-    background: rgba(0,0,0,0.55);
+    flex: 0 0 28px;
+    background: #243447;
     border: none;
-    color: #fff;
-    width: 28px;
-    height: 100%;
+    color: #8fa8c0;
+    font-size: 20px;
+    font-weight: 300;
     cursor: pointer;
-    font-size: 18px;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 0;
-    transition: background 0.2s;
-    border-radius: 3px;
+    transition: background 0.15s, color 0.15s;
+    z-index: 2;
   }
-  .race-arrow-btn:hover { background: rgba(0,0,0,0.8); }
-  .race-arrow-btn.race-prev { left: 0; }
-  .race-arrow-btn.race-next { right: 0; }
+  .race-arrow-btn:hover { background: #2e4259; color: #fff; }
 
   /* Scroll container */
   .race-scroll-track {
-    overflow-x: hidden;
-    margin: 0 30px;
+    flex: 1;
+    overflow: hidden;
   }
   .race-items-row {
     display: flex;
     flex-wrap: nowrap;
-    gap: 0;
     transition: transform 0.3s ease;
+    height: 100%;
   }
 
-  /* Each race card */
+  /* Each race card — matches the cell style in screenshot */
   .race-event-card {
     flex: 0 0 calc(100% / 8);
     min-width: 110px;
     text-align: center;
-    padding: 6px 4px;
-    border-right: 1px solid rgba(255,255,255,0.1);
+    padding: 8px 6px;
+    border-right: 1px solid #263547;
     cursor: pointer;
     transition: background 0.15s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
   }
-  .race-event-card:hover { background: rgba(255,255,255,0.07); }
+  .race-event-card:hover { background: #243040; }
 
+  /* Time line — bold white, uppercase AM/PM, matches screenshot */
   .race-card-time {
     display: block;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 700;
-    color: #fff;
-    line-height: 1.3;
+    color: #ffffff;
+    line-height: 1.4;
     white-space: nowrap;
+    letter-spacing: 0.2px;
   }
+
+  /* Venue + date line — muted grey, matches screenshot */
   .race-card-venue {
     display: block;
-    font-size: 10px;
-    color: #b0c4d8;
+    font-size: 11px;
+    color: #8fa8bf;
     line-height: 1.3;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 120px;
-    margin: 0 auto;
+    max-width: 130px;
   }
-  .race-card-name {
+
+  /* Date sub-line (17th Jun) */
+  .race-card-date {
     display: block;
     font-size: 10px;
-    color: #8fa8bf;
+    color: #6e8aa0;
     line-height: 1.2;
-    margin-top: 1px;
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 120px;
-    margin: 1px auto 0;
-  }
-  .race-inplay-badge {
-    display: inline-block;
-    background: #28a745;
-    color: #fff;
-    font-size: 9px;
-    padding: 1px 4px;
-    border-radius: 2px;
-    margin-bottom: 2px;
   }
 
   /* Mobile: 3 cards visible */
@@ -1129,6 +1120,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       flex: 0 0 calc(100% / 3);
       min-width: 90px;
     }
+    .race-card-venue { max-width: 86px; font-size: 10px; }
   }
 </style>
 
@@ -1138,17 +1130,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     const wrap = document.getElementById(containerId);
     if (!wrap) return;
 
-    // Destroy previous slick if any (legacy compat)
-    const legacyInner = wrap.querySelector('.race-items-row');
-    if (!legacyInner) {
-      // First time: build skeleton inside wrap
-      wrap.innerHTML = '';
-    } else {
-      wrap.querySelector('.race-items-row').innerHTML = '';
-    }
-
     if (!matches || matches.length === 0) {
-      wrap.innerHTML = `<div style="text-align:center;color:#aaa;padding:12px;">No upcoming races found.</div>`;
+      wrap.innerHTML = `<div style="text-align:center;color:#8fa8bf;padding:12px;">No upcoming races found.</div>`;
       return;
     }
 
@@ -1167,21 +1150,37 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     matches.forEach(match => {
       const st = new Date(match.startTime);
-      const timeStr = st.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-      // Venue = match.match (e.g. "Canterbury (AU)"); event name = market/race number if available
+
+      // Time: "3:22 PM" style (uppercase, matches screenshot)
+      const timeStr = st.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+
+      // Date: "17th Jun" style
+      const day = st.getDate();
+      const suffix = (d => {
+        if (d > 3 && d < 21) return 'th';
+        switch (d % 10) { case 1: return 'st'; case 2: return 'nd'; case 3: return 'rd'; default: return 'th'; }
+      })(day);
+      const monthStr = st.toLocaleString('en-US', { month: 'short' });
+      const dateStr = `${day}${suffix} ${monthStr}`;
+
+      // Venue name: e.g. "Salon-De-Provence (FRA)" — truncate if too long
       const venueName = match.match || '';
 
       const card = document.createElement('div');
       card.className = 'race-event-card';
-      card.title = venueName;
+      card.title = `${timeStr} — ${venueName}`;
       card.addEventListener('click', () => {
         window.location.href = `/Common/Market.html?id=${encodeURIComponent(match.marketId)}`;
       });
 
       card.innerHTML = `
-        ${match.inPlay ? '<span class="race-inplay-badge">In-Play</span>' : ''}
         <span class="race-card-time">${timeStr}</span>
         <span class="race-card-venue">${venueName}</span>
+        <span class="race-card-date">${dateStr}</span>
       `;
 
       row.appendChild(card);

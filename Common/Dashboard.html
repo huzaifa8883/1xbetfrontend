@@ -1051,7 +1051,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 <script>
   function parseUTC(str) {
     if (!str) return new Date(0);
-    // Z ya offset nahi hai toh explicitly UTC treat karo
     if (!str.endsWith('Z') && !str.includes('+') && !/\d{2}:\d{2}$/.test(str.slice(-5))) {
       str = str.replace(' ', 'T') + 'Z';
     }
@@ -1066,88 +1065,90 @@ document.addEventListener("DOMContentLoaded", async () => {
       const container = document.getElementById('horseRaceContainer');
       if (!container) return;
 
-      // Outer wrapper — agar pehle se nahi bana toh banao
-      let outerWrap = document.getElementById('horseSliderOuter');
-      if (!outerWrap) {
-        outerWrap = document.createElement('div');
-        outerWrap.id = 'horseSliderOuter';
-        outerWrap.style.cssText = 'position:relative; display:flex; align-items:center; width:100%;';
-        container.parentNode.insertBefore(outerWrap, container);
-        outerWrap.appendChild(container);
-      }
-
+      // ✅ Step 1: Slick destroy karo agar pehle se initialized hai
       if ($(container).hasClass('slick-initialized')) {
         $(container).slick('unslick');
       }
       container.innerHTML = '';
-      // Purane arrows hata do
+
+      // ✅ Step 2: outerWrap dhundo ya banao — lekin SIRF container ke parent se
+      let outerWrap = document.getElementById('horseSliderOuter');
+      if (!outerWrap) {
+        outerWrap = document.createElement('div');
+        outerWrap.id = 'horseSliderOuter';
+        container.parentNode.insertBefore(outerWrap, container);
+        outerWrap.appendChild(container);
+      }
+
+      // ✅ Step 3: Purane custom arrows hata do
       outerWrap.querySelectorAll('.horse-arrow-btn').forEach(el => el.remove());
+
+      const ARROW_STYLE = 'flex-shrink:0; font-size:26px; font-weight:bold; background:rgba(0,0,0,0.55); border:none; color:white; cursor:pointer; padding:0 10px; border-radius:4px; height:44px; line-height:44px; z-index:20; align-self:center;';
 
       if (data.success && Array.isArray(data.data) && data.data.length > 0) {
         const now = new Date();
         const thirtyMinAgo = new Date(now.getTime() - 30 * 60_000);
 
-        // Filter: sirf 30 min pehle se aage ke races
+        // ✅ Filter + sort by startTime ascending
         const relevant = data.data
           .filter(m => parseUTC(m.startTime) >= thirtyMinAgo)
-          .sort((a, b) => parseUTC(a.startTime) - parseUTC(b.startTime)); // Time ke hisaab se sort
+          .sort((a, b) => parseUTC(a.startTime) - parseUTC(b.startTime));
 
         if (relevant.length === 0) {
-          container.innerHTML = `<div style="text-align:center; color:white; padding:10px;">No upcoming races found.</div>`;
-          // No races = no arrows needed
-        } else {
-          relevant.forEach(match => {
-            const startTime = parseUTC(match.startTime);
-            const localTime = startTime.toLocaleTimeString('en-US', {
-              hour: 'numeric', minute: '2-digit', hour12: true
-            });
-
-            const div = document.createElement('div');
-            div.className = 'chk11';
-            div.style.cssText = 'text-align:center; margin:2px;';
-            div.innerHTML = `
-              <a href="/Common/Market.html?id=${match.marketId}" style="color:white; width:auto;">
-                <b class="chkmobile">
-                  <span class="slidedate">${localTime}</span><br>
-                  <span class='slidename'>${match.match}</span>
-                </b>
-              </a>`;
-            container.appendChild(div);
-          });
-
-          // ✅ FIX: Pehle slick init karo, phir arrows inject karo
-          $(container).slick({
-            slidesToShow: 8,
-            slidesToScroll: 1,
-            infinite: false,
-            arrows: false,  // slick arrows off — custom buttons use karenge
-            responsive: [
-              { breakpoint: 768, settings: { slidesToShow: 3 }},
-              { breakpoint: 480, settings: { slidesToShow: 3 }}
-            ]
-          });
-
-          const arrowStyle = 'flex-shrink:0; font-size:24px; font-weight:bold; background:rgba(0,0,0,0.6); border:none; color:white; cursor:pointer; padding:2px 10px; border-radius:4px; line-height:1; height:40px; z-index:10;';
-
-          const prevBtn = document.createElement('button');
-          prevBtn.className = 'horse-arrow-btn';
-          prevBtn.innerHTML = '&#8249;';
-          prevBtn.style.cssText = arrowStyle;
-          prevBtn.addEventListener('click', () => $(container).slick('slickPrev'));
-
-          const nextBtn = document.createElement('button');
-          nextBtn.className = 'horse-arrow-btn';
-          nextBtn.innerHTML = '&#8250;';
-          nextBtn.style.cssText = arrowStyle;
-          nextBtn.addEventListener('click', () => $(container).slick('slickNext'));
-
-          // ✅ FIX: outerWrap ke start aur end mein inject karo (container ke bahar)
-          outerWrap.insertBefore(prevBtn, outerWrap.firstChild);
-          outerWrap.appendChild(nextBtn);
+          container.innerHTML = `<div style="text-align:center;color:white;padding:10px;">No upcoming races found.</div>`;
+          return;
         }
 
+        relevant.forEach(match => {
+          const localTime = parseUTC(match.startTime).toLocaleTimeString('en-US', {
+            hour: 'numeric', minute: '2-digit', hour12: true
+          });
+          const div = document.createElement('div');
+          div.className = 'chk11';
+          div.style.cssText = 'text-align:center; margin:2px;';
+          div.innerHTML = `
+            <a href="/Common/Market.html?id=${match.marketId}" style="color:white; width:auto;">
+              <b class="chkmobile">
+                <span class="slidedate">${localTime}</span><br>
+                <span class="slidename">${match.match}</span>
+              </b>
+            </a>`;
+          container.appendChild(div);
+        });
+
+        // ✅ Step 4: Slick PEHLE init karo
+        $(container).slick({
+          slidesToShow: 8,
+          slidesToScroll: 1,
+          infinite: false,
+          arrows: false,
+          responsive: [
+            { breakpoint: 768, settings: { slidesToShow: 3 } },
+            { breakpoint: 480, settings: { slidesToShow: 3 } }
+          ]
+        });
+
+        // ✅ Step 5: Slick init ke BAAD arrows outerWrap mein inject karo
+        // outerWrap ke DOM structure: [container(slick-wrapped)]
+        // Hum prevBtn sabse pehle, nextBtn sabse aakhir mein daalte hain
+        const prevBtn = document.createElement('button');
+        prevBtn.className = 'horse-arrow-btn';
+        prevBtn.innerHTML = '&#8249;';
+        prevBtn.style.cssText = ARROW_STYLE;
+        prevBtn.addEventListener('click', () => $(container).slick('slickPrev'));
+
+        const nextBtn = document.createElement('button');
+        nextBtn.className = 'horse-arrow-btn';
+        nextBtn.innerHTML = '&#8250;';
+        nextBtn.style.cssText = ARROW_STYLE;
+        nextBtn.addEventListener('click', () => $(container).slick('slickNext'));
+
+        // ✅ prepend/append — slick wrapper ke BAHAR, outerWrap ka direct child
+        outerWrap.prepend(prevBtn);   // sabse pehle
+        outerWrap.append(nextBtn);    // sabse aakhir
+
       } else {
-        container.innerHTML = `<div style="text-align:center; color:white;">No live races found.</div>`;
+        container.innerHTML = `<div style="text-align:center;color:white;">No live races found.</div>`;
       }
     } catch (err) {
       console.error('Error loading live horse data:', err.message);
@@ -1167,87 +1168,88 @@ document.addEventListener("DOMContentLoaded", async () => {
       const container = document.getElementById('greyhoundRaceContainer');
       if (!container) return;
 
-      // Outer wrapper — agar pehle se nahi bana toh banao
-      let outerWrap = document.getElementById('greyhoundSliderOuter');
-      if (!outerWrap) {
-        outerWrap = document.createElement('div');
-        outerWrap.id = 'greyhoundSliderOuter';
-        outerWrap.style.cssText = 'position:relative; display:flex; align-items:center; width:100%;';
-        container.parentNode.insertBefore(outerWrap, container);
-        outerWrap.appendChild(container);
-      }
-
+      // ✅ Step 1: Slick destroy karo agar pehle se initialized hai
       if ($(container).hasClass('slick-initialized')) {
         $(container).slick('unslick');
       }
       container.innerHTML = '';
+
+      // ✅ Step 2: outerWrap dhundo ya banao
+      let outerWrap = document.getElementById('greyhoundSliderOuter');
+      if (!outerWrap) {
+        outerWrap = document.createElement('div');
+        outerWrap.id = 'greyhoundSliderOuter';
+        container.parentNode.insertBefore(outerWrap, container);
+        outerWrap.appendChild(container);
+      }
+
+      // ✅ Step 3: Purane custom arrows hata do
       outerWrap.querySelectorAll('.grey-arrow-btn').forEach(el => el.remove());
+
+      const ARROW_STYLE = 'flex-shrink:0; font-size:26px; font-weight:bold; background:rgba(0,0,0,0.55); border:none; color:white; cursor:pointer; padding:0 10px; border-radius:4px; height:44px; line-height:44px; z-index:20; align-self:center;';
 
       if (data.success && Array.isArray(data.data) && data.data.length > 0) {
         const now = new Date();
         const thirtyMinAgo = new Date(now.getTime() - 30 * 60_000);
 
-        // Filter + sort time ke hisaab se
+        // ✅ Filter + sort by startTime ascending
         const relevant = data.data
           .filter(m => parseUTC(m.startTime) >= thirtyMinAgo)
           .sort((a, b) => parseUTC(a.startTime) - parseUTC(b.startTime));
 
         if (relevant.length === 0) {
-          container.innerHTML = `<div style="text-align:center; color:white; padding:10px;">No upcoming races found.</div>`;
-          // No races = no arrows needed
-        } else {
-          relevant.forEach(match => {
-            const startTime = parseUTC(match.startTime);
-            const localTime = startTime.toLocaleTimeString('en-US', {
-              hour: 'numeric', minute: '2-digit', hour12: true
-            });
-
-            const div = document.createElement('div');
-            div.className = 'chk11';
-            div.style.cssText = 'text-align:center; margin:2px;';
-            div.innerHTML = `
-              <a href="/Common/Market.html?id=${match.marketId}" style="color:white; width:auto;">
-                <b class="chkmobile">
-                  <span class="slidedate">${localTime}</span><br>
-                  <span class='slidename'>${match.match}</span>
-                </b>
-              </a>`;
-            container.appendChild(div);
-          });
-
-          // ✅ FIX: Pehle slick init karo, phir arrows inject karo
-          $(container).slick({
-            slidesToShow: 8,
-            slidesToScroll: 1,
-            infinite: false,
-            arrows: false,
-            responsive: [
-              { breakpoint: 768, settings: { slidesToShow: 3 }},
-              { breakpoint: 480, settings: { slidesToShow: 3 }}
-            ]
-          });
-
-          const arrowStyle = 'flex-shrink:0; font-size:24px; font-weight:bold; background:rgba(0,0,0,0.6); border:none; color:white; cursor:pointer; padding:2px 10px; border-radius:4px; line-height:1; height:40px; z-index:10;';
-
-          const prevBtn = document.createElement('button');
-          prevBtn.className = 'grey-arrow-btn';
-          prevBtn.innerHTML = '&#8249;';
-          prevBtn.style.cssText = arrowStyle;
-          prevBtn.addEventListener('click', () => $(container).slick('slickPrev'));
-
-          const nextBtn = document.createElement('button');
-          nextBtn.className = 'grey-arrow-btn';
-          nextBtn.innerHTML = '&#8250;';
-          nextBtn.style.cssText = arrowStyle;
-          nextBtn.addEventListener('click', () => $(container).slick('slickNext'));
-
-          // ✅ FIX: outerWrap ke start aur end mein inject karo (container ke bahar)
-          outerWrap.insertBefore(prevBtn, outerWrap.firstChild);
-          outerWrap.appendChild(nextBtn);
+          container.innerHTML = `<div style="text-align:center;color:white;padding:10px;">No upcoming races found.</div>`;
+          return;
         }
 
+        relevant.forEach(match => {
+          const localTime = parseUTC(match.startTime).toLocaleTimeString('en-US', {
+            hour: 'numeric', minute: '2-digit', hour12: true
+          });
+          const div = document.createElement('div');
+          div.className = 'chk11';
+          div.style.cssText = 'text-align:center; margin:2px;';
+          div.innerHTML = `
+            <a href="/Common/Market.html?id=${match.marketId}" style="color:white; width:auto;">
+              <b class="chkmobile">
+                <span class="slidedate">${localTime}</span><br>
+                <span class="slidename">${match.match}</span>
+              </b>
+            </a>`;
+          container.appendChild(div);
+        });
+
+        // ✅ Step 4: Slick PEHLE init karo
+        $(container).slick({
+          slidesToShow: 8,
+          slidesToScroll: 1,
+          infinite: false,
+          arrows: false,
+          responsive: [
+            { breakpoint: 768, settings: { slidesToShow: 3 } },
+            { breakpoint: 480, settings: { slidesToShow: 3 } }
+          ]
+        });
+
+        // ✅ Step 5: Slick init ke BAAD arrows outerWrap mein inject karo
+        const prevBtn = document.createElement('button');
+        prevBtn.className = 'grey-arrow-btn';
+        prevBtn.innerHTML = '&#8249;';
+        prevBtn.style.cssText = ARROW_STYLE;
+        prevBtn.addEventListener('click', () => $(container).slick('slickPrev'));
+
+        const nextBtn = document.createElement('button');
+        nextBtn.className = 'grey-arrow-btn';
+        nextBtn.innerHTML = '&#8250;';
+        nextBtn.style.cssText = ARROW_STYLE;
+        nextBtn.addEventListener('click', () => $(container).slick('slickNext'));
+
+        // ✅ prepend/append — slick wrapper ke BAHAR, outerWrap ka direct child
+        outerWrap.prepend(prevBtn);   // sabse pehle
+        outerWrap.append(nextBtn);    // sabse aakhir
+
       } else {
-        container.innerHTML = `<div style="text-align:center; color:white;">No live races found.</div>`;
+        container.innerHTML = `<div style="text-align:center;color:white;">No live races found.</div>`;
       }
     } catch (err) {
       console.error('Error loading live greyhound data:', err.message);

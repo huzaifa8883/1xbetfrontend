@@ -1474,7 +1474,7 @@
                                     </p>
                                     <h4 class="event-title">{{ Catalog.eventName }}</h4>
                                     <p>
-                                        <span class="medium-black">{{ currentDateTime }}</span>
+                                        <span class="medium-black" id="header-current-datetime">{{ currentDateTime }}</span>
                                         <div class="form-group form-check pull-right" id="DisplayOnBox">
                                             <input type="checkbox" class="form-check-input" id="IsDisplayOn">
                                             <label class="form-check-label" for="IsDisplayOn">Keep Display On</label>
@@ -1487,6 +1487,8 @@
   'use strict';
 
   var _raceTimerInterval = null;
+  var _lastStartTime = null;     // jis startTime par timer abhi chal raha hai
+  var _lastMarketId  = null;     // race switch hua to dobara init karne ke liye
 
   function pad(n) { return String(n).padStart(2, '0'); }
 
@@ -1499,15 +1501,75 @@
     return sign + pad(h) + ':' + pad(m) + ':' + pad(s);
   }
 
-  function startRaceTimer(startTimeIso) {
-    if (_raceTimerInterval) clearInterval(_raceTimerInterval);
+  var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-    var el = document.getElementById('race-timer-display');
+  // Match ka scheduled start time "Jun 17, 2026 3:55 PM" jaisa format mein —
+  // header mein "current system time" ke bajaye yeh dikhana hai race sports ke liye.
+  function formatMatchDateTime(startTimeIso) {
+    if (!startTimeIso) return '';
+    var d = new Date(startTimeIso);
+    if (isNaN(d.getTime())) return '';
+    var hours = d.getHours();
+    var ampm  = hours >= 12 ? 'PM' : 'AM';
+    var h12   = hours % 12 || 12;
+    return MONTHS[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear() + ' ' +
+           h12 + ':' + pad(d.getMinutes()) + ' ' + ampm;
+  }
+
+  function updateHeaderDateTime(startTimeIso) {
+    var el = document.getElementById('header-current-datetime');
+    if (!el) return;
+    var formatted = formatMatchDateTime(startTimeIso);
+    if (!formatted) return;
+    if (el.textContent !== formatted) el.textContent = formatted;
+  }
+
+  var _headerDateObserver = null;
+  var _headerDateTarget   = null;
+
+  // Vue apna currentDateTime (system time) is span mein wapis likh sakta hai har
+  // re-render par — MutationObserver se turant detect karke match-time se overwrite karo.
+  function watchHeaderDateTime(startTimeIso) {
+    var el = document.getElementById('header-current-datetime');
     if (!el) return;
 
+    if (_headerDateObserver && _headerDateTarget === el) return; // already watching this node
+
+    if (_headerDateObserver) _headerDateObserver.disconnect();
+
+    _headerDateObserver = new MutationObserver(function() {
+      var formatted = formatMatchDateTime(startTimeIso);
+      if (formatted && el.textContent !== formatted) el.textContent = formatted;
+    });
+    _headerDateObserver.observe(el, { childList: true, characterData: true, subtree: true });
+    _headerDateTarget = el;
+  }
+
+  function ensureTimerEl() {
+    // Vue re-render kar sakta hai is liye har tick par element exist karna check karo,
+    // agar Vue ne hata diya ho to dobara create/insert karo.
+    var el = document.getElementById('race-timer-display');
+    if (el && document.body.contains(el)) return el;
+
+    el = document.createElement('p');
+    el.id = 'race-timer-display';
+    el.style.cssText = 'font-size:14px; font-weight:bold; margin:2px 0;';
+    var tbTop = document.querySelector('.tb-top-text');
+    if (tbTop) tbTop.appendChild(el);
+    return el;
+  }
+
+  function startRaceTimer(startTimeIso) {
+    if (_raceTimerInterval) clearInterval(_raceTimerInterval);
+    _lastStartTime = startTimeIso;
+
     function tick() {
+      var el = ensureTimerEl();
+      if (!el) return;
+
       var now  = Date.now();
       var st   = new Date(startTimeIso).getTime();
+      if (isNaN(st)) { el.textContent = ''; return; }
       var diff = Math.floor((st - now) / 1000); // positive = remaining, negative = elapsed
 
       if (diff > 0) {
@@ -1523,44 +1585,60 @@
     _raceTimerInterval = setInterval(tick, 1000);
   }
 
-  // Vue instance aane ka wait karo, phir Catalog.marketStartTime se timer start karo
-  function tryStartTimer() {
+  // Continuous watch loop — Vue instance, Catalog.marketStartTime, aur race-switch
+  // (naya marketId) — sab ko poll karta hai. Ek-baar-check ke bajaye hamesha chalta
+  // rehta hai taake SPA navigation par bhi timer apne aap sahi race se sync ho jaaye.
+  function watchLoop() {
     var el = document.getElementById('MarketView') || document.getElementById('app');
     var vm = el && el.__vue__;
-    if (!vm) { setTimeout(tryStartTimer, 400); return; }
 
-    // eventTypeId check karo — sirf horse (7) aur greyhound (4339) ke liye
-    function checkAndStart() {
-      var eid = vm.Catalog && String(vm.Catalog.eventTypeId);
-      if (!eid) { setTimeout(checkAndStart, 400); return; }
-      if (eid !== '7' && eid !== '4339') return; // cricket/tennis mein timer nahi chahiye
+    if (vm && vm.Catalog) {
+      var eid = String(vm.Catalog.eventTypeId || '');
+      var isRaceSport = (eid === '7' || eid === '4339');
 
-      // startTime — Catalog.marketStartTime ya Catalog.startTime
-      var startTime = vm.Catalog.marketStartTime || vm.Catalog.startTime;
-      if (!startTime) { setTimeout(checkAndStart, 500); return; }
+      if (isRaceSport) {
+        var startTime = vm.Catalog.marketStartTime || vm.Catalog.startTime || null;
+        var marketId  = vm.Catalog.marketId || null;
 
-      // Timer display element inject karo (agar pehle se nahi hai)
-      var timerEl = document.getElementById('race-timer-display');
-      if (!timerEl) {
-        timerEl = document.createElement('p');
-        timerEl.id = 'race-timer-display';
-        timerEl.style.cssText = 'font-size:14px; font-weight:bold; margin:2px 0;';
-        // .tb-top-text ke andar insert karo
-        var tbTop = document.querySelector('.tb-top-text');
-        if (tbTop) tbTop.appendChild(timerEl);
+        // Naya race load hua ya startTime pehli baar mila/badla — timer (re)start karo
+        if (startTime && (startTime !== _lastStartTime || marketId !== _lastMarketId)) {
+          _lastMarketId = marketId;
+          startRaceTimer(startTime);
+          updateHeaderDateTime(startTime);
+          watchHeaderDateTime(startTime);
+        } else if (startTime) {
+          // Same race — header date/time ko bhi refresh rakho (Vue currentDateTime
+          // har render par system time se overwrite kar sakta hai)
+          updateHeaderDateTime(startTime);
+          watchHeaderDateTime(startTime);
+        } else if (!startTime && _raceTimerInterval) {
+          // startTime gayab ho gayi (race switch ho gaya, data abhi nahi aaya) — purana timer roko
+          clearInterval(_raceTimerInterval);
+          _raceTimerInterval = null;
+          _lastStartTime = null;
+          var existingEl = document.getElementById('race-timer-display');
+          if (existingEl) existingEl.textContent = '';
+        }
+      } else if (_raceTimerInterval) {
+        // Cricket/tennis market par switch ho gaya — racing timer band karo
+        clearInterval(_raceTimerInterval);
+        _raceTimerInterval = null;
+        _lastStartTime = null;
+        _lastMarketId = null;
+        if (_headerDateObserver) { _headerDateObserver.disconnect(); _headerDateObserver = null; _headerDateTarget = null; }
+        var staleEl = document.getElementById('race-timer-display');
+        if (staleEl) staleEl.textContent = '';
       }
-
-      startRaceTimer(startTime);
     }
 
-    checkAndStart();
+    setTimeout(watchLoop, 500);
   }
 
   document.addEventListener('DOMContentLoaded', function() {
-    setTimeout(tryStartTimer, 800);
+    setTimeout(watchLoop, 800);
   });
   // Agar DOMContentLoaded chhoot gaya
-  if (document.readyState !== 'loading') setTimeout(tryStartTimer, 800);
+  if (document.readyState !== 'loading') setTimeout(watchLoop, 800);
 })();
 </script>
                                 </div>

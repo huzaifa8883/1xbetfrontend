@@ -1417,6 +1417,13 @@ document.addEventListener("DOMContentLoaded", async () => {
           const textColor = 'black';
 
           // ✅ New runners-based odds format
+          const r = match.runners || [];
+          const back1 = r[0]?.back?.[0] || { price: '-', size: '-' };
+          const lay1  = r[0]?.lay?.[0]  || { price: '-', size: '-' };
+          const back2 = r[1]?.back?.[0] || { price: '-', size: '-' };
+          const lay2  = r[1]?.lay?.[0]  || { price: '-', size: '-' };
+          const backX = r[2]?.back?.[0] || { price: '-', size: '-' };
+          const layX  = r[2]?.lay?.[0]  || { price: '-', size: '-' };
 
           const row = document.createElement('tr');
           row.id = `m_${match.marketId}`;
@@ -1500,14 +1507,15 @@ document.addEventListener("DOMContentLoaded", async () => {
         const allFiltered = applyLeagueFilter(result.data, filter);
         const inPlayMatches = allFiltered.filter(match => match.inPlay === true);
 
-        if (window._inPlayCounts) { window._inPlayCounts.cricket = inPlayMatches.length; updateInPlayBadge(); }
+        // Update shared badge
+        window._inplayCounts = window._inplayCounts || { cricket: 0, football: 0, tennis: 0 };
+        window._inplayCounts.cricket = inPlayMatches.length;
+        const total = window._inplayCounts.cricket + window._inplayCounts.football + window._inplayCounts.tennis;
+        const badge = document.getElementById('inplayTotalCount');
+        if (badge) badge.textContent = total > 0 ? total : '';
 
         if (inPlayMatches.length === 0) {
-          setTimeout(() => {
-            if (document.getElementById('inPlayMatchesContainer')) {
-              tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color:white;"></td></tr>`;
-            }
-          }, 100);
+          tbody.innerHTML = '';
           return;
         }
 
@@ -1713,14 +1721,15 @@ document.addEventListener("DOMContentLoaded", async () => {
         const allFiltered = applyLeagueFilter(result.data, filter);
         const inPlayMatches = allFiltered.filter(match => match.inPlay === true);
 
-        if (window._inPlayCounts) { window._inPlayCounts.football = inPlayMatches.length; updateInPlayBadge(); }
+        // Update shared badge
+        window._inplayCounts = window._inplayCounts || { cricket: 0, football: 0, tennis: 0 };
+        window._inplayCounts.football = inPlayMatches.length;
+        const total = window._inplayCounts.cricket + window._inplayCounts.football + window._inplayCounts.tennis;
+        const badge = document.getElementById('inplayTotalCount');
+        if (badge) badge.textContent = total > 0 ? total : '';
 
         if (inPlayMatches.length === 0) {
-          setTimeout(() => {
-            if (document.getElementById('inPlayfootballContainer')) {
-              tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color:white;"></td></tr>`;
-            }
-          }, 100);
+          tbody.innerHTML = '';
           return;
         }
 
@@ -1907,14 +1916,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 <!-- ✅ Tennis InPlay Table -->
 <script>
-  // Shared inplay counts — updated by each sport loader, then reflected in the badge
-  window._inPlayCounts = { cricket: 0, football: 0, tennis: 0 };
-  function updateInPlayBadge() {
-    const total = window._inPlayCounts.cricket + window._inPlayCounts.football + window._inPlayCounts.tennis;
-    const el = document.getElementById('inplayTotalCount');
-    if (el) el.textContent = total > 0 ? total : '';
-  }
-
   async function loadInPlayTennisMatches() {
     try {
       const [response, filter] = await Promise.all([
@@ -1931,15 +1932,15 @@ document.addEventListener("DOMContentLoaded", async () => {
         const allFiltered = applyLeagueFilter(result.data, filter);
         const inPlayMatches = allFiltered.filter(match => match.inPlay === true);
 
-        window._inPlayCounts.tennis = inPlayMatches.length;
-        updateInPlayBadge();
+        // Update shared badge
+        window._inplayCounts = window._inplayCounts || { cricket: 0, football: 0, tennis: 0 };
+        window._inplayCounts.tennis = inPlayMatches.length;
+        const total = window._inplayCounts.cricket + window._inplayCounts.football + window._inplayCounts.tennis;
+        const badge = document.getElementById('inplayTotalCount');
+        if (badge) badge.textContent = total > 0 ? total : '';
 
         if (inPlayMatches.length === 0) {
-          setTimeout(() => {
-            if (document.getElementById('inPlayTennisContainer')) {
-              tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color:white;"></td></tr>`;
-            }
-          }, 100);
+          tbody.innerHTML = '';
           return;
         }
 
@@ -1952,8 +1953,6 @@ document.addEventListener("DOMContentLoaded", async () => {
           const lay1  = r[0]?.lay?.[0]  || { price: '-', size: '-' };
           const back2 = r[1]?.back?.[0] || { price: '-', size: '-' };
           const lay2  = r[1]?.lay?.[0]  || { price: '-', size: '-' };
-          const backX = { price: '', size: '' };
-          const layX  = { price: '', size: '' };
 
           const row = document.createElement('tr');
           row.id = `m_${match.marketId}`;
@@ -1984,8 +1983,8 @@ document.addEventListener("DOMContentLoaded", async () => {
             </td>
             <td><div class="box -blue"><strong>${back1.price}</strong><span>${back1.size}</span></div></td>
             <td><div class="box -pink"><strong>${lay1.price}</strong><span>${lay1.size}</span></div></td>
-            <td><div class="box -blue m-left"><strong>${backX.price}</strong><span>${backX.size}</span></div></td>
-            <td><div class="box -pink m-right"><strong>${layX.price}</strong><span>${layX.size}</span></div></td>
+            <td><div class="box -blue m-left"><strong></strong><span></span></div></td>
+            <td><div class="box -pink m-right"><strong></strong><span></span></div></td>
             <td><div class="box -blue"><strong>${back2.price}</strong><span>${back2.size}</span></div></td>
             <td><div class="box -pink"><strong>${lay2.price}</strong><span>${lay2.size}</span></div></td>
             <td class="action"><a href="#"><i class="fa fa-info-circle"></i></a></td>
@@ -1993,8 +1992,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
           tbody.appendChild(row);
         });
-      } else {
-        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color:white;">Error loading matches.</td></tr>`;
       }
     } catch (err) {
       console.error('Error loading InPlay tennis matches:', err);

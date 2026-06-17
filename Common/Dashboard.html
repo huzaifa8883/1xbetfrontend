@@ -1066,7 +1066,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const container = document.getElementById('horseRaceContainer');
       if (!container) return;
 
-      // Outer wrapper banao — arrows yahan jayenge
+      // Outer wrapper — agar pehle se nahi bana toh banao
       let outerWrap = document.getElementById('horseSliderOuter');
       if (!outerWrap) {
         outerWrap = document.createElement('div');
@@ -1087,16 +1087,20 @@ document.addEventListener("DOMContentLoaded", async () => {
         const now = new Date();
         const thirtyMinAgo = new Date(now.getTime() - 30 * 60_000);
 
-        const relevant = data.data.filter(m => parseUTC(m.startTime) >= thirtyMinAgo);
+        // Filter: sirf 30 min pehle se aage ke races
+        const relevant = data.data
+          .filter(m => parseUTC(m.startTime) >= thirtyMinAgo)
+          .sort((a, b) => parseUTC(a.startTime) - parseUTC(b.startTime)); // Time ke hisaab se sort
 
         if (relevant.length === 0) {
           container.innerHTML = `<div style="text-align:center; color:white; padding:10px;">No upcoming races found.</div>`;
+          // No races = no arrows needed
         } else {
           relevant.forEach(match => {
             const startTime = parseUTC(match.startTime);
             const localTime = startTime.toLocaleTimeString('en-US', {
               hour: 'numeric', minute: '2-digit', hour12: true
-            }).toLowerCase();
+            });
 
             const div = document.createElement('div');
             div.className = 'chk11';
@@ -1111,20 +1115,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             container.appendChild(div);
           });
 
-          // Arrows manually inject karo outer wrapper mein
-          const prevBtn = document.createElement('button');
-          prevBtn.className = 'horse-arrow-btn';
-          prevBtn.innerHTML = '&#8249;';
-          prevBtn.style.cssText = 'flex-shrink:0; font-size:24px; font-weight:bold; background:rgba(0,0,0,0.6); border:none; color:white; cursor:pointer; padding:2px 10px; border-radius:4px; line-height:1; height:40px; z-index:10;';
-
-          const nextBtn = document.createElement('button');
-          nextBtn.className = 'horse-arrow-btn';
-          nextBtn.innerHTML = '&#8250;';
-          nextBtn.style.cssText = prevBtn.style.cssText;
-
-          outerWrap.insertBefore(prevBtn, container);
-          outerWrap.appendChild(nextBtn);
-
+          // ✅ FIX: Pehle slick init karo, phir arrows inject karo
           $(container).slick({
             slidesToShow: 8,
             slidesToScroll: 1,
@@ -1136,8 +1127,23 @@ document.addEventListener("DOMContentLoaded", async () => {
             ]
           });
 
+          const arrowStyle = 'flex-shrink:0; font-size:24px; font-weight:bold; background:rgba(0,0,0,0.6); border:none; color:white; cursor:pointer; padding:2px 10px; border-radius:4px; line-height:1; height:40px; z-index:10;';
+
+          const prevBtn = document.createElement('button');
+          prevBtn.className = 'horse-arrow-btn';
+          prevBtn.innerHTML = '&#8249;';
+          prevBtn.style.cssText = arrowStyle;
           prevBtn.addEventListener('click', () => $(container).slick('slickPrev'));
+
+          const nextBtn = document.createElement('button');
+          nextBtn.className = 'horse-arrow-btn';
+          nextBtn.innerHTML = '&#8250;';
+          nextBtn.style.cssText = arrowStyle;
           nextBtn.addEventListener('click', () => $(container).slick('slickNext'));
+
+          // ✅ FIX: outerWrap ke start aur end mein inject karo (container ke bahar)
+          outerWrap.insertBefore(prevBtn, outerWrap.firstChild);
+          outerWrap.appendChild(nextBtn);
         }
 
       } else {
@@ -1161,7 +1167,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const container = document.getElementById('greyhoundRaceContainer');
       if (!container) return;
 
-      // Outer wrapper banao — arrows yahan jayenge
+      // Outer wrapper — agar pehle se nahi bana toh banao
       let outerWrap = document.getElementById('greyhoundSliderOuter');
       if (!outerWrap) {
         outerWrap = document.createElement('div');
@@ -1181,16 +1187,20 @@ document.addEventListener("DOMContentLoaded", async () => {
         const now = new Date();
         const thirtyMinAgo = new Date(now.getTime() - 30 * 60_000);
 
-        const relevant = data.data.filter(m => parseUTC(m.startTime) >= thirtyMinAgo);
+        // Filter + sort time ke hisaab se
+        const relevant = data.data
+          .filter(m => parseUTC(m.startTime) >= thirtyMinAgo)
+          .sort((a, b) => parseUTC(a.startTime) - parseUTC(b.startTime));
 
         if (relevant.length === 0) {
           container.innerHTML = `<div style="text-align:center; color:white; padding:10px;">No upcoming races found.</div>`;
+          // No races = no arrows needed
         } else {
           relevant.forEach(match => {
             const startTime = parseUTC(match.startTime);
             const localTime = startTime.toLocaleTimeString('en-US', {
               hour: 'numeric', minute: '2-digit', hour12: true
-            }).toLowerCase();
+            });
 
             const div = document.createElement('div');
             div.className = 'chk11';
@@ -1205,21 +1215,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             container.appendChild(div);
           });
 
-          const arrowStyle = 'flex-shrink:0; font-size:24px; font-weight:bold; background:rgba(0,0,0,0.6); border:none; color:white; cursor:pointer; padding:2px 10px; border-radius:4px; line-height:1; height:40px; z-index:10;';
-
-          const prevBtn = document.createElement('button');
-          prevBtn.className = 'grey-arrow-btn';
-          prevBtn.innerHTML = '&#8249;';
-          prevBtn.style.cssText = arrowStyle;
-
-          const nextBtn = document.createElement('button');
-          nextBtn.className = 'grey-arrow-btn';
-          nextBtn.innerHTML = '&#8250;';
-          nextBtn.style.cssText = arrowStyle;
-
-          outerWrap.insertBefore(prevBtn, container);
-          outerWrap.appendChild(nextBtn);
-
+          // ✅ FIX: Pehle slick init karo, phir arrows inject karo
           $(container).slick({
             slidesToShow: 8,
             slidesToScroll: 1,
@@ -1231,8 +1227,23 @@ document.addEventListener("DOMContentLoaded", async () => {
             ]
           });
 
+          const arrowStyle = 'flex-shrink:0; font-size:24px; font-weight:bold; background:rgba(0,0,0,0.6); border:none; color:white; cursor:pointer; padding:2px 10px; border-radius:4px; line-height:1; height:40px; z-index:10;';
+
+          const prevBtn = document.createElement('button');
+          prevBtn.className = 'grey-arrow-btn';
+          prevBtn.innerHTML = '&#8249;';
+          prevBtn.style.cssText = arrowStyle;
           prevBtn.addEventListener('click', () => $(container).slick('slickPrev'));
+
+          const nextBtn = document.createElement('button');
+          nextBtn.className = 'grey-arrow-btn';
+          nextBtn.innerHTML = '&#8250;';
+          nextBtn.style.cssText = arrowStyle;
           nextBtn.addEventListener('click', () => $(container).slick('slickNext'));
+
+          // ✅ FIX: outerWrap ke start aur end mein inject karo (container ke bahar)
+          outerWrap.insertBefore(prevBtn, outerWrap.firstChild);
+          outerWrap.appendChild(nextBtn);
         }
 
       } else {

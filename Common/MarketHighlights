@@ -367,3 +367,21 @@
     
     
 </div>
+
+<script>
+  // Highlight active tab
+  function highlightLink(el) {
+    document.querySelectorAll('.tab-content.mobilewidth').forEach(function(tab) {
+      tab.classList.remove('bg-primary');
+    });
+    el.classList.add('bg-primary');
+  }
+
+  // Tab switching — show/hide tabcontent divs
+  function ActivateTab(tab_index) {
+    var tabs = document.querySelectorAll('.tabcontent');
+    tabs.forEach(function(t, i) {
+      t.style.display = (i === tab_index) ? 'block' : 'none';
+    });
+  }
+</script>

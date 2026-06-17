@@ -73,37 +73,19 @@
             return { ifWin: 0, ifLose: 0, net: 0 };
         };
 
-        // Horse/Greyhound runner cloth color — Betfair API se aata hai
-        // getClothColor(clothNum, sortPriority, colour1, colour2)
-        // colour1/colour2 = Betfair metadata COLOUR_1/COLOUR_2 (actual jockey silk colors)
-        // Fallback: position-based standard racing colors
-        window.getClothColor = function(clothNum, sortPriority, colour1, colour2) {
-            // ✅ Betfair API se actual color aya ho to pehle use karo
-            if (colour1 && /^#[0-9A-Fa-f]{6}$/.test(colour1)) return colour1;
-            // Standard racing colors by cloth number / sort priority
-            var colors = [
-                '#E63946',  // 1 Red
-                '#FFFFFF',  // 2 White
-                '#1D3557',  // 3 Dark Blue
-                '#F4A261',  // 4 Yellow/Orange
-                '#2A9D8F',  // 5 Green
-                '#111111',  // 6 Black
-                '#F72585',  // 7 Hot Pink
-                '#F77F00',  // 8 Orange
-                '#8338EC',  // 9 Purple
-                '#0077B6',  // 10 Blue
-                '#06D6A0',  // 11 Mint
-                '#FFB703',  // 12 Gold
-                '#E9C46A',  // 13 Light Yellow
-                '#E76F51',  // 14 Coral
-                '#118AB2',  // 15 Teal Blue
-                '#073B4C',  // 16 Dark Teal
+        // Horse/Greyhound runner cloth color
+        // Ab controller se runner.clothColor directly aata hai (always set, null nahi)
+        // Ye function sirf fallback ke tor pe rakha hai agar koi purana code call kare
+        window.getClothColor = function(clothNum, sortPriority) {
+            var RACE_COLORS = [
+                '#E63946','#FFFFFF','#1D3557','#F4D03F','#2ECC71','#111111','#F39C12','#8E44AD',
+                '#16A085','#E74C3C','#3498DB','#F1C40F','#E67E22','#1ABC9C','#95A5A6','#2C3E50',
+                '#C0392B','#7F8C8D','#27AE60','#D35400',
             ];
-            // clothNumber pehle try karo, warna sortPriority use karo
             var n = parseInt(clothNum);
             if (isNaN(n) || n < 1) n = parseInt(sortPriority);
             if (isNaN(n) || n < 1) n = 1;
-            return colors[(n - 1) % colors.length];
+            return RACE_COLORS[(n - 1) % RACE_COLORS.length];
         };
         // mv2.min.js svc_prefix use karta hai catalog2 / orders calls ke liye
         const SsocketUrl = "https://1xbetbackend.work.gd/signalr";
@@ -997,13 +979,9 @@
         relevant.forEach(match => {
           const li      = document.createElement('li');
           li.classList.add('match-card');
-          // ✅ match.marketStartTime ya match.startTime — race ka scheduled time
-          const raceTime = match.marketStartTime || match.startTime;
-          const timeStr = raceTime
-            ? new Date(raceTime).toLocaleTimeString('en-US', {
-                hour: 'numeric', minute: '2-digit', hour12: true
-              }).toLowerCase()
-            : '';
+          const timeStr = new Date(match.startTime).toLocaleTimeString('en-US', {
+            hour: 'numeric', minute: '2-digit', hour12: true
+          }).toLowerCase();
           li.textContent  = `${timeStr} ${match.match}`;
           li.style.cursor = 'pointer';
           li.addEventListener('click', () => {
@@ -1047,13 +1025,9 @@
         relevant.forEach(match => {
           const li      = document.createElement('li');
           li.classList.add('match-card');
-          // ✅ match.marketStartTime ya match.startTime — race ka scheduled time
-          const raceTime = match.marketStartTime || match.startTime;
-          const timeStr = raceTime
-            ? new Date(raceTime).toLocaleTimeString('en-US', {
-                hour: 'numeric', minute: '2-digit', hour12: true
-              }).toLowerCase()
-            : '';
+          const timeStr = new Date(match.startTime).toLocaleTimeString('en-US', {
+            hour: 'numeric', minute: '2-digit', hour12: true
+          }).toLowerCase();
           li.textContent  = `${timeStr} ${match.match}`;
           li.style.cursor = 'pointer';
           li.addEventListener('click', () => {
@@ -1785,7 +1759,7 @@
               v-on:click="toggleRunner(runner)"></span>
         <span v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               class="ml-2 runner-cloth-color"
-              :style="{background: runner.colour1 || ['#E63946','#FFFFFF','#1D3557','#F4A261','#2A9D8F','#111111','#F72585','#F77F00','#8338EC','#0077B6','#06D6A0','#FFB703','#E9C46A','#E76F51','#118AB2','#073B4C'][((parseInt(runner.clothNumber)||parseInt(runner.sortPriority)||1)-1)%16]}">
+              :style="{background: runner.clothColor || '#E63946'}">
         </span>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -1942,7 +1916,7 @@
               v-on:click="toggleRunner(runner)"></span>
         <span v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               class="ml-2 runner-cloth-color"
-              :style="{background: runner.colour1 || ['#E63946','#FFFFFF','#1D3557','#F4A261','#2A9D8F','#111111','#F72585','#F77F00','#8338EC','#0077B6','#06D6A0','#FFB703','#E9C46A','#E76F51','#118AB2','#073B4C'][((parseInt(runner.clothNumber)||parseInt(runner.sortPriority)||1)-1)%16]}">
+              :style="{background: runner.clothColor || '#E63946'}">
         </span>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -2066,7 +2040,7 @@
               v-on:click="toggleRunner(runner)"></span>
         <span v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               class="ml-2 runner-cloth-color"
-              :style="{background: runner.colour1 || ['#E63946','#FFFFFF','#1D3557','#F4A261','#2A9D8F','#111111','#F72585','#F77F00','#8338EC','#0077B6','#06D6A0','#FFB703','#E9C46A','#E76F51','#118AB2','#073B4C'][((parseInt(runner.clothNumber)||parseInt(runner.sortPriority)||1)-1)%16]}">
+              :style="{background: runner.clothColor || '#E63946'}">
         </span>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -2189,7 +2163,7 @@
               v-on:click="toggleRunner(runner)"></span>
         <span v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               class="ml-2 runner-cloth-color"
-              :style="{background: runner.colour1 || ['#E63946','#FFFFFF','#1D3557','#F4A261','#2A9D8F','#111111','#F72585','#F77F00','#8338EC','#0077B6','#06D6A0','#FFB703','#E9C46A','#E76F51','#118AB2','#073B4C'][((parseInt(runner.clothNumber)||parseInt(runner.sortPriority)||1)-1)%16]}">
+              :style="{background: runner.clothColor || '#E63946'}">
         </span>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -2313,7 +2287,7 @@
               v-on:click="toggleRunner(runner)"></span>
         <span v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               class="ml-2 runner-cloth-color"
-              :style="{background: runner.colour1 || ['#E63946','#FFFFFF','#1D3557','#F4A261','#2A9D8F','#111111','#F72585','#F77F00','#8338EC','#0077B6','#06D6A0','#FFB703','#E9C46A','#E76F51','#118AB2','#073B4C'][((parseInt(runner.clothNumber)||parseInt(runner.sortPriority)||1)-1)%16]}">
+              :style="{background: runner.clothColor || '#E63946'}">
         </span>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -2436,7 +2410,7 @@
               v-on:click="toggleRunner(runner)"></span>
         <span v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               class="ml-2 runner-cloth-color"
-              :style="{background: runner.colour1 || ['#E63946','#FFFFFF','#1D3557','#F4A261','#2A9D8F','#111111','#F72585','#F77F00','#8338EC','#0077B6','#06D6A0','#FFB703','#E9C46A','#E76F51','#118AB2','#073B4C'][((parseInt(runner.clothNumber)||parseInt(runner.sortPriority)||1)-1)%16]}">
+              :style="{background: runner.clothColor || '#E63946'}">
         </span>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -2636,7 +2610,7 @@
               v-on:click="toggleRunner(runner)"></span>
         <span v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               class="ml-2 runner-cloth-color"
-              :style="{background: runner.colour1 || ['#E63946','#FFFFFF','#1D3557','#F4A261','#2A9D8F','#111111','#F72585','#F77F00','#8338EC','#0077B6','#06D6A0','#FFB703','#E9C46A','#E76F51','#118AB2','#073B4C'][((parseInt(runner.clothNumber)||parseInt(runner.sortPriority)||1)-1)%16]}">
+              :style="{background: runner.clothColor || '#E63946'}">
         </span>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -2767,7 +2741,7 @@
               v-on:click="toggleRunner(runner)"></span>
         <span v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               class="ml-2 runner-cloth-color"
-              :style="{background: runner.colour1 || ['#E63946','#FFFFFF','#1D3557','#F4A261','#2A9D8F','#111111','#F72585','#F77F00','#8338EC','#0077B6','#06D6A0','#FFB703','#E9C46A','#E76F51','#118AB2','#073B4C'][((parseInt(runner.clothNumber)||parseInt(runner.sortPriority)||1)-1)%16]}">
+              :style="{background: runner.clothColor || '#E63946'}">
         </span>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -2892,7 +2866,7 @@
               v-on:click="toggleRunner(runner)"></span>
         <span v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               class="ml-2 runner-cloth-color"
-              :style="{background: runner.colour1 || ['#E63946','#FFFFFF','#1D3557','#F4A261','#2A9D8F','#111111','#F72585','#F77F00','#8338EC','#0077B6','#06D6A0','#FFB703','#E9C46A','#E76F51','#118AB2','#073B4C'][((parseInt(runner.clothNumber)||parseInt(runner.sortPriority)||1)-1)%16]}">
+              :style="{background: runner.clothColor || '#E63946'}">
         </span>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -3016,7 +2990,7 @@
               v-on:click="toggleRunner(runner)"></span>
         <span v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               class="ml-2 runner-cloth-color"
-              :style="{background: runner.colour1 || ['#E63946','#FFFFFF','#1D3557','#F4A261','#2A9D8F','#111111','#F72585','#F77F00','#8338EC','#0077B6','#06D6A0','#FFB703','#E9C46A','#E76F51','#118AB2','#073B4C'][((parseInt(runner.clothNumber)||parseInt(runner.sortPriority)||1)-1)%16]}">
+              :style="{background: runner.clothColor || '#E63946'}">
         </span>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -3141,7 +3115,7 @@
               v-on:click="toggleRunner(runner)"></span>
         <span v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               class="ml-2 runner-cloth-color"
-              :style="{background: runner.colour1 || ['#E63946','#FFFFFF','#1D3557','#F4A261','#2A9D8F','#111111','#F72585','#F77F00','#8338EC','#0077B6','#06D6A0','#FFB703','#E9C46A','#E76F51','#118AB2','#073B4C'][((parseInt(runner.clothNumber)||parseInt(runner.sortPriority)||1)-1)%16]}">
+              :style="{background: runner.clothColor || '#E63946'}">
         </span>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -3266,7 +3240,7 @@
               v-on:click="toggleRunner(runner)"></span>
         <span v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               class="ml-2 runner-cloth-color"
-              :style="{background: runner.colour1 || ['#E63946','#FFFFFF','#1D3557','#F4A261','#2A9D8F','#111111','#F72585','#F77F00','#8338EC','#0077B6','#06D6A0','#FFB703','#E9C46A','#E76F51','#118AB2','#073B4C'][((parseInt(runner.clothNumber)||parseInt(runner.sortPriority)||1)-1)%16]}">
+              :style="{background: runner.clothColor || '#E63946'}">
         </span>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -3469,7 +3443,7 @@
               v-on:click="toggleRunner(runner)"></span>
         <span v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               class="ml-2 runner-cloth-color"
-              :style="{background: runner.colour1 || ['#E63946','#FFFFFF','#1D3557','#F4A261','#2A9D8F','#111111','#F72585','#F77F00','#8338EC','#0077B6','#06D6A0','#FFB703','#E9C46A','#E76F51','#118AB2','#073B4C'][((parseInt(runner.clothNumber)||parseInt(runner.sortPriority)||1)-1)%16]}">
+              :style="{background: runner.clothColor || '#E63946'}">
         </span>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -3598,7 +3572,7 @@
               v-on:click="toggleRunner(runner)"></span>
         <span v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               class="ml-2 runner-cloth-color"
-              :style="{background: runner.colour1 || ['#E63946','#FFFFFF','#1D3557','#F4A261','#2A9D8F','#111111','#F72585','#F77F00','#8338EC','#0077B6','#06D6A0','#FFB703','#E9C46A','#E76F51','#118AB2','#073B4C'][((parseInt(runner.clothNumber)||parseInt(runner.sortPriority)||1)-1)%16]}">
+              :style="{background: runner.clothColor || '#E63946'}">
         </span>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -6208,35 +6182,45 @@ Vue.component('runner-aggregate', {
   /* ── Runner normalizer ── */
   function normalizeRunners(runners) {
     if (!Array.isArray(runners)) return [];
-    return runners.map(r => ({
-      selectionId:  r.selectionId  || r.id    || Math.random(),
-      runnerName:   r.runnerName   || r.name  || 'Runner',
-      status:       r.status       || 'ACTIVE',
-      price1: r.back?.[0]?.price ?? r.price1 ?? '-',
-      price2: r.back?.[1]?.price ?? r.price2 ?? '-',
-      price3: r.back?.[2]?.price ?? r.price3 ?? '-',
-      size1:  r.back?.[0]?.size  ?? r.size1  ?? '-',
-      size2:  r.back?.[1]?.size  ?? r.size2  ?? '-',
-      size3:  r.back?.[2]?.size  ?? r.size3  ?? '-',
-      lay1:   r.lay?.[0]?.price  ?? r.lay1   ?? '-',
-      lay2:   r.lay?.[1]?.price  ?? r.lay2   ?? '-',
-      lay3:   r.lay?.[2]?.price  ?? r.lay3   ?? '-',
-      ls1:    r.lay?.[0]?.size   ?? r.ls1    ?? '-',
-      ls2:    r.lay?.[1]?.size   ?? r.ls2    ?? '-',
-      ls3:    r.lay?.[2]?.size   ?? r.ls3    ?? '-',
-      ifWin:  r.ifWin  || 0,
-      ifLose: r.ifLose || 0,
-      jockeyName:   (r.jockeyName || null) ? (r.jockeyName).replace(/^\s*\(\d+\)\s*/, '').trim() || null : null,
-      silkColor:    r.silkColor   || r.silkUrl || null,
-      clothNumber:  r.clothNumber || null,
-      sortPriority: r.sortPriority || null,
-      metadataDict: r.metadataDict || null,
-      colour1:      r.colour1 || null,    // Betfair COLOUR_1 — primary jockey silk color
-      colour2:      r.colour2 || null,    // Betfair COLOUR_2 — secondary color
-      indB1: r.indB1 || '',
-      indL1: r.indL1 || '',
-      marketId: r.marketId || null,
-    }));
+    const RACE_COLORS = [
+      '#E63946','#FFFFFF','#1D3557','#F4D03F','#2ECC71','#111111','#F39C12','#8E44AD',
+      '#16A085','#E74C3C','#3498DB','#F1C40F','#E67E22','#1ABC9C','#95A5A6','#2C3E50',
+      '#C0392B','#7F8C8D','#27AE60','#D35400',
+    ];
+    return runners.map(r => {
+      const cNum = r.clothNumber || null;
+      const sP   = r.sortPriority || null;
+      const posN = parseInt(cNum) || parseInt(sP) || 1;
+      return {
+        selectionId:  r.selectionId  || r.id    || Math.random(),
+        runnerName:   r.runnerName   || r.name  || 'Runner',
+        status:       r.status       || 'ACTIVE',
+        price1: r.back?.[0]?.price ?? r.price1 ?? '-',
+        price2: r.back?.[1]?.price ?? r.price2 ?? '-',
+        price3: r.back?.[2]?.price ?? r.price3 ?? '-',
+        size1:  r.back?.[0]?.size  ?? r.size1  ?? '-',
+        size2:  r.back?.[1]?.size  ?? r.size2  ?? '-',
+        size3:  r.back?.[2]?.size  ?? r.size3  ?? '-',
+        lay1:   r.lay?.[0]?.price  ?? r.lay1   ?? '-',
+        lay2:   r.lay?.[1]?.price  ?? r.lay2   ?? '-',
+        lay3:   r.lay?.[2]?.price  ?? r.lay3   ?? '-',
+        ls1:    r.lay?.[0]?.size   ?? r.ls1    ?? '-',
+        ls2:    r.lay?.[1]?.size   ?? r.ls2    ?? '-',
+        ls3:    r.lay?.[2]?.size   ?? r.ls3    ?? '-',
+        ifWin:  r.ifWin  || 0,
+        ifLose: r.ifLose || 0,
+        jockeyName:   (r.jockeyName || null) ? r.jockeyName.replace(/^\s*\(\d+\)\s*/, '').trim() || null : null,
+        silkColor:    r.silkColor   || r.silkUrl || null,
+        clothNumber:  cNum,
+        sortPriority: sP,
+        // clothColor — controller se aata hai (always set), fallback here bhi hai
+        clothColor:   r.clothColor || RACE_COLORS[(posN - 1) % RACE_COLORS.length],
+        metadataDict: r.metadataDict || null,
+        indB1: r.indB1 || '',
+        indL1: r.indL1 || '',
+        marketId: r.marketId || null,
+      };
+    });
   }
 
   /* ── Market normalizer ── */

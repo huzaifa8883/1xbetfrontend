@@ -666,36 +666,6 @@
 </div>
                         </div>
 
-<!-- ✅ Horse Race Section -->
-<div class="race-section" id="horseRaceSection">
-    <div class="race-section-header">
-        <span class="svg-horse svg-horse-dims svg-span" role="img"></span>
-        <span class="race-section-title">Horse Race</span>
-    </div>
-    <div class="race-slider-wrapper">
-        <button class="race-arrow race-arrow-left" onclick="scrollRace('horseRaceTrack', -1)">&#8249;</button>
-        <div class="race-track" id="horseRaceTrack">
-            <!-- Populated by JS -->
-        </div>
-        <button class="race-arrow race-arrow-right" onclick="scrollRace('horseRaceTrack', 1)">&#8250;</button>
-    </div>
-</div>
-
-<!-- ✅ Greyhound Section -->
-<div class="race-section" id="greyhoundRaceSection">
-    <div class="race-section-header">
-        <span class="svg-greyhound-racing svg-greyhound-racing-dims svg-span" role="img"></span>
-        <span class="race-section-title">Grey Hound</span>
-    </div>
-    <div class="race-slider-wrapper">
-        <button class="race-arrow race-arrow-left" onclick="scrollRace('greyhoundRaceTrack', -1)">&#8249;</button>
-        <div class="race-track" id="greyhoundRaceTrack">
-            <!-- Populated by JS -->
-        </div>
-        <button class="race-arrow race-arrow-right" onclick="scrollRace('greyhoundRaceTrack', 1)">&#8250;</button>
-    </div>
-</div>
-
                         <div id="Dashboardmarkets">
 
                         </div>
@@ -1056,259 +1026,262 @@ document.addEventListener("DOMContentLoaded", async () => {
   loadhorseMatches();
 </script>
 
-<!-- ✅ Race Section Styles -->
+<!-- ✅ Horse Slick Slider — UPDATED: time+venue format, sorting, filtering, arrows, 3-col mobile -->
 <style>
-  /* ── Race Section Container ─────────────────────────────── */
-  .race-section {
-    background: #1a2332;
-    border-top: 1px solid #2d3a4a;
-    margin-bottom: 0;
-  }
-
-  .race-section-header {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    padding: 6px 10px 5px;
-    background: #1e2c3c;
-    border-bottom: 1px solid #2d3a4a;
-  }
-
-  .race-section-title {
-    color: #e0e8f0;
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 0.3px;
-    text-transform: uppercase;
-  }
-
-  /* ── Slider Wrapper (arrows + scrollable track) ─────────── */
-  .race-slider-wrapper {
-    display: flex;
-    align-items: center;
+  /* ── Race Section Wrapper ─────────────────────────── */
+  .race-section-wrap {
     position: relative;
-    overflow: hidden;
-    background: #1a2332;
+    margin-bottom: 10px;
   }
 
-  .race-track {
-    display: flex;
-    flex-direction: row;
-    overflow-x: hidden;
-    scroll-behavior: smooth;
-    flex: 1;
-    gap: 0;
-  }
-
-  /* ── Individual Race Card ────────────────────────────────── */
-  .race-card {
-    flex: 0 0 auto;
-    min-width: 120px;
-    max-width: 155px;
-    width: 13%;
-    border-right: 1px solid #2a3848;
-    padding: 7px 6px 6px;
-    text-align: center;
-    cursor: pointer;
-    transition: background 0.15s;
-    text-decoration: none;
-    display: block;
-    box-sizing: border-box;
-  }
-
-  .race-card:hover {
-    background: #243347;
-    text-decoration: none;
-  }
-
-  .race-card-time {
-    display: block;
-    color: #ffffff;
-    font-size: 12px;
-    font-weight: 700;
-    line-height: 1.3;
-    white-space: nowrap;
-  }
-
-  .race-card-venue {
-    display: block;
-    color: #b0bec5;
-    font-size: 11px;
-    font-weight: 400;
-    line-height: 1.4;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    margin-top: 1px;
-  }
-
-  /* ── Scroll Arrows ───────────────────────────────────────── */
-  .race-arrow {
-    flex: 0 0 auto;
-    width: 26px;
-    height: 100%;
-    min-height: 48px;
-    background: #243347;
+  /* Arrow buttons */
+  .race-arrow-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+    background: rgba(0,0,0,0.55);
     border: none;
     color: #fff;
-    font-size: 22px;
-    font-weight: 300;
+    width: 28px;
+    height: 100%;
     cursor: pointer;
+    font-size: 18px;
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 2;
     padding: 0;
-    line-height: 1;
+    transition: background 0.2s;
+    border-radius: 3px;
+  }
+  .race-arrow-btn:hover { background: rgba(0,0,0,0.8); }
+  .race-arrow-btn.race-prev { left: 0; }
+  .race-arrow-btn.race-next { right: 0; }
+
+  /* Scroll container */
+  .race-scroll-track {
+    overflow-x: hidden;
+    margin: 0 30px;
+  }
+  .race-items-row {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0;
+    transition: transform 0.3s ease;
+  }
+
+  /* Each race card */
+  .race-event-card {
+    flex: 0 0 calc(100% / 8);
+    min-width: 110px;
+    text-align: center;
+    padding: 6px 4px;
+    border-right: 1px solid rgba(255,255,255,0.1);
+    cursor: pointer;
     transition: background 0.15s;
-    user-select: none;
   }
+  .race-event-card:hover { background: rgba(255,255,255,0.07); }
 
-  .race-arrow:hover {
-    background: #2f4460;
-  }
-
-  .race-arrow-left { border-right: 1px solid #2a3848; }
-  .race-arrow-right { border-left: 1px solid #2a3848; }
-
-  /* ── No-data placeholder ─────────────────────────────────── */
-  .race-no-data {
-    color: #7a8fa6;
-    font-size: 12px;
-    padding: 12px 16px;
+  .race-card-time {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.3;
     white-space: nowrap;
   }
-
-  /* ── Mobile: 3 columns ───────────────────────────────────── */
-  @media (max-width: 768px) {
-    .race-card {
-      width: 33.33%;
-      min-width: 0;
-      max-width: none;
-    }
-    .race-arrow { width: 22px; font-size: 18px; }
+  .race-card-venue {
+    display: block;
+    font-size: 10px;
+    color: #b0c4d8;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 120px;
+    margin: 0 auto;
+  }
+  .race-card-name {
+    display: block;
+    font-size: 10px;
+    color: #8fa8bf;
+    line-height: 1.2;
+    margin-top: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 120px;
+    margin: 1px auto 0;
+  }
+  .race-inplay-badge {
+    display: inline-block;
+    background: #28a745;
+    color: #fff;
+    font-size: 9px;
+    padding: 1px 4px;
+    border-radius: 2px;
+    margin-bottom: 2px;
   }
 
-  @media (max-width: 480px) {
-    .race-card {
-      width: 33.33%;
-      padding: 6px 3px 5px;
+  /* Mobile: 3 cards visible */
+  @media (max-width: 767px) {
+    .race-event-card {
+      flex: 0 0 calc(100% / 3);
+      min-width: 90px;
     }
-    .race-card-time { font-size: 11px; }
-    .race-card-venue { font-size: 10px; }
   }
 </style>
 
-<!-- ✅ Horse Race + Greyhound JS -->
 <script>
-  /* ── Scroll helper ──────────────────────────────────────── */
-  function scrollRace(trackId, direction) {
-    const track = document.getElementById(trackId);
-    if (!track) return;
-    const cardWidth = track.querySelector('.race-card')?.offsetWidth || 140;
-    track.scrollBy({ left: direction * cardWidth * 3, behavior: 'smooth' });
-  }
+  /* ── Shared race render helper ───────────────────────────── */
+  function buildRaceSection(containerId, matches) {
+    const wrap = document.getElementById(containerId);
+    if (!wrap) return;
 
-  /* ── Format time in PKT (UTC+5) ────────────────────────── */
-  function formatPKT(isoString) {
-    const d = new Date(isoString);
-    // PKT = UTC+5
-    const pktMs = d.getTime() + (5 * 60 * 60 * 1000);
-    const pkt = new Date(pktMs);
-    let h = pkt.getUTCHours();
-    const m = String(pkt.getUTCMinutes()).padStart(2, '0');
-    const ampm = h >= 12 ? 'PM' : 'AM';
-    h = h % 12 || 12;
-    return `${h}:${m} ${ampm}`;
-  }
+    // Destroy previous slick if any (legacy compat)
+    const legacyInner = wrap.querySelector('.race-items-row');
+    if (!legacyInner) {
+      // First time: build skeleton inside wrap
+      wrap.innerHTML = '';
+    } else {
+      wrap.querySelector('.race-items-row').innerHTML = '';
+    }
 
-  /* ── Extract venue + country from match name ────────────── */
-  function parseVenue(matchName) {
-    // Common format: "10:45 Canterbury (AU)" or just "Canterbury (AU)"
-    // Strip leading time tokens if any
-    let venue = matchName || '';
-    venue = venue.replace(/^\d+:\d+\s*(AM|PM)?\s*/i, '').trim();
-    // If the name already has country code in parens, keep it; else return as-is
-    return venue || matchName;
-  }
+    if (!matches || matches.length === 0) {
+      wrap.innerHTML = `<div style="text-align:center;color:#aaa;padding:12px;">No upcoming races found.</div>`;
+      return;
+    }
 
-  /* ── Filter: recent (up to 30min past) + upcoming (12h) ── */
-  function filterByTime(items) {
-    const nowUtc = Date.now();
-    const PAST_MS   = 30  * 60 * 1000;   // 30 min past
-    const FUTURE_MS = 12 * 60 * 60 * 1000; // 12 hours ahead
-    return items.filter(item => {
-      const t = new Date(item.startTime).getTime();
-      return t >= (nowUtc - PAST_MS) && t <= (nowUtc + FUTURE_MS);
+    // Build HTML
+    wrap.innerHTML = `
+      <div class="race-section-wrap">
+        <button class="race-arrow-btn race-prev" onclick="raceScroll('${containerId}',-1)">&#8249;</button>
+        <div class="race-scroll-track">
+          <div class="race-items-row" id="${containerId}_row"></div>
+        </div>
+        <button class="race-arrow-btn race-next" onclick="raceScroll('${containerId}',1)">&#8250;</button>
+      </div>
+    `;
+
+    const row = document.getElementById(`${containerId}_row`);
+
+    matches.forEach(match => {
+      const st = new Date(match.startTime);
+      const timeStr = st.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+      // Venue = match.match (e.g. "Canterbury (AU)"); event name = market/race number if available
+      const venueName = match.match || '';
+
+      const card = document.createElement('div');
+      card.className = 'race-event-card';
+      card.title = venueName;
+      card.addEventListener('click', () => {
+        window.location.href = `/Common/Market.html?id=${encodeURIComponent(match.marketId)}`;
+      });
+
+      card.innerHTML = `
+        ${match.inPlay ? '<span class="race-inplay-badge">In-Play</span>' : ''}
+        <span class="race-card-time">${timeStr}</span>
+        <span class="race-card-venue">${venueName}</span>
+      `;
+
+      row.appendChild(card);
     });
   }
 
-  /* ── Sort by startTime ascending ─────────────────────────── */
-  function sortByTime(items) {
-    return [...items].sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+  /* ── Scroll handler ──────────────────────────────────────── */
+  const _raceScrollState = {};
+  function raceScroll(containerId, dir) {
+    const track = document.querySelector(`#${containerId} .race-scroll-track`);
+    const row   = document.getElementById(`${containerId}_row`);
+    if (!track || !row) return;
+
+    // Card width (first card)
+    const cardW = row.querySelector('.race-event-card')?.offsetWidth || 110;
+    const visibleW = track.offsetWidth;
+    const step = cardW * Math.max(1, Math.floor(visibleW / cardW));
+
+    if (!_raceScrollState[containerId]) _raceScrollState[containerId] = 0;
+    const maxScroll = row.scrollWidth - visibleW;
+    _raceScrollState[containerId] = Math.min(maxScroll, Math.max(0, _raceScrollState[containerId] + dir * step));
+
+    row.style.transform = `translateX(-${_raceScrollState[containerId]}px)`;
   }
 
-  /* ── Build race card HTML ─────────────────────────────────── */
-  function buildRaceCard(match) {
-    const time  = formatPKT(match.startTime);
-    const venue = parseVenue(match.match);
-    return `
-      <a class="race-card" href="/Common/Market.html?id=${match.marketId}">
-        <span class="race-card-time">${time}</span>
-        <span class="race-card-venue">${venue}</span>
-      </a>`;
+  /* ── Time filter + sort helper ───────────────────────────── */
+  function filterAndSortRaces(data) {
+    const now = new Date();
+    // Show races: started up to 30 min ago, or upcoming (hide very old ones)
+    const cutoff = new Date(now.getTime() - 30 * 60 * 1000);
+
+    return data
+      .filter(m => {
+        if (!m.startTime) return false;
+        const st = new Date(m.startTime);
+        return st >= cutoff;          // drop races >30 min past
+      })
+      .sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
   }
 
-  /* ── Generic loader ──────────────────────────────────────── */
-  async function loadRaceSection(apiUrl, trackId) {
-    const track = document.getElementById(trackId);
-    if (!track) return;
-
+  /* ── Horse Race Loader ───────────────────────────────────── */
+  async function loadHorseLiveData() {
     try {
-      const res  = await fetch(apiUrl);
+      const res  = await fetch('https://1xbetbackend.work.gd/api/v1/markets/live/horse');
       const data = await res.json();
 
-      if (data.success && Array.isArray(data.data) && data.data.length > 0) {
-        const filtered = filterByTime(data.data);
-        const sorted   = sortByTime(filtered);
+      // Compat: container may be injected by MarketHighlights OR we inject it ourselves
+      let container = document.getElementById('horseRaceContainer');
+      if (!container) return;
 
-        if (sorted.length === 0) {
-          track.innerHTML = `<span class="race-no-data">No upcoming races found.</span>`;
-          return;
-        }
+      // Unslick legacy slick if initialized
+      if (typeof $ !== 'undefined' && $(container).hasClass('slick-initialized')) {
+        $(container).slick('unslick');
+      }
 
-        track.innerHTML = sorted.map(buildRaceCard).join('');
+      const rawData = (data.success || data.status === 'success') ? data.data : null;
+
+      if (rawData && rawData.length > 0) {
+        const matches = filterAndSortRaces(rawData);
+        buildRaceSection('horseRaceContainer', matches);
       } else {
-        track.innerHTML = `<span class="race-no-data">No live races found.</span>`;
+        container.innerHTML = `<div style="text-align:center;color:#aaa;padding:12px;">No live races found.</div>`;
       }
     } catch (err) {
-      console.error(`[Race loader] Error for ${trackId}:`, err.message);
-      track.innerHTML = `<span class="race-no-data">Failed to load races.</span>`;
+      console.error('Error loading live horse data:', err.message);
     }
   }
 
-  /* ── Boot both sections ─────────────────────────────────── */
-  loadRaceSection(
-    'https://1xbetbackend.work.gd/api/v1/markets/live/horse',
-    'horseRaceTrack'
-  );
+  loadHorseLiveData();
+</script>
 
-  loadRaceSection(
-    'https://1xbetbackend.work.gd/api/v1/markets/live/greyhound',
-    'greyhoundRaceTrack'
-  );
+<!-- ✅ Greyhound Slick Slider — UPDATED: time+venue format, sorting, filtering, arrows, 3-col mobile -->
+<script>
+  async function loadgreyhoundLiveData() {
+    try {
+      const res  = await fetch('https://1xbetbackend.work.gd/api/v1/markets/live/greyhound');
+      const data = await res.json();
 
-  /* ── Auto-refresh every 60 seconds ─────────────────────── */
-  setInterval(() => {
-    loadRaceSection(
-      'https://1xbetbackend.work.gd/api/v1/markets/live/horse',
-      'horseRaceTrack'
-    );
-    loadRaceSection(
-      'https://1xbetbackend.work.gd/api/v1/markets/live/greyhound',
-      'greyhoundRaceTrack'
-    );
-  }, 60000);
+      let container = document.getElementById('greyhoundRaceContainer');
+      if (!container) return;
+
+      // Unslick legacy slick if initialized
+      if (typeof $ !== 'undefined' && $(container).hasClass('slick-initialized')) {
+        $(container).slick('unslick');
+      }
+
+      const rawData = (data.success || data.status === 'success') ? data.data : null;
+
+      if (rawData && rawData.length > 0) {
+        const matches = filterAndSortRaces(rawData);
+        buildRaceSection('greyhoundRaceContainer', matches);
+      } else {
+        container.innerHTML = `<div style="text-align:center;color:#aaa;padding:12px;">No live races found.</div>`;
+      }
+    } catch (err) {
+      console.error('Error loading live greyhound data:', err.message);
+    }
+  }
+
+  loadgreyhoundLiveData();
 </script>
 
 <!-- ✅ Tennis Sidebar List -->

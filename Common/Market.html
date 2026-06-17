@@ -1783,14 +1783,14 @@
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
-        <img v-if="runner.silkColor || runner.silkUrl"
-             :src="runner.silkColor || runner.silkUrl"
+        <img v-if="runner.silkUrl"
+             :src="runner.silkUrl"
              class="ml-2 runner-silk-img"
              :alt="runner.clothNumber || runner.sortPriority"
              @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
         <span v-else
               class="ml-2 runner-silk-fallback"
-              :style="{background: runner.clothColor || '#E63946'}"></span>
+              :style="{background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
         </template>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -1946,14 +1946,14 @@
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
-        <img v-if="runner.silkColor || runner.silkUrl"
-             :src="runner.silkColor || runner.silkUrl"
+        <img v-if="runner.silkUrl"
+             :src="runner.silkUrl"
              class="ml-2 runner-silk-img"
              :alt="runner.clothNumber || runner.sortPriority"
              @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
         <span v-else
               class="ml-2 runner-silk-fallback"
-              :style="{background: runner.clothColor || '#E63946'}"></span>
+              :style="{background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
         </template>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -2076,14 +2076,14 @@
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
-        <img v-if="runner.silkColor || runner.silkUrl"
-             :src="runner.silkColor || runner.silkUrl"
+        <img v-if="runner.silkUrl"
+             :src="runner.silkUrl"
              class="ml-2 runner-silk-img"
              :alt="runner.clothNumber || runner.sortPriority"
              @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
         <span v-else
               class="ml-2 runner-silk-fallback"
-              :style="{background: runner.clothColor || '#E63946'}"></span>
+              :style="{background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
         </template>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -2205,14 +2205,14 @@
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
-        <img v-if="runner.silkColor || runner.silkUrl"
-             :src="runner.silkColor || runner.silkUrl"
+        <img v-if="runner.silkUrl"
+             :src="runner.silkUrl"
              class="ml-2 runner-silk-img"
              :alt="runner.clothNumber || runner.sortPriority"
              @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
         <span v-else
               class="ml-2 runner-silk-fallback"
-              :style="{background: runner.clothColor || '#E63946'}"></span>
+              :style="{background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
         </template>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -2335,14 +2335,14 @@
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
-        <img v-if="runner.silkColor || runner.silkUrl"
-             :src="runner.silkColor || runner.silkUrl"
+        <img v-if="runner.silkUrl"
+             :src="runner.silkUrl"
              class="ml-2 runner-silk-img"
              :alt="runner.clothNumber || runner.sortPriority"
              @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
         <span v-else
               class="ml-2 runner-silk-fallback"
-              :style="{background: runner.clothColor || '#E63946'}"></span>
+              :style="{background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
         </template>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -2464,14 +2464,14 @@
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
-        <img v-if="runner.silkColor || runner.silkUrl"
-             :src="runner.silkColor || runner.silkUrl"
+        <img v-if="runner.silkUrl"
+             :src="runner.silkUrl"
              class="ml-2 runner-silk-img"
              :alt="runner.clothNumber || runner.sortPriority"
              @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
         <span v-else
               class="ml-2 runner-silk-fallback"
-              :style="{background: runner.clothColor || '#E63946'}"></span>
+              :style="{background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
         </template>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -2670,14 +2670,14 @@
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
-        <img v-if="runner.silkColor || runner.silkUrl"
-             :src="runner.silkColor || runner.silkUrl"
+        <img v-if="runner.silkUrl"
+             :src="runner.silkUrl"
              class="ml-2 runner-silk-img"
              :alt="runner.clothNumber || runner.sortPriority"
              @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
         <span v-else
               class="ml-2 runner-silk-fallback"
-              :style="{background: runner.clothColor || '#E63946'}"></span>
+              :style="{background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
         </template>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -2807,14 +2807,14 @@
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
-        <img v-if="runner.silkColor || runner.silkUrl"
-             :src="runner.silkColor || runner.silkUrl"
+        <img v-if="runner.silkUrl"
+             :src="runner.silkUrl"
              class="ml-2 runner-silk-img"
              :alt="runner.clothNumber || runner.sortPriority"
              @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
         <span v-else
               class="ml-2 runner-silk-fallback"
-              :style="{background: runner.clothColor || '#E63946'}"></span>
+              :style="{background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
         </template>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -2938,14 +2938,14 @@
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
-        <img v-if="runner.silkColor || runner.silkUrl"
-             :src="runner.silkColor || runner.silkUrl"
+        <img v-if="runner.silkUrl"
+             :src="runner.silkUrl"
              class="ml-2 runner-silk-img"
              :alt="runner.clothNumber || runner.sortPriority"
              @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
         <span v-else
               class="ml-2 runner-silk-fallback"
-              :style="{background: runner.clothColor || '#E63946'}"></span>
+              :style="{background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
         </template>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -3068,14 +3068,14 @@
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
-        <img v-if="runner.silkColor || runner.silkUrl"
-             :src="runner.silkColor || runner.silkUrl"
+        <img v-if="runner.silkUrl"
+             :src="runner.silkUrl"
              class="ml-2 runner-silk-img"
              :alt="runner.clothNumber || runner.sortPriority"
              @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
         <span v-else
               class="ml-2 runner-silk-fallback"
-              :style="{background: runner.clothColor || '#E63946'}"></span>
+              :style="{background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
         </template>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -3199,14 +3199,14 @@
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
-        <img v-if="runner.silkColor || runner.silkUrl"
-             :src="runner.silkColor || runner.silkUrl"
+        <img v-if="runner.silkUrl"
+             :src="runner.silkUrl"
              class="ml-2 runner-silk-img"
              :alt="runner.clothNumber || runner.sortPriority"
              @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
         <span v-else
               class="ml-2 runner-silk-fallback"
-              :style="{background: runner.clothColor || '#E63946'}"></span>
+              :style="{background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
         </template>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -3330,14 +3330,14 @@
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
-        <img v-if="runner.silkColor || runner.silkUrl"
-             :src="runner.silkColor || runner.silkUrl"
+        <img v-if="runner.silkUrl"
+             :src="runner.silkUrl"
              class="ml-2 runner-silk-img"
              :alt="runner.clothNumber || runner.sortPriority"
              @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
         <span v-else
               class="ml-2 runner-silk-fallback"
-              :style="{background: runner.clothColor || '#E63946'}"></span>
+              :style="{background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
         </template>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -3539,14 +3539,14 @@
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
-        <img v-if="runner.silkColor || runner.silkUrl"
-             :src="runner.silkColor || runner.silkUrl"
+        <img v-if="runner.silkUrl"
+             :src="runner.silkUrl"
              class="ml-2 runner-silk-img"
              :alt="runner.clothNumber || runner.sortPriority"
              @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
         <span v-else
               class="ml-2 runner-silk-fallback"
-              :style="{background: runner.clothColor || '#E63946'}"></span>
+              :style="{background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
         </template>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -3674,14 +3674,14 @@
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
-        <img v-if="runner.silkColor || runner.silkUrl"
-             :src="runner.silkColor || runner.silkUrl"
+        <img v-if="runner.silkUrl"
+             :src="runner.silkUrl"
              class="ml-2 runner-silk-img"
              :alt="runner.clothNumber || runner.sortPriority"
              @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
         <span v-else
               class="ml-2 runner-silk-fallback"
-              :style="{background: runner.clothColor || '#E63946'}"></span>
+              :style="{background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
         </template>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -6310,9 +6310,9 @@ Vue.component('runner-aggregate', {
       ifWin:  r.ifWin  || 0,
       ifLose: r.ifLose || 0,
       jockeyName:   (r.jockeyName || null) ? (r.jockeyName).replace(/^\s*\(\d+\)\s*/, '').trim() || null : null,
-      // Silk image — Betfair SILK_URL se aata hai (BPExch ki tarah image show hogi)
-      silkUrl:      r.silkUrl   || r.silkColor || null,
-      silkColor:    r.silkUrl   || r.silkColor || null,  // backward compat
+      // Silk image — Betfair COLOURS_FILENAME_URL se aati hai (asal Betfair CDN image)
+      silkUrl:      r.silkUrl || null,                 // sirf actual image URL — kabhi hex color nahi
+      silkColor:    r.clothColor || null,               // hex fallback color (jab silk image na ho)
       clothNumber:  r.clothNumber || null,
       sortPriority: r.sortPriority || null,
       clothColor:   r.clothColor  || null,   // position-based fallback color

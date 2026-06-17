@@ -923,6 +923,17 @@ document.addEventListener("DOMContentLoaded", async () => {
       return true;
     });
   }
+
+  // ✅ Reliable inPlay detection — server field + startTime fallback
+  function isMatchInPlay(match) {
+    if (match.inPlay === true) return true;
+    if (match.marketStatus === 'IN_PLAY') return true;
+    // Agar startTime past mein hai aur market OPEN hai = live match
+    if (match.startTime && match.marketStatus === 'OPEN') {
+      return new Date(match.startTime) <= new Date();
+    }
+    return false;
+  }
 </script>
 
 <!-- ✅ Greyhound Sidebar List -->
@@ -1395,7 +1406,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       if (result.success && Array.isArray(result.data)) {
         const filtered = applyLeagueFilter(result.data, filter);
-        const nonInPlay = filtered.filter(m => !m.inPlay);
+        const nonInPlay = filtered.filter(m => !isMatchInPlay(m));
         if (matchCountElement) matchCountElement.textContent = nonInPlay.length;
 
         nonInPlay.forEach(match => {
@@ -1405,9 +1416,8 @@ document.addEventListener("DOMContentLoaded", async () => {
           const today = new Date();
           const matchDate = new Date(match.startTime);
           let dayLabel = 'Upcoming';
-          if (matchDate.toDateString() === today.toDateString()) {
-            dayLabel = 'Today';
-          } else {
+          if (matchDate.toDateString() === today.toDateString()) dayLabel = 'Today';
+          else {
             const tomorrow = new Date();
             tomorrow.setDate(today.getDate() + 1);
             if (matchDate.toDateString() === tomorrow.toDateString()) dayLabel = 'Tomorrow';
@@ -1505,13 +1515,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       if (result.success && Array.isArray(result.data)) {
         const allFiltered = applyLeagueFilter(result.data, filter);
-        const inPlayMatches = allFiltered.filter(match => match.inPlay === true);
+        const inPlayMatches = allFiltered.filter(match => isMatchInPlay(match));
 
-        // Update badge
+        // Badge update
         window._inplayCounts = window._inplayCounts || { cricket: 0, football: 0, tennis: 0 };
         window._inplayCounts.cricket = inPlayMatches.length;
-        const _badge = document.getElementById('inplayTotalCount');
-        if (_badge) _badge.textContent = (window._inplayCounts.cricket + window._inplayCounts.football + window._inplayCounts.tennis) || '';
+        const _cb = document.getElementById('inplayTotalCount');
+        if (_cb) _cb.textContent = (window._inplayCounts.cricket + window._inplayCounts.football + window._inplayCounts.tennis) || '';
 
         if (inPlayMatches.length === 0) { tbody.innerHTML = ''; return; }
 
@@ -1600,7 +1610,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       if (result.success && Array.isArray(result.data)) {
         const filtered = applyLeagueFilter(result.data, filter);
-        const nonInPlay = filtered.filter(m => !m.inPlay);
+        const nonInPlay = filtered.filter(m => !isMatchInPlay(m));
         if (matchCountElement) matchCountElement.textContent = nonInPlay.length;
 
         nonInPlay.forEach(match => {
@@ -1610,9 +1620,8 @@ document.addEventListener("DOMContentLoaded", async () => {
           const today = new Date();
           const matchDate = new Date(match.startTime);
           let dayLabel = 'Upcoming';
-          if (matchDate.toDateString() === today.toDateString()) {
-            dayLabel = 'Today';
-          } else {
+          if (matchDate.toDateString() === today.toDateString()) dayLabel = 'Today';
+          else {
             const tomorrow = new Date();
             tomorrow.setDate(today.getDate() + 1);
             if (matchDate.toDateString() === tomorrow.toDateString()) dayLabel = 'Tomorrow';
@@ -1715,13 +1724,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       if (result.success && Array.isArray(result.data)) {
         const allFiltered = applyLeagueFilter(result.data, filter);
-        const inPlayMatches = allFiltered.filter(match => match.inPlay === true);
+        const inPlayMatches = allFiltered.filter(match => isMatchInPlay(match));
 
-        // Update badge
+        // Badge update
         window._inplayCounts = window._inplayCounts || { cricket: 0, football: 0, tennis: 0 };
         window._inplayCounts.football = inPlayMatches.length;
-        const _fbadge = document.getElementById('inplayTotalCount');
-        if (_fbadge) _fbadge.textContent = (window._inplayCounts.cricket + window._inplayCounts.football + window._inplayCounts.tennis) || '';
+        const _fb = document.getElementById('inplayTotalCount');
+        if (_fb) _fb.textContent = (window._inplayCounts.cricket + window._inplayCounts.football + window._inplayCounts.tennis) || '';
 
         if (inPlayMatches.length === 0) { tbody.innerHTML = ''; return; }
 
@@ -1806,7 +1815,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       if (result.success && Array.isArray(result.data)) {
         const filtered = applyLeagueFilter(result.data, filter);
-        const nonInPlay = filtered.filter(m => !m.inPlay);
+        const nonInPlay = filtered.filter(m => !isMatchInPlay(m));
         if (countElement) countElement.textContent = nonInPlay.length;
 
         nonInPlay.forEach(match => {
@@ -1816,9 +1825,8 @@ document.addEventListener("DOMContentLoaded", async () => {
           const today = new Date();
           const matchDate = new Date(match.startTime);
           let dayLabel = 'Upcoming';
-          if (matchDate.toDateString() === today.toDateString()) {
-            dayLabel = 'Today';
-          } else {
+          if (matchDate.toDateString() === today.toDateString()) dayLabel = 'Today';
+          else {
             const tomorrow = new Date();
             tomorrow.setDate(today.getDate() + 1);
             if (matchDate.toDateString() === tomorrow.toDateString()) dayLabel = 'Tomorrow';
@@ -1919,12 +1927,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (!tbody) return;
       tbody.innerHTML = '';
       if (result.success && Array.isArray(result.data)) {
-        const inPlayMatches = applyLeagueFilter(result.data, filter).filter(m => m.inPlay === true);
+        const inPlayMatches = applyLeagueFilter(result.data, filter).filter(m => isMatchInPlay(m));
 
         window._inplayCounts = window._inplayCounts || { cricket: 0, football: 0, tennis: 0 };
         window._inplayCounts.tennis = inPlayMatches.length;
-        const _tbadge = document.getElementById('inplayTotalCount');
-        if (_tbadge) _tbadge.textContent = (window._inplayCounts.cricket + window._inplayCounts.football + window._inplayCounts.tennis) || '';
+        const _tb = document.getElementById('inplayTotalCount');
+        if (_tb) _tb.textContent = (window._inplayCounts.cricket + window._inplayCounts.football + window._inplayCounts.tennis) || '';
 
         if (inPlayMatches.length === 0) { tbody.innerHTML = ''; return; }
 
@@ -1955,9 +1963,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           tbody.appendChild(row);
         });
       }
-    } catch (err) {
-      console.error('Error loading InPlay tennis:', err);
-    }
+    } catch (err) { console.error('InPlay tennis error:', err); }
   }
   document.addEventListener('DOMContentLoaded', () => { loadInPlayTennisMatches(); });
 </script>

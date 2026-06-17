@@ -1395,36 +1395,28 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       if (result.success && Array.isArray(result.data)) {
         const filtered = applyLeagueFilter(result.data, filter);
-        if (matchCountElement) matchCountElement.textContent = filtered.length;
+        const nonInPlay = filtered.filter(m => !m.inPlay);
+        if (matchCountElement) matchCountElement.textContent = nonInPlay.length;
 
-        filtered.forEach(match => {
+        nonInPlay.forEach(match => {
           const startTime = new Date(match.startTime);
           const localTime = startTime.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 
           const today = new Date();
           const matchDate = new Date(match.startTime);
-          let dayLabel = match.inPlay ? 'InPlay' : 'Upcoming';
-          if (!match.inPlay) {
-            if (matchDate.toDateString() === today.toDateString()) {
-              dayLabel = 'Today';
-            } else {
-              const tomorrow = new Date();
-              tomorrow.setDate(today.getDate() + 1);
-              if (matchDate.toDateString() === tomorrow.toDateString()) dayLabel = 'Tomorrow';
-            }
+          let dayLabel = 'Upcoming';
+          if (matchDate.toDateString() === today.toDateString()) {
+            dayLabel = 'Today';
+          } else {
+            const tomorrow = new Date();
+            tomorrow.setDate(today.getDate() + 1);
+            if (matchDate.toDateString() === tomorrow.toDateString()) dayLabel = 'Tomorrow';
           }
 
-          const bgClass = match.inPlay ? 'bg-primary' : '';
-          const textColor = match.inPlay ? 'white' : 'black';
+          const bgClass = '';
+          const textColor = 'black';
 
           // ✅ New runners-based odds format
-          const r = match.runners || [];
-          const back1 = r[0]?.back?.[0] || { price: '-', size: '-' };
-          const lay1  = r[0]?.lay?.[0]  || { price: '-', size: '-' };
-          const back2 = r[1]?.back?.[0] || { price: '-', size: '-' };
-          const lay2  = r[1]?.lay?.[0]  || { price: '-', size: '-' };
-          const backX = r[2]?.back?.[0] || { price: '-', size: '-' };
-          const layX  = r[2]?.lay?.[0]  || { price: '-', size: '-' };
 
           const row = document.createElement('tr');
           row.id = `m_${match.marketId}`;
@@ -1507,6 +1499,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (result.success && Array.isArray(result.data)) {
         const allFiltered = applyLeagueFilter(result.data, filter);
         const inPlayMatches = allFiltered.filter(match => match.inPlay === true);
+
+        if (window._inPlayCounts) { window._inPlayCounts.cricket = inPlayMatches.length; updateInPlayBadge(); }
 
         if (inPlayMatches.length === 0) {
           setTimeout(() => {
@@ -1602,27 +1596,26 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       if (result.success && Array.isArray(result.data)) {
         const filtered = applyLeagueFilter(result.data, filter);
-        if (matchCountElement) matchCountElement.textContent = filtered.length;
+        const nonInPlay = filtered.filter(m => !m.inPlay);
+        if (matchCountElement) matchCountElement.textContent = nonInPlay.length;
 
-        filtered.forEach(match => {
+        nonInPlay.forEach(match => {
           const startTime = new Date(match.startTime);
           const localTime = startTime.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 
           const today = new Date();
           const matchDate = new Date(match.startTime);
-          let dayLabel = match.inPlay ? 'InPlay' : 'Upcoming';
-          if (!match.inPlay) {
-            if (matchDate.toDateString() === today.toDateString()) {
-              dayLabel = 'Today';
-            } else {
-              const tomorrow = new Date();
-              tomorrow.setDate(today.getDate() + 1);
-              if (matchDate.toDateString() === tomorrow.toDateString()) dayLabel = 'Tomorrow';
-            }
+          let dayLabel = 'Upcoming';
+          if (matchDate.toDateString() === today.toDateString()) {
+            dayLabel = 'Today';
+          } else {
+            const tomorrow = new Date();
+            tomorrow.setDate(today.getDate() + 1);
+            if (matchDate.toDateString() === tomorrow.toDateString()) dayLabel = 'Tomorrow';
           }
 
-          const bgClass = match.inPlay ? 'bg-primary' : '';
-          const textColor = match.inPlay ? 'white' : 'black';
+          const bgClass = '';
+          const textColor = 'black';
 
           // ✅ New runners-based odds format (Football: Team1, Draw, Team2)
           const r = match.runners || [];
@@ -1720,6 +1713,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         const allFiltered = applyLeagueFilter(result.data, filter);
         const inPlayMatches = allFiltered.filter(match => match.inPlay === true);
 
+        if (window._inPlayCounts) { window._inPlayCounts.football = inPlayMatches.length; updateInPlayBadge(); }
+
         if (inPlayMatches.length === 0) {
           setTimeout(() => {
             if (document.getElementById('inPlayfootballContainer')) {
@@ -1810,27 +1805,26 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       if (result.success && Array.isArray(result.data)) {
         const filtered = applyLeagueFilter(result.data, filter);
-        if (countElement) countElement.textContent = filtered.length;
+        const nonInPlay = filtered.filter(m => !m.inPlay);
+        if (countElement) countElement.textContent = nonInPlay.length;
 
-        filtered.forEach(match => {
+        nonInPlay.forEach(match => {
           const startTime = new Date(match.startTime);
           const localTime = startTime.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 
           const today = new Date();
           const matchDate = new Date(match.startTime);
-          let dayLabel = match.inPlay ? 'InPlay' : 'Upcoming';
-          if (!match.inPlay) {
-            if (matchDate.toDateString() === today.toDateString()) {
-              dayLabel = 'Today';
-            } else {
-              const tomorrow = new Date();
-              tomorrow.setDate(today.getDate() + 1);
-              if (matchDate.toDateString() === tomorrow.toDateString()) dayLabel = 'Tomorrow';
-            }
+          let dayLabel = 'Upcoming';
+          if (matchDate.toDateString() === today.toDateString()) {
+            dayLabel = 'Today';
+          } else {
+            const tomorrow = new Date();
+            tomorrow.setDate(today.getDate() + 1);
+            if (matchDate.toDateString() === tomorrow.toDateString()) dayLabel = 'Tomorrow';
           }
 
-          const bgClass = match.inPlay ? 'bg-primary' : '';
-          const textColor = match.inPlay ? 'white' : 'black';
+          const bgClass = '';
+          const textColor = 'black';
 
           // ✅ Tennis has only 2 runners (Player1, Player2) — no draw
           const r = match.runners || [];
@@ -1908,6 +1902,107 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.addEventListener('DOMContentLoaded', () => {
     loadtennisoddsMatches();
+  });
+</script>
+
+<!-- ✅ Tennis InPlay Table -->
+<script>
+  // Shared inplay counts — updated by each sport loader, then reflected in the badge
+  window._inPlayCounts = { cricket: 0, football: 0, tennis: 0 };
+  function updateInPlayBadge() {
+    const total = window._inPlayCounts.cricket + window._inPlayCounts.football + window._inPlayCounts.tennis;
+    const el = document.getElementById('inplayTotalCount');
+    if (el) el.textContent = total > 0 ? total : '';
+  }
+
+  async function loadInPlayTennisMatches() {
+    try {
+      const [response, filter] = await Promise.all([
+        fetch('https://1xbetbackend.work.gd/api/v1/markets/live/tennis'),
+        getLeagueFilter('tennis')
+      ]);
+      const result = await response.json();
+
+      const tbody = document.getElementById('inPlayTennisContainer');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+
+      if (result.success && Array.isArray(result.data)) {
+        const allFiltered = applyLeagueFilter(result.data, filter);
+        const inPlayMatches = allFiltered.filter(match => match.inPlay === true);
+
+        window._inPlayCounts.tennis = inPlayMatches.length;
+        updateInPlayBadge();
+
+        if (inPlayMatches.length === 0) {
+          setTimeout(() => {
+            if (document.getElementById('inPlayTennisContainer')) {
+              tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color:white;"></td></tr>`;
+            }
+          }, 100);
+          return;
+        }
+
+        inPlayMatches.forEach(match => {
+          const startTime = new Date(match.startTime);
+          const localTime = startTime.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+
+          const r = match.runners || [];
+          const back1 = r[0]?.back?.[0] || { price: '-', size: '-' };
+          const lay1  = r[0]?.lay?.[0]  || { price: '-', size: '-' };
+          const back2 = r[1]?.back?.[0] || { price: '-', size: '-' };
+          const lay2  = r[1]?.lay?.[0]  || { price: '-', size: '-' };
+          const backX = { price: '', size: '' };
+          const layX  = { price: '', size: '' };
+
+          const row = document.createElement('tr');
+          row.id = `m_${match.marketId}`;
+          row.className = `m_${match.marketId} McomCustom`;
+
+          row.innerHTML = `
+            <td class="sport-date bg-primary" style="color:white;">
+              <div>
+                <span class="day">InPlay</span>
+                <span class="market-time">${localTime}</span>
+                <span class="d-none utctime" data-format="H:mm">${match.startTime}</span>
+              </div>
+            </td>
+            <td>
+              <div class="teams">
+                <strong class="team-1">
+                  <a href="/Common/Market.html?id=${match.marketId}">${match.match}</a>
+                </strong>
+                <strong class="team-2"><a href=""></a></strong>
+              </div>
+            </td>
+            <td>
+              <div class="matched">
+                <span class="svg-DBM svg-DBM-dims svg-span" role="img" aria-label="bm"></span>
+                <span class="TMFORDESK">${match.totalMatched}</span>
+              </div>
+              <span class="TMFORMOB">${match.totalMatched}</span>
+            </td>
+            <td><div class="box -blue"><strong>${back1.price}</strong><span>${back1.size}</span></div></td>
+            <td><div class="box -pink"><strong>${lay1.price}</strong><span>${lay1.size}</span></div></td>
+            <td><div class="box -blue m-left"><strong>${backX.price}</strong><span>${backX.size}</span></div></td>
+            <td><div class="box -pink m-right"><strong>${layX.price}</strong><span>${layX.size}</span></div></td>
+            <td><div class="box -blue"><strong>${back2.price}</strong><span>${back2.size}</span></div></td>
+            <td><div class="box -pink"><strong>${lay2.price}</strong><span>${lay2.size}</span></div></td>
+            <td class="action"><a href="#"><i class="fa fa-info-circle"></i></a></td>
+          `;
+
+          tbody.appendChild(row);
+        });
+      } else {
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color:white;">Error loading matches.</td></tr>`;
+      }
+    } catch (err) {
+      console.error('Error loading InPlay tennis matches:', err);
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    loadInPlayTennisMatches();
   });
 </script>
 

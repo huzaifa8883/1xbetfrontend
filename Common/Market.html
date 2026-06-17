@@ -46,6 +46,15 @@
             flex-shrink: 0;
             align-self: center;
         }
+        /* Greyhound trap 6 — black & white diagonal stripes (standard trap color) */
+        .runner-silk-fallback.striped {
+            background-image: repeating-linear-gradient(
+                45deg,
+                #111111 0px, #111111 6px,
+                #FFFFFF 6px, #FFFFFF 12px
+            ) !important;
+            border-color: rgba(0,0,0,0.4);
+        }
         /* Selector checkbox aur silk image bhi vertically center */
         .runner-runner .selector {
             align-self: center !important;
@@ -1790,7 +1799,8 @@
              @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
         <span v-else
               class="ml-2 runner-silk-fallback"
-              :style="{background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
+              :class="{striped: runner.clothStriped}"
+              :style="runner.clothStriped ? {} : {background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
         </template>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -1953,7 +1963,8 @@
              @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
         <span v-else
               class="ml-2 runner-silk-fallback"
-              :style="{background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
+              :class="{striped: runner.clothStriped}"
+              :style="runner.clothStriped ? {} : {background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
         </template>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -2083,7 +2094,8 @@
              @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
         <span v-else
               class="ml-2 runner-silk-fallback"
-              :style="{background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
+              :class="{striped: runner.clothStriped}"
+              :style="runner.clothStriped ? {} : {background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
         </template>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -2212,7 +2224,8 @@
              @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
         <span v-else
               class="ml-2 runner-silk-fallback"
-              :style="{background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
+              :class="{striped: runner.clothStriped}"
+              :style="runner.clothStriped ? {} : {background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
         </template>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -2342,7 +2355,8 @@
              @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
         <span v-else
               class="ml-2 runner-silk-fallback"
-              :style="{background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
+              :class="{striped: runner.clothStriped}"
+              :style="runner.clothStriped ? {} : {background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
         </template>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -2471,7 +2485,8 @@
              @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
         <span v-else
               class="ml-2 runner-silk-fallback"
-              :style="{background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
+              :class="{striped: runner.clothStriped}"
+              :style="runner.clothStriped ? {} : {background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
         </template>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -2677,7 +2692,8 @@
              @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
         <span v-else
               class="ml-2 runner-silk-fallback"
-              :style="{background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
+              :class="{striped: runner.clothStriped}"
+              :style="runner.clothStriped ? {} : {background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
         </template>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -2814,7 +2830,8 @@
              @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
         <span v-else
               class="ml-2 runner-silk-fallback"
-              :style="{background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
+              :class="{striped: runner.clothStriped}"
+              :style="runner.clothStriped ? {} : {background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
         </template>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -2945,7 +2962,8 @@
              @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
         <span v-else
               class="ml-2 runner-silk-fallback"
-              :style="{background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
+              :class="{striped: runner.clothStriped}"
+              :style="runner.clothStriped ? {} : {background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
         </template>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -3075,7 +3093,8 @@
              @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
         <span v-else
               class="ml-2 runner-silk-fallback"
-              :style="{background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
+              :class="{striped: runner.clothStriped}"
+              :style="runner.clothStriped ? {} : {background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
         </template>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -3206,7 +3225,8 @@
              @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
         <span v-else
               class="ml-2 runner-silk-fallback"
-              :style="{background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
+              :class="{striped: runner.clothStriped}"
+              :style="runner.clothStriped ? {} : {background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
         </template>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -3337,7 +3357,8 @@
              @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
         <span v-else
               class="ml-2 runner-silk-fallback"
-              :style="{background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
+              :class="{striped: runner.clothStriped}"
+              :style="runner.clothStriped ? {} : {background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
         </template>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -3546,7 +3567,8 @@
              @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
         <span v-else
               class="ml-2 runner-silk-fallback"
-              :style="{background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
+              :class="{striped: runner.clothStriped}"
+              :style="runner.clothStriped ? {} : {background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
         </template>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -3681,7 +3703,8 @@
              @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
         <span v-else
               class="ml-2 runner-silk-fallback"
-              :style="{background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
+              :class="{striped: runner.clothStriped}"
+              :style="runner.clothStriped ? {} : {background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
         </template>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -6316,6 +6339,7 @@ Vue.component('runner-aggregate', {
       clothNumber:  r.clothNumber || null,
       sortPriority: r.sortPriority || null,
       clothColor:   r.clothColor  || null,   // position-based fallback color
+      clothStriped: r.clothStriped || false, // greyhound trap 6 — black/white stripe pattern
       metadataDict: r.metadataDict || null,
       indB1: r.indB1 || '',
       indL1: r.indL1 || '',

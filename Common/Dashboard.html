@@ -211,7 +211,14 @@
 
     }
 
-.cricketEventList {
+/* Override slick default â† arrow — hide pseudo-element, show custom text */
+        .slick-prev::before,
+        .slick-next::before {
+            content: '' !important;
+            display: none !important;
+        }
+
+        .cricketEventList {
   list-style: none;
   padding: 0;
   margin: 0;
@@ -1077,8 +1084,8 @@ document.addEventListener("DOMContentLoaded", async () => {
           slidesToScroll: 1,
           infinite: false,
           arrows: true,
-          prevArrow: '<button type="button" class="slick-prev" style="font-size:20px;background:none;border:none;color:white;cursor:pointer;">&#8592;</button>',
-          nextArrow: '<button type="button" class="slick-next" style="font-size:20px;background:none;border:none;color:white;cursor:pointer;">&#8594;</button>',
+          prevArrow: '<button type="button" class="slick-prev" style="font-size:22px;font-weight:bold;background:rgba(0,0,0,0.5);border:none;color:white;cursor:pointer;padding:4px 10px;border-radius:4px;line-height:1;">&#8249;</button>',
+          nextArrow: '<button type="button" class="slick-next" style="font-size:22px;font-weight:bold;background:rgba(0,0,0,0.5);border:none;color:white;cursor:pointer;padding:4px 10px;border-radius:4px;line-height:1;">&#8250;</button>',
           responsive: [
             { breakpoint: 768, settings: { slidesToShow: 3 }},
             { breakpoint: 480, settings: { slidesToShow: 3 }}
@@ -1147,8 +1154,8 @@ document.addEventListener("DOMContentLoaded", async () => {
           slidesToScroll: 1,
           infinite: false,
           arrows: true,
-          prevArrow: '<button type="button" class="slick-prev" style="font-size:20px;background:none;border:none;color:white;cursor:pointer;">&#8592;</button>',
-          nextArrow: '<button type="button" class="slick-next" style="font-size:20px;background:none;border:none;color:white;cursor:pointer;">&#8594;</button>',
+          prevArrow: '<button type="button" class="slick-prev" style="font-size:22px;font-weight:bold;background:rgba(0,0,0,0.5);border:none;color:white;cursor:pointer;padding:4px 10px;border-radius:4px;line-height:1;">&#8249;</button>',
+          nextArrow: '<button type="button" class="slick-next" style="font-size:22px;font-weight:bold;background:rgba(0,0,0,0.5);border:none;color:white;cursor:pointer;padding:4px 10px;border-radius:4px;line-height:1;">&#8250;</button>',
           responsive: [
             { breakpoint: 768, settings: { slidesToShow: 3 }},
             { breakpoint: 480, settings: { slidesToShow: 3 }}

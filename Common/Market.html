@@ -1470,7 +1470,7 @@
                                         <img src="/img/v2/clock-green.svg">
                                         <span class="green-upper-text">{{ Catalog.status }}</span>
                                         <span class="black-light-text">{{ fromNow }} | {{ prettyDate }}</span>
-                                        <span class="black-light-text"> | Winners: {{ WinnersCount }}</span>
+                                        <span class="black-light-text"> | Winners: {{ WinnersCount > 0 ? WinnersCount : 1 }}</span>
                                     </p>
                                     <h4 class="event-title">{{ Catalog.eventName }}</h4>
                                     <p>

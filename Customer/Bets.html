@@ -965,8 +965,12 @@ new Vue({
 
         // Global market events
         ["marketSettled", "orderSettled", "betSettled", "marketClosed", "settled"].forEach(ev => {
-          _sock.on(ev, () => {
+          _sock.on(ev, (data) => {
             console.log("[BetHistory] socket event:", ev, "— refreshing");
+            // Instantly remove settled market bets from UI before API refresh
+            if (data && data.marketId) {
+              this.bets = this.bets.filter(b => b.marketId !== data.marketId);
+            }
             this.fetchBetsHistory();
           });
         });
@@ -975,6 +979,10 @@ new Vue({
         _sock.on("userUpdated", (data) => {
           if (data && (data.event === 'settlement' || data.event === 'void')) {
             console.log("[BetHistory] userUpdated", data.event, "— refreshing");
+            // Instantly remove settled market bets from UI
+            if (data.marketId) {
+              this.bets = this.bets.filter(b => b.marketId !== data.marketId);
+            }
             this.fetchBetsHistory();
           }
         });

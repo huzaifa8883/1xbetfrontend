@@ -3897,7 +3897,38 @@
                         </div>
 
                             <div id="LIVEDIV" class="container">
-                                <iframe id="livesc" src="" class="responsive-iframe" scrolling='no' frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                                <!-- ✅ Apna scorecard — BPExch ke iframe ki jagah, seedha humare Catalog (Betfair) data se banta hai.
+                                     Koi external/third-party score-feed nahi — sirf woh data jo hum khud Betfair API se already la rahe hain. -->
+                                <div id="nx-scorecard" style="background:#2b2f35; color:#fff; padding:10px; min-height:200px;">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #444; padding-bottom:8px; margin-bottom:8px;">
+                                        <div>
+                                            <div style="font-weight:bold; font-size:15px;">{{ Catalog.eventName || Catalog.marketName }}</div>
+                                            <div style="font-size:12px; color:#9aa0a6;">{{ Catalog.marketName }}</div>
+                                        </div>
+                                        <div style="text-align:right;">
+                                            <span v-bind:style="{ color: Catalog.status === 'OPEN' ? '#00B181' : (Catalog.status === 'SUSPENDED' ? '#ffc107' : '#ff5c5c'), fontWeight: 'bold', fontSize: '13px' }">{{ Catalog.status }}</span>
+                                            <div style="font-size:11px; color:#9aa0a6;">Matched: {{ Catalog.totalMatched || 0 }}</div>
+                                        </div>
+                                    </div>
+
+                                    <div v-if="Catalog.runners && Catalog.runners.length > 0">
+                                        <div v-for="runner in Catalog.runners" :key="runner.selectionId"
+                                             v-bind:style="{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 4px', borderBottom: '1px solid #3a3f47', opacity: (runner.status === 'REMOVED' || runner.status === 'LOSER') ? 0.5 : 1 }">
+                                            <div style="display:flex; align-items:center; gap:8px;">
+                                                <span v-if="runner.clothNumber" v-bind:style="{ display: 'inline-block', width: '20px', height: '20px', lineHeight: '20px', textAlign: 'center', borderRadius: '3px', fontSize: '11px', fontWeight: 'bold', background: runner.clothColor || '#555', color: (runner.clothColor === '#FFFFFF' ? '#000' : '#fff') }">{{ runner.clothNumber }}</span>
+                                                <span style="font-size:13px;">{{ runner.runnerName }}</span>
+                                                <span v-if="runner.status === 'WINNER'" style="font-size:11px; font-weight:bold; color:#00B181; border:1px solid #00B181; border-radius:3px; padding:0 4px;">WINNER</span>
+                                                <span v-else-if="runner.status === 'REMOVED'" style="font-size:11px; color:#ff5c5c;">REMOVED</span>
+                                            </div>
+                                            <div style="font-size:13px; font-weight:bold; color:#cfe8ff;" v-if="runner.lastPriceTraded">
+                                                {{ runner.lastPriceTraded }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div v-else style="text-align:center; color:#9aa0a6; padding:20px 0; font-size:13px;">
+                                        Scorecard data loading...
+                                    </div>
+                                </div>
                             </div>
 
 
@@ -6009,12 +6040,8 @@ Vue.component('runner-aggregate', {
             setInterval(removeTabs, 500);
             setInterval(resizeiframe, 500);
 
-            let ifrEl = document.querySelector("#livesc");
-            if (ifrEl != null) {
-                setTimeout(function () { 
-                    ifrEl.src = `https://bpexch.xyz/Common/LiveScoreCard?id=${marketId}`; 
-                }, 2000);
-            }
+            // ✅ Apna scorecard ab Vue-bound hai (#nx-scorecard) — koi iframe src set
+            //    karne ki zaroorat nahi, is liye BPExch wala #livesc setter hata diya.
             setTimeout(function() { PremiumSportsIframeset()}, 2000);
             
         });
@@ -6120,11 +6147,14 @@ Vue.component('runner-aggregate', {
             var formain = h + 11;
             var foriframe = h + 50;
 
+            // ✅ #livesc (BPExch ka iframe) ab exist nahi karta — humara scorecard apna
+            //    natural size khud le leta hai, is liye null-check laga diya taake
+            //    purana postMessage resize signal (agar kabhi aaye) crash na kare.
             var obj = document.getElementById("LIVEDIV");
-            obj.style.height = formain + "px";
+            if (obj) obj.style.height = formain + "px";
 
-            var obj = document.getElementById("livesc");
-            obj.style.height = foriframe + "px";
+            var obj2 = document.getElementById("livesc");
+            if (obj2) obj2.style.height = foriframe + "px";
         }
 
         function onMessage(event) {
@@ -6228,10 +6258,8 @@ Vue.component('runner-aggregate', {
                 $("#TVDIV").hide();
                 $("#LIVEDIV").show();
                 $("#sr-widget").show();
-                 let ifrEl = document.querySelector("#livesc");
-    if (ifrEl != null) {
-        ifrEl.src = `https://bpexch.xyz/Common/LiveScoreCard?id=${MID}`;
-    }
+                // ✅ Apna scorecard Vue se already live-bound hai (Catalog.runners/status) —
+                //    koi external iframe src set karne ki zaroorat nahi.
             }
         }
 
@@ -6315,11 +6343,8 @@ Vue.component('runner-aggregate', {
                     console.error("MarketFactory not found! Check mv2.min.js");
                 }
 
-                // Live score iframe
-                const ifr = document.getElementById("livesc");
-                if (ifr && marketId) {
-                    ifr.src = `https://bpexch.xyz/Common/LiveScoreCard?id=${marketId}`;
-                }
+                // ✅ Apna scorecard (#nx-scorecard) Vue se directly Catalog data se bind hai —
+                //    koi external iframe src set karne ki zaroorat nahi.
 
                 // ✅ Extra markets loader — saare available markets show karo
                 loadAllAvailableMarkets();

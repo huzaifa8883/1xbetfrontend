@@ -1884,28 +1884,26 @@ document.addEventListener("DOMContentLoaded", async () => {
         </div>`;
     }
 
-    $(document).ready(function () {
-        // DataTable mein + control column add karo
-        var t = $('#example').DataTable({
+    // ── Results table populate karo settled orders se ──────────────────
+    var dtTable = null;  // DataTable instance
+
+    function initDataTable() {
+        if (dtTable) { dtTable.destroy(); }
+        dtTable = $('#example').DataTable({
             "columnDefs": [
-                { "targets": 0, "orderable": false, "className": "dt-control", "width": "20px" },
-                { "targets": 4, "type": "date" }
+                { "targets": 0, "orderable": false, "className": "dt-control", "defaultContent": "+" },
+                { "targets": 3, "type": "date" }
             ],
-            "order": [[4, "desc"]],
+            "order": [[3, "desc"]],
             responsive: true,
-            "pageLength": 50
+            "pageLength": 50,
+            "language": { "emptyTable": "Koi settled market nahi mila is date range mein." }
         });
 
-        t.on('order.dt search.dt', function () {
-            t.column(0, { search: 'applied', order: 'applied' }).nodes().each(function (cell, i) {
-                cell.innerHTML = '+';
-            });
-        }).draw();
-
-        // + button click → child row toggle
-        $('#example tbody').on('click', 'td.dt-control', async function () {
-            var tr   = $(this).closest('tr');
-            var row  = t.row(tr);
+        // + button click → settled bets child row
+        $('#example tbody').off('click', 'td.dt-control').on('click', 'td.dt-control', async function () {
+            var tr  = $(this).closest('tr');
+            var row = dtTable.row(tr);
 
             if (row.child.isShown()) {
                 row.child.hide();
@@ -1915,18 +1913,104 @@ document.addEventListener("DOMContentLoaded", async () => {
             }
 
             $(this).text('⏳');
-
-            // Row cells se Match name + Market Name extract karo (server-rendered)
-            // Column order: 0=+, 1=Sr#, 2=Match name, 3=Market Name, 4=Date, 5=Result
-            var cells     = tr.find('td');
-            var matchName = $(cells[2]).text().trim();
-            var mktName   = $(cells[3]).text().trim();
-
-            var orders = await fetchSettledBetsByEventName(matchName, mktName);
+            var marketId  = tr.attr('data-market-id') || '';
+            var matchName = tr.attr('data-match-name') || '';
+            var orders = marketId
+                ? await fetchSettledBetsForMarket(marketId)
+                : await fetchSettledBetsByEventName(matchName, '');
             row.child(buildBetsTable(orders)).show();
             tr.addClass('shown');
             $(this).text('−');
         });
+    }
+
+    async function loadResultsTable() {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        // URL se sport id aur date range lo
+        const params   = new URLSearchParams(window.location.search);
+        const sportId  = params.get('id') || '';
+
+        // Category map (sport id → category string stored in order.category)
+        const catMap = {
+            '1': 'Soccer', '2': 'Tennis', '4': 'Cricket',
+            '7': 'Horse Race', '8': 'Fancy', '12': 'Casino', '4339': 'Greyhound'
+        };
+        const catName = catMap[sportId] || '';
+
+        try {
+            const res  = await fetch(`${API_BASE}/orders/settled?limit=500`, {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            if (!res.ok) return;
+            const data   = await res.json();
+            const orders = (data.data && data.data.orders) ? data.data.orders : [];
+
+            // Filter by category if sportId given
+            const filtered = catName
+                ? orders.filter(o => {
+                    const cat = (o.category || '').toLowerCase();
+                    const cn  = catName.toLowerCase();
+                    return cat.includes(cn) || cn.includes(cat);
+                  })
+                : orders;
+
+            // Group by market_id → one row per market
+            const markets = new Map();
+            filtered.forEach(o => {
+                const mktId = o.marketId || o.market_id || '';
+                if (!markets.has(mktId)) {
+                    markets.set(mktId, {
+                        marketId:   mktId,
+                        matchName:  o.eventName || o.event_name || '',
+                        marketName: o.marketName || o.market_name || mktId,
+                        date:       o.settled_at || o.created_at || '',
+                        winner:     '',
+                        orders:     []
+                    });
+                }
+                const m = markets.get(mktId);
+                m.orders.push(o);
+                // Winner = runner whose selection_id == winning_selection_id
+                if (o.winning_selection_id && String(o.selection_id) === String(o.winning_selection_id)) {
+                    m.winner = o.runnerName || o.runner_name || ('Id: ' + o.winning_selection_id);
+                }
+                // Fallback: agar kisi order mein winner runner name nahi but winning_selection_id hai
+                if (!m.winner && o.winning_selection_id) {
+                    m.winner = 'Id: ' + o.winning_selection_id;
+                }
+            });
+
+            // DataTable mein rows inject karo
+            const tbody = document.querySelector('#example tbody');
+            tbody.innerHTML = '';
+
+            markets.forEach(function(m) {
+                const dateStr = m.date ? new Date(m.date).toLocaleString('en-GB') : '-';
+                const tr = document.createElement('tr');
+                tr.setAttribute('data-market-id', m.marketId);
+                tr.setAttribute('data-match-name', m.matchName);
+                tr.innerHTML = `
+                    <td class="dt-control" style="text-align:center;cursor:pointer;color:#28a745;font-weight:bold;">+</td>
+                    <td>${m.matchName || '-'}</td>
+                    <td>${m.marketName || '-'}</td>
+                    <td>${dateStr}</td>
+                    <td><strong style="color:#4caf50;">${m.winner || '-'}</strong></td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // DataTable init/refresh
+            initDataTable();
+
+        } catch(e) {
+            console.error('loadResultsTable error:', e);
+        }
+    }
+
+    $(document).ready(function () {
+        loadResultsTable();
     });
     </script>
 

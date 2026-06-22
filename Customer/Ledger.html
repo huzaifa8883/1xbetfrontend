@@ -614,7 +614,7 @@
               <th>#</th>
               <th>Date</th>
               <th>Description</th>
-              <th>P&amp;L</th>
+              <th>Amount</th>
               <th>Balance</th>
             </tr>
           </thead>
@@ -625,12 +625,12 @@
               <td>{{ row.date }}</td>
               <td style="color:#00b181;">{{ row.description }}</td>
               <td :class="{'text-success': row.amount > 0, 'text-danger': row.amount < 0}">
-                <span v-if="row.amount === null || row.amount === undefined">-</span>
+                <span v-if="row.isOpen">0</span>
                 <span v-else-if="row.amount > 0">+{{ row.amount.toLocaleString() }}</span>
                 <span v-else-if="row.amount < 0">{{ row.amount.toLocaleString() }}</span>
-                <span v-else>-</span>
+                <span v-else>0</span>
               </td>
-              <td>{{ (row.balance || 0).toLocaleString() }}</td>
+              <td>{{ row.balance.toLocaleString() }}</td>
             </tr>
           </tbody>
         </table>
@@ -874,88 +874,40 @@
           const allSettled = allSettledRaw
             .sort((a, b) => new Date(a.settled_at || a.updated_at) - new Date(b.settled_at || b.updated_at));
 
-          // ── P&L calculator helper ──────────────────────────────
-          function calcPnL(bet) {
-            if (bet.settlementPnL !== null && bet.settlementPnL !== undefined)
-              return parseFloat(bet.settlementPnL);
-            const price = parseFloat(bet.price || 0);
-            const size  = parseFloat(bet.matched || bet.size || 0);
-            const isWin = String(bet.selection_id || bet.selectionId)
-                        === String(bet.winning_selection_id || bet.winningSelectionId);
-            const side  = (bet.side || "").toUpperCase();
-            if (side === "B" || side === "BACK") return isWin ? (price - 1) * size : -size;
-            else                                  return isWin ? -(price - 1) * size : size;
-          }
-
-          // ── Date filter apply karo ─────────────────────────────
+          // Date filter apply karo
           const settled = allSettled.filter(bet => {
             if (!filterFrom || !filterTo) return true;
             const betDate = new Date(bet.settled_at || bet.updated_at || bet.created_at);
             return betDate >= filterFrom && betDate <= filterTo;
           });
 
-          // ── Opening Balance calculate karo ─────────────────────
-          // Logic: currentWallet (abhi ka) se filter-range ke andar ke sare P&L
-          //        MINUS karo → din ke shuru ka balance milega
-          //
-          // Agar date filter lagaya hai:
-          //   allSettled mein se sirf filterTo ke BAAD wale bets ka P&L hatao
-          //   (jo already current wallet mein reflect ho chuke hain lekin range se bahar hain)
-          //
-          // Agar no filter: opening = currentWallet - total P&L of all settled bets
-          //   (yani pehle ki state)
+          // Running balance 0 se shuru hoga
+          let runningBalance = 0;
 
-          let pnlAfterRange = 0;
-          if (filterFrom && filterTo) {
-            // filterTo ke baad settle hue bets — ye pnl current wallet mein hai
-            // lekin hum un ko statement mein nahi dikha rahe
-            // to opening balance = currentWallet - sum(pnl of bets AFTER filterTo)
-            for (const bet of allSettled) {
-              const betDate = new Date(bet.settled_at || bet.updated_at || bet.created_at);
-              if (betDate > filterTo) {
-                pnlAfterRange += calcPnL(bet);
-              }
-            }
-          } else {
-            // No filter — opening = balance before any bets = currentWallet - all settled pnl
-            for (const bet of allSettled) {
-              pnlAfterRange += calcPnL(bet);
-            }
-          }
-
-          const openingBalance = parseFloat((currentWallet - pnlAfterRange).toFixed(2));
-
-          // Running balance opening se shuru hoga (0 se nahi)
-          let runningBalance = openingBalance;
-
-          // ── Agar koi data nahi ────────────────────────────────
+          // Step 5: Agar koi data nahi
           if (!settled.length && !deposits.length) {
             this.ledger = [{
-              date:        filterFrom
-                             ? filterFrom.toLocaleString()
-                             : new Date(user.created_at || Date.now()).toLocaleString(),
+              date:        new Date(user.created_at || Date.now()).toLocaleString(),
               description: "Opening Balance",
-              amount:      null,
-              balance:     openingBalance,
+              amount:      0,
+              balance:     0,
               isOpen:      true,
               type:        'open'
             }];
             return;
           }
 
-          // ── Opening balance row ────────────────────────────────
+          // Step 6: Opening balance row — hamesha 0
           const rows = [{
-            date:        filterFrom
-                           ? filterFrom.toLocaleString()
-                           : new Date(user.created_at || Date.now()).toLocaleString(),
+            date:        new Date(user.created_at || Date.now()).toLocaleString(),
             description: "Opening Balance",
-            amount:      null,
-            balance:     openingBalance,
+            amount:      0,
+            balance:     0,
             isOpen:      true,
             type:        'open'
           }];
 
-          // ── Deposits ───────────────────────────────────────────
+          // Step 7: Deposits ko rows mein shamil karo
           for (const dep of deposits) {
             const depDate = new Date(dep.created_at || dep.date);
             if (filterFrom && filterTo && (depDate < filterFrom || depDate > filterTo)) continue;
@@ -971,21 +923,31 @@
             });
           }
 
-          // ── Settled bets rows ──────────────────────────────────
+          // Step 8: Settled bets rows
           for (const bet of settled) {
-            const pnl      = calcPnL(bet);
+            const pnl = (bet.settlementPnL !== null && bet.settlementPnL !== undefined)
+              ? bet.settlementPnL
+              : (() => {
+                  const price = parseFloat(bet.price || 0);
+                  const size  = parseFloat(bet.matched || bet.size || 0);
+                  const isWin = String(bet.selection_id || bet.selectionId)
+                              === String(bet.winning_selection_id || bet.winningSelectionId);
+                  const side  = (bet.side || "").toUpperCase();
+                  if (side === "B" || side === "BACK") {
+                    return isWin ? (price - 1) * size : -size;
+                  } else {
+                    return isWin ? -(price - 1) * size : size;
+                  }
+                })();
+
             runningBalance += pnl;
-            const pnlLabel = pnl > 0
-              ? "Profit: +" + pnl.toFixed(2)
-              : pnl < 0
-                ? "Loss: "  + pnl.toFixed(2)
-                : "Break Even";
+            const pnlLabel = pnl > 0 ? "Profit: +" + pnl.toFixed(2) : pnl < 0 ? "Loss: " + pnl.toFixed(2) : "Break Even";
 
             rows.push({
               date:        new Date(bet.settled_at || bet.updated_at || bet.created_at).toLocaleString(),
               description: (bet.event_name || bet.eventName || bet.event || "Match Result")
-                         + " \u2013 " + (bet.runner_name || bet.runnerName || "")
-                         + " (B @" + parseFloat(bet.price || 0).toFixed(2) + ") | " + pnlLabel,
+                         + " — " + (bet.runner_name || bet.runnerName || "")
+                         + " (" + (bet.side || "") + " @" + parseFloat(bet.price || 0).toFixed(2) + ") | " + pnlLabel,
               amount:      parseFloat(pnl.toFixed(2)),
               balance:     parseFloat(runningBalance.toFixed(2)),
               isOpen:      false,

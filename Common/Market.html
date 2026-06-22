@@ -4948,30 +4948,33 @@ function calculateRunnerPnL(runnerName, forMarketId) {
                 ifLose += stake;
             }
         } else if (applyCrossRunner) {
-            // Cross-runner effect — multi-runner exchange betting (horse racing etc.)
-            //
-            // BACK Utter Chaos @ 30, stake 2000:
-            //   Utter Chaos: ifWin = +58000, ifLose = -2000  (direct)
-            //   Bandit Mia:  ifWin = -2000,  ifLose = +0
-            //     ^ Bandit Mia jeeti = Utter Chaos haari = Back bet lost = -stake only
-            //     ^ Bandit Mia haari = we don't get anything extra here
-            //
-            // LAY Utter Chaos @ 30, stake 2000:
-            //   Utter Chaos: ifWin = -58000, ifLose = +2000  (direct)
-            //   Bandit Mia:  ifWin = +2000,  ifLose = 0
-            //     ^ Bandit Mia jeeti = Utter Chaos haari = Lay bet won = +stake
-            //
+            // Cross-runner effect: doosre runner par bet ka is runner par asar
+            // ifWin  = "YEH runner jeet e" scenario
+            // ifLose = "YEH runner haare" scenario
+            // Back bet on OTHER runner:
+            //   Other wins (THIS loses) => bet wins => THIS ifLose -= stake
+            //   Other loses (THIS wins) => bet loses => THIS ifWin -= (odds-1)*stake  [wait, no]
+            // Correct exchange logic (2-runner market, zero-sum):
+            //   Back WI @ 2, stake 2000 => WI: ifWin=+2000, ifLose=-2000
+            //   SL (opposite):            ifWin=-2000, ifLose=+2000
+            // So for THIS runner (SL), OTHER runner (WI) has a Back bet:
+            //   THIS ifWin  = -(odds-1)*stake   (WI wins means SL loses)
+            //   THIS ifLose = +stake             (WI loses means SL wins, stake returned to SL's side)
             if (side === "B") {
-                // OTHER runner jeetna = YEH bet haarna = sirf stake lost
-                ifWin  -= stake;
-                // OTHER runner haarna = YEH runner jeetna chance = no effect here
-                // ifLose stays 0 for cross-runner (we gain nothing if other loses)
+                ifWin  -= (odds - 1) * stake;
+                ifLose += stake;
             } else {
-                // LAY on OTHER runner:
-                // OTHER runner jeetna = Lay bet lost = pays (odds-1)*stake
-                // But yeh THIS runner ka perspective nahi hai
-                // THIS runner jeete = OTHER haare = Lay on OTHER wins = +stake
-                ifWin  += stake;
+                // Lay on OTHER runner:
+                // WI laid => WI loses is good for layer => SL winning = bad for layer
+                // THIS ifWin  = +stake (if WI loses/SL wins, lay wins)  NO wait...
+                // Lay WI @ 2, stake 2000: WI wins => layer pays (odds-1)*stake; WI loses => layer gets stake
+                // SL perspective (zero-sum opposite):
+                //   SL wins (WI loses) => THIS ifWin = -(odds-1)*stake (layer of WI loses)? No...
+                // Zero-sum: Lay WI = Back SL (in 2-runner market)
+                // So Lay WI @ 2, stake 2000 = effectively Back SL @ 2, stake 2000
+                // SL: ifWin = +(odds-1)*stake, ifLose = -stake
+                ifWin  += (odds - 1) * stake;
+                ifLose -= stake;
             }
         }
     });

@@ -507,10 +507,10 @@
 <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.21/css/jquery.dataTables.min.css" />
 <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/responsive/2.2.5/css/responsive.dataTables.min.css" />
 
-<form method="post">
+<div>
     <div class="row">
         <div class="col-12">
-            <form method="post">
+            <div>
                 <div class="card">
                     <div class="card-header">
                         <i class="fa fa-align-justify"></i>
@@ -559,29 +559,28 @@
 
                         <br />
 
-                        <p>
-                                    <button class="btn btn-secondary" type="submit" onclick="return updateDates();" formaction="/Common/Result?id=1">
-                                        Soccer
-                                    </button>
-                                    <button class="btn btn-secondary" type="submit" onclick="return updateDates();" formaction="/Common/Result?id=2">
-                                        Tennis
-                                    </button>
-                                    <button class="btn btn-primary" type="submit" onclick="return updateDates();" formaction="/Common/Result?id=4">
-                                        <strong>Cricket</strong>
-                                    </button>
-                                    <button class="btn btn-secondary" type="submit" onclick="return updateDates();" formaction="/Common/Result?id=7">
-                                        Horse Race
-                                    </button>
-                                    <button class="btn btn-secondary" type="submit" onclick="return updateDates();" formaction="/Common/Result?id=8">
-                                        Fancy
-                                    </button>
-                                    <button class="btn btn-secondary" type="submit" onclick="return updateDates();" formaction="/Common/Result?id=12">
-                                        Casino
-                                    </button>
-                                    <button class="btn btn-secondary" type="submit" onclick="return updateDates();" formaction="/Common/Result?id=4339">
-                                        Greyhound
-                                    </button>
+                        <p id="sport-btn-group">
+                                    <a class="btn btn-secondary sport-btn" href="/Common/Result?id=1" data-id="1">Soccer</a>
+                                    <a class="btn btn-secondary sport-btn" href="/Common/Result?id=2" data-id="2">Tennis</a>
+                                    <a class="btn btn-secondary sport-btn" href="/Common/Result?id=4" data-id="4"><strong>Cricket</strong></a>
+                                    <a class="btn btn-secondary sport-btn" href="/Common/Result?id=7" data-id="7">Horse Race</a>
+                                    <a class="btn btn-secondary sport-btn" href="/Common/Result?id=8" data-id="8">Fancy</a>
+                                    <a class="btn btn-secondary sport-btn" href="/Common/Result?id=12" data-id="12">Casino</a>
+                                    <a class="btn btn-secondary sport-btn" href="/Common/Result?id=4339" data-id="4339">Greyhound</a>
                         </p>
+                        <script>
+                            // Active button highlight karo based on current URL ?id=
+                            (function() {
+                                var params = new URLSearchParams(window.location.search);
+                                var currentId = params.get('id') || '7';
+                                document.querySelectorAll('.sport-btn').forEach(function(btn) {
+                                    if (btn.getAttribute('data-id') === currentId) {
+                                        btn.classList.remove('btn-secondary');
+                                        btn.classList.add('btn-primary');
+                                    }
+                                });
+                            })();
+                        </script>
 
                         <table id="example" width="100%" class="table-striped table-hover table-bordered table-sm display compact nowrap">
                             <thead>
@@ -598,10 +597,9 @@
                         </table>
                     </div>
                 </div>
-            <input name="__RequestVerificationToken" type="hidden" value="CfDJ8GVcHGMfjbhImL432Db-SfcLJAmgPo7KArihQRZcYNiCEHqFloTSRateQee0jxrw-ASCdSuju0i4ZJYo8Z-vYYB4MgLd2jb8oEa5HiJTQSGVJCULgoJN3NJUfsE1LJerF_zKC4nYMMERTHpmVGLO_UL5D0ow9u2xFR7KB09XrqyNwtGJOLOb2-5RVTIi2at_JQ" /></form>
+            </div>
         </div>
     </div>
-<input name="__RequestVerificationToken" type="hidden" value="CfDJ8GVcHGMfjbhImL432Db-SfcLJAmgPo7KArihQRZcYNiCEHqFloTSRateQee0jxrw-ASCdSuju0i4ZJYo8Z-vYYB4MgLd2jb8oEa5HiJTQSGVJCULgoJN3NJUfsE1LJerF_zKC4nYMMERTHpmVGLO_UL5D0ow9u2xFR7KB09XrqyNwtGJOLOb2-5RVTIi2at_JQ" /></form>
 
 
                 </div>

@@ -1957,14 +1957,28 @@ document.addEventListener("DOMContentLoaded", async () => {
                 : orders;
 
             // Group by market_id → one row per market
+            // selectionId → runnerName lookup (har order mein runner_name hoti hai)
+            const runnerNames = {};  // selectionId → runnerName
+            filtered.forEach(o => {
+                const selId = String(o.selectionId || o.selection_id || '');
+                const rn    = o.runnerName || o.runner_name || '';
+                if (selId && rn) runnerNames[selId] = rn;
+            });
+
             const markets = new Map();
             filtered.forEach(o => {
-                const mktId = o.marketId || o.market_id || '';
+                const mktId = String(o.marketId || o.market_id || '');
                 if (!markets.has(mktId)) {
+                    // Market name: backend mein store nahi — event_name se banao
+                    // Betfair market IDs "1.XXXXXXXXX" format mein hote hain
+                    // Market name = event_name already readable hai e.g. "Maitland (AUS) 22nd Jun"
+                    // Market Name column ke liye eventName use karo — match name alag column mein bhi hai
+                    // lekin agar marketName field ho to use karo
+                    const mktName = o.marketName || o.market_name || '';
                     markets.set(mktId, {
                         marketId:   mktId,
                         matchName:  o.eventName || o.event_name || '',
-                        marketName: o.marketName || o.market_name || mktId,
+                        marketName: mktName,   // will be enriched below
                         date:       o.settled_at || o.created_at || '',
                         winner:     '',
                         orders:     []
@@ -1972,13 +1986,68 @@ document.addEventListener("DOMContentLoaded", async () => {
                 }
                 const m = markets.get(mktId);
                 m.orders.push(o);
-                // Winner = runner whose selection_id == winning_selection_id
-                if (o.winning_selection_id && String(o.selection_id) === String(o.winning_selection_id)) {
-                    m.winner = o.runnerName || o.runner_name || ('Id: ' + o.winning_selection_id);
+
+                // Winner runner name — direct se runner_name lo agar selection match kare
+                if (o.winning_selection_id) {
+                    const winId  = String(o.winning_selection_id);
+                    const selId  = String(o.selectionId || o.selection_id || '');
+                    const rn     = o.runnerName || o.runner_name || '';
+
+                    // Agar ye order winning runner ka hai — uska naam winner mein store karo
+                    if (selId === winId && rn) {
+                        m.winner = rn;
+                    }
+                    // Fallback: lookup table se
+                    if (!m.winner && runnerNames[winId]) {
+                        m.winner = runnerNames[winId];
+                    }
                 }
-                // Fallback: agar kisi order mein winner runner name nahi but winning_selection_id hai
-                if (!m.winner && o.winning_selection_id) {
-                    m.winner = 'Id: ' + o.winning_selection_id;
+            });
+
+            // Market name enrichment: pricesUrl se market catalogue fetch karo
+            // Unique market IDs collect karo jo blank naam wale hain
+            const blankMktIds = [];
+            markets.forEach(function(m) {
+                if (!m.marketName) blankMktIds.push(m.marketId);
+            });
+
+            if (blankMktIds.length > 0) {
+                try {
+                    // Betfair prices API — market catalogue
+                    const catRes = await fetch(
+                        `${pricesUrl}/market/catalogue?marketIds=${blankMktIds.join(',')}&fields=MARKET_NAME,MARKET_START_TIME,RUNNER_DESCRIPTION`,
+                        { headers: { 'Content-Type': 'application/json' } }
+                    );
+                    if (catRes.ok) {
+                        const catData = await catRes.json();
+                        const catList = Array.isArray(catData) ? catData : (catData.result || catData.data || []);
+                        catList.forEach(function(cat) {
+                            const mktId = cat.marketId || cat.market_id || '';
+                            if (markets.has(mktId)) {
+                                const m = markets.get(mktId);
+                                if (!m.marketName) {
+                                    m.marketName = cat.marketName || cat.market_name || '';
+                                }
+                                // Runner names bhi update karo agar winner nahi mila
+                                if (!m.winner && cat.runners) {
+                                    const winId = String(m.orders[0]?.winning_selection_id || '');
+                                    if (winId) {
+                                        const winRunner = cat.runners.find(r => String(r.selectionId || r.selection_id) === winId);
+                                        if (winRunner) m.winner = winRunner.runnerName || winRunner.runner_name || '';
+                                    }
+                                }
+                            }
+                        });
+                    }
+                } catch(e) {
+                    console.warn('Market catalogue fetch failed:', e.message);
+                }
+            }
+
+            // Final fallback for still-blank market names
+            markets.forEach(function(m) {
+                if (!m.marketName) {
+                    m.marketName = m.marketId; // last resort
                 }
             });
 

@@ -4944,7 +4944,7 @@ function calculateRunnerPnL(runnerName, forMarketId) {
                 ifWin  += (odds - 1) * stake;
                 ifLose -= stake;
             } else {
-                ifWin  -= stake;
+                ifWin  -= (odds - 1) * stake;
                 ifLose += stake;
             }
         } else if (applyCrossRunner) {
@@ -4961,20 +4961,18 @@ function calculateRunnerPnL(runnerName, forMarketId) {
             //   THIS ifWin  = -(odds-1)*stake   (WI wins means SL loses)
             //   THIS ifLose = +stake             (WI loses means SL wins, stake returned to SL's side)
             if (side === "B") {
-                ifWin  -= (odds - 1) * stake;
-                ifLose += stake;
+                // Back OTHER runner: agar OTHER jeeta => hum -stake, agar OTHER haara => hum 0
+                // Horse race: multi-runner market — THIS runner ke liye cross effect = sirf -stake
+                // (agar OTHER jeeta matlab THIS haara => THIS ka ifWin = -stake)
+                // (agar THIS jeeta matlab OTHER haara => THIS ka ifLose stays, asar sirf stake ka)
+                ifWin  -= stake;
+                ifLose += 0; // koi cross-asar nahi ifLose pe multi-runner mein
             } else {
-                // Lay on OTHER runner:
-                // WI laid => WI loses is good for layer => SL winning = bad for layer
-                // THIS ifWin  = +stake (if WI loses/SL wins, lay wins)  NO wait...
-                // Lay WI @ 2, stake 2000: WI wins => layer pays (odds-1)*stake; WI loses => layer gets stake
-                // SL perspective (zero-sum opposite):
-                //   SL wins (WI loses) => THIS ifWin = -(odds-1)*stake (layer of WI loses)? No...
-                // Zero-sum: Lay WI = Back SL (in 2-runner market)
-                // So Lay WI @ 2, stake 2000 = effectively Back SL @ 2, stake 2000
-                // SL: ifWin = +(odds-1)*stake, ifLose = -stake
-                ifWin  += (odds - 1) * stake;
-                ifLose -= stake;
+                // Lay OTHER runner: agar OTHER jeeta => hum +(odds-1)*stake, agar OTHER haara => -stake
+                // THIS runner ke liye: agar THIS jeeta (OTHER haara) => lay haari => -stake
+                // agar THIS haara (OTHER jeeta) => lay jeeti => +(odds-1)*stake
+                ifWin  -= stake;
+                ifLose += (odds - 1) * stake;
             }
         }
     });

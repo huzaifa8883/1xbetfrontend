@@ -1763,21 +1763,173 @@ document.addEventListener("DOMContentLoaded", async () => {
     <script type="text/javascript" src="https://cdn.datatables.net/responsive/2.2.5/js/dataTables.responsive.min.js"></script>
     <script type="text/javascript" src="https://cdn.datatables.net/v/dt/dt-1.10.21/r-2.2.5/datatables.min.js"></script>
 
+    <style>
+        /* Settled Bets child row styles */
+        .settled-bets-wrap {
+            padding: 10px 16px;
+            background: #1a1e2a;
+        }
+        .settled-bets-wrap table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+            color: #ccc;
+        }
+        .settled-bets-wrap table thead tr {
+            background: #2c3044;
+            color: #fff;
+        }
+        .settled-bets-wrap table th,
+        .settled-bets-wrap table td {
+            padding: 6px 10px;
+            border: 1px solid #333;
+            text-align: center;
+        }
+        .settled-bets-wrap .back-row { background: rgba(100,160,255,0.08); }
+        .settled-bets-wrap .lay-row  { background: rgba(255,100,100,0.08); }
+        .pnl-win  { color: #4caf50; font-weight: 700; }
+        .pnl-loss { color: #f44336; font-weight: 700; }
+        .badge-back { background:#5a9de6; color:#fff; padding:2px 6px; border-radius:3px; font-size:11px; }
+        .badge-lay  { background:#e65a5a; color:#fff; padding:2px 6px; border-radius:3px; font-size:11px; }
+        .settled-bets-wrap .no-bets { color:#aaa; text-align:center; padding:10px 0; }
+        tr.dt-expand-btn td:first-child { cursor:pointer; }
+        .dt-control { cursor: pointer; text-align: center; color: #28a745; font-size: 18px; font-weight: bold; }
+    </style>
+
     <script>
-        $(document).ready(function () {
-            var t = $('#example').DataTable({
-                "columnDefs": [{ "targets": 3, "type": "date" }],
-                "order": [[3, "desc"]],
-                responsive: true,
-                "pageLength": 50
-                
+    /* ── Settled Bets child row loader ── */
+    const API_BASE = 'https://1xbetbackend.work.gd/api/v1';
+
+    function fmtNum(n) {
+        if (n == null) return '-';
+        return parseFloat(n).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    }
+
+    // eventName + marketName se settled bets fetch karo
+    async function fetchSettledBetsByEventName(matchName, mktName) {
+        const token = localStorage.getItem('token');
+        if (!token) return [];
+        try {
+            // /orders/settled?eventName= se directly filter karo
+            const q   = encodeURIComponent(matchName.substring(0, 30));
+            const res = await fetch(`${API_BASE}/orders/settled?eventName=${q}&limit=200`, {
+                headers: { 'Authorization': 'Bearer ' + token }
             });
-            t.on('order.dt search.dt', function () {
-                t.column(0, { search: 'applied', order: 'applied' }).nodes().each(function (cell, i) {
-                    cell.innerHTML = i + 1;
-                });
-            }).draw();
+            if (!res.ok) return [];
+            const data = await res.json();
+            return (data.data && data.data.orders) ? data.data.orders : [];
+        } catch(e) {
+            console.error('fetchSettledBets error:', e);
+            return [];
+        }
+    }
+
+    // Agar direct marketId available ho to use karo (future use)
+    async function fetchSettledBetsForMarket(marketId) {
+        const token = localStorage.getItem('token');
+        if (!token) return [];
+        try {
+            const res = await fetch(`${API_BASE}/orders/settled?marketId=${encodeURIComponent(marketId)}&limit=200`, {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            if (!res.ok) return [];
+            const data = await res.json();
+            return (data.data && data.data.orders) ? data.data.orders : [];
+        } catch(e) {
+            return [];
+        }
+    }
+
+    function buildBetsTable(orders) {
+        if (!orders || orders.length === 0) {
+            return `<div class="settled-bets-wrap"><p class="no-bets">Is market mein koi settled bet nahi mili.</p></div>`;
+        }
+        let rows = orders.map(o => {
+            const side    = (o.side || '').toUpperCase();
+            const pnl     = (o.settlementPnL != null) ? o.settlementPnL : null;
+            const pnlHtml = pnl == null ? '-'
+                : pnl >= 0
+                    ? `<span class="pnl-win">+${fmtNum(pnl)}</span>`
+                    : `<span class="pnl-loss">${fmtNum(pnl)}</span>`;
+            const badgeHtml = side === 'BACK'
+                ? `<span class="badge-back">BACK</span>`
+                : `<span class="badge-lay">LAY</span>`;
+            const rowClass = side === 'BACK' ? 'back-row' : 'lay-row';
+            const runner   = o.runnerName || o.runner_name || '-';
+            const price    = fmtNum(o.price);
+            const size     = fmtNum(o.matched > 0 ? o.matched : o.size);
+            const date     = o.settled_at ? new Date(o.settled_at).toLocaleString('en-GB') : '-';
+            return `<tr class="${rowClass}">
+                <td>${runner}</td>
+                <td>${badgeHtml}</td>
+                <td>${price}</td>
+                <td>${size}</td>
+                <td>${pnlHtml}</td>
+                <td>${date}</td>
+            </tr>`;
+        }).join('');
+
+        return `<div class="settled-bets-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Runner</th>
+                        <th>Side</th>
+                        <th>Price</th>
+                        <th>Size</th>
+                        <th>P&amp;L</th>
+                        <th>Settled At</th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </div>`;
+    }
+
+    $(document).ready(function () {
+        // DataTable mein + control column add karo
+        var t = $('#example').DataTable({
+            "columnDefs": [
+                { "targets": 0, "orderable": false, "className": "dt-control", "width": "20px" },
+                { "targets": 4, "type": "date" }
+            ],
+            "order": [[4, "desc"]],
+            responsive: true,
+            "pageLength": 50
         });
+
+        t.on('order.dt search.dt', function () {
+            t.column(0, { search: 'applied', order: 'applied' }).nodes().each(function (cell, i) {
+                cell.innerHTML = '+';
+            });
+        }).draw();
+
+        // + button click → child row toggle
+        $('#example tbody').on('click', 'td.dt-control', async function () {
+            var tr   = $(this).closest('tr');
+            var row  = t.row(tr);
+
+            if (row.child.isShown()) {
+                row.child.hide();
+                tr.removeClass('shown');
+                $(this).text('+');
+                return;
+            }
+
+            $(this).text('⏳');
+
+            // Row cells se Match name + Market Name extract karo (server-rendered)
+            // Column order: 0=+, 1=Sr#, 2=Match name, 3=Market Name, 4=Date, 5=Result
+            var cells     = tr.find('td');
+            var matchName = $(cells[2]).text().trim();
+            var mktName   = $(cells[3]).text().trim();
+
+            var orders = await fetchSettledBetsByEventName(matchName, mktName);
+            row.child(buildBetsTable(orders)).show();
+            tr.addClass('shown');
+            $(this).text('−');
+        });
+    });
     </script>
 
 

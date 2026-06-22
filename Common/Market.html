@@ -4944,7 +4944,7 @@ function calculateRunnerPnL(runnerName, forMarketId) {
                 ifWin  += (odds - 1) * stake;
                 ifLose -= stake;
             } else {
-                ifWin  -= (odds - 1) * stake;
+                ifWin  -= stake;
                 ifLose += stake;
             }
         } else if (applyCrossRunner) {

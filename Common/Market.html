@@ -6426,18 +6426,18 @@ Vue.component('runner-aggregate', {
       selectionId:  r.selectionId  || r.id    || Math.random(),
       runnerName:   r.runnerName   || r.name  || 'Runner',
       status:       r.status       || 'ACTIVE',
-      price1: r.back?.[0]?.price || r.price1 || '-',
-      price2: r.back?.[1]?.price || r.price2 || '-',
-      price3: r.back?.[2]?.price || r.price3 || '-',
-      size1:  r.back?.[0]?.size  || r.size1  || '-',
-      size2:  r.back?.[1]?.size  || r.size2  || '-',
-      size3:  r.back?.[2]?.size  || r.size3  || '-',
-      lay1:   r.lay?.[0]?.price  || r.lay1   || '-',
-      lay2:   r.lay?.[1]?.price  || r.lay2   || '-',
-      lay3:   r.lay?.[2]?.price  || r.lay3   || '-',
-      ls1:    r.lay?.[0]?.size   || r.ls1    || '-',
-      ls2:    r.lay?.[1]?.size   || r.ls2    || '-',
-      ls3:    r.lay?.[2]?.size   || r.ls3    || '-',
+      price1: r.back?.[0]?.price ?? r.price1 ?? '-',
+      price2: r.back?.[1]?.price ?? r.price2 ?? '-',
+      price3: r.back?.[2]?.price ?? r.price3 ?? '-',
+      size1:  r.back?.[0]?.size  ?? r.size1  ?? '-',
+      size2:  r.back?.[1]?.size  ?? r.size2  ?? '-',
+      size3:  r.back?.[2]?.size  ?? r.size3  ?? '-',
+      lay1:   r.lay?.[0]?.price  ?? r.lay1   ?? '-',
+      lay2:   r.lay?.[1]?.price  ?? r.lay2   ?? '-',
+      lay3:   r.lay?.[2]?.price  ?? r.lay3   ?? '-',
+      ls1:    r.lay?.[0]?.size   ?? r.ls1    ?? '-',
+      ls2:    r.lay?.[1]?.size   ?? r.ls2    ?? '-',
+      ls3:    r.lay?.[2]?.size   ?? r.ls3    ?? '-',
       ifWin:  r.ifWin  || 0,
       ifLose: r.ifLose || 0,
       jockeyName:   (r.jockeyName || null) ? (r.jockeyName).replace(/^\s*\(\d+\)\s*/, '').trim() || null : null,
@@ -6775,8 +6775,17 @@ Vue.component('runner-aggregate', {
 
     console.log('[AdminFilter] Enabled market IDs:', enabledMarketIds);
 
-    // Sirf ek baar filter lagao — repeated clearing markets gayab karta tha
+    // Ek baar filter lagao
     applyFilter(vm, enabledMarketIds);
+
+    // Phir 15 sekond tak har 500ms watch karo
+    // (mv2 ya koi aur script markets reset kare to turant clear karo)
+    let elapsed = 0;
+    const guard = setInterval(function() {
+      elapsed += 500;
+      if (elapsed > 15000) { clearInterval(guard); return; }
+      applyFilter(vm, enabledMarketIds);
+    }, 500);
   }
 
   // Page load ke 1.5 sekond baad start karo

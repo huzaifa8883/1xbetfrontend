@@ -4968,11 +4968,18 @@ function calculateRunnerPnL(runnerName, forMarketId) {
                 ifWin  -= stake;
                 ifLose += 0; // koi cross-asar nahi ifLose pe multi-runner mein
             } else {
-                // Lay OTHER runner: agar OTHER jeeta => hum +(odds-1)*stake, agar OTHER haara => -stake
-                // THIS runner ke liye: agar THIS jeeta (OTHER haara) => lay haari => -stake
-                // agar THIS haara (OTHER jeeta) => lay jeeti => +(odds-1)*stake
-                ifWin  -= stake;
-                ifLose += (odds - 1) * stake;
+                // Lay OTHER runner (R), stake S, odds O — sirf ek winner hota hai is liye:
+                //   Agar THIS jeeta (matlab R nahi jeeta, R ki LAY jeet gayi) => layer ko profit +S
+                //       => THIS ke "ifWin" (THIS jeete ka scenario) mein +stake
+                //   Agar THIS na jeeta lekin R jeet gaya (R ki LAY haari, layer ki liability) => -(odds-1)*stake
+                //       => yeh sirf "R jeeta" scenario hai, jo THIS ke liye "THIS ka ifLose" slot hai
+                //       (THIS khud nahi jeeta — usme se "R jeeta" bhi ek possibility hai)
+                //       => THIS ke "ifLose" mein -(odds-1)*stake
+                // BUG FIX: pehle yahan ifWin -= stake aur ifLose += (odds-1)*stake tha (sign ulta),
+                // jiski wajah se LAY karte waqt baaki SAB runners ke neeche liability (manfi) dikh rahi thi
+                // jabke profit (mussbat) dikhna chahiye tha.
+                ifWin  += stake;
+                ifLose -= (odds - 1) * stake;
             }
         }
     });

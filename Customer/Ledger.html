@@ -835,24 +835,23 @@
         if (!token) { this.loading = false; return; }
 
         try {
-          // Step 1: User info (wallet balance)
+          // Step 1: User info
           const userRes  = await fetch(_STMT_API + "/users/me", {
             headers: { "Authorization": "Bearer " + token }
           });
           const userData = await userRes.json();
           const user     = userData?.data?.user || userData?.data || userData?.user || {};
-          const currentWallet = parseFloat(user.wallet_balance || 0);
+          // Current user ki ID — deposit filter ke liye
+          const myUserId = String(user.id || user._id || "");
 
-          // Step 2: Date filter — calendar se "From" aur "To" lo
-          const fromInput = document.getElementById('From');
-          const toInput   = document.getElementById('To');
+          // Step 2: Date filter
+          const fromInput  = document.getElementById('From');
+          const toInput    = document.getElementById('To');
           const filterFrom = fromInput ? new Date(fromInput.value) : null;
           const filterTo   = toInput   ? new Date(toInput.value)   : null;
 
-          // Step 3: Settled bets fetch karo
+          // Step 3: Settled bets fetch (sirf is user ke)
           let allSettledRaw = [];
-          
-          // Route 1: /orders/settled (primary + only route)
           try {
             const res1 = await fetch(_STMT_API + "/orders/settled?limit=500", {
               headers: { "Authorization": "Bearer " + token }
@@ -861,36 +860,27 @@
             allSettledRaw = j1?.data?.orders || j1?.orders || [];
           } catch(e) { console.warn("[Statement] /orders/settled failed:", e.message); }
 
-          // ── ALL Deposits fetch — multiple endpoints try karo
+          // Step 4: Deposits fetch — multiple endpoints try karo
           let allDepositsRaw = [];
-          const _DEP_ENDPOINTS = [
+          const _DEP_EPS = [
             "/users/my-transactions?limit=500",
             "/users/transactions?limit=500",
             "/users/all-transactions?limit=500",
             "/transactions?limit=500",
           ];
-          for (const ep of _DEP_ENDPOINTS) {
+          for (const ep of _DEP_EPS) {
             try {
-              const depRes  = await fetch(_STMT_API + ep, { headers: { "Authorization": "Bearer " + token } });
-              if (!depRes.ok) continue;
-              const depJson = await depRes.json();
-              const txArr   = depJson?.data?.transactions || depJson?.transactions || depJson?.data || [];
-              if (Array.isArray(txArr) && txArr.length > 0) {
-                allDepositsRaw = txArr;
-                console.log("[Statement] Transactions found via", ep, ":", txArr.length);
+              const r = await fetch(_STMT_API + ep, { headers: { "Authorization": "Bearer " + token } });
+              if (!r.ok) continue;
+              const j = await r.json();
+              const arr = j?.data?.transactions || j?.transactions || j?.data || [];
+              if (Array.isArray(arr) && arr.length > 0) {
+                allDepositsRaw = arr;
+                console.log("[Statement] Deposits via", ep, "count:", arr.length);
                 break;
               }
-            } catch(e) { console.warn("[Statement] endpoint failed:", ep, e.message); }
+            } catch(e) { console.warn("[Statement] dep endpoint failed:", ep); }
           }
-          // Sirf deposit/credit type wale lo
-          const allDeposits = allDepositsRaw.filter(tx => {
-            const t = (tx.type || "").toLowerCase();
-            return t === "deposit" || t === "credit-deposit" || t === "credit_deposit" || t === "transfer";
-          });
-
-          // ── Sort ALL settled bets oldest first ────────────────
-          const allSettled = allSettledRaw
-            .sort((a, b) => new Date(a.settled_at || a.updated_at) - new Date(b.settled_at || b.updated_at));
 
           // ── P&L helper ────────────────────────────────────────
           function calcPnL(bet) {
@@ -905,15 +895,36 @@
             else                                  return isWin ? -(price - 1) * size : size;
           }
 
-          // ── Opening Balance = deposits BEFORE filterFrom + PnL BEFORE filterFrom ──
-          // Naye account = 0 (koi deposit nahi range se pehle)
-          const depositsBeforeRange = allDeposits.filter(dep => {
+          // ── Filter deposits: sirf is user ke, sirf deposit/credit type ─
+          // Duplicate remove: same id ya same amount+timestamp
+          const seenDepIds = new Set();
+          const allDeposits = allDepositsRaw.filter(tx => {
+            const t = (tx.type || "").toLowerCase();
+            const isDepType = t === "deposit" || t === "credit-deposit" || t === "credit_deposit";
+            if (!isDepType) return false;
+            // Sirf is user ko receive hone wale (to_user_id match kare ya user_id match kare)
+            const toId = String(tx.to_user_id || tx.userId || tx.user_id || "");
+            if (myUserId && toId && toId !== myUserId) return false;
+            // Duplicate dedupe by id
+            const uid = String(tx.id || tx._id || (tx.amount + "|" + (tx.created_at || tx.date)));
+            if (seenDepIds.has(uid)) return false;
+            seenDepIds.add(uid);
+            return true;
+          }).sort((a, b) => new Date(a.created_at || a.date) - new Date(b.created_at || b.date));
+
+          // ── Sort bets oldest first ────────────────────────────
+          const allSettled = allSettledRaw
+            .sort((a, b) => new Date(a.settled_at || a.updated_at) - new Date(b.settled_at || b.updated_at));
+
+          // ── Opening Balance = sum of ALL deposits + bets BEFORE filterFrom ──
+          // Naye account = 0 (koi cheez nahi before range)
+          const depositsBeforeRange = allDeposits.filter(d => {
             if (!filterFrom) return false;
-            return new Date(dep.created_at || dep.date) < filterFrom;
+            return new Date(d.created_at || d.date) < filterFrom;
           });
-          const betsBeforeRange = allSettled.filter(bet => {
+          const betsBeforeRange = allSettled.filter(b => {
             if (!filterFrom) return false;
-            return new Date(bet.settled_at || bet.updated_at || bet.created_at) < filterFrom;
+            return new Date(b.settled_at || b.updated_at || b.created_at) < filterFrom;
           });
           const openingBalance = parseFloat((
             depositsBeforeRange.reduce((s, d) => s + parseFloat(d.amount || 0), 0) +
@@ -921,7 +932,7 @@
           ).toFixed(2));
           let runningBalance = openingBalance;
 
-          // ── Date filter ───────────────────────────────────────
+          // ── Date-range filter ─────────────────────────────────
           const settled = allSettled.filter(bet => {
             if (!filterFrom || !filterTo) return true;
             const d = new Date(bet.settled_at || bet.updated_at || bet.created_at);
@@ -943,17 +954,17 @@
             type:        'open'
           }];
 
-          // ── Combine deposits + bets by date, then process ─────
-          const allRangeEvents = [
-            ...deposits.map(dep => ({ _type: 'deposit', _date: new Date(dep.created_at || dep.date), _data: dep })),
-            ...settled.map(bet  => ({ _type: 'bet',     _date: new Date(bet.settled_at || bet.updated_at || bet.created_at), _data: bet }))
+          // ── Merge deposits + bets by date ─────────────────────
+          const allEvents = [
+            ...deposits.map(d => ({ _type: 'deposit', _date: new Date(d.created_at || d.date), _data: d })),
+            ...settled.map(b  => ({ _type: 'bet',     _date: new Date(b.settled_at || b.updated_at || b.created_at), _data: b }))
           ].sort((a, b) => a._date - b._date);
 
-          // ── Group same-event bets (same eventName + same settled day) ──
+          // ── Group same-event bets ─────────────────────────────
           const processedEvents = [];
           let idx = 0;
-          while (idx < allRangeEvents.length) {
-            const ev = allRangeEvents[idx];
+          while (idx < allEvents.length) {
+            const ev = allEvents[idx];
             if (ev._type === 'deposit') {
               processedEvents.push(ev);
               idx++;
@@ -961,26 +972,26 @@
               const bet      = ev._data;
               const eventKey = (bet.event_name || bet.eventName || "").trim();
               const day      = ev._date.toDateString();
-              const groupBets = [bet];
+              const grp      = [bet];
               let j = idx + 1;
-              while (j < allRangeEvents.length && allRangeEvents[j]._type === 'bet') {
-                const nb = allRangeEvents[j]._data;
-                const nk = (nb.event_name || nb.eventName || "").trim();
-                const nd = allRangeEvents[j]._date.toDateString();
-                if (nk === eventKey && nd === day) { groupBets.push(nb); j++; }
-                else break;
+              while (j < allEvents.length && allEvents[j]._type === 'bet') {
+                const nb = allEvents[j]._data;
+                if ((nb.event_name || nb.eventName || "").trim() === eventKey &&
+                    allEvents[j]._date.toDateString() === day) {
+                  grp.push(nb); j++;
+                } else break;
               }
-              processedEvents.push({ _type: 'bet_group', _date: ev._date, _bets: groupBets });
+              processedEvents.push({ _type: 'bet_group', _date: ev._date, _bets: grp });
               idx = j;
             }
           }
 
-          // ── Build ledger rows ─────────────────────────────────
+          // ── Build rows ────────────────────────────────────────
           for (const ev of processedEvents) {
             if (ev._type === 'deposit') {
               const depAmount = parseFloat(ev._data.amount || 0);
               runningBalance  = parseFloat((runningBalance + depAmount).toFixed(2));
-              const uname     = user.username || user.name || ev._data.description || "User";
+              const uname     = user.username || user.name || "User";
               rows.push({
                 date:        ev._date.toLocaleString(),
                 description: "Cash deposit in " + uname + " (Cash)",
@@ -990,19 +1001,18 @@
                 type:        'deposit'
               });
             } else {
-              // bet_group — combined PnL ek row mein
-              const totalPnl  = parseFloat(ev._bets.reduce((s, b) => s + calcPnL(b), 0).toFixed(2));
-              runningBalance   = parseFloat((runningBalance + totalPnl).toFixed(2));
-              const firstBet   = ev._bets[0];
-              const eventName  = firstBet.event_name || firstBet.eventName || "Match Result";
-              const runners    = [...new Set(ev._bets.map(b => b.runner_name || b.runnerName || "").filter(Boolean))].join(", ");
-              const sideChar   = (firstBet.side || "B").toUpperCase() === "LAY" ? "L" : "B";
-              const avgPrice   = (ev._bets.reduce((s, b) => s + parseFloat(b.price || 0), 0) / ev._bets.length).toFixed(2);
-              const pnlLabel   = totalPnl > 0 ? "Profit: +" + totalPnl.toFixed(2)
-                               : totalPnl < 0 ? "Loss: "    + totalPnl.toFixed(2) : "Break Even";
+              const totalPnl = parseFloat(ev._bets.reduce((s, b) => s + calcPnL(b), 0).toFixed(2));
+              runningBalance  = parseFloat((runningBalance + totalPnl).toFixed(2));
+              const first     = ev._bets[0];
+              const eventName = first.event_name || first.eventName || "Match Result";
+              const runners   = [...new Set(ev._bets.map(b => b.runner_name || b.runnerName || "").filter(Boolean))].join(", ");
+              const sideChar  = (first.side || "B").toUpperCase() === "LAY" ? "L" : "B";
+              const avgPrice  = (ev._bets.reduce((s, b) => s + parseFloat(b.price || 0), 0) / ev._bets.length).toFixed(2);
+              const pnlLabel  = totalPnl > 0 ? "Profit: +" + totalPnl.toFixed(2)
+                              : totalPnl < 0 ? "Loss: "    + totalPnl.toFixed(2) : "Break Even";
               rows.push({
                 date:        ev._date.toLocaleString(),
-                description: eventName + (runners ? " \u2013 " + runners : "")
+                description: eventName + (runners ? " – " + runners : "")
                            + " (" + sideChar + "@" + avgPrice + ") | " + pnlLabel,
                 amount:      totalPnl,
                 balance:     runningBalance,

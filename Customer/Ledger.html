@@ -1143,38 +1143,45 @@
       openBetDetail(row) {
         if (!row._bets || row._bets.length === 0) return;
 
-        // ── Mobile check: width <= 768px → statements.html pe redirect ──
-        const isMobile = window.innerWidth <= 768;
-        if (isMobile) {
-          // Row data sessionStorage mein save karo, statements.html wahan se padhe ga
-          try {
-            sessionStorage.setItem('betDetailRow', JSON.stringify({
-              _eventName:  row._eventName  || '',
-              _grossPnl:   row._grossPnl   || 0,
-              _commission: row._commission || 0,
-              _netPnl:     row._netPnl     || row.amount || 0,
-              _username:   row._username   || 'User',
-              _bets: row._bets.map(b => ({
-                runner_name:          b.runner_name   || b.runnerName   || '',
-                price:                b.price,
-                size:                 b.matched || b.size,
-                side:                 b.side,
-                settlementPnL:        b.settlementPnL,
-                selection_id:         b.selection_id  || b.selectionId,
-                winning_selection_id: b.winning_selection_id || b.winningSelectionId,
-                created_at:           b.created_at    || b.placedDate,
-                updated_at:           b.updated_at,
-                settled_at:           b.settled_at,
-                request_id:           b.request_id    || b.id || ''
-              }))
-            }));
-          } catch(e) {}
-          window.location.href = '/Customer/Statements';
-          return;
+        // ── PC + Mobile dono pe statements.html pe redirect karo ──
+        try {
+          // Winner detect karo
+          const winnerBet = row._bets.find(b =>
+            String(b.selection_id || b.selectionId) ===
+            String(b.winning_selection_id || b.winningSelectionId)
+          );
+          const winnerName = winnerBet
+            ? (winnerBet.runner_name || winnerBet.runnerName || 'Winner')
+            : 'N/A';
+
+          sessionStorage.setItem('betDetailRow', JSON.stringify({
+            _eventName:  row._eventName  || '',
+            _grossPnl:   row._grossPnl   || 0,
+            _commission: row._commission || 0,
+            _netPnl:     row._netPnl     || row.amount || 0,
+            _username:   row._username   || 'User',
+            _winnerName: winnerName,
+            _bets: row._bets.map(b => ({
+              runner_name:          b.runner_name   || b.runnerName   || '',
+              price:                b.price,
+              size:                 b.matched || b.size,
+              side:                 b.side,
+              settlementPnL:        b.settlementPnL,
+              selection_id:         b.selection_id  || b.selectionId,
+              winning_selection_id: b.winning_selection_id || b.winningSelectionId,
+              created_at:           b.created_at    || b.placedDate,
+              updated_at:           b.updated_at,
+              settled_at:           b.settled_at,
+              request_id:           b.request_id    || b.id || ''
+            }))
+          }));
+        } catch(e) {
+          console.warn('[Statement] sessionStorage error:', e.message);
         }
+        window.location.href = '/Customer/Statements';
+        return;
 
-        // ── PC: Modal popup ───────────────────────────────────────
-
+        // ── (Modal code kept below for reference — not used) ──
         // Event title
         document.getElementById('modalEventTitle').textContent = row._eventName || 'Bet Detail';
 

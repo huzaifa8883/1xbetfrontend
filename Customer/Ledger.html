@@ -1143,24 +1143,25 @@
       openBetDetail(row) {
         if (!row._bets || row._bets.length === 0) return;
 
-        // ── PC + Mobile dono pe statements.html pe redirect karo ──
-        try {
-          // Winner detect karo
-          const winnerBet = row._bets.find(b =>
-            String(b.selection_id || b.selectionId) ===
-            String(b.winning_selection_id || b.winningSelectionId)
-          );
-          const winnerName = winnerBet
-            ? (winnerBet.runner_name || winnerBet.runnerName || 'Winner')
-            : 'N/A';
+        // ── Winner name compute karo (statement.html mein same logic) ──
+        const winnerBetForStorage = row._bets.find(b =>
+          String(b.selection_id || b.selectionId) ===
+          String(b.winning_selection_id || b.winningSelectionId)
+        );
+        // Agar selection_id match nahi hua (fancy/line markets) to _winnerName backend field se lo
+        const computedWinnerName = winnerBetForStorage
+          ? (winnerBetForStorage.runner_name || winnerBetForStorage.runnerName || '')
+          : (row._winnerName || '');
 
+        // ── PC + Mobile: dono pe statements.html pe redirect ─────────
+        try {
           sessionStorage.setItem('betDetailRow', JSON.stringify({
-            _eventName:  row._eventName  || '',
-            _grossPnl:   row._grossPnl   || 0,
-            _commission: row._commission || 0,
-            _netPnl:     row._netPnl     || row.amount || 0,
-            _username:   row._username   || 'User',
-            _winnerName: winnerName,
+            _eventName:   row._eventName   || '',
+            _grossPnl:    row._grossPnl    || 0,
+            _commission:  row._commission  || 0,
+            _netPnl:      row._netPnl      || row.amount || 0,
+            _username:    row._username    || 'User',
+            _winnerName:  computedWinnerName,
             _bets: row._bets.map(b => ({
               runner_name:          b.runner_name   || b.runnerName   || '',
               price:                b.price,
@@ -1175,13 +1176,12 @@
               request_id:           b.request_id    || b.id || ''
             }))
           }));
-        } catch(e) {
-          console.warn('[Statement] sessionStorage error:', e.message);
-        }
+        } catch(e) {}
         window.location.href = '/Customer/Statements';
         return;
 
-        // ── (Modal code kept below for reference — not used) ──
+        // ── (PC modal code neeche hai — ab use nahi hota) ────────────
+
         // Event title
         document.getElementById('modalEventTitle').textContent = row._eventName || 'Bet Detail';
 

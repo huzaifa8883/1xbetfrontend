@@ -187,191 +187,152 @@
     <script src="/js/src/client-locales.js"></script>
     
     <script>
-    // ════════════════════════════════════════════════════════════
-    // statements.html — Bet Detail Page
-    // statement.html se click par sessionStorage mein data aata hai
-    // PC aur Mobile dono ke liye same page, fully dynamic
-    // ════════════════════════════════════════════════════════════
+    // ── sessionStorage se bet detail data padho (statement.html se aaya) ──
     (function() {
-      'use strict';
-
-      // ── Helpers ──────────────────────────────────────────────
-      function calcPnL(bet) {
-        if (bet.settlementPnL !== null && bet.settlementPnL !== undefined)
-          return parseFloat(bet.settlementPnL);
-        var price = parseFloat(bet.price || 0);
-        var size  = parseFloat(bet.size  || 0);
-        var isWin = String(bet.selection_id) === String(bet.winning_selection_id);
-        var side  = (bet.side || '').toUpperCase();
-        if (side === 'B' || side === 'BACK') return isWin ? (price - 1) * size : -size;
-        else                                  return isWin ? -(price - 1) * size : size;
-      }
-
-      function fmtDate(d) {
-        if (!d) return '—';
-        try {
-          return new Date(d).toLocaleString('en-US', {
-            month: 'numeric', day: 'numeric', year: 'numeric',
-            hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
-          });
-        } catch(e) { return String(d); }
-      }
-
-      function fmt(n) {
-        var num = parseFloat(n || 0);
-        return num.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-      }
-
-      // ── Show "no data" message if nothing in sessionStorage ──
-      function showNoData() {
-        var h4 = document.querySelector('.card-header h4');
-        if (h4) h4.textContent = 'Bet Detail';
-        // show back button
-        renderBackButton();
-        $(document).ready(function() {
-          if (!$.fn.DataTable.isDataTable('#tableLedger')) {
-            $('#tableLedger').DataTable({ responsive: true });
-          }
-        });
-      }
-
-      // ── Back button — always useful on PC and mobile ──────────
-      function renderBackButton() {
-        var hdr = document.querySelector('.card-header');
-        if (!hdr || hdr.querySelector('.btn-back-stmt')) return;
-        var btn = document.createElement('button');
-        btn.className = 'btn btn-sm btn-secondary btn-back-stmt';
-        btn.style.cssText = 'float:right; margin-top:-2px; font-size:12px;';
-        btn.textContent = '← Back';
-        btn.onclick = function() { window.history.back(); };
-        hdr.appendChild(btn);
-      }
-
-      // ── Read data ─────────────────────────────────────────────
       var raw = null;
       try { raw = sessionStorage.getItem('betDetailRow'); } catch(e) {}
 
-      if (!raw) { showNoData(); return; }
+      // ── Helper functions ──────────────────────────────────────────────
+      function calcPnL(bet) {
+        // Backend ne settlementPnL diya hai? — seedha use karo (sabse accurate)
+        if (bet.settlementPnL !== null && bet.settlementPnL !== undefined && bet.settlementPnL !== '') {
+          return parseFloat(bet.settlementPnL);
+        }
+        // Manual calculation
+        var price = parseFloat(bet.price || 0);
+        var size  = parseFloat(bet.size  || 0);
+        var side  = (bet.side || '').toUpperCase();
+        var isWin = bet.winning_selection_id &&
+                    String(bet.selection_id) === String(bet.winning_selection_id);
+        if (side === 'B' || side === 'BACK') return isWin ? (price - 1) * size : -size;
+        else                                  return isWin ? -(price - 1) * size :  size;
+      }
+
+      function fmtDate(d) {
+        if (!d) return '';
+        return new Date(d).toLocaleString('en-US', {
+          month: 'numeric', day: 'numeric', year: 'numeric',
+          hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
+        });
+      }
+
+      function fmt(n) {
+        var val = parseFloat(n || 0);
+        // Agar negative hai to minus sign pehle, phir commas
+        if (isNaN(val)) return '0';
+        return val.toLocaleString('en-US', { maximumFractionDigits: 2 });
+      }
+
+      // ── Agar sessionStorage data nahi — static HTML DataTable init karo ──
+      if (!raw) {
+        $(document).ready(function () {
+          if ($.fn.DataTable && !$.fn.DataTable.isDataTable('#tableLedger')) {
+            $('#tableLedger').DataTable({ responsive: true, ordering: false });
+          }
+        });
+        return;
+      }
 
       var row;
-      try { row = JSON.parse(raw); } catch(e) { showNoData(); return; }
+      try { row = JSON.parse(raw); } catch(e) {
+        // Parse error — static HTML dikha do
+        $(document).ready(function () {
+          if ($.fn.DataTable && !$.fn.DataTable.isDataTable('#tableLedger')) {
+            $('#tableLedger').DataTable({ responsive: true, ordering: false });
+          }
+        });
+        return;
+      }
+      // NOTE: sessionStorage.removeItem NAHI karte — taake refresh pe bhi kaam kare
 
-      // Keep in storage so refresh still works — remove only on explicit back
-      // sessionStorage.removeItem('betDetailRow'); // ← intentionally NOT removed
-
-      var bets = row._bets || [];
-
-      // ── Page title ────────────────────────────────────────────
+      // ── Page header ────────────────────────────────────────────────────
       var h4 = document.querySelector('.card-header h4');
       if (h4) h4.textContent = row._eventName || 'Bet Detail';
-      document.title = (row._eventName || 'Bet Detail') + ' | BpExch';
-      renderBackButton();
 
-      // ── Winner badge ──────────────────────────────────────────
-      // Priority: _winnerName (passed from statement.html) → find in bets
+      // ── Winner badge ───────────────────────────────────────────────────
+      // statement.html ne _winnerName pehle se compute karke bheja hai — seedha use karo
+      // Fallback: bets mein dhundho (normal match odds markets ke liye)
       var winnerName = row._winnerName || '';
       if (!winnerName) {
-        var winnerBet = bets.find(function(b) {
-          return String(b.selection_id) === String(b.winning_selection_id);
+        var winnerBet = (row._bets || []).find(function(b) {
+          return b.winning_selection_id &&
+                 String(b.selection_id) === String(b.winning_selection_id);
         });
-        winnerName = winnerBet ? (winnerBet.runner_name || 'Winner') : 'N/A';
+        winnerName = winnerBet ? (winnerBet.runner_name || '') : '';
       }
 
-      // Find ALL winner badge elements and update them
-      var winnerBadges = document.querySelectorAll('.badge-warning');
-      if (winnerBadges.length > 0) winnerBadges[0].textContent = winnerName;
-
-      // ── Net PL badge ──────────────────────────────────────────
-      var netPL   = parseFloat(row._netPnl || 0);
-      var plBadge = document.querySelector('.badge-success') || document.querySelector('.badge-danger');
-      if (plBadge) {
-        plBadge.textContent = (netPL >= 0 ? '+' : '') + fmt(netPL);
-        plBadge.className   = 'ml-2 badge ' + (netPL >= 0 ? 'badge-success' : 'badge-danger');
+      // Winner badge — pehla .badge-warning element
+      var allBadgeWarning = document.querySelectorAll('.badge-warning');
+      if (allBadgeWarning[0]) {
+        allBadgeWarning[0].textContent = winnerName || 'N/A';
       }
 
-      // ── Username badge ────────────────────────────────────────
-      if (winnerBadges.length >= 2) winnerBadges[1].textContent = row._username || 'User';
+      // ── Net PL badge ───────────────────────────────────────────────────
+      var netPL  = parseFloat(row._netPnl || 0);
+      var plSpan = document.querySelector('.badge-success, .badge-danger');
+      if (plSpan) {
+        plSpan.textContent = (netPL >= 0 ? '+' : '') + fmt(netPL);
+        plSpan.className   = 'ml-2 badge ' + (netPL >= 0 ? 'badge-success' : 'badge-danger');
+      }
 
-      // ── Net PL header badge (col-md-4 mein Score label ke baad) ─
-      // Matches screenshot: "Net PL [green badge]"
-      var allBadges = document.querySelectorAll('.badge');
-      allBadges.forEach(function(b) {
-        if (b.textContent.trim() === '14,850' || b.classList.contains('badge-success') || b.classList.contains('badge-danger')) {
-          b.textContent = (netPL >= 0 ? '+' : '') + fmt(netPL);
-          b.className   = 'ml-2 badge ' + (netPL >= 0 ? 'badge-success' : 'badge-danger');
-        }
-      });
+      // ── Username badge — doosra .badge-warning element ─────────────────
+      if (allBadgeWarning[1]) {
+        allBadgeWarning[1].textContent = row._username || 'User';
+      }
 
-      // ── Build table rows ──────────────────────────────────────
+      // ── Table rows build karo ──────────────────────────────────────────
       var tbody = document.querySelector('#tableLedger tbody');
-      if (!tbody) { showNoData(); return; }
+      if (!tbody) return;
       tbody.innerHTML = '';
 
-      bets.forEach(function(bet) {
+      (row._bets || []).forEach(function(bet) {
         var pnl      = calcPnL(bet);
         var side     = (bet.side || '').toUpperCase();
         var sideChar = (side === 'LAY' || side === 'L') ? 'L' : 'B';
-        var sideCls  = sideChar === 'B' ? 'bg-info text-white' : 'bg-danger text-white';
+        var sideCls  = sideChar === 'B' ? 'bg-info' : 'bg-danger';
         var pnlCls   = pnl >= 0 ? 'position-plus' : 'position-minus';
-        var reqId    = bet.request_id || '—';
-
-        // Size: use matched size if available
-        var size = parseFloat(bet.size || 0);
+        var pnlStr   = (pnl >= 0 ? '' : '-') + fmt(Math.abs(pnl));
+        var reqId    = bet.request_id || '';
 
         tbody.innerHTML += '<tr>' +
           '<td>' + (bet.runner_name || 'Runner') + '</td>' +
           '<td>' + parseFloat(bet.price || 0).toFixed(4) + '</td>' +
-          '<td>' + fmt(size) + '</td>' +
-          '<td class="' + sideCls + '" style="text-align:center;"><strong>' + sideChar + '</strong></td>' +
-          '<td class="' + pnlCls + '" style="font-weight:600;">' +
-            (pnl >= 0 ? '+' : '') + fmt(pnl) +
-          '</td>' +
-          '<td style="white-space:nowrap;">' + fmtDate(bet.created_at) + '</td>' +
-          '<td style="white-space:nowrap;">' + fmtDate(bet.updated_at || bet.created_at) + '</td>' +
-          '<td style="white-space:nowrap;">' + fmtDate(bet.settled_at) + '</td>' +
-          '<td style="font-size:11px; color:#666;">' + reqId + '</td>' +
+          '<td>' + fmt(bet.size) + '</td>' +
+          '<td class="' + sideCls + '"><strong>' + sideChar + '</strong></td>' +
+          '<td class="' + pnlCls + '">' + pnlStr + '</td>' +
+          '<td>' + fmtDate(bet.created_at) + '</td>' +
+          '<td>' + fmtDate(bet.updated_at || bet.created_at) + '</td>' +
+          '<td>' + fmtDate(bet.settled_at) + '</td>' +
+          '<td>' + reqId + '</td>' +
         '</tr>';
       });
 
-      // ── Commission row ────────────────────────────────────────
+      // ── Commission row ─────────────────────────────────────────────────
       var comm = parseFloat(row._commission || 0);
       if (comm > 0) {
+        // Commission % figure — _grossPnl se nikalo
+        var grossAbs = Math.abs(parseFloat(row._grossPnl || 0));
+        var commPct  = grossAbs > 0 ? ((comm / grossAbs) * 100).toFixed(2) : '2.00';
         tbody.innerHTML += '<tr>' +
-          '<td>Commission (2.00%)</td>' +
-          '<td>0.0000</td>' +
-          '<td>0</td>' +
-          '<td class="bg-danger text-white" style="text-align:center;"><strong>C</strong></td>' +
-          '<td class="position-minus" style="font-weight:600;"><strong>-' + fmt(comm) + '</strong></td>' +
+          '<td>Commission (' + commPct + '%)</td>' +
+          '<td>0.0000</td><td>0</td>' +
+          '<td class="bg-danger"><strong>C</strong></td>' +
+          '<td class="position-minus"><strong>-' + fmt(comm) + '</strong></td>' +
           '<td colspan="4"></td>' +
         '</tr>';
       }
 
-      // ── Init DataTable — no order column (Order-ID last) ─────
+      // ── DataTable init ─────────────────────────────────────────────────
       $(document).ready(function() {
-        if (!$.fn.DataTable.isDataTable('#tableLedger')) {
+        if ($.fn.DataTable && !$.fn.DataTable.isDataTable('#tableLedger')) {
           $('#tableLedger').DataTable({
-            responsive:  true,
-            ordering:    false,    // bets order as placed — don't sort
-            searching:   false,
-            info:        false,
-            paging:      bets.length > 20,
-            pageLength:  25,
+            responsive: true,
+            ordering:   false   // bets apni natural order mein rahenge
           });
         }
       });
-    })();
 
-    function FetchResult() {
-      var VID = 488306807;
-      $.ajax({
-        type: "GET",
-        url: "/Customer/Statements?handler=Results&VID=" + VID,
-        success: function(result) {
-          document.getElementById("resultsStatements").innerHTML = result;
-        },
-        error: function(exception) {}
-      });
-    }
+    })();
     </script>
 
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"c5a76fb5e23b4d93ab8d25099ed8e434","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>

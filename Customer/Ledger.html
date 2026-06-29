@@ -591,6 +591,81 @@
 </div>
 
 </div>
+<!-- ═══════════════════════════════════════════════════════════
+     BET DETAIL POPUP MODAL — statements.html jaisa UI
+══════════════════════════════════════════════════════════════ -->
+<div id="betDetailModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+     background:rgba(0,0,0,0.6); z-index:9999; overflow-y:auto;">
+  <div style="background:#fff; margin:30px auto; max-width:850px; border-radius:6px;
+       box-shadow:0 8px 32px rgba(0,0,0,0.4); padding:0; overflow:hidden;">
+
+    <!-- Header -->
+    <div style="background:#1a2942; color:white; padding:14px 18px; display:flex;
+         justify-content:space-between; align-items:center;">
+      <h5 id="modalEventTitle" style="margin:0; font-size:15px; font-weight:700;"></h5>
+      <button onclick="closeBetModal()" style="background:none; border:none; color:white;
+              font-size:22px; cursor:pointer; line-height:1;">&times;</button>
+    </div>
+
+    <!-- Badges row -->
+    <div style="background:#f8f9fa; padding:12px 18px; border-bottom:1px solid #dee2e6;">
+      <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center;">
+        <div>
+          Winner
+          <span id="modalWinner" class="badge badge-warning ml-1" style="font-size:13px;"></span>
+        </div>
+        <div>
+          Net PL
+          <span id="modalNetPL" class="badge ml-1" style="font-size:13px;"></span>
+        </div>
+        <div>
+          Username
+          <span id="modalUsername" class="badge badge-warning ml-1" style="font-size:13px;"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div style="padding:16px 18px; overflow-x:auto;">
+      <table id="modalBetTable" class="table table-sm table-striped table-bordered nowrap"
+             style="width:100%; font-size:13px;">
+        <thead>
+          <tr style="background:#1a2942; color:white;">
+            <th>Runner</th>
+            <th>Price</th>
+            <th>Size</th>
+            <th>Side</th>
+            <th>P/L</th>
+            <th>Placed At</th>
+            <th>Matched At</th>
+            <th>Settled At</th>
+          </tr>
+        </thead>
+        <tbody id="modalBetTbody"></tbody>
+      </table>
+    </div>
+
+    <!-- Commission row -->
+    <div id="modalCommRow" style="display:none; padding:0 18px 16px;">
+      <table class="table table-sm table-bordered" style="font-size:13px;">
+        <tbody>
+          <tr>
+            <td>Commission (2.00%)</td>
+            <td>0.0000</td><td>0</td>
+            <td class="bg-danger" style="color:white;"><strong>C</strong></td>
+            <td class="position-minus" id="modalCommAmt" style="color:red;"></td>
+            <td colspan="3"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="padding:10px 18px; text-align:right; border-top:1px solid #dee2e6; background:#f8f9fa;">
+      <button onclick="closeBetModal()" class="btn btn-secondary btn-sm">Close</button>
+    </div>
+  </div>
+</div>
+
 <div id="ledgerApp" class="table-wrap">
   <div>
     <div class="card">
@@ -620,10 +695,15 @@
           </thead>
           <tbody>
             <tr v-for="(row, i) in ledger" :key="i"
-                :style="{ fontWeight: row.isOpen ? '700' : '400' }">
+                :style="{ fontWeight: row.isOpen ? '700' : '400',
+                          cursor: row.type === 'win' || row.type === 'loss' ? 'pointer' : 'default' }"
+                @click="row.type === 'win' || row.type === 'loss' ? openBetDetail(row) : null">
               <td>{{ i + 1 }}</td>
               <td>{{ row.date }}</td>
-              <td style="color:#00b181;">{{ row.description }}</td>
+              <td :style="{ color: row.type === 'win' || row.type === 'loss' ? '#00b181' : '#00b181',
+                            textDecoration: row.type === 'win' || row.type === 'loss' ? 'underline' : 'none' }">
+                {{ row.description }}
+              </td>
               <td :class="{'text-success': row.amount > 0, 'text-danger': row.amount < 0}">
                 <span v-if="row.isOpen">0</span>
                 <span v-else-if="row.amount > 0">+{{ row.amount.toLocaleString() }}</span>
@@ -993,6 +1073,8 @@
             }
           }
 
+          const COMMISSION_PCT = 2; // 2% commission on winning bets
+
           // ── Build rows ────────────────────────────────────────
           for (const ev of processedEvents) {
             if (ev._type === 'deposit') {
@@ -1005,26 +1087,39 @@
                 amount:      depAmount,
                 balance:     runningBalance,
                 isOpen:      false,
-                type:        'deposit'
+                type:        'deposit',
+                _bets:       [],
+                _eventName:  '',
+                _commission: 0
               });
             } else {
-              const totalPnl = parseFloat(ev._bets.reduce((s, b) => s + calcPnL(b), 0).toFixed(2));
-              runningBalance  = parseFloat((runningBalance + totalPnl).toFixed(2));
+              const grossPnl   = parseFloat(ev._bets.reduce((s, b) => s + calcPnL(b), 0).toFixed(2));
+              const commission = grossPnl > 0
+                ? parseFloat((grossPnl * COMMISSION_PCT / 100).toFixed(2))
+                : 0;
+              const netPnl     = parseFloat((grossPnl - commission).toFixed(2));
+              runningBalance   = parseFloat((runningBalance + netPnl).toFixed(2));
               const first     = ev._bets[0];
               const eventName = first.event_name || first.eventName || "Match Result";
               const runners   = [...new Set(ev._bets.map(b => b.runner_name || b.runnerName || "").filter(Boolean))].join(", ");
               const sideChar  = (first.side || "B").toUpperCase() === "LAY" ? "L" : "B";
               const avgPrice  = (ev._bets.reduce((s, b) => s + parseFloat(b.price || 0), 0) / ev._bets.length).toFixed(2);
-              const pnlLabel  = totalPnl > 0 ? "Profit: +" + totalPnl.toFixed(2)
-                              : totalPnl < 0 ? "Loss: "    + totalPnl.toFixed(2) : "Break Even";
+              const pnlLabel  = netPnl > 0 ? "Profit: +" + netPnl.toFixed(2)
+                              : netPnl < 0 ? "Loss: "    + netPnl.toFixed(2) : "Break Even";
               rows.push({
                 date:        ev._date.toLocaleString(),
                 description: eventName + (runners ? " – " + runners : "")
                            + " (" + sideChar + "@" + avgPrice + ") | " + pnlLabel,
-                amount:      totalPnl,
+                amount:      netPnl,
                 balance:     runningBalance,
                 isOpen:      false,
-                type:        totalPnl >= 0 ? 'win' : 'loss'
+                type:        netPnl >= 0 ? 'win' : 'loss',
+                _bets:       ev._bets,
+                _eventName:  eventName,
+                _grossPnl:   grossPnl,
+                _commission: commission,
+                _netPnl:     netPnl,
+                _username:   user.username || user.name || "User"
               });
             }
           }
@@ -1043,6 +1138,92 @@
         } finally {
           this.loading = false;
         }
+      },
+
+      openBetDetail(row) {
+        if (!row._bets || row._bets.length === 0) return;
+
+        // Event title
+        document.getElementById('modalEventTitle').textContent = row._eventName || 'Bet Detail';
+
+        // Winner badge — jo runner jeet gaya
+        const winnerBet = row._bets.find(b =>
+          String(b.selection_id || b.selectionId) ===
+          String(b.winning_selection_id || b.winningSelectionId)
+        );
+        const winnerName = winnerBet ? (winnerBet.runner_name || winnerBet.runnerName || 'Winner') : 'N/A';
+        const winnerEl = document.getElementById('modalWinner');
+        winnerEl.textContent = winnerName;
+        winnerEl.className = 'badge badge-warning ml-1';
+
+        // Net PL badge
+        const netPL = row._netPnl !== undefined ? row._netPnl : row.amount;
+        const plEl = document.getElementById('modalNetPL');
+        plEl.textContent = (netPL >= 0 ? '+' : '') + netPL.toLocaleString();
+        plEl.className = 'badge ml-1 ' + (netPL >= 0 ? 'badge-success' : 'badge-danger');
+
+        // Username
+        document.getElementById('modalUsername').textContent = row._username || 'User';
+
+        // Build table rows
+        const calcPnLLocal = (bet) => {
+          if (bet.settlementPnL !== null && bet.settlementPnL !== undefined)
+            return parseFloat(bet.settlementPnL);
+          const price = parseFloat(bet.price || 0);
+          const size  = parseFloat(bet.matched || bet.size || 0);
+          const isWin = String(bet.selection_id || bet.selectionId)
+                      === String(bet.winning_selection_id || bet.winningSelectionId);
+          const side  = (bet.side || '').toUpperCase();
+          if (side === 'B' || side === 'BACK') return isWin ? (price - 1) * size : -size;
+          else                                  return isWin ? -(price - 1) * size : size;
+        };
+
+        const fmtDate = (d) => {
+          if (!d) return '';
+          return new Date(d).toLocaleString('en-US', {
+            month: 'numeric', day: 'numeric', year: 'numeric',
+            hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
+          });
+        };
+
+        const tbody = document.getElementById('modalBetTbody');
+        tbody.innerHTML = '';
+        let grossTotal = 0;
+        for (const bet of row._bets) {
+          const pnl  = calcPnLLocal(bet);
+          grossTotal += pnl;
+          const side = (bet.side || '').toUpperCase();
+          const sideChar = side === 'LAY' ? 'L' : 'B';
+          const sideColor = sideChar === 'B' ? '#17a2b8' : '#e83e4a';
+          const pnlColor  = pnl >= 0 ? '#0b6121' : '#FF0000';
+          const runner    = bet.runner_name || bet.runnerName || 'Runner';
+          const price     = parseFloat(bet.price || 0).toFixed(4);
+          const size      = parseFloat(bet.matched || bet.size || 0).toLocaleString();
+
+          tbody.innerHTML += `<tr>
+            <td>${runner}</td>
+            <td>${price}</td>
+            <td>${size}</td>
+            <td style="background:${sideColor}; color:white; text-align:center;"><strong>${sideChar}</strong></td>
+            <td style="color:${pnlColor}; font-weight:600;">${pnl >= 0 ? '' : ''}${pnl.toLocaleString()}</td>
+            <td>${fmtDate(bet.created_at || bet.placedDate)}</td>
+            <td>${fmtDate(bet.updated_at || bet.created_at)}</td>
+            <td>${fmtDate(bet.settled_at)}</td>
+          </tr>`;
+        }
+
+        // Commission row — sirf agar winning bet hai
+        const commRow = document.getElementById('modalCommRow');
+        const commAmt = row._commission || 0;
+        if (commAmt > 0) {
+          document.getElementById('modalCommAmt').textContent = '-' + commAmt.toFixed(0);
+          commRow.style.display = '';
+        } else {
+          commRow.style.display = 'none';
+        }
+
+        document.getElementById('betDetailModal').style.display = 'block';
+        document.body.style.overflow = 'hidden';
       }
     },
     mounted() {
@@ -1084,6 +1265,20 @@
     }
   });
 })();
+
+// ── Bet Detail Modal — open/close helpers ─────────────────────
+window.closeBetModal = function() {
+  document.getElementById('betDetailModal').style.display = 'none';
+  document.body.style.overflow = '';
+};
+// ESC key se band karo
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') window.closeBetModal();
+});
+// Modal background click se band karo
+document.getElementById('betDetailModal').addEventListener('click', function(e) {
+  if (e.target === this) window.closeBetModal();
+});
 
 // ✅ Submit button: dates update karo aur Vue ledger refresh karo (page reload nahi)
 window.updateDates = function() {

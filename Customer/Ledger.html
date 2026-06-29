@@ -1143,6 +1143,38 @@
       openBetDetail(row) {
         if (!row._bets || row._bets.length === 0) return;
 
+        // ── Mobile check: width <= 768px → statements.html pe redirect ──
+        const isMobile = window.innerWidth <= 768;
+        if (isMobile) {
+          // Row data sessionStorage mein save karo, statements.html wahan se padhe ga
+          try {
+            sessionStorage.setItem('betDetailRow', JSON.stringify({
+              _eventName:  row._eventName  || '',
+              _grossPnl:   row._grossPnl   || 0,
+              _commission: row._commission || 0,
+              _netPnl:     row._netPnl     || row.amount || 0,
+              _username:   row._username   || 'User',
+              _bets: row._bets.map(b => ({
+                runner_name:          b.runner_name   || b.runnerName   || '',
+                price:                b.price,
+                size:                 b.matched || b.size,
+                side:                 b.side,
+                settlementPnL:        b.settlementPnL,
+                selection_id:         b.selection_id  || b.selectionId,
+                winning_selection_id: b.winning_selection_id || b.winningSelectionId,
+                created_at:           b.created_at    || b.placedDate,
+                updated_at:           b.updated_at,
+                settled_at:           b.settled_at,
+                request_id:           b.request_id    || b.id || ''
+              }))
+            }));
+          } catch(e) {}
+          window.location.href = '/Customer/Statements';
+          return;
+        }
+
+        // ── PC: Modal popup ───────────────────────────────────────
+
         // Event title
         document.getElementById('modalEventTitle').textContent = row._eventName || 'Bet Detail';
 
@@ -1188,27 +1220,27 @@
 
         const tbody = document.getElementById('modalBetTbody');
         tbody.innerHTML = '';
-        let grossTotal = 0;
         for (const bet of row._bets) {
           const pnl  = calcPnLLocal(bet);
-          grossTotal += pnl;
           const side = (bet.side || '').toUpperCase();
-          const sideChar = side === 'LAY' ? 'L' : 'B';
+          const sideChar  = side === 'LAY' ? 'L' : 'B';
           const sideColor = sideChar === 'B' ? '#17a2b8' : '#e83e4a';
           const pnlColor  = pnl >= 0 ? '#0b6121' : '#FF0000';
           const runner    = bet.runner_name || bet.runnerName || 'Runner';
           const price     = parseFloat(bet.price || 0).toFixed(4);
           const size      = parseFloat(bet.matched || bet.size || 0).toLocaleString();
+          const reqId     = bet.request_id || bet.id || '';
 
           tbody.innerHTML += `<tr>
             <td>${runner}</td>
             <td>${price}</td>
             <td>${size}</td>
-            <td style="background:${sideColor}; color:white; text-align:center;"><strong>${sideChar}</strong></td>
-            <td style="color:${pnlColor}; font-weight:600;">${pnl >= 0 ? '' : ''}${pnl.toLocaleString()}</td>
+            <td style="background:${sideColor};color:white;text-align:center;"><strong>${sideChar}</strong></td>
+            <td style="color:${pnlColor};font-weight:600;">${pnl.toLocaleString()}</td>
             <td>${fmtDate(bet.created_at || bet.placedDate)}</td>
             <td>${fmtDate(bet.updated_at || bet.created_at)}</td>
             <td>${fmtDate(bet.settled_at)}</td>
+            <td style="font-size:11px;color:#888;">${reqId}</td>
           </tr>`;
         }
 

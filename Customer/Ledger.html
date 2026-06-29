@@ -620,11 +620,10 @@
           </thead>
           <tbody>
             <tr v-for="(row, i) in ledger" :key="i"
-                @click="onRowClick(row)"
-                :style="{ fontWeight: row.isOpen ? '700' : '400', cursor: (row.type !== 'open' && row.type !== 'deposit' && row.marketId) ? 'pointer' : 'default' }">
+                :style="{ fontWeight: row.isOpen ? '700' : '400' }">
               <td>{{ i + 1 }}</td>
               <td>{{ row.date }}</td>
-              <td :style="{ color: row.type === 'deposit' ? '#ffc107' : '#00b181' }">{{ row.description }}</td>
+              <td style="color:#00b181;">{{ row.description }}</td>
               <td :class="{'text-success': row.amount > 0, 'text-danger': row.amount < 0}">
                 <span v-if="row.isOpen">0</span>
                 <span v-else-if="row.amount > 0">+{{ row.amount.toLocaleString() }}</span>
@@ -813,322 +812,192 @@
 
 // ============================================================
 // STATEMENT / LEDGER — SETTLED bets se account statement
-// FIX 1: Opening Balance = 0 for new users, deposits alag rows
-// FIX 2: Bet row click karne par market-specific bets popup
+// Uses /orders/settled API — winning_selection_id ke saath
+// Balance + P&L accurately dikhata hai
 // ============================================================
 (function() {
   'use strict';
 
   const _STMT_API = "https://1XBETBACKEND.WORK.GD/api/v1";
 
-  // ── P&L helper (global — popup mein bhi use hoga) ─────────
-  function calcPnL(bet) {
-    if (bet.settlementPnL !== null && bet.settlementPnL !== undefined)
-      return parseFloat(bet.settlementPnL);
-    const price = parseFloat(bet.price || 0);
-    const size  = parseFloat(bet.matched || bet.size || 0);
-    const isWin = String(bet.selection_id || bet.selectionId)
-                === String(bet.winning_selection_id || bet.winningSelectionId);
-    const side  = (bet.side || "").toUpperCase();
-    if (side === "B" || side === "BACK") return isWin ? (price - 1) * size : -size;
-    else                                  return isWin ? -(price - 1) * size : size;
-  }
-
-  // ── Popup inject (ek baar) ─────────────────────────────────
-  function ensurePopup() {
-    if (document.getElementById('stmtPopupOverlay')) return;
-    const overlay = document.createElement('div');
-    overlay.id = 'stmtPopupOverlay';
-    overlay.style.cssText = [
-      'display:none','position:fixed','top:0','left:0','width:100%','height:100%',
-      'background:rgba(0,0,0,0.6)','z-index:9999','overflow-y:auto','padding:20px'
-    ].join(';');
-    overlay.innerHTML = `
-      <div style="background:#1c1c1c;color:#fff;border-radius:8px;max-width:750px;
-                  margin:40px auto;padding:20px;position:relative;">
-        <button onclick="document.getElementById('stmtPopupOverlay').style.display='none'"
-          style="position:absolute;top:10px;right:14px;background:none;border:none;
-                 color:#fff;font-size:22px;cursor:pointer;">&times;</button>
-        <div id="stmtPopupContent"></div>
-      </div>`;
-    document.body.appendChild(overlay);
-  }
-
-  // ── Show market popup ──────────────────────────────────────
-  function showMarketPopup(marketId, marketBets, netPL, winner) {
-    ensurePopup();
-    const eventName = marketBets[0]?.event_name || marketBets[0]?.eventName || marketId || 'Market';
-
-    // Commission row (1%) if any winning bet exists
-    const winPL = marketBets.reduce((s, b) => {
-      const p = calcPnL(b);
-      return s + (p > 0 ? p : 0);
-    }, 0);
-    const commission = parseFloat((winPL * 0.01).toFixed(2));
-    const netAfterComm = parseFloat((netPL - commission).toFixed(2));
-
-    let rows = '';
-    for (const bet of marketBets) {
-      const pnl    = calcPnL(bet);
-      const side   = (bet.side || '').toUpperCase();
-      const price  = parseFloat(bet.price || 0).toFixed(4);
-      const size   = parseFloat(bet.matched || bet.size || 0).toLocaleString();
-      const pnlCls = pnl >= 0 ? 'color:#0B6121' : 'color:#FF0000';
-      const sideCls= side === 'B' || side === 'BACK' ? 'background:#17A2B8' : 'background:#DC3545';
-      const pTime  = new Date(bet.placed_at || bet.created_at || '').toLocaleString();
-      const mTime  = new Date(bet.matched_at || bet.updated_at || '').toLocaleString();
-      const sTime  = new Date(bet.settled_at || bet.updated_at || '').toLocaleString();
-      const runner = bet.runner_name || bet.runnerName || '-';
-      rows += `<tr>
-        <td>${runner}</td>
-        <td>${price}</td>
-        <td>${size}</td>
-        <td><span style="padding:2px 6px;border-radius:3px;color:#fff;${sideCls}">
-          <strong>${side === 'BACK' ? 'B' : side === 'LAY' ? 'L' : side}</strong></span></td>
-        <td style="${pnlCls}"><strong>${pnl >= 0 ? '+' : ''}${parseFloat(pnl.toFixed(2)).toLocaleString()}</strong></td>
-        <td>${pTime}</td>
-        <td>${mTime}</td>
-        <td>${sTime}</td>
-        <td style="font-size:11px;">${bet.request_id || bet.id || '-'}</td>
-      </tr>`;
-    }
-
-    // Commission row
-    if (commission > 0) {
-      const t = new Date().toLocaleString();
-      rows += `<tr>
-        <td>Commission (1.00%)</td><td>0.0000</td><td>0</td>
-        <td><span style="padding:2px 6px;border-radius:3px;color:#fff;background:#DC3545"><strong>C</strong></span></td>
-        <td style="color:#FF0000"><strong>-${commission.toLocaleString()}</strong></td>
-        <td>${t}</td><td>${t}</td><td>${t}</td>
-        <td style="font-size:11px;">-</td>
-      </tr>`;
-    }
-
-    const winnerLabel = winner || 'N/A';
-    const plBadgeStyle = netAfterComm >= 0
-      ? 'background:#28a745' : 'background:#dc3545';
-
-    document.getElementById('stmtPopupContent').innerHTML = `
-      <h5 style="margin-bottom:14px;">${eventName}</h5>
-      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px;font-size:13px;">
-        <span>Winner <span style="background:#ffc107;color:#000;padding:2px 8px;border-radius:4px;margin-left:6px;">${winnerLabel}</span></span>
-        <span>Net PL <span style="${plBadgeStyle};color:#fff;padding:2px 10px;border-radius:4px;margin-left:6px;">
-          ${netAfterComm >= 0 ? '+' : ''}${netAfterComm.toLocaleString()}</span></span>
-      </div>
-      <div style="overflow-x:auto;">
-        <table style="width:100%;border-collapse:collapse;font-size:12px;" class="table table-striped table-bordered">
-          <thead style="background:#2c2c2c;">
-            <tr>
-              <th>Runner</th><th>Price</th><th>Size</th><th>Side</th>
-              <th>P/L</th><th>Placed At</th><th>Matched At</th><th>Settled At</th><th>Order-ID</th>
-            </tr>
-          </thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </div>`;
-
-    document.getElementById('stmtPopupOverlay').style.display = 'block';
-  }
-
   new Vue({
     el: "#ledgerApp",
     data: {
-      ledger:  [],
+      ledger: [],
       loading: false,
-      error:   null,
-      // marketBets: marketId → [bets array] (for popup)
-      marketBetsMap: {}
+      error: null
     },
     methods: {
-      // ── Row click handler ─────────────────────────────────
-      onRowClick(row) {
-        if (row.type === 'open' || row.type === 'deposit') return;
-        if (!row.marketId) return;
-        const bets   = this.marketBetsMap[row.marketId] || [];
-        const netPL  = bets.reduce((s, b) => s + calcPnL(b), 0);
-        const winner = bets[0]?.winning_selection_name
-                    || bets[0]?.winnerName
-                    || (bets[0]?.winning_selection_id ? 'Runner ' + bets[0].winning_selection_id : null);
-        showMarketPopup(row.marketId, bets, netPL, winner);
-      },
-
       async fetchLedger() {
-        this.loading       = true;
-        this.error         = null;
-        this.marketBetsMap = {};
-        const token = localStorage.getItem("token");
+        this.loading = true;
+        this.error   = null;
+        const token  = localStorage.getItem("token");
         if (!token) { this.loading = false; return; }
 
         try {
-          // ── Step 1: User info ───────────────────────────────
+          // Step 1: User info (wallet balance)
           const userRes  = await fetch(_STMT_API + "/users/me", {
             headers: { "Authorization": "Bearer " + token }
           });
           const userData = await userRes.json();
           const user     = userData?.data?.user || userData?.data || userData?.user || {};
           const currentWallet = parseFloat(user.wallet_balance || 0);
-          const accountCreated = user.created_at || null;
 
-          // ── Step 2: Date filter ─────────────────────────────
-          const fromInput  = document.getElementById('From');
-          const toInput    = document.getElementById('To');
+          // Step 2: Date filter — calendar se "From" aur "To" lo
+          const fromInput = document.getElementById('From');
+          const toInput   = document.getElementById('To');
           const filterFrom = fromInput ? new Date(fromInput.value) : null;
           const filterTo   = toInput   ? new Date(toInput.value)   : null;
 
-          // ── Step 3: ALL settled bets (for opening balance calc) ──
+          // Step 3: Settled bets fetch karo
           let allSettledRaw = [];
+          
+          // Route 1: /orders/settled (primary + only route)
           try {
-            const res1 = await fetch(_STMT_API + "/orders/settled?limit=2000", {
+            const res1 = await fetch(_STMT_API + "/orders/settled?limit=500", {
               headers: { "Authorization": "Bearer " + token }
             });
             const j1 = await res1.json();
             allSettledRaw = j1?.data?.orders || j1?.orders || [];
           } catch(e) { console.warn("[Statement] /orders/settled failed:", e.message); }
 
-          // ── Step 4: Deposits / transfers ────────────────────
-          // Fetch ALL transactions (deposit type) — no date filter here
+          // ── ALL Deposits fetch karo (range se pehle bhi, range mein bhi)
           let allDeposits = [];
           try {
-            const depRes  = await fetch(_STMT_API + "/transactions?type=deposit&limit=2000", {
+            const depRes  = await fetch(_STMT_API + "/transactions?type=deposit&limit=500", {
               headers: { "Authorization": "Bearer " + token }
             });
             const depJson = await depRes.json();
-            allDeposits   = depJson?.data?.transactions || depJson?.transactions || [];
-          } catch(e) { /* no deposit API — skip */ }
+            allDeposits = depJson?.data?.transactions || depJson?.transactions || [];
+          } catch(e) { /* deposit API nahi hai to skip */ }
 
-          // ── Sort all bets oldest-first ──────────────────────
+          // ── Sort ALL settled bets oldest first ────────────────
           const allSettled = allSettledRaw
             .sort((a, b) => new Date(a.settled_at || a.updated_at) - new Date(b.settled_at || b.updated_at));
 
-          // ── Build marketBetsMap (for popup) ─────────────────
-          for (const bet of allSettled) {
-            const mid = bet.market_id || bet.marketId || null;
-            if (!mid) continue;
-            if (!this.marketBetsMap[mid]) this.marketBetsMap[mid] = [];
-            this.marketBetsMap[mid].push(bet);
+          // ── P&L helper ────────────────────────────────────────
+          function calcPnL(bet) {
+            if (bet.settlementPnL !== null && bet.settlementPnL !== undefined)
+              return parseFloat(bet.settlementPnL);
+            const price = parseFloat(bet.price || 0);
+            const size  = parseFloat(bet.matched || bet.size || 0);
+            const isWin = String(bet.selection_id || bet.selectionId)
+                        === String(bet.winning_selection_id || bet.winningSelectionId);
+            const side  = (bet.side || "").toUpperCase();
+            if (side === "B" || side === "BACK") return isWin ? (price - 1) * size : -size;
+            else                                  return isWin ? -(price - 1) * size : size;
           }
 
-          // ── Opening Balance calculation ──────────────────────
-          // Formula:
-          //   openingBalance = currentWallet
-          //                  - SUM(pnl of bets settled AFTER filterTo)
-          //                  - SUM(deposits credited AFTER filterTo)
-          //
-          // This correctly gives 0 for a new user with no activity before
-          // the range, and correctly accounts for admin/master deposits.
+          // ── Opening Balance = deposits BEFORE filterFrom + PnL BEFORE filterFrom
+          // Naye account = 0. Deposit ke baad balance bane ga.
+          const depositsBeforeRange = allDeposits.filter(dep => {
+            if (!filterFrom) return false;
+            return new Date(dep.created_at || dep.date) < filterFrom;
+          });
+          const pnlBeforeRange = allSettled.filter(bet => {
+            if (!filterFrom) return false;
+            return new Date(bet.settled_at || bet.updated_at || bet.created_at) < filterFrom;
+          }).reduce((sum, bet) => sum + calcPnL(bet), 0);
 
-          let pnlAfterRange     = 0;
-          let depositsAfterRange = 0;
-
-          for (const bet of allSettled) {
-            const d = new Date(bet.settled_at || bet.updated_at || bet.created_at);
-            if (filterTo && d > filterTo) pnlAfterRange += calcPnL(bet);
-          }
-          for (const dep of allDeposits) {
-            const d = new Date(dep.created_at || dep.date);
-            if (filterTo && d > filterTo) depositsAfterRange += parseFloat(dep.amount || 0);
-          }
-
-          const openingBalance = parseFloat(
-            (currentWallet - pnlAfterRange - depositsAfterRange).toFixed(2)
-          );
-
+          const depositsBeforeTotal = depositsBeforeRange.reduce((s, d) => s + parseFloat(d.amount || 0), 0);
+          const openingBalance = parseFloat((depositsBeforeTotal + pnlBeforeRange).toFixed(2));
           let runningBalance = openingBalance;
 
-          // ── Filter to selected date range ────────────────────
+          // ── Date filter ───────────────────────────────────────
           const settled = allSettled.filter(bet => {
             if (!filterFrom || !filterTo) return true;
             const d = new Date(bet.settled_at || bet.updated_at || bet.created_at);
             return d >= filterFrom && d <= filterTo;
           });
-
           const deposits = allDeposits.filter(dep => {
             if (!filterFrom || !filterTo) return true;
             const d = new Date(dep.created_at || dep.date);
             return d >= filterFrom && d <= filterTo;
           });
 
-          // ── Opening Balance row ──────────────────────────────
-          const openDate = filterFrom
-            ? filterFrom.toLocaleString()
-            : accountCreated
-              ? new Date(accountCreated).toLocaleString()
-              : new Date().toLocaleString();
-
+          // ── Opening Balance row ───────────────────────────────
           const rows = [{
-            date:        openDate,
+            date:        filterFrom ? filterFrom.toLocaleString() : new Date(user.created_at || Date.now()).toLocaleString(),
             description: "Opening Balance",
             amount:      0,
             balance:     openingBalance,
             isOpen:      true,
-            type:        'open',
-            marketId:    null
+            type:        'open'
           }];
 
-          // ── Merge deposits + bets, sort by date ─────────────
-          const allEvents = [
-            ...deposits.map(d => ({
-              _type:  'deposit',
-              _date:  new Date(d.created_at || d.date),
-              _data:  d
-            })),
-            ...settled.map(b => ({
-              _type:  'bet',
-              _date:  new Date(b.settled_at || b.updated_at || b.created_at),
-              _data:  b
-            }))
+          // ── Combine deposits + bets, sort by date ─────────────
+          const allRangeEvents = [
+            ...deposits.map(dep => ({ _type: 'deposit', _date: new Date(dep.created_at || dep.date), _data: dep })),
+            ...settled.map(bet  => ({ _type: 'bet',     _date: new Date(bet.settled_at || bet.updated_at || bet.created_at), _data: bet }))
           ].sort((a, b) => a._date - b._date);
 
-          // ── Build rows ───────────────────────────────────────
-          for (const ev of allEvents) {
+          // ── Group same-event bets (same eventName + same settled day) ──
+          const processedEvents = [];
+          let idx = 0;
+          while (idx < allRangeEvents.length) {
+            const ev = allRangeEvents[idx];
             if (ev._type === 'deposit') {
-              const dep       = ev._data;
-              const depAmount = parseFloat(dep.amount || 0);
+              processedEvents.push(ev);
+              idx++;
+            } else {
+              const bet      = ev._data;
+              const eventKey = (bet.event_name || bet.eventName || "").trim();
+              const day      = ev._date.toDateString();
+              const groupBets = [bet];
+              let j = idx + 1;
+              while (j < allRangeEvents.length && allRangeEvents[j]._type === 'bet') {
+                const nb  = allRangeEvents[j]._data;
+                const nk  = (nb.event_name || nb.eventName || "").trim();
+                const nd  = allRangeEvents[j]._date.toDateString();
+                if (nk === eventKey && nd === day) { groupBets.push(nb); j++; }
+                else break;
+              }
+              processedEvents.push({ _type: 'bet_group', _date: ev._date, _bets: groupBets });
+              idx = j;
+            }
+          }
+
+          // ── Build rows ────────────────────────────────────────
+          for (const ev of processedEvents) {
+            if (ev._type === 'deposit') {
+              const depAmount = parseFloat(ev._data.amount || 0);
               runningBalance  = parseFloat((runningBalance + depAmount).toFixed(2));
-
-              // Show who transferred (admin/master info if available)
-              const byWho = dep.from_user || dep.transferred_by || dep.by_user
-                          || dep.admin_username || dep.description || null;
-              const label = byWho
-                ? `\uD83D\uDCB0 Transfer by ${byWho} — ${depAmount.toLocaleString()} credited`
-                : `\uD83D\uDCB0 Deposit — ${depAmount.toLocaleString()} credited`;
-
+              const uname     = user.username || user.name || "User";
               rows.push({
                 date:        ev._date.toLocaleString(),
-                description: label,
+                description: "Cash deposit in " + uname + " (Cash)",
                 amount:      depAmount,
                 balance:     runningBalance,
                 isOpen:      false,
-                type:        'deposit',
-                marketId:    null
+                type:        'deposit'
               });
-
             } else {
-              // bet row
-              const bet = ev._data;
-              const pnl = calcPnL(bet);
-              runningBalance = parseFloat((runningBalance + pnl).toFixed(2));
-
-              const pnlLabel = pnl > 0
-                ? "Profit: +" + pnl.toFixed(2)
-                : pnl < 0 ? "Loss: " + pnl.toFixed(2) : "Break Even";
-
-              const eName  = bet.event_name || bet.eventName || "Match";
-              const rName  = bet.runner_name || bet.runnerName || "";
-              const side   = (bet.side || "B").toUpperCase();
-              const sideLabel = side === 'LAY' ? 'L' : 'B';
-
+              // bet_group — combined PnL
+              const totalPnl  = parseFloat(ev._bets.reduce((s, b) => s + calcPnL(b), 0).toFixed(2));
+              runningBalance   = parseFloat((runningBalance + totalPnl).toFixed(2));
+              const firstBet   = ev._bets[0];
+              const eventName  = firstBet.event_name || firstBet.eventName || "Match Result";
+              const runners    = [...new Set(ev._bets.map(b => b.runner_name || b.runnerName || "").filter(Boolean))].join(", ");
+              const sideChar   = (firstBet.side || "B").toUpperCase() === "LAY" ? "L" : "B";
+              const avgPrice   = (ev._bets.reduce((s, b) => s + parseFloat(b.price || 0), 0) / ev._bets.length).toFixed(2);
+              const pnlLabel   = totalPnl > 0 ? "Profit: +" + totalPnl.toFixed(2)
+                               : totalPnl < 0 ? "Loss: "    + totalPnl.toFixed(2) : "Break Even";
               rows.push({
                 date:        ev._date.toLocaleString(),
-                description: `${eName} – ${rName} (${sideLabel}@${parseFloat(bet.price || 0).toFixed(2)}) | ${pnlLabel}`,
-                amount:      parseFloat(pnl.toFixed(2)),
+                description: eventName + (runners ? " \u2013 " + runners : "")
+                           + " (" + sideChar + "@" + avgPrice + ") | " + pnlLabel,
+                amount:      totalPnl,
                 balance:     runningBalance,
                 isOpen:      false,
-                type:        pnl >= 0 ? 'win' : 'loss',
-                marketId:    bet.market_id || bet.marketId || null
+                type:        totalPnl >= 0 ? 'win' : 'loss'
               });
             }
+          }
+
+          if (rows.length === 1) {
+            rows.push({ date: (filterFrom||new Date()).toLocaleString(),
+              description: "Koi settled bet nahi mili. Jab match close ho ga to yahan dikhega.",
+              amount: 0, balance: openingBalance, isOpen: false, type: 'info' });
           }
 
           this.ledger = rows;
@@ -1150,20 +1019,30 @@
           const _sock = io("https://1xbetbackend.work.gd");
           const _tk   = localStorage.getItem("token");
 
+          // ── User room join karo ──
+          // Server pe "JoinUserRoom" event hai (server.js dekho)
           _sock.on("connect", () => {
             if (_tk) {
               try {
                 const payload = JSON.parse(atob(_tk.split('.')[1]));
                 const uid = payload.id || payload.userId || payload.sub;
-                if (uid) { _sock.emit("JoinUserRoom", uid); }
-              } catch(e) {}
+                if (uid) {
+                  _sock.emit("JoinUserRoom", uid);
+                  console.log("[Statement] JoinUserRoom:", uid);
+                }
+              } catch(e) { console.warn("[Statement] userId extract failed:", e.message); }
             }
           });
 
-          _sock.on("marketSettled", () => { this.fetchLedger(); });
+          _sock.on("marketSettled", () => {
+            console.log("[Statement] marketSettled — refreshing ledger");
+            this.fetchLedger();
+          });
           _sock.on("userUpdated", (data) => {
-            if (data && (data.event === 'settlement' || data.event === 'void'))
+            if (data && (data.event === 'settlement' || data.event === 'void')) {
+              console.log("[Statement] userUpdated", data.event, "— refreshing ledger");
               this.fetchLedger();
+            }
           });
         } catch(e) { console.warn("[Statement] Socket init failed:", e.message); }
       }
@@ -1171,13 +1050,17 @@
   });
 })();
 
-// ✅ Submit button: dates update karo aur Vue ledger refresh karo
+// ✅ Submit button: dates update karo aur Vue ledger refresh karo (page reload nahi)
 window.updateDates = function() {
+  // datetimepicker se hidden inputs already update ho jaate hain via datetimepicker events
+  // Sirf Vue instance ka fetchLedger call karna hai
   setTimeout(function() {
     var vueApp = document.getElementById('ledgerApp')?.__vue__;
-    if (vueApp && vueApp.fetchLedger) vueApp.fetchLedger();
+    if (vueApp && vueApp.fetchLedger) {
+      vueApp.fetchLedger();
+    }
   }, 100);
-  return false;
+  return false; // form submit rokein
 };
 
 </script>

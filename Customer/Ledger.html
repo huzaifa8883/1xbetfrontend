@@ -861,15 +861,32 @@
             allSettledRaw = j1?.data?.orders || j1?.orders || [];
           } catch(e) { console.warn("[Statement] /orders/settled failed:", e.message); }
 
-          // ── ALL Deposits fetch karo (range se pehle bhi, range mein bhi)
-          let allDeposits = [];
-          try {
-            const depRes  = await fetch(_STMT_API + "/transactions?type=deposit&limit=500", {
-              headers: { "Authorization": "Bearer " + token }
-            });
-            const depJson = await depRes.json();
-            allDeposits = depJson?.data?.transactions || depJson?.transactions || [];
-          } catch(e) { /* deposit API nahi hai to skip */ }
+          // ── ALL Deposits fetch — multiple endpoints try karo
+          let allDepositsRaw = [];
+          const _DEP_ENDPOINTS = [
+            "/users/my-transactions?limit=500",
+            "/users/transactions?limit=500",
+            "/users/all-transactions?limit=500",
+            "/transactions?limit=500",
+          ];
+          for (const ep of _DEP_ENDPOINTS) {
+            try {
+              const depRes  = await fetch(_STMT_API + ep, { headers: { "Authorization": "Bearer " + token } });
+              if (!depRes.ok) continue;
+              const depJson = await depRes.json();
+              const txArr   = depJson?.data?.transactions || depJson?.transactions || depJson?.data || [];
+              if (Array.isArray(txArr) && txArr.length > 0) {
+                allDepositsRaw = txArr;
+                console.log("[Statement] Transactions found via", ep, ":", txArr.length);
+                break;
+              }
+            } catch(e) { console.warn("[Statement] endpoint failed:", ep, e.message); }
+          }
+          // Sirf deposit/credit type wale lo
+          const allDeposits = allDepositsRaw.filter(tx => {
+            const t = (tx.type || "").toLowerCase();
+            return t === "deposit" || t === "credit-deposit" || t === "credit_deposit" || t === "transfer";
+          });
 
           // ── Sort ALL settled bets oldest first ────────────────
           const allSettled = allSettledRaw
@@ -888,19 +905,20 @@
             else                                  return isWin ? -(price - 1) * size : size;
           }
 
-          // ── Opening Balance = deposits BEFORE filterFrom + PnL BEFORE filterFrom
-          // Naye account = 0. Deposit ke baad balance bane ga.
+          // ── Opening Balance = deposits BEFORE filterFrom + PnL BEFORE filterFrom ──
+          // Naye account = 0 (koi deposit nahi range se pehle)
           const depositsBeforeRange = allDeposits.filter(dep => {
             if (!filterFrom) return false;
             return new Date(dep.created_at || dep.date) < filterFrom;
           });
-          const pnlBeforeRange = allSettled.filter(bet => {
+          const betsBeforeRange = allSettled.filter(bet => {
             if (!filterFrom) return false;
             return new Date(bet.settled_at || bet.updated_at || bet.created_at) < filterFrom;
-          }).reduce((sum, bet) => sum + calcPnL(bet), 0);
-
-          const depositsBeforeTotal = depositsBeforeRange.reduce((s, d) => s + parseFloat(d.amount || 0), 0);
-          const openingBalance = parseFloat((depositsBeforeTotal + pnlBeforeRange).toFixed(2));
+          });
+          const openingBalance = parseFloat((
+            depositsBeforeRange.reduce((s, d) => s + parseFloat(d.amount || 0), 0) +
+            betsBeforeRange.reduce((s, b) => s + calcPnL(b), 0)
+          ).toFixed(2));
           let runningBalance = openingBalance;
 
           // ── Date filter ───────────────────────────────────────
@@ -925,7 +943,7 @@
             type:        'open'
           }];
 
-          // ── Combine deposits + bets, sort by date ─────────────
+          // ── Combine deposits + bets by date, then process ─────
           const allRangeEvents = [
             ...deposits.map(dep => ({ _type: 'deposit', _date: new Date(dep.created_at || dep.date), _data: dep })),
             ...settled.map(bet  => ({ _type: 'bet',     _date: new Date(bet.settled_at || bet.updated_at || bet.created_at), _data: bet }))
@@ -946,9 +964,9 @@
               const groupBets = [bet];
               let j = idx + 1;
               while (j < allRangeEvents.length && allRangeEvents[j]._type === 'bet') {
-                const nb  = allRangeEvents[j]._data;
-                const nk  = (nb.event_name || nb.eventName || "").trim();
-                const nd  = allRangeEvents[j]._date.toDateString();
+                const nb = allRangeEvents[j]._data;
+                const nk = (nb.event_name || nb.eventName || "").trim();
+                const nd = allRangeEvents[j]._date.toDateString();
                 if (nk === eventKey && nd === day) { groupBets.push(nb); j++; }
                 else break;
               }
@@ -957,12 +975,12 @@
             }
           }
 
-          // ── Build rows ────────────────────────────────────────
+          // ── Build ledger rows ─────────────────────────────────
           for (const ev of processedEvents) {
             if (ev._type === 'deposit') {
               const depAmount = parseFloat(ev._data.amount || 0);
               runningBalance  = parseFloat((runningBalance + depAmount).toFixed(2));
-              const uname     = user.username || user.name || "User";
+              const uname     = user.username || user.name || ev._data.description || "User";
               rows.push({
                 date:        ev._date.toLocaleString(),
                 description: "Cash deposit in " + uname + " (Cash)",
@@ -972,7 +990,7 @@
                 type:        'deposit'
               });
             } else {
-              // bet_group — combined PnL
+              // bet_group — combined PnL ek row mein
               const totalPnl  = parseFloat(ev._bets.reduce((s, b) => s + calcPnL(b), 0).toFixed(2));
               runningBalance   = parseFloat((runningBalance + totalPnl).toFixed(2));
               const firstBet   = ev._bets[0];
@@ -995,7 +1013,7 @@
           }
 
           if (rows.length === 1) {
-            rows.push({ date: (filterFrom||new Date()).toLocaleString(),
+            rows.push({ date: (filterFrom || new Date()).toLocaleString(),
               description: "Koi settled bet nahi mili. Jab match close ho ga to yahan dikhega.",
               amount: 0, balance: openingBalance, isOpen: false, type: 'info' });
           }

@@ -101,14 +101,32 @@ app.get("/Reports/Commission",  (req, res) => send(res, "Reports", "Commission.h
 // ============================================================
 // CUSTOMER
 // ============================================================
-app.get("/customer/wallet",      (req, res) => send(res, "Customer", "Wallet.html"));
-app.get("/customer/Ledger",      (req, res) => send(res, "Customer", "Ledger.html"));
-app.get("/customer/ProfitLoss",  (req, res) => send(res, "Customer", "ProfitLoss.html"));
-app.get("/customer/Bets",        (req, res) => send(res, "Customer", "Bets.html"));
-app.get("/customer/Profile",     (req, res) => send(res, "Customer", "Profile.html"));
-app.get("/customer/Liable",      (req, res) => send(res, "Customer", "Liable.html"));
-app.get("/customer/StarOrders",  (req, res) => send(res, "Customer", "StarOrders.html"));
-app.get("/customer/Statements",  (req, res) => send(res, "Customer", "Statements.html"));
+// ── Customer routes — case-insensitive (both /customer/ and /Customer/) ──
+function customerRoute(page) {
+  return (req, res) => send(res, "Customer", page);
+}
+
+// /Customer/X  (uppercase — what the browser sends)
+app.get("/Customer/Wallet",      customerRoute("Wallet.html"));
+app.get("/Customer/Ledger",      customerRoute("Ledger.html"));
+app.get("/Customer/ProfitLoss",  customerRoute("ProfitLoss.html"));
+app.get("/Customer/Bets",        customerRoute("Bets.html"));
+app.get("/Customer/Profile",     customerRoute("Profile.html"));
+app.get("/Customer/Liable",      customerRoute("Liable.html"));
+app.get("/Customer/StarOrders",  customerRoute("StarOrders.html"));
+// /Customer/Statements — query params ignore karo (VID/AID legacy params)
+// Data ab sessionStorage se aata hai, URL params ki zaroorat nahi
+app.get("/Customer/Statements",  customerRoute("Statements.html"));
+
+// /customer/X  (lowercase — backward compat)
+app.get("/customer/wallet",      customerRoute("Wallet.html"));
+app.get("/customer/Ledger",      customerRoute("Ledger.html"));
+app.get("/customer/ProfitLoss",  customerRoute("ProfitLoss.html"));
+app.get("/customer/Bets",        customerRoute("Bets.html"));
+app.get("/customer/Profile",     customerRoute("Profile.html"));
+app.get("/customer/Liable",      customerRoute("Liable.html"));
+app.get("/customer/StarOrders",  customerRoute("StarOrders.html"));
+app.get("/customer/Statements",  customerRoute("Statements.html"));
 
 
 // ============================================================

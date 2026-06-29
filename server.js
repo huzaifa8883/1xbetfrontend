@@ -108,6 +108,8 @@ app.get("/customer/Bets",        (req, res) => send(res, "Customer", "Bets.html"
 app.get("/customer/Profile",     (req, res) => send(res, "Customer", "Profile.html"));
 app.get("/customer/Liable",      (req, res) => send(res, "Customer", "Liable.html"));
 app.get("/customer/StarOrders",  (req, res) => send(res, "Customer", "StarOrders.html"));
+app.get("/customer/Statements",  (req, res) => send(res, "Customer", "Statements.html"));
+
 
 // ============================================================
 // GAMES / CASINO

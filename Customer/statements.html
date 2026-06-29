@@ -187,29 +187,137 @@
     <script src="/js/src/client-locales.js"></script>
     
     <script>
-        $(document).ready(function () {
-            var table = $('#tableLedger').DataTable({
-                responsive: true,
-                ordering: true,
-                "order": [[8, "DESC"]]
-            });
-            // new $.fn.dataTable.FixedHeader(table);
+    // ── sessionStorage se bet detail data padho (statement.html se aaya) ──
+    (function() {
+      var raw = null;
+      try { raw = sessionStorage.getItem('betDetailRow'); } catch(e) {}
+      if (!raw) return; // koi data nahi — static HTML dikha do
 
+      var row;
+      try { row = JSON.parse(raw); } catch(e) { return; }
+      sessionStorage.removeItem('betDetailRow'); // ek baar use ke baad clear
+
+      // ── Helper functions ─────────────────────────────────────
+      function calcPnL(bet) {
+        if (bet.settlementPnL !== null && bet.settlementPnL !== undefined)
+          return parseFloat(bet.settlementPnL);
+        var price = parseFloat(bet.price || 0);
+        var size  = parseFloat(bet.size  || 0);
+        var isWin = String(bet.selection_id) === String(bet.winning_selection_id);
+        var side  = (bet.side || '').toUpperCase();
+        if (side === 'B' || side === 'BACK') return isWin ? (price - 1) * size : -size;
+        else                                  return isWin ? -(price - 1) * size : size;
+      }
+
+      function fmtDate(d) {
+        if (!d) return '';
+        return new Date(d).toLocaleString('en-US', {
+          month: 'numeric', day: 'numeric', year: 'numeric',
+          hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
         });
+      }
 
-        function FetchResult()
-        {
-            var VID = 488306807;
-            $.ajax({
-                type: "GET",
-                url: "/Customer/Statements?handler=Results&VID=" + VID,
-                 success: function (result) {
-                    document.getElementById("resultsStatements").innerHTML = result;
-                },
-                error: function (exception) {
-                }
-            });
+      function fmt(n) {
+        return parseFloat(n || 0).toLocaleString();
+      }
+
+      // ── Page header update ────────────────────────────────────
+      var h4 = document.querySelector('.card-header h4');
+      if (h4) h4.textContent = row._eventName || 'Bet Detail';
+
+      // ── Winner badge ──────────────────────────────────────────
+      var winnerBet = (row._bets || []).find(function(b) {
+        return String(b.selection_id) === String(b.winning_selection_id);
+      });
+      var winnerName = winnerBet ? (winnerBet.runner_name || 'Winner') : 'N/A';
+
+      var winnerSpan = document.querySelector('.badge-warning');
+      if (winnerSpan) winnerSpan.textContent = winnerName;
+
+      // ── Net PL badge ──────────────────────────────────────────
+      var netPL  = parseFloat(row._netPnl || 0);
+      var plSpan = document.querySelector('.badge-success, .badge-danger');
+      if (plSpan) {
+        plSpan.textContent = (netPL >= 0 ? '+' : '') + fmt(netPL);
+        plSpan.className   = 'ml-2 badge ' + (netPL >= 0 ? 'badge-success' : 'badge-danger');
+      }
+
+      // ── Username badge ────────────────────────────────────────
+      var usernameSpans = document.querySelectorAll('.badge-warning');
+      if (usernameSpans.length >= 2) usernameSpans[1].textContent = row._username || 'User';
+
+      // ── Build table rows ──────────────────────────────────────
+      var tbody  = document.querySelector('#tableLedger tbody');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+
+      (row._bets || []).forEach(function(bet) {
+        var pnl      = calcPnL(bet);
+        var side     = (bet.side || '').toUpperCase();
+        var sideChar = side === 'LAY' ? 'L' : 'B';
+        var sideCls  = sideChar === 'B' ? 'bg-info' : 'bg-danger';
+        var pnlCls   = pnl >= 0 ? 'position-plus' : 'position-minus';
+        var reqId    = bet.request_id || '';
+
+        tbody.innerHTML += '<tr>' +
+          '<td>' + (bet.runner_name || 'Runner') + '</td>' +
+          '<td>' + parseFloat(bet.price || 0).toFixed(4) + '</td>' +
+          '<td>' + fmt(bet.size) + '</td>' +
+          '<td class="' + sideCls + '"><strong>' + sideChar + '</strong></td>' +
+          '<td class="' + pnlCls + '">' + (pnl >= 0 ? '' : '') + fmt(pnl) + '</td>' +
+          '<td>' + fmtDate(bet.created_at) + '</td>' +
+          '<td>' + fmtDate(bet.updated_at || bet.created_at) + '</td>' +
+          '<td>' + fmtDate(bet.settled_at) + '</td>' +
+          '<td>' + reqId + '</td>' +
+        '</tr>';
+      });
+
+      // ── Commission row ────────────────────────────────────────
+      var comm = parseFloat(row._commission || 0);
+      if (comm > 0) {
+        tbody.innerHTML += '<tr>' +
+          '<td>Commission (2.00%)</td>' +
+          '<td>0.0000</td><td>0</td>' +
+          '<td class="bg-danger"><strong>C</strong></td>' +
+          '<td class="position-minus"><strong>-' + comm.toFixed(0) + '</strong></td>' +
+          '<td colspan="4"></td>' +
+        '</tr>';
+      }
+
+      // ── Init DataTable ────────────────────────────────────────
+      $(document).ready(function() {
+        $('#tableLedger').DataTable({
+          responsive: true,
+          ordering:   true,
+          order:      [[8, 'DESC']]
+        });
+      });
+    })();
+
+    // Fallback: agar sessionStorage data nahi tha to original DataTable init
+    if (!sessionStorage.getItem('betDetailRow')) {
+      $(document).ready(function () {
+        if (!$.fn.DataTable.isDataTable('#tableLedger')) {
+          $('#tableLedger').DataTable({
+            responsive: true,
+            ordering: true,
+            order: [[8, "DESC"]]
+          });
         }
+      });
+    }
+
+    function FetchResult() {
+      var VID = 488306807;
+      $.ajax({
+        type: "GET",
+        url: "/Customer/Statements?handler=Results&VID=" + VID,
+        success: function(result) {
+          document.getElementById("resultsStatements").innerHTML = result;
+        },
+        error: function(exception) {}
+      });
+    }
     </script>
 
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"c5a76fb5e23b4d93ab8d25099ed8e434","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>

@@ -896,19 +896,26 @@
           }
 
           // ── Filter deposits: sirf is user ke, sirf deposit/credit type ─
-          // Duplicate remove: same id ya same amount+timestamp
-          const seenDepIds = new Set();
+          // Duplicate remove: id se bhi aur amount+timestamp se bhi (dono keys check karo)
+          const seenDepIds  = new Set();
+          const seenDepKeys = new Set(); // amount|timestamp dedupe
           const allDeposits = allDepositsRaw.filter(tx => {
             const t = (tx.type || "").toLowerCase();
-            const isDepType = t === "deposit" || t === "credit-deposit" || t === "credit_deposit";
+            const isDepType = t === "deposit" || t === "credit-deposit" || t === "credit_deposit"
+                           || t === "bet_placed" === false && t.includes("deposit");
             if (!isDepType) return false;
             // Sirf is user ko receive hone wale (to_user_id match kare ya user_id match kare)
             const toId = String(tx.to_user_id || tx.userId || tx.user_id || "");
             if (myUserId && toId && toId !== myUserId) return false;
-            // Duplicate dedupe by id
-            const uid = String(tx.id || tx._id || (tx.amount + "|" + (tx.created_at || tx.date)));
-            if (seenDepIds.has(uid)) return false;
-            seenDepIds.add(uid);
+            // Dedupe by id
+            const uid = String(tx.id || tx._id || "");
+            if (uid && seenDepIds.has(uid)) return false;
+            if (uid) seenDepIds.add(uid);
+            // Dedupe by amount+timestamp (same deposit 2 baar aane se rokta hai)
+            const ts  = String(tx.created_at || tx.date || "").slice(0, 19); // seconds tak
+            const amtKey = parseFloat(tx.amount || 0).toFixed(2) + "|" + ts;
+            if (seenDepKeys.has(amtKey)) return false;
+            seenDepKeys.add(amtKey);
             return true;
           }).sort((a, b) => new Date(a.created_at || a.date) - new Date(b.created_at || b.date));
 

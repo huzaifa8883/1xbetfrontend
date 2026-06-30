@@ -505,6 +505,14 @@
 <link rel="stylesheet" type="text/css" href="/css/ledger.css" />
 <style>
     /* Print/Excel/PDF buttons — dark gray pill container, jaisa reference design */
+    /* FIX: PC mode pe # column hide — icon aur number sirf mobile pe */
+    @media (min-width: 768px) {
+      #tableLedger th:first-child,
+      #tableLedger td:first-child {
+        display: none !important;
+      }
+    }
+
     div.dt-buttons {
         display: flex;
         background: #6c757d;
@@ -725,11 +733,15 @@
           <tbody>
             <tr v-for="(row, i) in ledger" :key="i"
                 :style="{ fontWeight: row.isOpen ? '700' : '400' }">
-              <td style="white-space:nowrap; vertical-align:middle;">
+              <td :data-order="i + 1" style="white-space:nowrap; vertical-align:middle; padding-right:8px;">
                 <span v-if="row.amount > 0"
-                      style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:#1a73e8;color:#fff;font-size:13px;font-weight:700;margin-right:4px;vertical-align:middle;">+</span>
+                      style="display:inline-flex;align-items:center;justify-content:center;
+                             width:22px;height:22px;border-radius:50%;background:#1a73e8;
+                             color:#fff;font-size:14px;font-weight:700;margin-right:5px;vertical-align:middle;">+</span>
                 <span v-else-if="row.amount < 0"
-                      style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:#e53935;color:#fff;font-size:13px;font-weight:700;margin-right:4px;vertical-align:middle;">&#8722;</span>
+                      style="display:inline-flex;align-items:center;justify-content:center;
+                             width:22px;height:22px;border-radius:50%;background:#e53935;
+                             color:#fff;font-size:14px;font-weight:700;margin-right:5px;vertical-align:middle;">&#8722;</span>
                 {{ i + 1 }}
               </td>
               <td>{{ row.date }}</td>
@@ -996,6 +1008,9 @@
     if (typeof IsMobile === 'function' && IsMobile()) {
       new $.fn.dataTable.Responsive(tblLed, {
         details: {
+          // type:'none' = DataTable ka apna +/- control button NAHI aayega
+          // Sirf hamara Vue icon rahega — double icon ka masla khatam
+          type: 'none',
           display: $.fn.dataTable.Responsive.display.childRowImmediate
         }
       });

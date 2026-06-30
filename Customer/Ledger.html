@@ -903,7 +903,7 @@
 
   const _STMT_API = "https://1XBETBACKEND.WORK.GD/api/v1";
 
-  // ── DataTable init — Print/Excel/PDF buttons + responsive card-stack mobile UI ──
+  // ── DataTable init — statementold.html jaisa exact pattern (Print/Excel/PDF + mobile responsive) ──
   let _dtInitTries = 0;
   function initLedgerDataTable() {
     const $table = window.jQuery ? jQuery('#tableLedger') : null;
@@ -922,23 +922,48 @@
       $table.DataTable().destroy();
     }
 
-    // Buttons extension available hai ya nahi — agar nahi to dom/buttons skip karo
-    const hasButtons = !!(jQuery.fn.dataTable && jQuery.fn.dataTable.Buttons);
+    const username = (window._currentUser && window._currentUser.username) || 'User';
 
-    $table.DataTable(Object.assign({
-      responsive: true,
-      ordering: true,
-      pageLength: 10,
-      lengthMenu: [10, 25, 50, 100],
-      order: [[0, 'asc']],
-      language: {
-        search: "Search:",
-        lengthMenu: "_MENU_ entries per page"
-      }
-    }, hasButtons ? {
-      dom: 'lBfrtip',
-      buttons: ['print', 'excel', 'pdf']
-    } : {}));
+    const tblLed = $table.DataTable({
+      "order": [[0, "asc"]],
+      dom: "<'row'<'col-sm-2'l><'col-sm-5'B><'col-sm-5'f>>" +
+           "<'row'<'col-sm-12'tr>>" +
+           "<'row'<'col-sm-5'i><'col-sm-7'p>>",
+
+      columnDefs: [
+        { responsivePriority: 1, targets: 0 },
+        { responsivePriority: 2, targets: 2 },
+        { "type": "date", "targets": [1] }
+      ],
+      buttons: [
+        {
+          extend: 'print',
+          text: '<i class=""> Print</i>',
+          title: username + ' - Account Ledger',
+          titleAttr: 'Copy'
+        },
+        {
+          extend: 'excelHtml5',
+          text: '<i class=""> Excel</i>',
+          title: username + ' - Account Ledger',
+          titleAttr: 'Excel'
+        },
+        {
+          extend: 'pdfHtml5',
+          text: '<i class=""> PDF</i>',
+          title: username + ' - Account Ledger',
+          titleAttr: 'PDF'
+        }
+      ]
+    });
+
+    if (typeof IsMobile === 'function' && IsMobile()) {
+      new jQuery.fn.dataTable.Responsive(tblLed, {
+        details: {
+          display: jQuery.fn.dataTable.Responsive.display.childRowImmediate
+        }
+      });
+    }
   }
 
   new Vue({
@@ -962,6 +987,7 @@
           });
           const userData = await userRes.json();
           const user     = userData?.data?.user || userData?.data || userData?.user || {};
+          window._currentUser = user; // DataTable Print/Excel/PDF title ke liye
           // Current user ki ID — deposit filter ke liye
           const myUserId = String(user.id || user._id || "");
 

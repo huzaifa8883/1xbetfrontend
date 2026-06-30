@@ -1149,7 +1149,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  loadHorseLiveData();
+  // loadHorseLiveData() — document.ready mein Promise.all se call hogi
 </script>
 
 <!-- ✅ Greyhound Slick Slider -->
@@ -1235,7 +1235,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  loadgreyhoundLiveData();
+  // loadgreyhoundLiveData() — document.ready mein Promise.all se call hogi
 </script>
 
 <!-- ✅ Tennis Sidebar List -->
@@ -2082,8 +2082,14 @@ document.addEventListener("DOMContentLoaded", async () => {
             isPWCRequired();
             showWelcomeBanner();
 
-            $(".page_loader").hide();
-            document.getElementById("horsenhound").classList.remove("d-none");
+            // ✅ Horse + Greyhound dono load hone ke baad hi show karo — no flicker
+            Promise.all([
+                loadHorseLiveData(),
+                loadgreyhoundLiveData()
+            ]).finally(function() {
+                $(".page_loader").hide();
+                document.getElementById("horsenhound").classList.remove("d-none");
+            });
 
             $(".games_slider").slick({
                 arrows: false,

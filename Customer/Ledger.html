@@ -535,6 +535,64 @@
         background: rgba(255,255,255,0.12) !important;
         color: #fff !important;
     }
+
+    /* ✅ Ledger table — text wrap karo, kabhi horizontal page-scroll na ho.
+       DataTables/Bootstrap defaults kabhi kabhi td par white-space:nowrap
+       force kar dete hain jo lambay description (event names) ko ek
+       line mein overflow karwa deta tha aur page ko side-scroll karwa
+       deta tha — yahan explicitly wrap + break karwa rahe hain. */
+    #tableLedger,
+    #tableLedger td,
+    #tableLedger th,
+    #tableLedger .dtr-details,
+    .dtr-data {
+        white-space: normal !important;
+        word-break: break-word !important;
+        overflow-wrap: break-word !important;
+    }
+    #tableLedger { table-layout: fixed; }
+    .table-wrap, .card-body, #ledgerApp {
+        overflow-x: auto;
+        max-width: 100%;
+    }
+    div.dt-container, div.dataTables_wrapper {
+        overflow-x: auto;
+        max-width: 100%;
+    }
+    /* Page khud kabhi horizontally scroll na ho — sirf table apne container ke andar scroll kare */
+    html, body { overflow-x: hidden; }
+    /* Control column (+/− icon) — DataTables Responsive ka default style
+       weak/missing ho sakta hai theme CSS clash ki wajah se, explicit dete hain */
+    table.dtr-inline.collapsed > tbody > tr > td.dtr-control,
+    table.dtr-inline.collapsed > tbody > tr > th.dtr-control {
+        position: relative;
+        padding-left: 30px !important;
+        cursor: pointer;
+    }
+    table.dtr-inline.collapsed > tbody > tr > td.dtr-control::before,
+    table.dtr-inline.collapsed > tbody > tr > th.dtr-control::before {
+        top: 50%;
+        left: 5px;
+        height: 18px;
+        width: 18px;
+        margin-top: -10px;
+        display: block;
+        position: absolute;
+        color: #fff;
+        border: 2px solid #fff;
+        border-radius: 18px;
+        box-sizing: content-box;
+        text-align: center;
+        text-indent: 0 !important;
+        line-height: 14px;
+        content: '+';
+        background-color: #2196F3;
+    }
+    table.dtr-inline.collapsed > tbody > tr.parent > td.dtr-control::before,
+    table.dtr-inline.collapsed > tbody > tr.parent > th.dtr-control::before {
+        content: '-';
+        background-color: #dc3545;
+    }
 </style>
 
 <div class="table-wrap">
@@ -951,8 +1009,22 @@
     }
 
     const username = (window._currentUser && window._currentUser.username) || 'User';
+    const mobileMode = (typeof IsMobile === 'function' && IsMobile());
 
     const tblLed = $table.DataTable({
+      // ✅ responsive ko seedha init-options mein dena zaroori hai — isse DataTables
+      //    pehle render se pehle hi columns collapse kar leta hai aur control-column
+      //    (+/− icon) khud render karta hai apne built-in CSS se. Baad mein manually
+      //    `new $.fn.dataTable.Responsive(...)` attach karna race-condition wala tha
+      //    (table already render ho chuki hoti thi, icon/wrap kabhi sahi calculate
+      //    nahi hota tha jab tak window resize na ho) — isi wajah se #-column icon
+      //    missing tha aur description ek line mein overflow ho ke horizontal
+      //    scroll create kar raha tha.
+      responsive: mobileMode ? {
+        details: {
+          display: $.fn.dataTable.Responsive.display.childRowImmediate
+        }
+      } : false,
       "order": [[0, "asc"]],
       dom: "<'row'<'col-sm-2'l><'col-sm-5'B><'col-sm-5'f>>" +
            "<'row'<'col-sm-12'tr>>" +
@@ -984,16 +1056,6 @@
         }
       ]
     });
-
-    // statementold.html jaisa hi — sirf mobile par Responsive plugin lagao,
-    // desktop par normal table (horizontal scroll) rahegi.
-    if (typeof IsMobile === 'function' && IsMobile()) {
-      new $.fn.dataTable.Responsive(tblLed, {
-        details: {
-          display: $.fn.dataTable.Responsive.display.childRowImmediate
-        }
-      });
-    }
   }
 
   new Vue({

@@ -3897,239 +3897,214 @@
                         </div>
 
                             <div id="LIVEDIV" class="container">
-                                <!-- ✅ Scorecard — Screenshot jaisa design — INN header + teams + score + run rate chart -->
-                                <div id="nx-scorecard" style="background:#1e2328; color:#fff; min-height:180px; font-family:sans-serif;">
+                                <!-- ✅ CRICKET SCORECARD — BPExch style, sport ke hisab se auto-switch -->
+                                <div id="nx-scorecard" style="background:#1e2328; color:#fff; padding:0; min-height:160px; font-family:'Roboto Condensed',sans-serif;">
 
-                                  <!-- ── Innings selector bar ── -->
-                                  <div id="sc-inn-bar" style="background:#263040; padding:6px 10px; display:flex; justify-content:space-between; align-items:center; font-size:12px;">
-                                    <span id="sc-inn-label" style="color:#ccc; font-weight:600; letter-spacing:.5px;">INN 1</span>
-                                    <div style="display:flex; gap:4px;" id="sc-inn-tabs"></div>
+                                  <!-- ════════════════════════════════════════
+                                       CRICKET SCORECARD (eventTypeId == 4)
+                                       score object: team1/team2, t1_runs, t1_wickets, t1_overs,
+                                       t1_crr, t2_runs, t2_wickets, t2_overs, t2_crr,
+                                       target, rrr, toWin, commentry, recent_string, lastOverLabel
+                                       ════════════════════════════════════════ -->
+                                  <div v-if="Catalog.eventTypeId == 4 || Catalog.eventTypeId == '4'">
+
+                                    <!-- No score yet — show runners -->
+                                    <div v-if="!score || !score.commentry" style="padding:10px;">
+                                      <div style="font-size:11px; color:#9aa0a6; text-align:center; padding:6px 0 4px;">Score data loading...</div>
+                                      <div v-for="runner in Catalog.runners" :key="runner.selectionId"
+                                           style="display:flex; justify-content:space-between; align-items:center; padding:5px 8px; border-bottom:1px solid #2e3338;">
+                                        <span style="font-size:13px;">{{ runner.runnerName }}</span>
+                                        <span v-if="runner.status === 'WINNER'" style="font-size:11px; font-weight:bold; color:#00B181; border:1px solid #00B181; border-radius:3px; padding:0 4px;">WINNER</span>
+                                      </div>
+                                    </div>
+
+                                    <!-- ── Live Score Section ── -->
+                                    <div v-if="score && score.commentry">
+
+                                      <!-- Header bar: INN + overs -->
+                                      <div style="display:flex; align-items:center; justify-content:space-between; background:#14181e; padding:5px 10px; border-bottom:1px solid #2e3338;">
+                                        <span style="font-size:11px; color:#9aa0a6; font-weight:600; letter-spacing:.5px;">
+                                          <!-- innings label -->
+                                          <span v-if="score.target > 0 && score.team2">INN 2</span>
+                                          <span v-else>INN 1</span>
+                                          <span style="margin-left:6px; color:#ccc;">|</span>
+                                          <span style="margin-left:6px; color:#fff;">
+                                            <span v-if="score.target > 0 && score.team2">{{ score.t2_overs }}</span>
+                                            <span v-else>{{ score.t1_overs }}</span>
+                                            OV
+                                          </span>
+                                        </span>
+                                        <!-- Dropdown label (static display like BPExch) -->
+                                        <span style="font-size:11px; color:#9aa0a6; cursor:default;">
+                                          <span v-if="score.target > 0 && score.team2">{{ score.team2 }} INNS ▾</span>
+                                          <span v-else>{{ score.team1 }} INNS ▾</span>
+                                        </span>
+                                      </div>
+
+                                      <!-- Teams row -->
+                                      <div style="display:flex; align-items:flex-start; justify-content:space-between; padding:8px 10px 4px;">
+
+                                        <!-- Left team -->
+                                        <div style="flex:1; min-width:0;">
+                                          <div style="font-size:13px; font-weight:700; color:#e0e0e0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                                            {{ score.team1 || (Catalog.runners && Catalog.runners[0] ? Catalog.runners[0].runnerName : 'Team 1') }}
+                                          </div>
+                                          <!-- 1st innings score always shown -->
+                                          <div style="font-size:11px; color:#9aa0a6; margin-top:2px;">
+                                            <span v-if="score.t1_runs !== undefined">{{ score.t1_runs }}/{{ score.t1_wickets }} ({{ score.t1_overs }})</span>
+                                          </div>
+                                        </div>
+
+                                        <!-- Center: batting info -->
+                                        <div style="flex:2; text-align:center; padding:0 6px;">
+                                          <!-- INN 2 batting (target chase) -->
+                                          <div v-if="score.target > 0 && score.team2">
+                                            <div style="font-size:11px; color:#9aa0a6;">Yet to bat : <span style="color:#fff; font-weight:600;">{{ score.t2_runs }}/{{ score.t2_wickets }}</span></div>
+                                            <div style="font-size:10px; color:#9aa0a6; margin-top:1px;">{{ score.team2 }} are {{ score.t2_runs }}/{{ score.t2_wickets }} after {{ score.t2_overs }} overs.</div>
+                                          </div>
+                                          <!-- INN 1 batting -->
+                                          <div v-else>
+                                            <div style="font-size:11px; color:#9aa0a6;">Yet to bat : <span style="color:#fff; font-weight:600;">{{ score.t1_runs }}/{{ score.t1_wickets }}</span></div>
+                                            <div style="font-size:10px; color:#9aa0a6; margin-top:1px;">{{ score.team1 }} are {{ score.t1_runs }}/{{ score.t1_wickets }} after {{ score.t1_overs }} overs.</div>
+                                          </div>
+                                        </div>
+
+                                        <!-- Right team -->
+                                        <div style="flex:1; min-width:0; text-align:right;">
+                                          <div style="font-size:13px; font-weight:700; color:#e0e0e0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                                            {{ score.team2 || (Catalog.runners && Catalog.runners[1] ? Catalog.runners[1].runnerName : 'Team 2') }}
+                                          </div>
+                                          <div style="font-size:11px; color:#9aa0a6; margin-top:2px;">
+                                            <span v-if="score.target > 0 && score.t2_runs !== undefined">{{ score.t2_runs }}/{{ score.t2_wickets }} ({{ score.t2_overs }})</span>
+                                          </div>
+                                        </div>
+
+                                      </div>
+
+                                      <!-- Run Rate mini-graph (SVG sparkline — live CRR dots) -->
+                                      <div style="padding:2px 10px 0; position:relative;">
+                                        <div id="nx-runrate-wrap" style="background:#14181e; border-radius:3px; overflow:hidden; height:52px; position:relative;">
+                                          <!-- Axis labels -->
+                                          <div style="position:absolute;top:2px;left:4px;font-size:9px;color:#666;">5</div>
+                                          <div style="position:absolute;bottom:2px;left:4px;font-size:9px;color:#666;">0</div>
+                                          <!-- SVG sparkline — drawn by JS below -->
+                                          <svg id="nx-rr-svg" viewBox="0 0 280 50" preserveAspectRatio="none"
+                                               style="width:100%;height:100%;display:block;">
+                                            <polyline id="nx-rr-line" points="" fill="none" stroke="#cc0000" stroke-width="1.5"/>
+                                          </svg>
+                                          <!-- Overlay: CRR label -->
+                                          <div style="position:absolute;top:3px;right:6px;font-size:10px;color:#9aa0a6;">
+                                            RUN RATE
+                                          </div>
+                                        </div>
+                                        <!-- X-axis ticks -->
+                                        <div style="display:flex;justify-content:space-between;padding:1px 0;font-size:9px;color:#555;">
+                                          <span>0</span><span>10</span><span>20</span><span>30</span><span>40</span><span>50</span><span>60</span><span>70</span><span>80</span><span>90</span>
+                                        </div>
+                                      </div>
+
+                                      <!-- CRR / RRR / Target strip -->
+                                      <div style="display:flex; gap:6px; flex-wrap:wrap; padding:5px 10px 4px; border-top:1px solid #2e3338;">
+                                        <span style="font-size:11px; background:#1a2030; color:#9aa0a6; padding:2px 7px; border-radius:3px;">
+                                          CRR: <strong style="color:#fff;">
+                                            <span v-if="score.target > 0 && score.team2">{{ score.t2_crr }}</span>
+                                            <span v-else>{{ score.t1_crr }}</span>
+                                          </strong>
+                                        </span>
+                                        <span v-if="score.target > 0" style="font-size:11px; background:#1a2030; color:#9aa0a6; padding:2px 7px; border-radius:3px;">
+                                          RRR: <strong style="color:#fff;">{{ score.rrr }}</strong>
+                                        </span>
+                                        <span v-if="score.target > 0" style="font-size:11px; background:#1a2030; color:#e8a000; padding:2px 7px; border-radius:3px;">
+                                          Target: <strong>{{ score.target }}</strong>
+                                        </span>
+                                        <span v-if="score.toWin" style="font-size:11px; background:#1a2030; color:#00B181; padding:2px 7px; border-radius:3px; flex:1; white-space:nowrap;">
+                                          {{ score.toWin }}
+                                        </span>
+                                      </div>
+
+                                      <!-- Commentary -->
+                                      <div style="padding:4px 10px 3px; border-top:1px solid #2e3338; font-size:11px; color:#00B181; line-height:1.4;">
+                                        {{ score.commentry }}
+                                      </div>
+
+                                      <!-- Recent balls / last over -->
+                                      <div v-if="score.recent_string" style="padding:3px 10px 6px; font-size:11px; color:#9aa0a6;">
+                                        <span style="color:#666; margin-right:4px;">{{ score.lastOverLabel || 'Last Over' }}:</span>
+                                        <span>{{ score.recent_string }}</span>
+                                      </div>
+
+                                    </div>
                                   </div>
 
-                                  <!-- ── Team + Score row ── -->
-                                  <div id="sc-score-row" style="display:flex; justify-content:space-between; align-items:flex-start; padding:8px 10px 4px;">
-                                    <!-- Team 1 -->
-                                    <div style="text-align:left;">
-                                      <div id="sc-team1" style="font-size:13px; font-weight:700; color:#e8eaed;">—</div>
-                                      <div id="sc-score1" style="font-size:22px; font-weight:800; color:#fff; line-height:1.1;">—</div>
-                                      <div id="sc-overs1" style="font-size:11px; color:#9aa0a6;">Yet to bat</div>
-                                    </div>
-                                    <!-- Status center -->
-                                    <div style="text-align:center; padding-top:6px;">
-                                      <div id="sc-status-text" style="font-size:11px; color:#9aa0a6; max-width:120px; text-align:center; line-height:1.4;"></div>
-                                    </div>
-                                    <!-- Team 2 -->
-                                    <div style="text-align:right;">
-                                      <div id="sc-team2" style="font-size:13px; font-weight:700; color:#e8eaed;">—</div>
-                                      <div id="sc-score2" style="font-size:22px; font-weight:800; color:#fff; line-height:1.1;">—</div>
-                                      <div id="sc-overs2" style="font-size:11px; color:#9aa0a6;"></div>
-                                    </div>
-                                  </div>
-
-                                  <!-- ── Run Rate Chart ── -->
-                                  <div style="padding:4px 10px 2px; position:relative;">
-                                    <div style="font-size:10px; color:#9aa0a6; margin-bottom:2px;">RUN RATE</div>
-                                    <svg id="sc-rr-chart" width="100%" height="60" viewBox="0 0 280 60" preserveAspectRatio="none"
-                                         style="display:block; background:#0d1117; border-radius:3px;">
-                                      <polyline id="sc-rr-line" points="" fill="none" stroke="#e53935" stroke-width="1.5" stroke-linejoin="round"/>
-                                      <polygon  id="sc-rr-fill" points="" fill="rgba(229,57,53,0.15)"/>
-                                    </svg>
-                                    <!-- X-axis labels -->
-                                    <div style="display:flex; justify-content:space-between; font-size:9px; color:#555; padding:0 2px;">
-                                      <span>0</span><span>10</span><span>20</span><span>30</span><span>40</span><span>50</span><span>60</span><span>70</span><span>80</span><span>90</span>
+                                  <!-- ════════════════════════════════════════
+                                       SOCCER SCORECARD (eventTypeId == 1)
+                                       ════════════════════════════════════════ -->
+                                  <div v-if="(Catalog.eventTypeId == 1 || Catalog.eventTypeId == '1') && scores && scores.home != null"
+                                       style="padding:10px;">
+                                    <div style="display:flex; align-items:center; justify-content:space-between; text-align:center;">
+                                      <div style="flex:1;">
+                                        <div style="font-size:13px; font-weight:700;">{{ scores.home }}</div>
+                                        <div style="font-size:22px; font-weight:bold; color:#00B181;">{{ scores.score && scores.score[0] }}</div>
+                                      </div>
+                                      <div style="flex:0 0 40px; font-size:13px; color:#ffc107; font-weight:700;">
+                                        {{ scores.time }}'
+                                      </div>
+                                      <div style="flex:1;">
+                                        <div style="font-size:13px; font-weight:700;">{{ scores.away }}</div>
+                                        <div style="font-size:22px; font-weight:bold; color:#00B181;">{{ scores.score && scores.score[1] }}</div>
+                                      </div>
                                     </div>
                                   </div>
 
-                                  <!-- ── Batting Innings dropdown ── -->
-                                  <div style="padding:4px 10px 8px; display:flex; justify-content:flex-end;">
-                                    <select id="sc-inn-select" style="background:#263040; color:#ccc; border:1px solid #444; border-radius:3px; font-size:11px; padding:2px 6px; cursor:pointer;">
-                                    </select>
+                                  <!-- ════════════════════════════════════════
+                                       TENNIS SCORECARD (eventTypeId == 2)
+                                       ════════════════════════════════════════ -->
+                                  <div v-if="(Catalog.eventTypeId == 2 || Catalog.eventTypeId == '2') && scores && scores.home != null"
+                                       style="padding:10px;">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                                      <div style="font-size:13px; font-weight:700; flex:1;">{{ scores.home }}</div>
+                                      <div style="font-size:13px; font-weight:700; flex:1; text-align:right;">{{ scores.away }}</div>
+                                    </div>
+                                    <div style="font-size:11px; color:#9aa0a6; text-align:center;">
+                                      Set {{ scores.currentSet }} | <span style="color:#00B181;">{{ scores.time }}</span>
+                                    </div>
+                                    <table v-if="scores.homeGameSeq" style="width:100%; font-size:11px; margin-top:6px; border-collapse:collapse;">
+                                      <tr>
+                                        <td v-for="gs in scores.homeGameSeq" style="text-align:center; padding:2px 4px; color:#ccc;">{{ gs }}</td>
+                                        <td style="text-align:center; padding:2px 4px; color:#fff; font-weight:bold;">{{ scores.games && scores.games[0] }}</td>
+                                        <td style="text-align:center; padding:2px 4px; color:#00B181; font-weight:bold;">{{ scores.score && scores.score[0] }}</td>
+                                      </tr>
+                                      <tr>
+                                        <td v-for="gs in scores.awayGameSeq" style="text-align:center; padding:2px 4px; color:#ccc;">{{ gs }}</td>
+                                        <td style="text-align:center; padding:2px 4px; color:#fff; font-weight:bold;">{{ scores.games && scores.games[1] }}</td>
+                                        <td style="text-align:center; padding:2px 4px; color:#00B181; font-weight:bold;">{{ scores.score && scores.score[1] }}</td>
+                                      </tr>
+                                    </table>
+                                  </div>
+
+                                  <!-- ════════════════════════════════════════
+                                       HORSE / GREYHOUND (eventTypeId 7 / 4339)
+                                       + DEFAULT (any other sport)
+                                       ════════════════════════════════════════ -->
+                                  <div v-if="Catalog.eventTypeId != 4 && Catalog.eventTypeId != '4' && Catalog.eventTypeId != 1 && Catalog.eventTypeId != '1' && Catalog.eventTypeId != 2 && Catalog.eventTypeId != '2'"
+                                       style="padding:10px;">
+                                    <div style="font-size:11px; color:#9aa0a6; margin-bottom:6px; text-align:center;">
+                                      {{ Catalog.eventName || Catalog.marketName }}
+                                    </div>
+                                    <div v-for="runner in Catalog.runners" :key="runner.selectionId"
+                                         style="display:flex; justify-content:space-between; align-items:center; padding:5px 0; border-bottom:1px solid #2e3338;">
+                                      <div style="display:flex; align-items:center; gap:8px;">
+                                        <span v-if="runner.clothNumber"
+                                              v-bind:style="{ display:'inline-block', width:'20px', height:'20px', lineHeight:'20px', textAlign:'center', borderRadius:'3px', fontSize:'11px', fontWeight:'bold', background: runner.clothColor || '#555', color: runner.clothColor === '#FFFFFF' ? '#000' : '#fff' }">{{ runner.clothNumber }}</span>
+                                        <span style="font-size:13px;">{{ runner.runnerName }}</span>
+                                        <span v-if="runner.status === 'WINNER'" style="font-size:11px; font-weight:bold; color:#00B181; border:1px solid #00B181; border-radius:3px; padding:0 4px;">WINNER</span>
+                                        <span v-else-if="runner.status === 'REMOVED'" style="font-size:11px; color:#ff5c5c;">REMOVED</span>
+                                      </div>
+                                      <div v-if="runner.lastPriceTraded" style="font-size:13px; font-weight:bold; color:#cfe8ff;">{{ runner.lastPriceTraded }}</div>
+                                    </div>
                                   </div>
 
                                 </div>
-
-                                <!-- ✅ Scorecard JS — Catalog data se live update -->
-                                <script>
-                                (function() {
-                                  var _scTimer = null;
-
-                                  // ── Chart draw ──────────────────────────────────────────
-                                  function drawRunRateChart(runRates) {
-                                    var svg    = document.getElementById('sc-rr-chart');
-                                    var line   = document.getElementById('sc-rr-line');
-                                    var fill   = document.getElementById('sc-rr-fill');
-                                    if (!svg || !line || !fill) return;
-
-                                    var W = 280, H = 60;
-                                    if (!runRates || runRates.length < 2) {
-                                      line.setAttribute('points', '');
-                                      fill.setAttribute('points', '');
-                                      return;
-                                    }
-                                    var maxRR = Math.max.apply(null, runRates) || 1;
-                                    var pts = runRates.map(function(rr, i) {
-                                      var x = (i / (runRates.length - 1)) * W;
-                                      var y = H - (rr / (maxRR * 1.2)) * H;
-                                      return x.toFixed(1) + ',' + y.toFixed(1);
-                                    });
-                                    line.setAttribute('points', pts.join(' '));
-                                    // fill polygon: close bottom
-                                    var first = '0,' + H;
-                                    var last  = W + ',' + H;
-                                    fill.setAttribute('points', first + ' ' + pts.join(' ') + ' ' + last);
-                                  }
-
-                                  // ── Parse eventName → team1, team2 ─────────────────────
-                                  function parseTeams(name) {
-                                    if (!name) return { t1: '—', t2: '—' };
-                                    // "England v New Zealand" or "England vs New Zealand"
-                                    var parts = name.split(/\s+(?:v|vs)\.?\s+/i);
-                                    if (parts.length >= 2) return { t1: parts[0].trim(), t2: parts[1].trim() };
-                                    return { t1: name, t2: '' };
-                                  }
-
-                                  // ── Extract score info from FancyMarkets ────────────────
-                                  // FancyMarkets runners mein "INNINGS RUNS" ya "X OVERS" markets hote hain
-                                  function extractScoreFromFancy(vm) {
-                                    var fancy = (vm && vm.FancyMarkets) ? vm.FancyMarkets : [];
-                                    var result = {
-                                      inn1Score: null, inn1Wkts: null, inn1Ovs: null,
-                                      inn2Score: null, inn2Wkts: null, inn2Ovs: null,
-                                      currentInn: 1, runRates: []
-                                    };
-                                    fancy.forEach(function(mkt) {
-                                      var mname = (mkt.marketName || mkt.name || '').toLowerCase();
-                                      // 1st innings runs market
-                                      if (mname.includes('1st innings') && mname.includes('run')) {
-                                        var r = mkt.runners && mkt.runners[0];
-                                        if (r && r.back && r.back[0]) {
-                                          result.inn1Score = r.back[0].price;
-                                          result.currentInn = 1;
-                                        }
-                                      }
-                                      // 2nd innings runs market
-                                      if (mname.includes('2nd innings') && mname.includes('run')) {
-                                        var r = mkt.runners && mkt.runners[0];
-                                        if (r && r.back && r.back[0]) {
-                                          result.inn2Score = r.back[0].price;
-                                          result.currentInn = 2;
-                                        }
-                                      }
-                                    });
-                                    return result;
-                                  }
-
-                                  // ── Main update function ────────────────────────────────
-                                  function updateScorecard() {
-                                    var el = document.getElementById('MarketView') || document.getElementById('app');
-                                    var vm = el ? el.__vue__ : null;
-                                    if (!vm || !vm.Catalog) return;
-
-                                    var cat    = vm.Catalog;
-                                    var teams  = parseTeams(cat.eventName || cat.marketName || '');
-                                    var fancy  = extractScoreFromFancy(vm);
-
-                                    // ── Team names ──
-                                    var t1El = document.getElementById('sc-team1');
-                                    var t2El = document.getElementById('sc-team2');
-                                    if (t1El) t1El.textContent = teams.t1 || '—';
-                                    if (t2El) t2El.textContent = teams.t2 || '—';
-
-                                    // ── Innings label ──
-                                    var innLbl = document.getElementById('sc-inn-label');
-                                    if (innLbl) {
-                                      var ovStr = cat.inPlay ? '' : '';
-                                      // Try to read overs from catalog marketName e.g "95 Over Run NZ"
-                                      innLbl.textContent = 'INN ' + fancy.currentInn;
-                                    }
-
-                                    // ── Score display ──
-                                    // Try runners for last price (closest to real score for fancy)
-                                    var score1El = document.getElementById('sc-score1');
-                                    var overs1El = document.getElementById('sc-overs1');
-                                    var score2El = document.getElementById('sc-score2');
-                                    var overs2El = document.getElementById('sc-overs2');
-                                    var statusEl = document.getElementById('sc-status-text');
-
-                                    // Build score from fancy data
-                                    if (fancy.inn1Score !== null && score1El) {
-                                      score1El.textContent = fancy.inn1Score;
-                                      if (overs1El) overs1El.textContent = '';
-                                    } else if (score1El) {
-                                      score1El.textContent = '—';
-                                    }
-
-                                    if (fancy.inn2Score !== null && score2El) {
-                                      score2El.textContent = fancy.inn2Score;
-                                    } else if (score2El) {
-                                      score2El.textContent = '—';
-                                    }
-
-                                    // Status text: "Yet to bat" or match status
-                                    if (statusEl) {
-                                      var st = cat.status === 'OPEN'
-                                        ? (cat.inPlay ? 'INPLAY' : 'PRE-MATCH')
-                                        : (cat.status || '');
-                                      statusEl.textContent = st;
-                                      statusEl.style.color = cat.status === 'OPEN' ? '#00c853'
-                                        : cat.status === 'SUSPENDED' ? '#ffc107' : '#ff5c5c';
-                                    }
-
-                                    // ── Innings dropdown ──
-                                    var sel = document.getElementById('sc-inn-select');
-                                    if (sel && sel.options.length === 0) {
-                                      sel.innerHTML = '<option>1st Inn (' + (teams.t1 || 'Team 1') + ')</option>'
-                                                    + '<option>2nd Inn (' + (teams.t2 || 'Team 2') + ')</option>';
-                                    }
-
-                                    // ── Run rate chart — fake sine-like curve from totalMatched ──
-                                    // Real run rate requires over-by-over data (not in Betfair API).
-                                    // Simulate a realistic-looking line based on matched volume per over.
-                                    var matched = cat.totalMatched || 0;
-                                    if (fancy.runRates.length === 0 && matched > 0) {
-                                      // Generate a semi-random but deterministic run rate curve
-                                      var seed = matched % 100;
-                                      var rrs = [];
-                                      for (var ov = 0; ov <= 90; ov += 5) {
-                                        var base = 3.5 + (seed / 100) * 3;
-                                        var wave = Math.sin(ov / 8 + seed / 50) * 1.5;
-                                        rrs.push(Math.max(0, base + wave));
-                                      }
-                                      fancy.runRates = rrs;
-                                    }
-                                    drawRunRateChart(fancy.runRates.length ? fancy.runRates : [3,4,3.5,5,4,3,4.5,5,3.5,4,3,4,5,3.5,4,3,5,4]);
-                                  }
-
-                                  // ── Start polling when LIVEDIV is shown ────────────────
-                                  function startScorecard() {
-                                    updateScorecard();
-                                    _scTimer = setInterval(updateScorecard, 3000);
-                                  }
-
-                                  function stopScorecard() {
-                                    if (_scTimer) { clearInterval(_scTimer); _scTimer = null; }
-                                  }
-
-                                  // Hook into SHOWLIVE / page ready
-                                  document.addEventListener('DOMContentLoaded', function() {
-                                    setTimeout(startScorecard, 1500);
-                                  });
-
-                                  // Also observe #LIVEDIV visibility
-                                  var livediv = document.getElementById('LIVEDIV');
-                                  if (livediv) {
-                                    var obs = new MutationObserver(function(muts) {
-                                      muts.forEach(function(m) {
-                                        if (m.attributeName === 'style') {
-                                          var vis = livediv.style.display !== 'none';
-                                          if (vis) startScorecard(); else stopScorecard();
-                                        }
-                                      });
-                                    });
-                                    obs.observe(livediv, { attributes: true });
-                                  }
-                                })();
-                                </script>
                             </div>
 
 
@@ -7072,5 +7047,57 @@ Vue.component('runner-aggregate', {
 })();
 </script>
     <!-- getRunnerAmounts is defined in the main PNL script above -->
+
+<script>
+// NX Cricket Run Rate Sparkline
+(function() {
+  var _rrHistory = [];
+  var _lastOvers = null;
+
+  function drawSparkline(history) {
+    var svg  = document.getElementById("nx-rr-svg");
+    var line = document.getElementById("nx-rr-line");
+    if (!svg || !line || history.length < 2) return;
+    var maxOv  = Math.max(100, history[history.length-1].over + 5);
+    var maxCRR = Math.max(10, Math.max.apply(null, history.map(function(h){ return h.crr; })) + 1);
+    var pts = history.map(function(h) {
+      var x = (h.over / maxOv) * 280;
+      var y = 50 - (h.crr / maxCRR) * 48;
+      return x.toFixed(1) + "," + y.toFixed(1);
+    }).join(" ");
+    line.setAttribute("points", pts);
+  }
+
+  function tickSparkline() {
+    try {
+      var el = document.getElementById("MarketView") || document.getElementById("app");
+      var vm = el && el.__vue__;
+      if (!vm) return;
+      var score = vm.score;
+      if (!score || !score.commentry) return;
+      var eid = String((vm.Catalog && vm.Catalog.eventTypeId) || "");
+      if (eid !== "4") return;
+      var overs, crr;
+      if (score.target > 0 && score.team2) {
+        overs = parseFloat(score.t2_overs) || 0;
+        crr   = parseFloat(score.t2_crr)   || 0;
+      } else {
+        overs = parseFloat(score.t1_overs) || 0;
+        crr   = parseFloat(score.t1_crr)   || 0;
+      }
+      if (!overs || !crr) return;
+      if (overs !== _lastOvers) {
+        _lastOvers = overs;
+        _rrHistory.push({ over: overs, crr: crr });
+        if (_rrHistory.length > 100) _rrHistory.shift();
+        drawSparkline(_rrHistory);
+      }
+    } catch(e) {}
+  }
+
+  setInterval(tickSparkline, 3000);
+  setTimeout(tickSparkline, 2000);
+})();
+</script>
 </body>
 </html>

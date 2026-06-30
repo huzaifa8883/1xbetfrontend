@@ -505,10 +505,9 @@
 <link rel="stylesheet" type="text/css" href="/css/ledger.css" />
 <style>
     /* Print/Excel/PDF buttons — dark gray pill container, jaisa reference design */
-    /* FIX: PC mode pe # column hide — icon aur number sirf mobile pe */
+    /* FIX: PC mode pe # column mein sirf number — icon hide, column visible */
     @media (min-width: 768px) {
-      #tableLedger th:first-child,
-      #tableLedger td:first-child {
+      #tableLedger td:first-child span {
         display: none !important;
       }
     }

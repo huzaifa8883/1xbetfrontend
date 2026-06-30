@@ -504,8 +504,36 @@
                     <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/dt/jszip-3.10.1/dt-2.1.8/b-3.1.2/b-html5-3.1.2/b-print-3.1.2/r-3.0.3/datatables.min.css" />
 <link rel="stylesheet" type="text/css" href="/css/ledger.css" />
 <style>
-    button.dt-button, div.dt-button, a.dt-button {
-        padding: 5px;
+    /* Print/Excel/PDF buttons — dark gray pill container, jaisa reference design */
+    div.dt-buttons {
+        display: flex;
+        background: #6c757d;
+        border-radius: 4px;
+        overflow: hidden;
+        width: 100%;
+    }
+    div.dt-buttons button.dt-button,
+    div.dt-buttons a.dt-button {
+        flex: 1;
+        background: transparent !important;
+        border: none !important;
+        border-right: 1px solid rgba(255,255,255,0.25) !important;
+        color: #fff !important;
+        font-style: italic;
+        font-weight: 500;
+        padding: 10px 5px;
+        margin: 0 !important;
+        border-radius: 0 !important;
+        text-align: center;
+    }
+    div.dt-buttons button.dt-button:last-child,
+    div.dt-buttons a.dt-button:last-child {
+        border-right: none !important;
+    }
+    div.dt-buttons button.dt-button:hover,
+    div.dt-buttons a.dt-button:hover {
+        background: rgba(255,255,255,0.12) !important;
+        color: #fff !important;
     }
 </style>
 
@@ -847,7 +875,6 @@
     <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
     <script type="text/javascript" src="https://wurfl.io/wurfl.js"></script>
     <script type="text/javascript" src="/dist/bundle0a.js"></script>
-    <!-- ✅ DataTables — jQuery (bundle0a.js) ke turant baad load karo -->
     <!-- ✅ DataTables — jQuery (bundle0a.js) ke turant baad load karo (CDN combined bundle: core+buttons+html5+print+responsive) -->
     <script type="text/javascript" src="https://cdn.datatables.net/v/dt/jszip-3.10.1/dt-2.1.8/b-3.1.2/b-html5-3.1.2/b-print-3.1.2/r-3.0.3/datatables.min.js"></script>
 
@@ -927,7 +954,13 @@
     const username = (window._currentUser && window._currentUser.username) || 'User';
 
     const tblLed = $table.DataTable({
-      responsive: true,
+      responsive: {
+        details: {
+          type: 'column',
+          target: 0,
+          display: $.fn.dataTable.Responsive.display.childRowImmediate
+        }
+      },
       "order": [[0, "asc"]],
       dom: "<'row'<'col-sm-2'l><'col-sm-5'B><'col-sm-5'f>>" +
            "<'row'<'col-sm-12'tr>>" +

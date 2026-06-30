@@ -501,7 +501,7 @@
                 </div>
 
                 <div class="content-wrap body">
-                    <link rel="stylesheet" type="text/css" href="/lib/datatables/datatables.min.css" />
+                    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/dt/jszip-3.10.1/dt-2.1.8/b-3.1.2/b-html5-3.1.2/b-print-3.1.2/r-3.0.3/datatables.min.css" />
 <link rel="stylesheet" type="text/css" href="/css/ledger.css" />
 <style>
     button.dt-button, div.dt-button, a.dt-button {
@@ -847,8 +847,8 @@
     <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
     <script type="text/javascript" src="https://wurfl.io/wurfl.js"></script>
     <script type="text/javascript" src="/dist/bundle0a.js"></script>
-    <!-- ✅ DataTables — jQuery (bundle0a.js) ke turant baad load karo -->
-    <script type="text/javascript" src="/lib/datatables/datatables.min.js"></script>
+    <!-- ✅ DataTables — jQuery (bundle0a.js) ke turant baad load karo (CDN combined bundle: core+buttons+html5+print+responsive) -->
+    <script type="text/javascript" src="https://cdn.datatables.net/v/dt/jszip-3.10.1/dt-2.1.8/b-3.1.2/b-html5-3.1.2/b-print-3.1.2/r-3.0.3/datatables.min.js"></script>
 
     <script>
         const token = getCookie('wexscktoken');
@@ -933,8 +933,11 @@
            "<'row'<'col-sm-5'i><'col-sm-7'p>>",
 
       columnDefs: [
-        { responsivePriority: 1, targets: 0 },
-        { responsivePriority: 2, targets: 2 },
+        { responsivePriority: 1, targets: 0 },   // # — hamesha visible
+        { responsivePriority: 2, targets: 2 },   // Description — hamesha visible
+        { responsivePriority: 3, targets: 1 },   // Date — collapse hoga child row mein
+        { responsivePriority: 4, targets: 3 },   // Amount — collapse hoga child row mein
+        { responsivePriority: 5, targets: 4 },   // Balance — collapse hoga child row mein
         { "type": "date", "targets": [1] }
       ],
       buttons: [

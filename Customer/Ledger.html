@@ -917,14 +917,16 @@
       return;
     }
 
-    // Pehle se init hai to destroy karke dobara banao (data refresh ke baad)
+    // Pehle se init hai to poora destroy karke clean table wapas lao
+    // { remove: true } zaroori hai — warna purana corrupted header reh jaata hai
     if (jQuery.fn.DataTable.isDataTable('#tableLedger')) {
-      $table.DataTable().destroy();
+      $table.DataTable().destroy(true);
     }
 
     const username = (window._currentUser && window._currentUser.username) || 'User';
 
     const tblLed = $table.DataTable({
+      responsive: true,
       "order": [[0, "asc"]],
       dom: "<'row'<'col-sm-2'l><'col-sm-5'B><'col-sm-5'f>>" +
            "<'row'<'col-sm-12'tr>>" +
@@ -957,13 +959,9 @@
       ]
     });
 
-    if (typeof IsMobile === 'function' && IsMobile()) {
-      new jQuery.fn.dataTable.Responsive(tblLed, {
-        details: {
-          display: jQuery.fn.dataTable.Responsive.display.childRowImmediate
-        }
-      });
-    }
+    // responsive:true se DataTable() call ke andar hi Responsive plugin auto-init ho jaata hai —
+    // isliye manual `new Responsive()` ki zaroorat nahi (woh duplicate init karke header corrupt
+    // kar raha tha). Sirf yahan IsMobile() check optional hai agar future mein conditional logic chahiye.
   }
 
   new Vue({

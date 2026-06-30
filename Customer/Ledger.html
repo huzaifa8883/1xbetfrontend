@@ -591,14 +591,88 @@
 </div>
 
 </div>
+<!-- ═══════════════════════════════════════════════════════════
+     BET DETAIL POPUP MODAL — statements.html jaisa UI
+══════════════════════════════════════════════════════════════ -->
+<div id="betDetailModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+     background:rgba(0,0,0,0.6); z-index:9999; overflow-y:auto;">
+  <div style="background:#fff; margin:30px auto; max-width:850px; border-radius:6px;
+       box-shadow:0 8px 32px rgba(0,0,0,0.4); padding:0; overflow:hidden;">
+
+    <!-- Header -->
+    <div style="background:#1a2942; color:white; padding:14px 18px; display:flex;
+         justify-content:space-between; align-items:center;">
+      <h5 id="modalEventTitle" style="margin:0; font-size:15px; font-weight:700;"></h5>
+      <button onclick="closeBetModal()" style="background:none; border:none; color:white;
+              font-size:22px; cursor:pointer; line-height:1;">&times;</button>
+    </div>
+
+    <!-- Badges row -->
+    <div style="background:#f8f9fa; padding:12px 18px; border-bottom:1px solid #dee2e6;">
+      <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center;">
+        <div>
+          Winner
+          <span id="modalWinner" class="badge badge-warning ml-1" style="font-size:13px;"></span>
+        </div>
+        <div>
+          Net PL
+          <span id="modalNetPL" class="badge ml-1" style="font-size:13px;"></span>
+        </div>
+        <div>
+          Username
+          <span id="modalUsername" class="badge badge-warning ml-1" style="font-size:13px;"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div style="padding:16px 18px; overflow-x:auto;">
+      <table id="modalBetTable" class="table table-sm table-striped table-bordered nowrap"
+             style="width:100%; font-size:13px;">
+        <thead>
+          <tr style="background:#1a2942; color:white;">
+            <th>Runner</th>
+            <th>Price</th>
+            <th>Size</th>
+            <th>Side</th>
+            <th>P/L</th>
+            <th>Placed At</th>
+            <th>Matched At</th>
+            <th>Settled At</th>
+          </tr>
+        </thead>
+        <tbody id="modalBetTbody"></tbody>
+      </table>
+    </div>
+
+    <!-- Commission row -->
+    <div id="modalCommRow" style="display:none; padding:0 18px 16px;">
+      <table class="table table-sm table-bordered" style="font-size:13px;">
+        <tbody>
+          <tr>
+            <td>Commission (2.00%)</td>
+            <td>0.0000</td><td>0</td>
+            <td class="bg-danger" style="color:white;"><strong>C</strong></td>
+            <td class="position-minus" id="modalCommAmt" style="color:red;"></td>
+            <td colspan="3"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="padding:10px 18px; text-align:right; border-top:1px solid #dee2e6; background:#f8f9fa;">
+      <button onclick="closeBetModal()" class="btn btn-secondary btn-sm">Close</button>
+    </div>
+  </div>
+</div>
+
 <div id="ledgerApp" class="table-wrap">
-    <div class="">
-        <div class="card">
-            <div class="card-header">
-                <i class="fa fa-align-justify"></i>
-                Account Ledger
-            </div>
-            <div class="card-body">
+  <div>
+    <div class="card">
+      <div class="card-header">
+        <i class="fa fa-align-justify"></i> Account Ledger (Statement)
+      </div>
+      <div class="card-body">
 
         <!-- Loading / Error states -->
         <div v-if="loading" style="color:#fff; padding:12px;">Loading statement...</div>
@@ -609,26 +683,29 @@
 
         <table v-if="!loading && ledger.length > 0"
                id="tableLedger"
-               class="table table-striped table-bordered">
+               class="table table-sm table-striped table-bordered nowrap"
+               style="width:100%;">
           <thead>
             <tr>
-              <th>#</th>
+              <th data-priority="1">#</th>
               <th>Date</th>
-              <th>Description</th>
+              <th data-priority="2">Description</th>
               <th>Amount</th>
               <th>Balance</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(row, i) in ledger" :key="i">
+            <tr v-for="(row, i) in ledger" :key="i"
+                :style="{ fontWeight: row.isOpen ? '700' : '400',
+                          cursor: row.type === 'win' || row.type === 'loss' ? 'pointer' : 'default' }"
+                @click="row.type === 'win' || row.type === 'loss' ? openBetDetail(row) : null">
               <td>{{ i + 1 }}</td>
               <td>{{ row.date }}</td>
-              <td>
-                <a href="#" @click.prevent="row.type === 'win' || row.type === 'loss' ? openBetDetail(row) : null">
-                  {{ row.description }}
-                </a>
+              <td :style="{ color: row.type === 'win' || row.type === 'loss' ? '#00b181' : '#00b181',
+                            textDecoration: row.type === 'win' || row.type === 'loss' ? 'underline' : 'none' }">
+                {{ row.description }}
               </td>
-              <td>
+              <td :class="{'text-success': row.amount > 0, 'text-danger': row.amount < 0}">
                 <span v-if="row.isOpen">0</span>
                 <span v-else-if="row.amount > 0">+{{ row.amount.toLocaleString() }}</span>
                 <span v-else-if="row.amount < 0">{{ row.amount.toLocaleString() }}</span>
@@ -639,9 +716,9 @@
           </tbody>
         </table>
 
-            </div>
-        </div>
+      </div>
     </div>
+  </div>
 </div>
 <script>
     function popup_report(vid, aid) {
@@ -770,6 +847,8 @@
     <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
     <script type="text/javascript" src="https://wurfl.io/wurfl.js"></script>
     <script type="text/javascript" src="/dist/bundle0a.js"></script>
+    <!-- ✅ DataTables — jQuery (bundle0a.js) ke turant baad load karo -->
+    <script type="text/javascript" src="/lib/datatables/datatables.min.js"></script>
 
     <script>
         const token = getCookie('wexscktoken');
@@ -823,6 +902,44 @@
   'use strict';
 
   const _STMT_API = "https://1XBETBACKEND.WORK.GD/api/v1";
+
+  // ── DataTable init — Print/Excel/PDF buttons + responsive card-stack mobile UI ──
+  let _dtInitTries = 0;
+  function initLedgerDataTable() {
+    const $table = window.jQuery ? jQuery('#tableLedger') : null;
+
+    if (!window.jQuery || !jQuery.fn.DataTable || !$table || $table.length === 0) {
+      // jQuery/DataTables abhi load nahi hue ya table DOM mein nahi aaya — thodi der baad retry
+      if (_dtInitTries < 20) {
+        _dtInitTries++;
+        setTimeout(initLedgerDataTable, 150);
+      }
+      return;
+    }
+
+    // Pehle se init hai to destroy karke dobara banao (data refresh ke baad)
+    if (jQuery.fn.DataTable.isDataTable('#tableLedger')) {
+      $table.DataTable().destroy();
+    }
+
+    // Buttons extension available hai ya nahi — agar nahi to dom/buttons skip karo
+    const hasButtons = !!(jQuery.fn.dataTable && jQuery.fn.dataTable.Buttons);
+
+    $table.DataTable(Object.assign({
+      responsive: true,
+      ordering: true,
+      pageLength: 10,
+      lengthMenu: [10, 25, 50, 100],
+      order: [[0, 'asc']],
+      language: {
+        search: "Search:",
+        lengthMenu: "_MENU_ entries per page"
+      }
+    }, hasButtons ? {
+      dom: 'lBfrtip',
+      buttons: ['print', 'excel', 'pdf']
+    } : {}));
+  }
 
   new Vue({
     el: "#ledgerApp",
@@ -1056,6 +1173,12 @@
 
           this.ledger = rows;
 
+          // ✅ DataTable init karo — Vue render complete hone ke baad
+          // (responsive: true => mobile pe card-stack view, jaise screenshot mein)
+          this.$nextTick(() => {
+            initLedgerDataTable();
+          });
+
         } catch (err) {
           console.error("Error fetching ledger:", err);
           this.error = "Statement load karne mein masla aaya.";
@@ -1067,26 +1190,15 @@
       openBetDetail(row) {
         if (!row._bets || row._bets.length === 0) return;
 
-        // ── Winner name compute karo (statement.html mein same logic) ──
-        const winnerBetForStorage = row._bets.find(b =>
-          String(b.selection_id || b.selectionId) ===
-          String(b.winning_selection_id || b.winningSelectionId)
-        );
-        // Agar selection_id match nahi hua (fancy/line markets) to _winnerName backend field se lo
-        const computedWinnerName = winnerBetForStorage
-          ? (winnerBetForStorage.runner_name || winnerBetForStorage.runnerName || '')
-          : (row._winnerName || '');
-
-        // ── PC + Mobile: dono pe statements.html pe redirect ─────────
+        // Data sessionStorage mein save karo
         try {
           sessionStorage.setItem('betDetailRow', JSON.stringify({
-            _eventName:   row._eventName   || '',
-            _grossPnl:    row._grossPnl    || 0,
-            _commission:  row._commission  || 0,
-            _netPnl:      row._netPnl      || row.amount || 0,
-            _username:    row._username    || 'User',
-            _winnerName:  computedWinnerName,
-            _bets: row._bets.map(b => ({
+            _eventName:  row._eventName  || '',
+            _grossPnl:   row._grossPnl   || 0,
+            _commission: row._commission || 0,
+            _netPnl:     row._netPnl     || row.amount || 0,
+            _username:   row._username   || 'User',
+            _bets: row._bets.map(function(b) { return {
               runner_name:          b.runner_name   || b.runnerName   || '',
               price:                b.price,
               size:                 b.matched || b.size,
@@ -1098,11 +1210,12 @@
               updated_at:           b.updated_at,
               settled_at:           b.settled_at,
               request_id:           b.request_id    || b.id || ''
-            }))
+            }; })
           }));
-        } catch(e) {}
+        } catch(e) { console.warn('sessionStorage error:', e); }
+
+        // Mobile + PC dono redirect
         window.location.href = '/Customer/Statements';
-        return;
       }
     },
     mounted() {
@@ -1144,6 +1257,20 @@
     }
   });
 })();
+
+// ── Bet Detail Modal — open/close helpers ─────────────────────
+window.closeBetModal = function() {
+  document.getElementById('betDetailModal').style.display = 'none';
+  document.body.style.overflow = '';
+};
+// ESC key se band karo
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') window.closeBetModal();
+});
+// Modal background click se band karo
+document.getElementById('betDetailModal').addEventListener('click', function(e) {
+  if (e.target === this) window.closeBetModal();
+});
 
 // ✅ Submit button: dates update karo aur Vue ledger refresh karo (page reload nahi)
 window.updateDates = function() {

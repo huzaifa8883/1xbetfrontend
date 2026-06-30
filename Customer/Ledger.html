@@ -504,6 +504,46 @@
                     <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/dt/jszip-3.10.1/dt-2.1.8/b-3.1.2/b-html5-3.1.2/b-print-3.1.2/r-3.0.3/datatables.min.css" />
 <link rel="stylesheet" type="text/css" href="/css/ledger.css" />
 <style>
+    /* ── Responsive control icon — red/blue circle (Image 1 jaisa) ── */
+    table.dataTable td.control {
+        cursor: pointer;
+        text-align: center;
+    }
+    table.dataTable td.control:before {
+        display: inline-block;
+        width: 22px;
+        height: 22px;
+        line-height: 22px;
+        border-radius: 50%;
+        text-align: center;
+        font-size: 15px;
+        font-weight: bold;
+        color: #fff;
+        content: '+';
+        background-color: #0d6efd; /* blue — collapsed state */
+        box-shadow: 0 0 3px rgba(0,0,0,0.3);
+    }
+    table.dataTable tr.dtr-expanded td.control:before {
+        content: '2'; /* minus sign − */
+        background-color: #dc3545; /* red — expanded state */
+    }
+    /* Description cell: wrap text on mobile */
+    table.dataTable td:nth-child(3) span,
+    table.dataTable td:nth-child(3) {
+        white-space: normal !important;
+        word-break: break-word;
+        max-width: 200px;
+    }
+    /* Child rows — bold labels (Date / Amount / Balance) */
+    table.dataTable tr.child td.child ul.dtr-details li {
+        padding: 6px 0;
+        border-bottom: 1px solid #eee;
+    }
+    table.dataTable tr.child td.child ul.dtr-details li span.dtr-title {
+        font-weight: 700;
+        min-width: 80px;
+        display: inline-block;
+    }
     /* Print/Excel/PDF buttons — dark gray pill container, jaisa reference design */
     div.dt-buttons {
         display: flex;
@@ -711,7 +751,7 @@
 
         <table v-if="!loading && ledger.length > 0"
                id="tableLedger"
-               class="table table-sm table-striped table-bordered nowrap"
+               class="table table-sm table-striped table-bordered"
                style="width:100%;">
           <thead>
             <tr>
@@ -956,9 +996,12 @@
     const tblLed = $table.DataTable({
       responsive: {
         details: {
+          // type: 'column' — control icon # column pe (left side circle)
+          // childRowImmediate — sab rows load hote hi expanded (Image 1 jaisa)
           type: 'column',
           target: 0,
-          display: $.fn.dataTable.Responsive.display.childRowImmediate
+          display: $.fn.dataTable.Responsive.display.childRowImmediate,
+          renderer: $.fn.dataTable.Responsive.renderer.listHiddenNodes()
         }
       },
       "order": [[0, "asc"]],
@@ -967,11 +1010,17 @@
            "<'row'<'col-sm-5'i><'col-sm-7'p>>",
 
       columnDefs: [
-        { className: 'all', targets: 0 },          // # — kabhi collapse na ho
-        { className: 'all', targets: 2 },          // Description — kabhi collapse na ho
-        { responsivePriority: 1, targets: 1 },      // Date — collapse hoga child row mein
-        { responsivePriority: 2, targets: 3 },      // Amount — collapse hoga child row mein
-        { responsivePriority: 3, targets: 4 },      // Balance — collapse hoga child row mein
+        // # column: control icon lagega (type:'column', target:0)
+        { className: 'all control', targets: 0 },
+        // Description: kabhi collapse na ho, aur word-wrap on
+        { className: 'all', targets: 2,
+          render: function(data) {
+            return '<span style="white-space:normal;word-break:break-word;">' + (data || '') + '</span>';
+          }
+        },
+        { responsivePriority: 1, targets: 1 },   // Date
+        { responsivePriority: 2, targets: 3 },   // Amount
+        { responsivePriority: 3, targets: 4 },   // Balance
         { "type": "date", "targets": [1] }
       ],
       buttons: [

@@ -253,86 +253,34 @@
   background-color: #2a2a2a;
 }
 
-/* ============ SKELETON LOADER + COORDINATED REVEAL ============ */
-.skeleton-wrap {
-    width: 100%;
-    background-color: #2f3034 !important;
-    padding: 8px;
-    box-sizing: border-box;
-    border-radius: 4px;
+/* Prevent white background bleed anywhere behind the loader/content area */
+.table-wrap,
+.table-box-body,
+.bets {
+    background-color: #1e1f22 !important;
 }
-
-.sk-row {
+/* ============ SIMPLE LOADER + COORDINATED REVEAL ============ */
+.dash-loader {
+    width: 100%;
+    min-height: 320px;
     display: flex;
     align-items: center;
-    gap: 4px;
-    width: 100%;
-    height: 90px;
-    margin-bottom: 10px;
-    padding: 8px;
-    background-color: #43444A !important;
-    border-radius: 4px;
-    box-sizing: border-box;
+    justify-content: center;
+    background-color: #1e1f22;
 }
-.sk-card {
-    height: 100%;
-    flex: 1;
-    min-width: 70px;
-    border-radius: 4px;
-    background-color: #67686e !important;
-    background-image: linear-gradient(90deg, #55565c 25%, #78797f 37%, #55565c 63%) !important;
-    background-size: 400% 100% !important;
-    animation: sk-shimmer 1.4s ease-in-out infinite !important;
+.dash-spinner {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 4px solid rgba(255, 255, 255, 0.15);
+    border-top-color: #4dbd74;
+    animation: dash-spin 0.8s linear infinite;
 }
-
-.sk-tabs {
-    display: flex;
-    gap: 8px;
-    width: 100%;
-    height: 60px;
-    margin-bottom: 10px;
-    overflow: hidden;
-    background-color: #2f3034 !important;
+@keyframes dash-spin {
+    to { transform: rotate(360deg); }
 }
-.sk-tab {
-    min-width: 80px;
-    height: 100%;
-    border-radius: 4px;
-    background-color: #4a4b50 !important;
-    background-image: linear-gradient(90deg, #3a3b40 25%, #5a5b60 37%, #3a3b40 63%) !important;
-    background-size: 400% 100% !important;
-    animation: sk-shimmer 1.4s ease-in-out infinite !important;
-    flex-shrink: 0;
-}
-
-.sk-table {
-    width: 100%;
-    border-radius: 4px;
-    overflow: hidden;
-    background-color: #2f3034 !important;
-}
-.sk-table-row {
-    display: flex;
-    gap: 6px;
-    padding: 10px 12px;
-    background-color: #2f3034 !important;
-    border-bottom: 1px solid #26272b;
-}
-.sk-cell {
-    height: 16px;
-    border-radius: 3px;
-    background-color: #4a4b50 !important;
-    background-image: linear-gradient(90deg, #3a3b40 25%, #5a5b60 37%, #3a3b40 63%) !important;
-    background-size: 400% 100% !important;
-    animation: sk-shimmer 1.4s ease-in-out infinite !important;
-}
-.sk-cell.w1 { flex: 2; }
-.sk-cell.w2 { flex: 1; }
-.sk-cell.w3 { flex: 1; }
-
-@keyframes sk-shimmer {
-    0% { background-position: 100% 50%; }
-    100% { background-position: 0 50%; }
+.dash-loader.is-hidden {
+    display: none;
 }
 
 /* Real content stays invisible (opacity) until everything is ready,
@@ -344,12 +292,6 @@
 }
 #realContent.is-ready {
     opacity: 1;
-}
-.skeleton-wrap {
-    transition: opacity 0.2s ease-out;
-}
-.skeleton-wrap.is-hidden {
-    display: none;
 }
 </style>
 
@@ -704,27 +646,10 @@
             <div class="table-wrap">
                 <div class="table-box-body">
                     <div class="bets">
-                        <!-- Skeleton placeholder shown instantly, no layout shift once real content swaps in -->
-                        <div class="skeleton-wrap" id="dashSkeleton">
-                            <div class="sk-row">
-                                <div class="sk-card"></div><div class="sk-card"></div><div class="sk-card"></div>
-                                <div class="sk-card"></div><div class="sk-card"></div><div class="sk-card"></div>
-                            </div>
-                            <div class="sk-row">
-                                <div class="sk-card"></div><div class="sk-card"></div><div class="sk-card"></div>
-                                <div class="sk-card"></div><div class="sk-card"></div><div class="sk-card"></div>
-                            </div>
-                            <div class="sk-tabs">
-                                <div class="sk-tab"></div><div class="sk-tab"></div><div class="sk-tab"></div>
-                                <div class="sk-tab"></div><div class="sk-tab"></div>
-                            </div>
-                            <div class="sk-table">
-                                <div class="sk-table-row"><div class="sk-cell w1"></div><div class="sk-cell w2"></div><div class="sk-cell w3"></div></div>
-                                <div class="sk-table-row"><div class="sk-cell w1"></div><div class="sk-cell w2"></div><div class="sk-cell w3"></div></div>
-                                <div class="sk-table-row"><div class="sk-cell w1"></div><div class="sk-cell w2"></div><div class="sk-cell w3"></div></div>
-                                <div class="sk-table-row"><div class="sk-cell w1"></div><div class="sk-cell w2"></div><div class="sk-cell w3"></div></div>
-                                <div class="sk-table-row"><div class="sk-cell w1"></div><div class="sk-cell w2"></div><div class="sk-cell w3"></div></div>
-                            </div>
+                        <!-- Simple centered loader, same feel as before — but page reveals
+                             all-at-once only after everything is ready, so no chunk-by-chunk jump -->
+                        <div class="dash-loader" id="dashSkeleton">
+                            <div class="dash-spinner"></div>
                         </div>
 
                         <!-- Real content: built off-screen (opacity 0) so plugins like slick can

@@ -253,86 +253,72 @@
   background-color: #2a2a2a;
 }
 
-/* ============ SKELETON LOADER + COORDINATED REVEAL ============ */
+/* ============ SPINNER LOADER + COORDINATED REVEAL ============ */
 .skeleton-wrap {
     width: 100%;
-    background-color: #2f3034 !important;
-    padding: 8px;
-    box-sizing: border-box;
-    border-radius: 4px;
-}
-
-.sk-row {
+    min-height: 320px;
+    background-color: #e2e5e9 !important;
     display: flex;
     align-items: center;
-    gap: 4px;
-    width: 100%;
-    height: 90px;
-    margin-bottom: 10px;
-    padding: 8px;
-    background-color: #43444A !important;
+    justify-content: center;
+    box-sizing: border-box;
     border-radius: 4px;
+}
+
+.dash-spinner {
+    position: relative;
+    width: 90px;
+    height: 90px;
+}
+
+.dash-spinner div {
+    position: absolute;
+    border-radius: 50%;
+    border: 5px solid transparent;
     box-sizing: border-box;
 }
-.sk-card {
-    height: 100%;
-    flex: 1;
-    min-width: 70px;
-    border-radius: 4px;
-    background-color: #67686e !important;
-    background-image: linear-gradient(90deg, #55565c 25%, #78797f 37%, #55565c 63%) !important;
-    background-size: 400% 100% !important;
-    animation: sk-shimmer 1.4s ease-in-out infinite !important;
+
+/* outer magenta/purple ring */
+.dash-spinner .ring1 {
+    top: 0;
+    left: 0;
+    width: 90px;
+    height: 90px;
+    border-top-color: #b23fd6;
+    border-right-color: #b23fd6;
+    border-bottom-color: #b23fd6;
+    animation: dash-spin 1.6s linear infinite;
 }
 
-.sk-tabs {
-    display: flex;
-    gap: 8px;
-    width: 100%;
-    height: 60px;
-    margin-bottom: 10px;
-    overflow: hidden;
-    background-color: #2f3034 !important;
-}
-.sk-tab {
-    min-width: 80px;
-    height: 100%;
-    border-radius: 4px;
-    background-color: #4a4b50 !important;
-    background-image: linear-gradient(90deg, #3a3b40 25%, #5a5b60 37%, #3a3b40 63%) !important;
-    background-size: 400% 100% !important;
-    animation: sk-shimmer 1.4s ease-in-out infinite !important;
-    flex-shrink: 0;
+/* middle teal ring */
+.dash-spinner .ring2 {
+    top: 14px;
+    left: 14px;
+    width: 62px;
+    height: 62px;
+    border-top-color: #2fbfa0;
+    border-right-color: #2fbfa0;
+    animation: dash-spin-rev 1.2s linear infinite;
 }
 
-.sk-table {
-    width: 100%;
-    border-radius: 4px;
-    overflow: hidden;
-    background-color: #2f3034 !important;
+/* inner red accent ring */
+.dash-spinner .ring3 {
+    top: 26px;
+    left: 26px;
+    width: 38px;
+    height: 38px;
+    border-top-color: #e6484f;
+    animation: dash-spin 0.9s linear infinite;
 }
-.sk-table-row {
-    display: flex;
-    gap: 6px;
-    padding: 10px 12px;
-    background-color: #2f3034 !important;
-    border-bottom: 1px solid #26272b;
-}
-.sk-cell {
-    height: 16px;
-    border-radius: 3px;
-    background-color: #4a4b50 !important;
-    background-image: linear-gradient(90deg, #3a3b40 25%, #5a5b60 37%, #3a3b40 63%) !important;
-    background-size: 400% 100% !important;
-    animation: sk-shimmer 1.4s ease-in-out infinite !important;
-}
-.sk-cell.w1 { flex: 2; }
-.sk-cell.w2 { flex: 1; }
-.sk-cell.w3 { flex: 1; }
 
-@keyframes sk-shimmer {
-    0% { background-position: 100% 50%; }
-    100% { background-position: 0 50%; }
+@keyframes dash-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes dash-spin-rev {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(-360deg); }
 }
 
 /* Real content stays invisible (opacity) until everything is ready,
@@ -704,26 +690,12 @@
             <div class="table-wrap">
                 <div class="table-box-body">
                     <div class="bets">
-                        <!-- Skeleton placeholder shown instantly, no layout shift once real content swaps in -->
+                        <!-- Spinner placeholder shown instantly, swapped out once real content is ready -->
                         <div class="skeleton-wrap" id="dashSkeleton">
-                            <div class="sk-row">
-                                <div class="sk-card"></div><div class="sk-card"></div><div class="sk-card"></div>
-                                <div class="sk-card"></div><div class="sk-card"></div><div class="sk-card"></div>
-                            </div>
-                            <div class="sk-row">
-                                <div class="sk-card"></div><div class="sk-card"></div><div class="sk-card"></div>
-                                <div class="sk-card"></div><div class="sk-card"></div><div class="sk-card"></div>
-                            </div>
-                            <div class="sk-tabs">
-                                <div class="sk-tab"></div><div class="sk-tab"></div><div class="sk-tab"></div>
-                                <div class="sk-tab"></div><div class="sk-tab"></div>
-                            </div>
-                            <div class="sk-table">
-                                <div class="sk-table-row"><div class="sk-cell w1"></div><div class="sk-cell w2"></div><div class="sk-cell w3"></div></div>
-                                <div class="sk-table-row"><div class="sk-cell w1"></div><div class="sk-cell w2"></div><div class="sk-cell w3"></div></div>
-                                <div class="sk-table-row"><div class="sk-cell w1"></div><div class="sk-cell w2"></div><div class="sk-cell w3"></div></div>
-                                <div class="sk-table-row"><div class="sk-cell w1"></div><div class="sk-cell w2"></div><div class="sk-cell w3"></div></div>
-                                <div class="sk-table-row"><div class="sk-cell w1"></div><div class="sk-cell w2"></div><div class="sk-cell w3"></div></div>
+                            <div class="dash-spinner">
+                                <div class="ring1"></div>
+                                <div class="ring2"></div>
+                                <div class="ring3"></div>
                             </div>
                         </div>
 

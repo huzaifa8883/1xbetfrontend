@@ -7,7 +7,17 @@
 
         <div id="horseSliderOuter" style="display:flex; align-items:center; width:100%; gap:4px;">
             <button class="horse-arrow-btn" id="horsePrevBtn" style="display:none; flex-shrink:0; font-size:26px; font-weight:bold; background:rgba(0,0,0,0.55); border:none; color:white; cursor:pointer; padding:0 10px; border-radius:4px; height:44px; line-height:44px; z-index:20;">&#8249;</button>
-            <div id="horseRaceContainer" style="flex:1; min-width:0; overflow:hidden;"></div>
+            <div id="horseRaceContainer" style="flex:1; min-width:0; overflow:hidden;">
+                <div class="race-skeleton-row">
+                    <div class="race-skeleton-card"></div>
+                    <div class="race-skeleton-card"></div>
+                    <div class="race-skeleton-card"></div>
+                    <div class="race-skeleton-card"></div>
+                    <div class="race-skeleton-card"></div>
+                    <div class="race-skeleton-card"></div>
+                    <div class="race-skeleton-card"></div>
+                </div>
+            </div>
             <button class="horse-arrow-btn" id="horseNextBtn" style="display:none; flex-shrink:0; font-size:26px; font-weight:bold; background:rgba(0,0,0,0.55); border:none; color:white; cursor:pointer; padding:0 10px; border-radius:4px; height:44px; line-height:44px; z-index:20;">&#8250;</button>
         </div>
     </div>
@@ -20,7 +30,17 @@
 
         <div id="greyhoundSliderOuter" style="display:flex; align-items:center; width:100%; gap:4px;">
             <button class="grey-arrow-btn" id="greyPrevBtn" style="display:none; flex-shrink:0; font-size:26px; font-weight:bold; background:rgba(0,0,0,0.55); border:none; color:white; cursor:pointer; padding:0 10px; border-radius:4px; height:44px; line-height:44px; z-index:20;">&#8249;</button>
-            <div id="greyhoundRaceContainer" style="flex:1; min-width:0; overflow:hidden;"></div>
+            <div id="greyhoundRaceContainer" style="flex:1; min-width:0; overflow:hidden;">
+                <div class="race-skeleton-row">
+                    <div class="race-skeleton-card"></div>
+                    <div class="race-skeleton-card"></div>
+                    <div class="race-skeleton-card"></div>
+                    <div class="race-skeleton-card"></div>
+                    <div class="race-skeleton-card"></div>
+                    <div class="race-skeleton-card"></div>
+                    <div class="race-skeleton-card"></div>
+                </div>
+            </div>
             <button class="grey-arrow-btn" id="greyNextBtn" style="display:none; flex-shrink:0; font-size:26px; font-weight:bold; background:rgba(0,0,0,0.55); border:none; color:white; cursor:pointer; padding:0 10px; border-radius:4px; height:44px; line-height:44px; z-index:20;">&#8250;</button>
         </div>
     </div>

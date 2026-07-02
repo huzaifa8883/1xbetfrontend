@@ -232,6 +232,23 @@
             overflow: hidden;
         }
 
+        /* ✅ Anti-flicker: raw/unstyled list ko chupao jab tak slick.js apna
+           layout na laga de. slick init hote hi 'slick-initialized' class
+           khud-ba-khud lag jati hai, tab hi visible karo — is se koi
+           upar-neeche shift/jump nazar nahi aati. */
+        #horseRaceContainer,
+        #greyhoundRaceContainer,
+        .games_slider,
+        #Dashboardmarkets .center {
+            visibility: hidden;
+        }
+        #horseRaceContainer.slick-initialized,
+        #greyhoundRaceContainer.slick-initialized,
+        .games_slider.slick-initialized,
+        #Dashboardmarkets .center.slick-initialized {
+            visibility: visible;
+        }
+
         .cricketEventList {
   list-style: none;
   padding: 0;
@@ -1099,6 +1116,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         if (relevant.length === 0) {
           container.innerHTML = `<div style="text-align:center;color:white;padding:10px;">No upcoming races found.</div>`;
+          container.style.visibility = 'visible'; // no slick init in this branch — show manually
           return;
         }
 
@@ -1119,7 +1137,9 @@ document.addEventListener("DOMContentLoaded", async () => {
           container.appendChild(div);
         });
 
-        // ✅ Slick init
+        // ✅ Slick init — container CSS se 'visibility:hidden' rakha gaya tha,
+        // slick khud 'slick-initialized' class laga deta hai jis se CSS use
+        // turant visible kar deti hai, koi raw-list flash/jump nahi hoti.
         $(container).slick({
           slidesToShow: 8,
           slidesToScroll: 1,
@@ -1143,9 +1163,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       } else {
         container.innerHTML = `<div style="text-align:center;color:white;">No live races found.</div>`;
+        container.style.visibility = 'visible'; // no slick init in this branch — show manually
       }
     } catch (err) {
       console.error('Error loading live horse data:', err.message);
+      const c = document.getElementById('horseRaceContainer');
+      if (c) c.style.visibility = 'visible'; // don't leave it hidden forever on error
     }
   }
 
@@ -1185,6 +1208,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         if (relevant.length === 0) {
           container.innerHTML = `<div style="text-align:center;color:white;padding:10px;">No upcoming races found.</div>`;
+          container.style.visibility = 'visible'; // no slick init in this branch — show manually
           return;
         }
 
@@ -1205,7 +1229,9 @@ document.addEventListener("DOMContentLoaded", async () => {
           container.appendChild(div);
         });
 
-        // ✅ Slick init
+        // ✅ Slick init — container CSS se 'visibility:hidden' rakha gaya tha,
+        // slick khud 'slick-initialized' class laga deta hai jis se CSS use
+        // turant visible kar deti hai, koi raw-list flash/jump nahi hoti.
         $(container).slick({
           slidesToShow: 8,
           slidesToScroll: 1,
@@ -1229,9 +1255,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       } else {
         container.innerHTML = `<div style="text-align:center;color:white;">No live races found.</div>`;
+        container.style.visibility = 'visible'; // no slick init in this branch — show manually
       }
     } catch (err) {
       console.error('Error loading live greyhound data:', err.message);
+      const c = document.getElementById('greyhoundRaceContainer');
+      if (c) c.style.visibility = 'visible'; // don't leave it hidden forever on error
     }
   }
 
@@ -2163,18 +2192,27 @@ document.addEventListener("DOMContentLoaded", async () => {
                     document.getElementById("Dashboardmarkets").innerHTML = result;
                     ActivateTab(LastTab);
                     convertAllToClientTime();
-                    $(".center").slick({
-                        infinite: false,
-                        slidesToShow: 8,
-                        slidesToScroll: 3,
-                        responsive: [
-                            { breakpoint: 1024, settings: { slidesToShow: 3, slidesToScroll: 3 } },
-                            { breakpoint: 600, settings: { slidesToShow: 2, slidesToScroll: 2 } },
-                            { breakpoint: 480, settings: { slidesToShow: 3, slidesToScroll: 2 } }
-                        ]
-                    });
+                    // .center CSS se 'visibility:hidden' hai jab tak slick-initialized na lage —
+                    // agar .center is markup mein exist hi nahi karta, to yahan manually visible kar do
+                    // taake Dashboardmarkets hamesha ke liye chupa na reh jaye.
+                    if ($(".center").length) {
+                        $(".center").slick({
+                            infinite: false,
+                            slidesToShow: 8,
+                            slidesToScroll: 3,
+                            responsive: [
+                                { breakpoint: 1024, settings: { slidesToShow: 3, slidesToScroll: 3 } },
+                                { breakpoint: 600, settings: { slidesToShow: 2, slidesToScroll: 2 } },
+                                { breakpoint: 480, settings: { slidesToShow: 3, slidesToScroll: 2 } }
+                            ]
+                        });
+                    }
+                    document.getElementById("Dashboardmarkets").style.visibility = 'visible';
                 },
-                error: function (jqXhr, textStatus, errorThrown) {}
+                error: function (jqXhr, textStatus, errorThrown) {
+                    const dm = document.getElementById("Dashboardmarkets");
+                    if (dm) dm.style.visibility = 'visible';
+                }
             });
         };
 

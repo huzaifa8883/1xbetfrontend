@@ -1068,9 +1068,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     return new Date(str);
   }
 
-  let horseHasData = false;
-
-  // ✅ Sirf DOM build karta hai — slick yahan INIT nahi hota (parent abhi hidden hai)
   async function loadHorseLiveData() {
     try {
       const res = await fetch('https://1xbetbackend.work.gd/api/v1/markets/live/horse');
@@ -1079,22 +1076,23 @@ document.addEventListener("DOMContentLoaded", async () => {
       const container = document.getElementById('horseRaceContainer');
       if (!container) return;
 
+      // Slick destroy karo agar pehle se initialized hai
       if ($(container).hasClass('slick-initialized')) {
         $(container).slick('unslick');
       }
       container.innerHTML = '';
 
+      // ✅ Arrows pehle se HTML mein hain — sirf dhundho
       const prevBtn = document.getElementById('horsePrevBtn');
       const nextBtn = document.getElementById('horseNextBtn');
       if (prevBtn) prevBtn.style.display = 'none';
       if (nextBtn) nextBtn.style.display = 'none';
 
-      horseHasData = false;
-
       if (data.success && Array.isArray(data.data) && data.data.length > 0) {
         const now = new Date();
         const thirtyMinAgo = new Date(now.getTime() - 30 * 60_000);
 
+        // Filter: 30 min pehle se aage, sort by time ascending
         const relevant = data.data
           .filter(m => parseUTC(m.startTime) >= thirtyMinAgo)
           .sort((a, b) => parseUTC(a.startTime) - parseUTC(b.startTime));
@@ -1121,7 +1119,27 @@ document.addEventListener("DOMContentLoaded", async () => {
           container.appendChild(div);
         });
 
-        horseHasData = true;
+        // ✅ Slick init
+        $(container).slick({
+          slidesToShow: 8,
+          slidesToScroll: 1,
+          infinite: false,
+          arrows: false,
+          responsive: [
+            { breakpoint: 768, settings: { slidesToShow: 3 } },
+            { breakpoint: 480, settings: { slidesToShow: 3 } }
+          ]
+        });
+
+        // ✅ Ab arrows show karo aur click wire up karo
+        if (prevBtn) {
+          prevBtn.style.display = 'block';
+          prevBtn.onclick = () => $(container).slick('slickPrev');
+        }
+        if (nextBtn) {
+          nextBtn.style.display = 'block';
+          nextBtn.onclick = () => $(container).slick('slickNext');
+        }
 
       } else {
         container.innerHTML = `<div style="text-align:center;color:white;">No live races found.</div>`;
@@ -1131,43 +1149,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  // ✅ Parent visible hone ke BAAD call hota hai — ab slick sahi width calculate karega
-  function initHorseSlick() {
-    const container = document.getElementById('horseRaceContainer');
-    if (!container || !horseHasData) return;
-
-    const prevBtn = document.getElementById('horsePrevBtn');
-    const nextBtn = document.getElementById('horseNextBtn');
-
-    $(container).slick({
-      slidesToShow: 8,
-      slidesToScroll: 1,
-      infinite: false,
-      arrows: false,
-      responsive: [
-        { breakpoint: 768, settings: { slidesToShow: 3 } },
-        { breakpoint: 480, settings: { slidesToShow: 3 } }
-      ]
-    });
-
-    if (prevBtn) {
-      prevBtn.style.display = 'block';
-      prevBtn.onclick = () => $(container).slick('slickPrev');
-    }
-    if (nextBtn) {
-      nextBtn.style.display = 'block';
-      nextBtn.onclick = () => $(container).slick('slickNext');
-    }
-  }
-
-  // loadHorseLiveData() aur initHorseSlick() — document.ready mein call honge
+  // loadHorseLiveData() — document.ready mein Promise.all se call hogi
 </script>
 
 <!-- ✅ Greyhound Slick Slider -->
 <script>
-  let greyhoundHasData = false;
-
-  // ✅ Sirf DOM build karta hai — slick yahan INIT nahi hota (parent abhi hidden hai)
   async function loadgreyhoundLiveData() {
     try {
       const res = await fetch('https://1xbetbackend.work.gd/api/v1/markets/live/greyhound');
@@ -1176,22 +1162,23 @@ document.addEventListener("DOMContentLoaded", async () => {
       const container = document.getElementById('greyhoundRaceContainer');
       if (!container) return;
 
+      // Slick destroy karo agar pehle se initialized hai
       if ($(container).hasClass('slick-initialized')) {
         $(container).slick('unslick');
       }
       container.innerHTML = '';
 
+      // ✅ Arrows pehle se HTML mein hain — sirf dhundho
       const prevBtn = document.getElementById('greyPrevBtn');
       const nextBtn = document.getElementById('greyNextBtn');
       if (prevBtn) prevBtn.style.display = 'none';
       if (nextBtn) nextBtn.style.display = 'none';
 
-      greyhoundHasData = false;
-
       if (data.success && Array.isArray(data.data) && data.data.length > 0) {
         const now = new Date();
         const thirtyMinAgo = new Date(now.getTime() - 30 * 60_000);
 
+        // Filter: 30 min pehle se aage, sort by time ascending
         const relevant = data.data
           .filter(m => parseUTC(m.startTime) >= thirtyMinAgo)
           .sort((a, b) => parseUTC(a.startTime) - parseUTC(b.startTime));
@@ -1218,42 +1205,33 @@ document.addEventListener("DOMContentLoaded", async () => {
           container.appendChild(div);
         });
 
-        greyhoundHasData = true;
+        // ✅ Slick init
+        $(container).slick({
+          slidesToShow: 8,
+          slidesToScroll: 1,
+          infinite: false,
+          arrows: false,
+          responsive: [
+            { breakpoint: 768, settings: { slidesToShow: 3 } },
+            { breakpoint: 480, settings: { slidesToShow: 3 } }
+          ]
+        });
+
+        // ✅ Ab arrows show karo aur click wire up karo
+        if (prevBtn) {
+          prevBtn.style.display = 'block';
+          prevBtn.onclick = () => $(container).slick('slickPrev');
+        }
+        if (nextBtn) {
+          nextBtn.style.display = 'block';
+          nextBtn.onclick = () => $(container).slick('slickNext');
+        }
 
       } else {
         container.innerHTML = `<div style="text-align:center;color:white;">No live races found.</div>`;
       }
     } catch (err) {
       console.error('Error loading live greyhound data:', err.message);
-    }
-  }
-
-  // ✅ Parent visible hone ke BAAD call hota hai — ab slick sahi width calculate karega
-  function initGreyhoundSlick() {
-    const container = document.getElementById('greyhoundRaceContainer');
-    if (!container || !greyhoundHasData) return;
-
-    const prevBtn = document.getElementById('greyPrevBtn');
-    const nextBtn = document.getElementById('greyNextBtn');
-
-    $(container).slick({
-      slidesToShow: 8,
-      slidesToScroll: 1,
-      infinite: false,
-      arrows: false,
-      responsive: [
-        { breakpoint: 768, settings: { slidesToShow: 3 } },
-        { breakpoint: 480, settings: { slidesToShow: 3 } }
-      ]
-    });
-
-    if (prevBtn) {
-      prevBtn.style.display = 'block';
-      prevBtn.onclick = () => $(container).slick('slickPrev');
-    }
-    if (nextBtn) {
-      nextBtn.style.display = 'block';
-      nextBtn.onclick = () => $(container).slick('slickNext');
     }
   }
 
@@ -2099,59 +2077,60 @@ document.addEventListener("DOMContentLoaded", async () => {
         $(document).ready(function () 
         {
             fetchWallet();
-            fetchHighlights();
 
             isPWCRequired();
             showWelcomeBanner();
 
-            // ✅ Horse + Greyhound dono ka DOM pehle build karo (slick abhi init NAHI hota,
-            // kyunke #horsenhound abhi bhi d-none/hidden hai). Data load hone ke baad
-            // container ko visible karo, phir agle animation frame mein slick init karo —
-            // isse slick ko sahi (non-zero) widths milti hain aur flicker nahi hota.
-            Promise.all([
-                loadHorseLiveData(),
-                loadgreyhoundLiveData()
-            ]).finally(function() {
-                $(".page_loader").hide();
-                document.getElementById("horsenhound").classList.remove("d-none");
-
-                requestAnimationFrame(function() {
-                    initHorseSlick();
-                    initGreyhoundSlick();
-
-                    $(".games_slider").slick({
-                        arrows: false,
-                        autoplay: true,
-                        infinite: true,
-                        slidesToShow: 8,
-                        slidesToScroll: 1,
-                        swipeToSlide: true,
-                        touchThreshold: 100,
-                        waitForAnimate: false,
-                        responsive: [
-                            {
-                                breakpoint: 1800,
-                                settings: { slidesToShow: 6, slidesToScroll: 1 }
-                            },
-                            {
-                                breakpoint: 1500,
-                                settings: { slidesToShow: 5, slidesToScroll: 1 }
-                            },
-                            {
-                                breakpoint: 1200,
-                                settings: { slidesToShow: 4, slidesToScroll: 1 }
-                            },
-                            {
-                                breakpoint: 900,
-                                settings: { slidesToShow: 3, slidesToScroll: 1 }
-                            },
-                            {
-                                breakpoint: 700,
-                                settings: { slidesToShow: 3, slidesToScroll: 1 }
-                            }
-                        ]
-                    });
+            // ✅ FIX: pehle fetchHighlights() poora complete hone do — isi call se
+            // #horseRaceContainer aur #greyhoundRaceContainer DOM mein banate hain.
+            // Pehle ye dono race data load parallel chal rahe the, isliye kabhi
+            // container milta hi nahi tha (getElementById → null → silently return),
+            // aur baad mein fetchHighlights poora #Dashboardmarkets replace karke
+            // already-render hui cheez wipe kar deta tha — yehi "flicker" ki asli wajah thi.
+            // Ab sequence guaranteed hai: highlights HTML pehle ready → phir uske andar data bharo.
+            fetchHighlights().always(function () {
+                // .always() taake highlights AJAX fail bhi ho jaye to bhi loader
+                // hamesha ke liye stuck na rahe — pehle wali .finally() jaisa hi safe fallback
+                Promise.all([
+                    loadHorseLiveData(),
+                    loadgreyhoundLiveData()
+                ]).finally(function() {
+                    $(".page_loader").hide();
+                    document.getElementById("horsenhound").classList.remove("d-none");
                 });
+            });
+
+            $(".games_slider").slick({
+                arrows: false,
+                autoplay: true,
+                infinite: true,
+                slidesToShow: 8,
+                slidesToScroll: 1,
+                swipeToSlide: true,
+                touchThreshold: 100,
+                waitForAnimate: false,
+                responsive: [
+                    {
+                        breakpoint: 1800,
+                        settings: { slidesToShow: 6, slidesToScroll: 1 }
+                    },
+                    {
+                        breakpoint: 1500,
+                        settings: { slidesToShow: 5, slidesToScroll: 1 }
+                    },
+                    {
+                        breakpoint: 1200,
+                        settings: { slidesToShow: 4, slidesToScroll: 1 }
+                    },
+                    {
+                        breakpoint: 900,
+                        settings: { slidesToShow: 3, slidesToScroll: 1 }
+                    },
+                    {
+                        breakpoint: 700,
+                        settings: { slidesToShow: 3, slidesToScroll: 1 }
+                    }
+                ]
             });
 
             $("#modalCasinoToS").on('hidden.bs.modal', function (event) {
@@ -2185,7 +2164,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
         
         function fetchHighlights() {
-            $.ajax({
+            // ✅ jQuery ka Deferred object return karo taake caller ko pata chale
+            // ke Dashboardmarkets ka HTML (aur horseRaceContainer/greyhoundRaceContainer)
+            // kab DOM mein ready hue — race condition fix ke liye zaroori
+            return $.ajax({
                 type: "GET",
                 url: "/Common/MarketHighlights",
                 timeout: 12000,

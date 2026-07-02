@@ -253,6 +253,93 @@
   background-color: #2a2a2a;
 }
 
+/* ============ SKELETON LOADER + COORDINATED REVEAL ============ */
+.skeleton-wrap { width: 100%; }
+
+.sk-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    width: 100%;
+    height: 90px;
+    margin-bottom: 10px;
+    padding: 8px;
+    background-color: #43444A;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+.sk-card {
+    height: 100%;
+    flex: 1;
+    min-width: 70px;
+    border-radius: 4px;
+    background: linear-gradient(90deg, #55565c 25%, #67686e 37%, #55565c 63%);
+    background-size: 400% 100%;
+    animation: sk-shimmer 1.4s ease-in-out infinite;
+}
+
+.sk-tabs {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+    height: 60px;
+    margin-bottom: 10px;
+    overflow: hidden;
+}
+.sk-tab {
+    min-width: 80px;
+    height: 100%;
+    border-radius: 4px;
+    background: linear-gradient(90deg, #3a3b40 25%, #4a4b50 37%, #3a3b40 63%);
+    background-size: 400% 100%;
+    animation: sk-shimmer 1.4s ease-in-out infinite;
+    flex-shrink: 0;
+}
+
+.sk-table {
+    width: 100%;
+    border-radius: 4px;
+    overflow: hidden;
+    background-color: #2f3034;
+}
+.sk-table-row {
+    display: flex;
+    gap: 6px;
+    padding: 10px 12px;
+    border-bottom: 1px solid #26272b;
+}
+.sk-cell {
+    height: 16px;
+    border-radius: 3px;
+    background: linear-gradient(90deg, #3a3b40 25%, #4a4b50 37%, #3a3b40 63%);
+    background-size: 400% 100%;
+    animation: sk-shimmer 1.4s ease-in-out infinite;
+}
+.sk-cell.w1 { flex: 2; }
+.sk-cell.w2 { flex: 1; }
+.sk-cell.w3 { flex: 1; }
+
+@keyframes sk-shimmer {
+    0% { background-position: 100% 50%; }
+    100% { background-position: 0 50%; }
+}
+
+/* Real content stays invisible (opacity) until everything is ready,
+   so slick/plugins can still measure real DOM widths correctly. */
+#realContent {
+    opacity: 0;
+    transition: opacity 0.25s ease-in;
+    min-height: 1px;
+}
+#realContent.is-ready {
+    opacity: 1;
+}
+.skeleton-wrap {
+    transition: opacity 0.2s ease-out;
+}
+.skeleton-wrap.is-hidden {
+    display: none;
+}
 </style>
 
         <li style="width:100%;">
@@ -606,10 +693,33 @@
             <div class="table-wrap">
                 <div class="table-box-body">
                     <div class="bets">
-                        <div class="text-center page_loader">
-                            <img src="/img/loadinggif.gif" alt="Loading...">
+                        <!-- Skeleton placeholder shown instantly, no layout shift once real content swaps in -->
+                        <div class="skeleton-wrap" id="dashSkeleton">
+                            <div class="sk-row">
+                                <div class="sk-card"></div><div class="sk-card"></div><div class="sk-card"></div>
+                                <div class="sk-card"></div><div class="sk-card"></div><div class="sk-card"></div>
+                            </div>
+                            <div class="sk-row">
+                                <div class="sk-card"></div><div class="sk-card"></div><div class="sk-card"></div>
+                                <div class="sk-card"></div><div class="sk-card"></div><div class="sk-card"></div>
+                            </div>
+                            <div class="sk-tabs">
+                                <div class="sk-tab"></div><div class="sk-tab"></div><div class="sk-tab"></div>
+                                <div class="sk-tab"></div><div class="sk-tab"></div>
+                            </div>
+                            <div class="sk-table">
+                                <div class="sk-table-row"><div class="sk-cell w1"></div><div class="sk-cell w2"></div><div class="sk-cell w3"></div></div>
+                                <div class="sk-table-row"><div class="sk-cell w1"></div><div class="sk-cell w2"></div><div class="sk-cell w3"></div></div>
+                                <div class="sk-table-row"><div class="sk-cell w1"></div><div class="sk-cell w2"></div><div class="sk-cell w3"></div></div>
+                                <div class="sk-table-row"><div class="sk-cell w1"></div><div class="sk-cell w2"></div><div class="sk-cell w3"></div></div>
+                                <div class="sk-table-row"><div class="sk-cell w1"></div><div class="sk-cell w2"></div><div class="sk-cell w3"></div></div>
+                            </div>
                         </div>
-                        <div id="horsenhound" class="d-none">
+
+                        <!-- Real content: built off-screen (opacity 0) so plugins like slick can
+                             measure it correctly, revealed in one go once everything is ready -->
+                        <div id="realContent">
+                        <div id="horsenhound">
                             
 <div class="row games_slider_container">
     <div class="games_slider">
@@ -690,6 +800,7 @@
                         <div id="Dashboardmarkets">
 
                         </div>
+                        </div><!-- /#realContent -->
 
                     </div>
                 </div>
@@ -2077,18 +2188,21 @@ document.addEventListener("DOMContentLoaded", async () => {
         $(document).ready(function () 
         {
             fetchWallet();
-            fetchHighlights();
 
             isPWCRequired();
             showWelcomeBanner();
 
-            // ✅ Horse + Greyhound dono load hone ke baad hi show karo — no flicker
+            // ✅ Horse + Greyhound + Market Highlights — sab load hone ke baad
+            // ek hi baar mein reveal hota hai. Isse content chunk-by-chunk nahi
+            // aata aur page jump/flicker nahi karta. Har promise apna error khud
+            // handle karta hai (catch se resolve), taaki ek request fail hone se
+            // baaki content hamesha ke liye skeleton mein na atka rahe.
             Promise.all([
-                loadHorseLiveData(),
-                loadgreyhoundLiveData()
-            ]).finally(function() {
-                $(".page_loader").hide();
-                document.getElementById("horsenhound").classList.remove("d-none");
+                Promise.resolve(loadHorseLiveData()).catch(function () {}),
+                Promise.resolve(loadgreyhoundLiveData()).catch(function () {}),
+                fetchHighlights().catch(function () {})
+            ]).finally(function () {
+                revealDashboardContent();
             });
 
             $(".games_slider").slick({
@@ -2155,7 +2269,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
         
         function fetchHighlights() {
-            $.ajax({
+            // jQuery's jqXHR is a thenable, so it plugs straight into Promise.all
+            return $.ajax({
                 type: "GET",
                 url: "/Common/MarketHighlights",
                 timeout: 12000,
@@ -2177,6 +2292,23 @@ document.addEventListener("DOMContentLoaded", async () => {
                 error: function (jqXhr, textStatus, errorThrown) {}
             });
         };
+
+        // Swap skeleton -> real content in one frame, once everything is ready.
+        function revealDashboardContent() {
+            var skeleton = document.getElementById("dashSkeleton");
+            var real = document.getElementById("realContent");
+            if (!real) return;
+
+            real.classList.add("is-ready");
+
+            if (skeleton) {
+                // wait for the fade-in transition to end before removing the
+                // skeleton, so there's no 1-frame gap/flash between the two
+                setTimeout(function () {
+                    skeleton.classList.add("is-hidden");
+                }, 250);
+            }
+        }
 
         function fetchWallet() {
             $.ajax({

@@ -230,45 +230,6 @@
             flex: 1;
             min-width: 0;
             overflow: hidden;
-            min-height: 46px;
-        }
-
-        /* Reserve the race row's height up front so it doesn't collapse
-           to 0 and then pop open once slick + data are ready. */
-        #horseSliderOuter,
-        #greyhoundSliderOuter {
-            min-height: 46px;
-        }
-
-        /* Skeleton placeholder cards shown before real race data arrives */
-        .race-skeleton-row {
-            display: flex;
-            gap: 6px;
-            width: 100%;
-        }
-        .race-skeleton-card {
-            flex: 1;
-            height: 40px;
-            border-radius: 4px;
-            margin: 2px;
-            background: linear-gradient(90deg, #4a4b52 25%, #5a5b63 37%, #4a4b52 63%);
-            background-size: 400% 100%;
-            animation: raceSkeletonShimmer 1.4s ease infinite;
-        }
-        @keyframes raceSkeletonShimmer {
-            0% { background-position: 100% 50%; }
-            100% { background-position: 0 50%; }
-        }
-
-        /* Fade the real cards in once they replace the skeleton, instead
-           of popping in instantly */
-        #horseRaceContainer .chk11,
-        #greyhoundRaceContainer .chk11 {
-            animation: raceCardFadeIn 0.25s ease both;
-        }
-        @keyframes raceCardFadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
         }
 
         .cricketEventList {
@@ -979,45 +940,33 @@ document.addEventListener("DOMContentLoaded", async () => {
 <script>
   async function loadgreyhoundMatches() {
     try {
-      const [response, filter] = await Promise.all([
-        fetch('https://1xbetbackend.work.gd/api/v1/markets/live/greyhound'),
-        getLeagueFilter('greyhound')
-      ]);
+      const response = await fetch('https://1xbetbackend.work.gd/api/v1/markets/live/greyhound');
       const result = await response.json();
 
       const listContainer = document.querySelector('.greyhounditems');
-      listContainer.innerHTML = '';
+      listContainer.innerHTML = ''; // Clear existing
 
       // success ya status === 'success' dono handle karo
       const rawData = (result.success || result.status === 'success') ? result.data : null;
 
       if (rawData && rawData.length > 0) {
-        const now = new Date();
-        const twoHoursAgo = new Date(now.getTime() - 2 * 3600_000);
-
-        // Sirf current/upcoming matches dikhao (2 ghante pehle se future tak)
-        const relevant = rawData.filter(m => {
-          const st = new Date(m.startTime);
-          return st >= twoHoursAgo;
-        });
-
-        const filtered = applyLeagueFilter(relevant, filter);
-        if (filtered.length === 0) {
-          listContainer.innerHTML = '<li style="color:white;">No live greyhound races found.</li>';
-          return;
-        }
-        filtered.forEach(match => {
+        rawData.forEach(match => {
           const li = document.createElement('li');
-          li.classList.add('match-card');
+          li.classList.add('match-card'); // ✅ Custom style class
 
-          const startTime = new Date(match.startTime);
-          const timeStr = startTime.toLocaleTimeString('en-US', {
+          const startTimeUTC = new Date(match.startTime);
+
+          // ✅ Show UTC time exactly as backend provides in 12-hour format
+          const timeStr = startTimeUTC.toLocaleTimeString('en-US', {
             hour: 'numeric',
             minute: '2-digit',
-            hour12: true
-          }).toLowerCase();
+            hour12: true,
+            timeZone: 'UTC' // Force UTC
+          }).toLowerCase(); // e.g., "3:00 am"
 
           li.textContent = `${timeStr} ${match.match}`;
+
+          // ✅ Redirect on click to market.html with marketId
           li.style.cursor = 'pointer';
           li.addEventListener('click', () => {
             window.location.href = `/Common/Market.html?id=${match.marketId}`;
@@ -1026,13 +975,14 @@ document.addEventListener("DOMContentLoaded", async () => {
           listContainer.appendChild(li);
         });
       } else {
-        listContainer.innerHTML = '<li style="color:white;">No live greyhound races found.</li>';
+        listContainer.innerHTML = '<li style="color:white;">No live greyhound matches found.</li>';
       }
     } catch (err) {
       console.error('⚠️ Error loading greyhound matches:', err.message);
     }
   }
 
+  // Auto load on page load
   loadgreyhoundMatches();
 </script>
 
@@ -1040,45 +990,32 @@ document.addEventListener("DOMContentLoaded", async () => {
 <script>
   async function loadhorseMatches() {
     try {
-      const [response, filter] = await Promise.all([
-        fetch('https://1xbetbackend.work.gd/api/v1/markets/live/horse'),
-        getLeagueFilter('horse')
-      ]);
+      const response = await fetch('https://1xbetbackend.work.gd/api/v1/markets/live/horse');
       const result = await response.json();
 
       const listContainer = document.querySelector('.horseEventList');
-      listContainer.innerHTML = '';
+      listContainer.innerHTML = ''; // Clear existing
 
       // success ya status === 'success' dono handle karo
       const rawData = (result.success || result.status === 'success') ? result.data : null;
 
       if (rawData && rawData.length > 0) {
-        const now = new Date();
-        const twoHoursAgo = new Date(now.getTime() - 2 * 3600_000);
-
-        // Sirf current/upcoming matches dikhao (2 ghante pehle se future tak)
-        const relevant = rawData.filter(m => {
-          const st = new Date(m.startTime);
-          return st >= twoHoursAgo;
-        });
-
-        const filtered = applyLeagueFilter(relevant, filter);
-        if (filtered.length === 0) {
-          listContainer.innerHTML = '<li style="color:white;">No live horse matches found.</li>';
-          return;
-        }
-        filtered.forEach(match => {
+        rawData.forEach(match => {
           const li = document.createElement('li');
           li.classList.add('match-card');
 
-          const startTime = new Date(match.startTime);
-          const timeStr = startTime.toLocaleTimeString('en-US', {
+          const startTimeUTC = new Date(match.startTime);
+
+          // ✅ Convert to 12-hour UTC format with AM/PM
+          const timeStr = startTimeUTC.toLocaleTimeString('en-US', {
             hour: 'numeric',
             minute: '2-digit',
-            hour12: true
-          }).toLowerCase();
+            hour12: true,
+            timeZone: 'UTC' // Ensures we stay in UTC
+          }).toLowerCase(); // e.g., "3:00 am"
 
           li.textContent = `${timeStr} ${match.match}`;
+
           li.style.cursor = 'pointer';
           li.addEventListener('click', () => {
             window.location.href = `/Common/Market.html?id=${encodeURIComponent(match.marketId)}`;
@@ -1094,187 +1031,157 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
+  // Auto load on page load
   loadhorseMatches();
 </script>
 
 <!-- ✅ Horse Slick Slider -->
 <script>
-  function parseUTC(str) {
-    if (!str) return new Date(0);
-    if (!str.endsWith('Z') && !str.includes('+') && !/\d{2}:\d{2}$/.test(str.slice(-5))) {
-      str = str.replace(' ', 'T') + 'Z';
+async function loadHorseLiveData() {
+  try {
+    const res = await fetch('https://1xbetbackend.work.gd/api/v1/markets/live/horse');
+    const data = await res.json();
+
+    const container = document.getElementById('horseRaceContainer');
+
+    // Destroy previous slick instance if exists
+    if ($(container).hasClass('slick-initialized')) {
+      $(container).slick('unslick');
     }
-    return new Date(str);
-  }
 
-  async function loadHorseLiveData() {
-    try {
-      const res = await fetch('https://1xbetbackend.work.gd/api/v1/markets/live/horse');
-      const data = await res.json();
+    container.innerHTML = ''; // Clear old content
 
-      const container = document.getElementById('horseRaceContainer');
-      if (!container) return;
+    const isOk = data.success || data.status === 'success';
 
-      // Slick destroy karo agar pehle se initialized hai
-      if ($(container).hasClass('slick-initialized')) {
-        $(container).slick('unslick');
-      }
-      container.innerHTML = '';
+    if (isOk && Array.isArray(data.data) && data.data.length > 0) {
+      data.data.forEach(match => {
+        const startTimeUTC = new Date(match.startTime);
 
-      // ✅ Arrows pehle se HTML mein hain — sirf dhundho
-      const prevBtn = document.getElementById('horsePrevBtn');
-      const nextBtn = document.getElementById('horseNextBtn');
-      if (prevBtn) prevBtn.style.display = 'none';
-      if (nextBtn) nextBtn.style.display = 'none';
+        const utcTimeStr = startTimeUTC.toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
+          timeZone: 'UTC'
+        }).toLowerCase();
 
-      if (data.success && Array.isArray(data.data) && data.data.length > 0) {
-        const now = new Date();
-        const thirtyMinAgo = new Date(now.getTime() - 30 * 60_000);
+        const div = document.createElement('div');
+        div.className = 'chk11';
+        div.style.textAlign = 'center';
+        div.style.margin = '2px';
 
-        // Filter: 30 min pehle se aage, sort by time ascending
-        const relevant = data.data
-          .filter(m => parseUTC(m.startTime) >= thirtyMinAgo)
-          .sort((a, b) => parseUTC(a.startTime) - parseUTC(b.startTime));
+        div.innerHTML = `
+          <a href="/Common/Market.html?id=${match.marketId}" style="color:white; width:auto;">
+            <b class="chkmobile">
+              <span class="slidedate market-time">${utcTimeStr}</span>
+              <br>
+              <span class='slidename'>${match.match}</span>
+            </b>
+          </a>
+        `;
 
-        if (relevant.length === 0) {
-          container.innerHTML = `<div style="text-align:center;color:white;padding:10px;">No upcoming races found.</div>`;
-          return;
-        }
+        container.appendChild(div);
+      });
 
-        relevant.forEach(match => {
-          const localTime = parseUTC(match.startTime).toLocaleTimeString('en-US', {
-            hour: 'numeric', minute: '2-digit', hour12: true
-          });
-          const div = document.createElement('div');
-          div.className = 'chk11';
-          div.style.cssText = 'text-align:center; margin:2px;';
-          div.innerHTML = `
-            <a href="/Common/Market.html?id=${match.marketId}" style="color:white; width:auto;">
-              <b class="chkmobile">
-                <span class="slidedate">${localTime}</span><br>
-                <span class="slidename">${match.match}</span>
-              </b>
-            </a>`;
-          container.appendChild(div);
-        });
+      // Reinitialize slick
+      $(container).slick({
+        slidesToShow: 8,
+        slidesToScroll: 1,
+        infinite: false,
+        arrows: true,
+        responsive: [
+          { breakpoint: 1024, settings: { slidesToShow: 5 }}, // tablets
+          { breakpoint: 768, settings: { slidesToShow: 3 }},  // mobile now shows 3
+          { breakpoint: 480, settings: { slidesToShow: 3 }}   // small phones
+        ]
+      });
 
-        // ✅ Slick init
-        $(container).slick({
-          slidesToShow: 8,
-          slidesToScroll: 1,
-          infinite: false,
-          arrows: false,
-          responsive: [
-            { breakpoint: 768, settings: { slidesToShow: 3 } },
-            { breakpoint: 480, settings: { slidesToShow: 3 } }
-          ]
-        });
-
-        // ✅ Ab arrows show karo aur click wire up karo
-        if (prevBtn) {
-          prevBtn.style.display = 'block';
-          prevBtn.onclick = () => $(container).slick('slickPrev');
-        }
-        if (nextBtn) {
-          nextBtn.style.display = 'block';
-          nextBtn.onclick = () => $(container).slick('slickNext');
-        }
-
-      } else {
-        container.innerHTML = `<div style="text-align:center;color:white;">No live races found.</div>`;
-      }
-    } catch (err) {
-      console.error('Error loading live horse data:', err.message);
+    } else {
+      container.innerHTML = `<div style="text-align:center; color:white;">No live races found.</div>`;
     }
+  } catch (err) {
+    console.error('Error loading live horse data:', err.message);
   }
+}
 
-  // loadHorseLiveData() — document.ready mein Promise.all se call hogi
+// loadHorseLiveData() — document.ready mein Promise.all se call hogi
+
+// Auto refresh every 30 seconds
+// setInterval(loadHorseLiveData, 30000);
 </script>
 
 <!-- ✅ Greyhound Slick Slider -->
 <script>
-  async function loadgreyhoundLiveData() {
-    try {
-      const res = await fetch('https://1xbetbackend.work.gd/api/v1/markets/live/greyhound');
-      const data = await res.json();
+async function loadgreyhoundLiveData() {
+  try {
+    const res = await fetch('https://1xbetbackend.work.gd/api/v1/markets/live/greyhound');
+    const data = await res.json();
 
-      const container = document.getElementById('greyhoundRaceContainer');
-      if (!container) return;
+    const container = document.getElementById('greyhoundRaceContainer');
 
-      // Slick destroy karo agar pehle se initialized hai
-      if ($(container).hasClass('slick-initialized')) {
-        $(container).slick('unslick');
-      }
-      container.innerHTML = '';
-
-      // ✅ Arrows pehle se HTML mein hain — sirf dhundho
-      const prevBtn = document.getElementById('greyPrevBtn');
-      const nextBtn = document.getElementById('greyNextBtn');
-      if (prevBtn) prevBtn.style.display = 'none';
-      if (nextBtn) nextBtn.style.display = 'none';
-
-      if (data.success && Array.isArray(data.data) && data.data.length > 0) {
-        const now = new Date();
-        const thirtyMinAgo = new Date(now.getTime() - 30 * 60_000);
-
-        // Filter: 30 min pehle se aage, sort by time ascending
-        const relevant = data.data
-          .filter(m => parseUTC(m.startTime) >= thirtyMinAgo)
-          .sort((a, b) => parseUTC(a.startTime) - parseUTC(b.startTime));
-
-        if (relevant.length === 0) {
-          container.innerHTML = `<div style="text-align:center;color:white;padding:10px;">No upcoming races found.</div>`;
-          return;
-        }
-
-        relevant.forEach(match => {
-          const localTime = parseUTC(match.startTime).toLocaleTimeString('en-US', {
-            hour: 'numeric', minute: '2-digit', hour12: true
-          });
-          const div = document.createElement('div');
-          div.className = 'chk11';
-          div.style.cssText = 'text-align:center; margin:2px;';
-          div.innerHTML = `
-            <a href="/Common/Market.html?id=${match.marketId}" style="color:white; width:auto;">
-              <b class="chkmobile">
-                <span class="slidedate">${localTime}</span><br>
-                <span class="slidename">${match.match}</span>
-              </b>
-            </a>`;
-          container.appendChild(div);
-        });
-
-        // ✅ Slick init
-        $(container).slick({
-          slidesToShow: 8,
-          slidesToScroll: 1,
-          infinite: false,
-          arrows: false,
-          responsive: [
-            { breakpoint: 768, settings: { slidesToShow: 3 } },
-            { breakpoint: 480, settings: { slidesToShow: 3 } }
-          ]
-        });
-
-        // ✅ Ab arrows show karo aur click wire up karo
-        if (prevBtn) {
-          prevBtn.style.display = 'block';
-          prevBtn.onclick = () => $(container).slick('slickPrev');
-        }
-        if (nextBtn) {
-          nextBtn.style.display = 'block';
-          nextBtn.onclick = () => $(container).slick('slickNext');
-        }
-
-      } else {
-        container.innerHTML = `<div style="text-align:center;color:white;">No live races found.</div>`;
-      }
-    } catch (err) {
-      console.error('Error loading live greyhound data:', err.message);
+    // Destroy previous slick instance if exists
+    if ($(container).hasClass('slick-initialized')) {
+      $(container).slick('unslick');
     }
-  }
 
-  // loadgreyhoundLiveData() — document.ready mein Promise.all se call hogi
+    container.innerHTML = ''; // Clear old content
+
+    const isOk = data.success || data.status === 'success';
+
+    if (isOk && Array.isArray(data.data) && data.data.length > 0) {
+      data.data.forEach(match => {
+        const startTimeUTC = new Date(match.startTime);
+
+        // ✅ Convert UTC to 12-hour format with AM/PM (no timezone conversion)
+        const utcTimeStr = startTimeUTC.toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
+          timeZone: 'UTC' // Ensures it stays in UTC
+        }).toLowerCase(); // e.g., "3:00 am"
+
+        const div = document.createElement('div');
+        div.className = 'chk11';
+        div.style.textAlign = 'center';
+        div.style.margin = '2px';
+
+        div.innerHTML = `
+          <a href="/Common/Market.html?id=${match.marketId}" style="color:white; width:auto;">
+            <b class="chkmobile">
+              <span class="slidedate market-time">${utcTimeStr}</span>
+              <br>
+              <span class='slidename'>${match.match}</span>
+            </b>
+          </a>
+        `;
+
+        container.appendChild(div);
+      });
+
+      // Reinitialize slick
+      $(container).slick({
+        slidesToShow: 8,
+        slidesToScroll: 1,
+        infinite: false,
+        arrows: true,
+        responsive: [
+         { breakpoint: 1024, settings: { slidesToShow: 5 }}, // tablets
+          { breakpoint: 768, settings: { slidesToShow: 3 }},  // mobile now shows 3
+          { breakpoint: 480, settings: { slidesToShow: 3 }}   // small phones
+        ]
+      });
+
+    } else {
+      container.innerHTML = `<div style="text-align:center; color:white;">No live races found.</div>`;
+    }
+  } catch (err) {
+    console.error('Error loading live greyhound data:', err.message);
+  }
+}
+
+// loadgreyhoundLiveData() — document.ready mein Promise.all se call hogi
+
+// Optional: Auto refresh every 30 seconds
+// setInterval(loadgreyhoundLiveData, 30000);
 </script>
 
 <!-- ✅ Tennis Sidebar List -->
@@ -2116,26 +2023,18 @@ document.addEventListener("DOMContentLoaded", async () => {
         $(document).ready(function () 
         {
             fetchWallet();
+            fetchHighlights();
 
             isPWCRequired();
             showWelcomeBanner();
 
-            // ✅ fetchHighlights() creates #horseRaceContainer /
-            // #greyhoundRaceContainer in the DOM (it injects
-            // MarketHighlights HTML). Only once that's actually done do we
-            // start pulling live horse/greyhound data into them — otherwise
-            // the data functions can run first, find no container yet, and
-            // silently no-op while fetchHighlights later wipes the section
-            // with an empty template. That race is what caused the
-            // jump/flicker.
-            fetchHighlights().always(function () {
-                Promise.all([
-                    loadHorseLiveData(),
-                    loadgreyhoundLiveData()
-                ]).finally(function () {
-                    $(".page_loader").hide();
-                    document.getElementById("horsenhound").classList.remove("d-none");
-                });
+            // ✅ Horse + Greyhound dono load hone ke baad hi show karo — no flicker
+            Promise.all([
+                loadHorseLiveData(),
+                loadgreyhoundLiveData()
+            ]).finally(function() {
+                $(".page_loader").hide();
+                document.getElementById("horsenhound").classList.remove("d-none");
             });
 
             $(".games_slider").slick({
@@ -2202,10 +2101,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
         
         function fetchHighlights() {
-            // Return the jqXHR promise so callers (document.ready) can
-            // chain work that depends on #horseRaceContainer /
-            // #greyhoundRaceContainer actually existing in the DOM.
-            return $.ajax({
+            $.ajax({
                 type: "GET",
                 url: "/Common/MarketHighlights",
                 timeout: 12000,

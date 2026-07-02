@@ -254,7 +254,13 @@
 }
 
 /* ============ SKELETON LOADER + COORDINATED REVEAL ============ */
-.skeleton-wrap { width: 100%; }
+.skeleton-wrap {
+    width: 100%;
+    background-color: #2f3034 !important;
+    padding: 8px;
+    box-sizing: border-box;
+    border-radius: 4px;
+}
 
 .sk-row {
     display: flex;
@@ -264,7 +270,7 @@
     height: 90px;
     margin-bottom: 10px;
     padding: 8px;
-    background-color: #43444A;
+    background-color: #43444A !important;
     border-radius: 4px;
     box-sizing: border-box;
 }
@@ -273,9 +279,10 @@
     flex: 1;
     min-width: 70px;
     border-radius: 4px;
-    background: linear-gradient(90deg, #55565c 25%, #67686e 37%, #55565c 63%);
-    background-size: 400% 100%;
-    animation: sk-shimmer 1.4s ease-in-out infinite;
+    background-color: #67686e !important;
+    background-image: linear-gradient(90deg, #55565c 25%, #78797f 37%, #55565c 63%) !important;
+    background-size: 400% 100% !important;
+    animation: sk-shimmer 1.4s ease-in-out infinite !important;
 }
 
 .sk-tabs {
@@ -285,14 +292,16 @@
     height: 60px;
     margin-bottom: 10px;
     overflow: hidden;
+    background-color: #2f3034 !important;
 }
 .sk-tab {
     min-width: 80px;
     height: 100%;
     border-radius: 4px;
-    background: linear-gradient(90deg, #3a3b40 25%, #4a4b50 37%, #3a3b40 63%);
-    background-size: 400% 100%;
-    animation: sk-shimmer 1.4s ease-in-out infinite;
+    background-color: #4a4b50 !important;
+    background-image: linear-gradient(90deg, #3a3b40 25%, #5a5b60 37%, #3a3b40 63%) !important;
+    background-size: 400% 100% !important;
+    animation: sk-shimmer 1.4s ease-in-out infinite !important;
     flex-shrink: 0;
 }
 
@@ -300,20 +309,22 @@
     width: 100%;
     border-radius: 4px;
     overflow: hidden;
-    background-color: #2f3034;
+    background-color: #2f3034 !important;
 }
 .sk-table-row {
     display: flex;
     gap: 6px;
     padding: 10px 12px;
+    background-color: #2f3034 !important;
     border-bottom: 1px solid #26272b;
 }
 .sk-cell {
     height: 16px;
     border-radius: 3px;
-    background: linear-gradient(90deg, #3a3b40 25%, #4a4b50 37%, #3a3b40 63%);
-    background-size: 400% 100%;
-    animation: sk-shimmer 1.4s ease-in-out infinite;
+    background-color: #4a4b50 !important;
+    background-image: linear-gradient(90deg, #3a3b40 25%, #5a5b60 37%, #3a3b40 63%) !important;
+    background-size: 400% 100% !important;
+    animation: sk-shimmer 1.4s ease-in-out infinite !important;
 }
 .sk-cell.w1 { flex: 2; }
 .sk-cell.w2 { flex: 1; }

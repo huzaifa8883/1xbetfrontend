@@ -3897,20 +3897,7 @@
                         </div>
 
                             <div id="LIVEDIV" class="container">
-                                <!-- ✅ Apna scorecard — BPExch ke iframe ki jagah, seedha humare Catalog (Betfair) data se banta hai.
-                                     Koi external/third-party score-feed nahi — sirf woh data jo hum khud Betfair API se already la rahe hain. -->
-                                <div id="nx-scorecard" style="background:#2b2f35; color:#fff; padding:10px; min-height:200px;">
-                                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                                        <div>
-                                            <div style="font-weight:bold; font-size:15px;">{{ Catalog.eventName || Catalog.marketName }}</div>
-                                            <div style="font-size:12px; color:#9aa0a6;">{{ Catalog.marketName }}</div>
-                                        </div>
-                                        <div style="text-align:right;">
-                                            <span v-bind:style="{ color: Catalog.status === 'OPEN' ? '#00B181' : (Catalog.status === 'SUSPENDED' ? '#ffc107' : '#ff5c5c'), fontWeight: 'bold', fontSize: '13px' }">{{ Catalog.status }}</span>
-                                            <div style="font-size:11px; color:#9aa0a6;">Matched: {{ Catalog.totalMatched || 0 }}</div>
-                                        </div>
-                                    </div>
-                                </div>
+                                <!-- ✅ Scorecard box hata diya gaya hai — user ki request par yahan ab kuch nahi dikhta -->
                             </div>
 
 

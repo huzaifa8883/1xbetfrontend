@@ -230,6 +230,45 @@
             flex: 1;
             min-width: 0;
             overflow: hidden;
+            min-height: 46px;
+        }
+
+        /* Reserve the race row's height up front so it doesn't collapse
+           to 0 and then pop open once slick + data are ready. */
+        #horseSliderOuter,
+        #greyhoundSliderOuter {
+            min-height: 46px;
+        }
+
+        /* Skeleton placeholder cards shown before real race data arrives */
+        .race-skeleton-row {
+            display: flex;
+            gap: 6px;
+            width: 100%;
+        }
+        .race-skeleton-card {
+            flex: 1;
+            height: 40px;
+            border-radius: 4px;
+            margin: 2px;
+            background: linear-gradient(90deg, #4a4b52 25%, #5a5b63 37%, #4a4b52 63%);
+            background-size: 400% 100%;
+            animation: raceSkeletonShimmer 1.4s ease infinite;
+        }
+        @keyframes raceSkeletonShimmer {
+            0% { background-position: 100% 50%; }
+            100% { background-position: 0 50%; }
+        }
+
+        /* Fade the real cards in once they replace the skeleton, instead
+           of popping in instantly */
+        #horseRaceContainer .chk11,
+        #greyhoundRaceContainer .chk11 {
+            animation: raceCardFadeIn 0.25s ease both;
+        }
+        @keyframes raceCardFadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
 
         .cricketEventList {
@@ -2081,20 +2120,19 @@ document.addEventListener("DOMContentLoaded", async () => {
             isPWCRequired();
             showWelcomeBanner();
 
-            // ✅ FIX: pehle fetchHighlights() poora complete hone do — isi call se
-            // #horseRaceContainer aur #greyhoundRaceContainer DOM mein banate hain.
-            // Pehle ye dono race data load parallel chal rahe the, isliye kabhi
-            // container milta hi nahi tha (getElementById → null → silently return),
-            // aur baad mein fetchHighlights poora #Dashboardmarkets replace karke
-            // already-render hui cheez wipe kar deta tha — yehi "flicker" ki asli wajah thi.
-            // Ab sequence guaranteed hai: highlights HTML pehle ready → phir uske andar data bharo.
+            // ✅ fetchHighlights() creates #horseRaceContainer /
+            // #greyhoundRaceContainer in the DOM (it injects
+            // MarketHighlights HTML). Only once that's actually done do we
+            // start pulling live horse/greyhound data into them — otherwise
+            // the data functions can run first, find no container yet, and
+            // silently no-op while fetchHighlights later wipes the section
+            // with an empty template. That race is what caused the
+            // jump/flicker.
             fetchHighlights().always(function () {
-                // .always() taake highlights AJAX fail bhi ho jaye to bhi loader
-                // hamesha ke liye stuck na rahe — pehle wali .finally() jaisa hi safe fallback
                 Promise.all([
                     loadHorseLiveData(),
                     loadgreyhoundLiveData()
-                ]).finally(function() {
+                ]).finally(function () {
                     $(".page_loader").hide();
                     document.getElementById("horsenhound").classList.remove("d-none");
                 });
@@ -2164,9 +2202,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
         
         function fetchHighlights() {
-            // ✅ jQuery ka Deferred object return karo taake caller ko pata chale
-            // ke Dashboardmarkets ka HTML (aur horseRaceContainer/greyhoundRaceContainer)
-            // kab DOM mein ready hue — race condition fix ke liye zaroori
+            // Return the jqXHR promise so callers (document.ready) can
+            // chain work that depends on #horseRaceContainer /
+            // #greyhoundRaceContainer actually existing in the DOM.
             return $.ajax({
                 type: "GET",
                 url: "/Common/MarketHighlights",

@@ -943,17 +943,21 @@
     return isNaN(d.getTime()) ? null : d;
   }
 
+  // Selected date ko poore din ki range banao: From = 00:00:00.000, To = 23:59:59.999
+  function startOfDay(d) { var x = new Date(d); x.setHours(0,0,0,0); return x; }
+  function endOfDay(d)   { var x = new Date(d); x.setHours(23,59,59,999); return x; }
+
   document.addEventListener("DOMContentLoaded", function() {
     try {
       if (typeof $ !== 'undefined') {
         // Tempus Dominus / Bootstrap Datetimepicker ka native change event
         $('#ReportFrom').on('change.datetimepicker', function(e) {
           var fi = document.getElementById('From');
-          if (fi && e.date) fi.value = e.date.toDate().toISOString();
+          if (fi && e.date) fi.value = startOfDay(e.date.toDate()).toISOString();
         });
         $('#ReportTo').on('change.datetimepicker', function(e) {
           var ti = document.getElementById('To');
-          if (ti && e.date) ti.value = e.date.toDate().toISOString();
+          if (ti && e.date) ti.value = endOfDay(e.date.toDate()).toISOString();
         });
       }
     } catch(e) {}
@@ -964,12 +968,12 @@
     if (df) df.addEventListener("change", function() {
       var d = parseDisplay(df.value);
       var fi = document.getElementById('From');
-      if (d && fi) fi.value = d.toISOString();
+      if (d && fi) fi.value = startOfDay(d).toISOString();
     });
     if (dt) dt.addEventListener("change", function() {
       var d = parseDisplay(dt.value);
       var ti = document.getElementById('To');
-      if (d && ti) ti.value = d.toISOString();
+      if (d && ti) ti.value = endOfDay(d).toISOString();
     });
   });
 })();
@@ -1087,11 +1091,14 @@
           // Step 3: Settled bets fetch (sirf is user ke)
           let allSettledRaw = [];
           try {
-            const res1 = await fetch(_STMT_API + "/orders/settled?limit=500", {
+            const res1 = await fetch(_STMT_API + "/orders/settled?limit=5000", {
               headers: { "Authorization": "Bearer " + token }
             });
             const j1 = await res1.json();
             allSettledRaw = j1?.data?.orders || j1?.orders || [];
+            console.log("[Statement] settled orders fetched:", allSettledRaw.length,
+              "oldest:", allSettledRaw[0] && (allSettledRaw[0].settled_at||allSettledRaw[0].created_at),
+              "newest:", allSettledRaw[allSettledRaw.length-1] && (allSettledRaw[allSettledRaw.length-1].settled_at||allSettledRaw[allSettledRaw.length-1].created_at));
           } catch(e) { console.warn("[Statement] /orders/settled failed:", e.message); }
 
           // Step 4: Deposits fetch — multiple endpoints try karo

@@ -932,66 +932,6 @@
   });
 })();
 
-// ✅ Jab user calendar se koi bhi (purani/nayi) date select kare,
-// to hidden #From / #To inputs ko us select ki hui date ke hisab se update karo.
-// (Pehle sirf visible textbox update hota tha, hidden input hamesha "aaj" wala hi reh jata tha,
-//  isi liye Submit karne par hamesha current-date wala data he aata tha.)
-(function() {
-  function parseDisplay(str) {
-    // fmtDisplay format: M/D/YYYY h:mm A  (JS Date isko natively parse kar leta hai)
-    var d = new Date(str);
-    return isNaN(d.getTime()) ? null : d;
-  }
-
-  // Selected date ko poore din ki range banao: From = 00:00:00.000, To = 23:59:59.999
-  function startOfDay(d) { var x = new Date(d); x.setHours(0,0,0,0); return x; }
-  function endOfDay(d)   { var x = new Date(d); x.setHours(23,59,59,999); return x; }
-
-  function toJsDate(v) {
-    if (!v) return null;
-    if (typeof v.toDate === 'function') return v.toDate(); // moment object
-    if (v instanceof Date) return v;
-    return null;
-  }
-
-  document.addEventListener("DOMContentLoaded", function() {
-    try {
-      if (typeof $ !== 'undefined') {
-        // Different datetimepicker plugin versions fire different event names —
-        // bind both so whichever is actually loaded, we catch it.
-        $('#ReportFrom').on('change.datetimepicker dp.change', function(e) {
-          var jd = toJsDate(e.date);
-          console.log("[Statement] ReportFrom change event fired:", e.type, jd);
-          var fi = document.getElementById('From');
-          if (fi && jd) fi.value = startOfDay(jd).toISOString();
-        });
-        $('#ReportTo').on('change.datetimepicker dp.change', function(e) {
-          var jd = toJsDate(e.date);
-          console.log("[Statement] ReportTo change event fired:", e.type, jd);
-          var ti = document.getElementById('To');
-          if (ti && jd) ti.value = endOfDay(jd).toISOString();
-        });
-      }
-    } catch(e) {}
-
-    // Fallback: agar plugin event fire na ho, to visible textbox ke change/blur par bhi sync karo
-    var df = document.getElementById("DisplayFrom");
-    var dt = document.getElementById("DisplayTo");
-    if (df) df.addEventListener("change", function() {
-      var d = parseDisplay(df.value);
-      console.log("[Statement] DisplayFrom textbox change fallback:", df.value, "-> parsed:", d);
-      var fi = document.getElementById('From');
-      if (d && fi) fi.value = startOfDay(d).toISOString();
-    });
-    if (dt) dt.addEventListener("change", function() {
-      var d = parseDisplay(dt.value);
-      console.log("[Statement] DisplayTo textbox change fallback:", dt.value, "-> parsed:", d);
-      var ti = document.getElementById('To');
-      if (d && ti) ti.value = endOfDay(d).toISOString();
-    });
-  });
-})();
-
 // ============================================================
 // STATEMENT / LEDGER — SETTLED bets se account statement
 // Uses /orders/settled API — winning_selection_id ke saath
@@ -1105,14 +1045,11 @@
           // Step 3: Settled bets fetch (sirf is user ke)
           let allSettledRaw = [];
           try {
-            const res1 = await fetch(_STMT_API + "/orders/settled?limit=5000", {
+            const res1 = await fetch(_STMT_API + "/orders/settled?limit=500", {
               headers: { "Authorization": "Bearer " + token }
             });
             const j1 = await res1.json();
             allSettledRaw = j1?.data?.orders || j1?.orders || [];
-            console.log("[Statement] settled orders fetched:", allSettledRaw.length,
-              "oldest:", allSettledRaw[0] && (allSettledRaw[0].settled_at||allSettledRaw[0].created_at),
-              "newest:", allSettledRaw[allSettledRaw.length-1] && (allSettledRaw[allSettledRaw.length-1].settled_at||allSettledRaw[allSettledRaw.length-1].created_at));
           } catch(e) { console.warn("[Statement] /orders/settled failed:", e.message); }
 
           // Step 4: Deposits fetch — multiple endpoints try karo
@@ -1205,10 +1142,6 @@
             const d = new Date(dep.created_at || dep.date);
             return d >= filterFrom && d <= filterTo;
           });
-
-          console.log("[Statement] filterFrom:", filterFrom, "filterTo:", filterTo,
-            "| allSettled:", allSettled.length, "-> settled after filter:", settled.length,
-            "| allDeposits:", allDeposits.length, "-> deposits after filter:", deposits.length);
 
           // ── Opening Balance row ───────────────────────────────
           const rows = [{
@@ -1413,8 +1346,6 @@ document.getElementById('betDetailModal').addEventListener('click', function(e) 
 // ✅ Submit button: dates update karo aur Vue ledger refresh karo (page reload nahi)
 window.updateDates = function() {
   // datetimepicker se hidden inputs already update ho jaate hain via datetimepicker events
-  console.log("[Statement] Submit clicked. Hidden From:", document.getElementById('From')?.value,
-    " Hidden To:", document.getElementById('To')?.value);
   // Sirf Vue instance ka fetchLedger call karna hai
   setTimeout(function() {
     var vueApp = document.getElementById('ledgerApp')?.__vue__;

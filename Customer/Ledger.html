@@ -932,6 +932,48 @@
   });
 })();
 
+// ✅ Jab user calendar se koi bhi (purani/nayi) date select kare,
+// to hidden #From / #To inputs ko us select ki hui date ke hisab se update karo.
+// (Pehle sirf visible textbox update hota tha, hidden input hamesha "aaj" wala hi reh jata tha,
+//  isi liye Submit karne par hamesha current-date wala data he aata tha.)
+(function() {
+  function parseDisplay(str) {
+    // fmtDisplay format: M/D/YYYY h:mm A  (JS Date isko natively parse kar leta hai)
+    var d = new Date(str);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  document.addEventListener("DOMContentLoaded", function() {
+    try {
+      if (typeof $ !== 'undefined') {
+        // Tempus Dominus / Bootstrap Datetimepicker ka native change event
+        $('#ReportFrom').on('change.datetimepicker', function(e) {
+          var fi = document.getElementById('From');
+          if (fi && e.date) fi.value = e.date.toDate().toISOString();
+        });
+        $('#ReportTo').on('change.datetimepicker', function(e) {
+          var ti = document.getElementById('To');
+          if (ti && e.date) ti.value = e.date.toDate().toISOString();
+        });
+      }
+    } catch(e) {}
+
+    // Fallback: agar plugin event fire na ho, to visible textbox ke change/blur par bhi sync karo
+    var df = document.getElementById("DisplayFrom");
+    var dt = document.getElementById("DisplayTo");
+    if (df) df.addEventListener("change", function() {
+      var d = parseDisplay(df.value);
+      var fi = document.getElementById('From');
+      if (d && fi) fi.value = d.toISOString();
+    });
+    if (dt) dt.addEventListener("change", function() {
+      var d = parseDisplay(dt.value);
+      var ti = document.getElementById('To');
+      if (d && ti) ti.value = d.toISOString();
+    });
+  });
+})();
+
 // ============================================================
 // STATEMENT / LEDGER — SETTLED bets se account statement
 // Uses /orders/settled API — winning_selection_id ke saath

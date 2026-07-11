@@ -967,6 +967,28 @@
 
   // ── DataTable init — statementold.html jaisa exact pattern (Print/Excel/PDF + mobile responsive) ──
   let _dtInitTries = 0;
+
+  // ✅ BUG FIX (insertBefore NotFoundError on Submit):
+  // DataTables plugin humesha #tableLedger ko apne "dataTables_wrapper"
+  // div ke andar move/wrap kar deta hai (aur mobile pe Responsive plugin
+  // rows ko bhi idhar-udhar move karta hai). Vue ka `v-if="!loading..."`
+  // isi <table> node ko loading state badalte hi DOM se nikal/wapas daalta
+  // hai apne purane virtual-DOM reference (insertBefore/removeChild) ke
+  // hisaab se — lekin DataTables ne DOM structure already badal diya hota
+  // hai, is liye wo reference node ab valid parent-child rishta nahi
+  // rakhta aur "NotFoundError: insertBefore ... not a child of this node"
+  // aata hai. Fix: har naye fetch se PEHLE DataTable instance ko
+  // `remove:true` ke saath destroy karo — ye plain <table> ko uski asli
+  // shape/jagah mein wapas la deta hai, taake Vue safely v-if se
+  // hata/dobara bana sake.
+  function destroyLedgerDataTable() {
+    try {
+      if (window.jQuery && jQuery.fn.DataTable && jQuery.fn.DataTable.isDataTable('#tableLedger')) {
+        jQuery('#tableLedger').DataTable().destroy(true);
+      }
+    } catch (e) { console.warn('[Statement] destroyLedgerDataTable error:', e.message); }
+  }
+
   function initLedgerDataTable() {
     const $table = window.jQuery ? jQuery('#tableLedger') : null;
 
@@ -1043,6 +1065,11 @@
     },
     methods: {
       async fetchLedger() {
+        // ✅ BUG FIX: v-if se table hatane se PEHLE DataTables ka DOM
+        // wrapping hata do, warna Vue ka patch insertBefore par crash
+        // karta hai (dekho destroyLedgerDataTable() comment upar).
+        destroyLedgerDataTable();
+
         this.loading = true;
         this.error   = null;
         const token  = localStorage.getItem("token");
@@ -1066,9 +1093,22 @@
           const filterTo   = toInput   ? new Date(toInput.value)   : null;
 
           // Step 3: Settled bets fetch (sirf is user ke)
+          // ✅ BUG FIX: pehle sirf "limit=500" bheja jata tha aur backend
+          // date ke baare mein kuch jaanta hi nahi tha — is liye hamesha
+          // sirf sabse RECENT 500 settled bets aate the. Agar user ne koi
+          // purani date select ki aur us window se bahar total bets 500 se
+          // zyada nikle, to select ki hui date ke bets frontend tak
+          // pahunchte hi nahi the (chahe database mein maujood hon).
+          // Fix: "to" (upper bound = selected range ka end) backend ko
+          // bhejo aur limit badha do — "from" jaan-boojh kar NAHI bheja,
+          // kyunke Opening Balance calculation ke liye selected range se
+          // PEHLE ke settled bets bhi isi list mein chahiye hote hain
+          // (warna Opening Balance hamesha 0 dikhne lag jayega).
           let allSettledRaw = [];
           try {
-            const res1 = await fetch(_STMT_API + "/orders/settled?limit=500", {
+            const _settledParams = new URLSearchParams({ limit: "5000" });
+            if (filterTo) _settledParams.set("to", filterTo.toISOString());
+            const res1 = await fetch(_STMT_API + "/orders/settled?" + _settledParams.toString(), {
               headers: { "Authorization": "Bearer " + token }
             });
             const j1 = await res1.json();

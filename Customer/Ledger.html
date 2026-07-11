@@ -927,6 +927,29 @@
       if (typeof $ !== 'undefined') {
         $('#ReportFrom').datetimepicker('date', fromDate);
         $('#ReportTo').datetimepicker('date', toDate);
+
+        // ✅ BUG FIX: pehle hidden #From/#To inputs sirf DOMContentLoaded pe
+        // aaj ki date se set hote the aur phir kabhi update nahi hote the —
+        // user calendar se koi bhi date select karta, submit karne par
+        // fetchLedger() hamesha wahi purani (aaj wali) #From/#To value
+        // read karta rehta tha, is liye select ki hui date ke bets kabhi
+        // nahi aate the. Ab jab bhi user "From" ya "To" calendar se date
+        // change kare, hidden input turant us poore din (00:00:00 se
+        // 23:59:59 tak) ke hisaab se update ho jayega.
+        $('#ReportFrom').on('change.datetimepicker', function(e) {
+          if (!e.date) return;
+          var d = e.date.toDate();
+          d.setHours(0, 0, 0, 0);
+          var fi = document.getElementById('From');
+          if (fi) fi.value = d.toISOString();
+        });
+        $('#ReportTo').on('change.datetimepicker', function(e) {
+          if (!e.date) return;
+          var d = e.date.toDate();
+          d.setHours(23, 59, 59, 0);
+          var ti = document.getElementById('To');
+          if (ti) ti.value = d.toISOString();
+        });
       }
     } catch(e) {}
   });

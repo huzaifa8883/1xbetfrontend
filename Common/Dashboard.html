@@ -1064,6 +1064,17 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Async navigator — actual click handlers isko call karenge.
   // Usage: goToMatch('horse', match)              -> match object {marketId, eventId}
   //        goToMatch('horse', marketId, eventId)   -> inline onclick attrs ke liye
+  // catalog2 sirf marketId accept karta hai, eventId nahi — is liye jab
+  // hum path-style eventId URL pe navigate karte hain, real marketId ko
+  // sessionStorage mein save kar dete hain taaki Event.html usay turant
+  // (bina kisi extra/failing API call ke) utha sake.
+  function rememberMarketId(eventId, marketId, sport) {
+    if (!eventId || !marketId) return;
+    try {
+      sessionStorage.setItem('evtMap:' + eventId, JSON.stringify({ marketId, sport, ts: Date.now() }));
+    } catch (e) { /* sessionStorage unavailable — ignore, Event.html fallback handle karega */ }
+  }
+
   async function goToMatch(sport, matchOrMarketId, maybeEventId) {
     const isCricket = (sport || '').toString().toLowerCase() === 'cricket';
     const isObj = matchOrMarketId && typeof matchOrMarketId === 'object';
@@ -1077,6 +1088,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Agar API ne pehle se hi eventId de diya hai to seedha use karo
     if (existingEventId) {
+      rememberMarketId(existingEventId, marketId, sport);
       window.location.href = `/Common/Event/${existingEventId}`;
       return;
     }
@@ -1084,6 +1096,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Warna catalog2 se real eventId resolve karo
     const realEventId = await resolveRealEventId(marketId);
     if (realEventId) {
+      rememberMarketId(realEventId, marketId, sport);
       window.location.href = `/Common/Event/${realEventId}`;
     } else {
       // Resolve fail ho jaye to purane query-string format pe fallback

@@ -1030,10 +1030,65 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // ✅ Match click routing: Cricket => Market.html (marketId),
-  //    har doosri sport => Event.html (eventId).
+  //    har doosri sport => Event.html (path-style /Common/Event/<eventId>).
+  //
+  //    Live match APIs sirf marketId dete hain, eventId nahi — isliye
+  //    non-cricket sports ke liye click par catalog2 se real eventId
+  //    resolve karte hain, phir path-style URL banate hain.
+  const _eventIdCache = new Map(); // marketId -> eventId (repeat clicks ke liye)
+
+  async function resolveRealEventId(marketId) {
+    if (!marketId) return null;
+    if (_eventIdCache.has(marketId)) return _eventIdCache.get(marketId);
+    try {
+      const res  = await fetch(`${pricesUrl}/markets/catalog2?id=${encodeURIComponent(marketId)}`);
+      const json = await res.json();
+      const data = json.data || json;
+      const eventId = data.eventId || data.event?.id || null;
+      if (eventId) _eventIdCache.set(marketId, String(eventId));
+      return eventId ? String(eventId) : null;
+    } catch (err) {
+      console.error('⚠️ Error resolving eventId from marketId:', err.message);
+      return null;
+    }
+  }
+
+  // Sync helper — jab tak real eventId resolve nahi hota, marketId se
+  // fallback URL banata hai (purani query-string style), taaki link
+  // kabhi bhi broken na dikhe.
   function sportPageUrl(sport, id) {
     const isCricket = (sport || '').toString().toLowerCase() === 'cricket';
     return isCricket ? `/Common/Market.html?id=${id}` : `/Common/Event?id=${id}`;
+  }
+
+  // Async navigator — actual click handlers isko call karenge.
+  // Usage: goToMatch('horse', match)              -> match object {marketId, eventId}
+  //        goToMatch('horse', marketId, eventId)   -> inline onclick attrs ke liye
+  async function goToMatch(sport, matchOrMarketId, maybeEventId) {
+    const isCricket = (sport || '').toString().toLowerCase() === 'cricket';
+    const isObj = matchOrMarketId && typeof matchOrMarketId === 'object';
+    const marketId = isObj ? matchOrMarketId.marketId : matchOrMarketId;
+    const existingEventId = isObj ? matchOrMarketId.eventId : maybeEventId;
+
+    if (isCricket) {
+      window.location.href = `/Common/Market.html?id=${marketId}`;
+      return;
+    }
+
+    // Agar API ne pehle se hi eventId de diya hai to seedha use karo
+    if (existingEventId) {
+      window.location.href = `/Common/Event/${existingEventId}`;
+      return;
+    }
+
+    // Warna catalog2 se real eventId resolve karo
+    const realEventId = await resolveRealEventId(marketId);
+    if (realEventId) {
+      window.location.href = `/Common/Event/${realEventId}`;
+    } else {
+      // Resolve fail ho jaye to purane query-string format pe fallback
+      window.location.href = `/Common/Event?id=${marketId}`;
+    }
   }
 </script>
 
@@ -1082,7 +1137,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           li.textContent = `${timeStr} ${match.match}`;
           li.style.cursor = 'pointer';
           li.addEventListener('click', () => {
-            window.location.href = sportPageUrl('greyhound', match.eventId || match.marketId);
+            goToMatch('greyhound', match);
           });
 
           listContainer.appendChild(li);
@@ -1143,7 +1198,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           li.textContent = `${timeStr} ${match.match}`;
           li.style.cursor = 'pointer';
           li.addEventListener('click', () => {
-            window.location.href = sportPageUrl('horse', encodeURIComponent(match.eventId || match.marketId));
+            goToMatch('horse', match);
           });
 
           listContainer.appendChild(li);
@@ -1211,7 +1266,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           div.className = 'chk11';
           div.style.cssText = 'text-align:center; margin:2px;';
           div.innerHTML = `
-            <a href="${sportPageUrl('horse', match.eventId || match.marketId)}" style="color:white; width:auto;">
+            <a href="#" onclick="goToMatch('horse', '${match.marketId}', '${match.eventId || ''}'); return false;" style="color:white; width:auto;">
               <b class="chkmobile">
                 <span class="slidedate">${localTime}</span><br>
                 <span class="slidename">${match.match}</span>
@@ -1297,7 +1352,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           div.className = 'chk11';
           div.style.cssText = 'text-align:center; margin:2px;';
           div.innerHTML = `
-            <a href="${sportPageUrl('greyhound', match.eventId || match.marketId)}" style="color:white; width:auto;">
+            <a href="#" onclick="goToMatch('greyhound', '${match.marketId}', '${match.eventId || ''}'); return false;" style="color:white; width:auto;">
               <b class="chkmobile">
                 <span class="slidedate">${localTime}</span><br>
                 <span class="slidename">${match.match}</span>
@@ -1384,7 +1439,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       li.textContent = match.match || 'match';
       li.style.cursor = 'pointer';
       li.addEventListener('click', () => {
-        window.location.href = sportPageUrl('tennis', match.eventId || match.marketId || '0');
+        goToMatch('tennis', match);
       });
       listContainer.appendChild(li);
     });
@@ -1435,7 +1490,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       li.textContent = match.match || 'match';
       li.style.cursor = 'pointer';
       li.addEventListener('click', () => {
-        window.location.href = sportPageUrl('football', match.eventId || match.marketId || '0');
+        goToMatch('football', match);
       });
       listContainer.appendChild(li);
     });
@@ -1788,7 +1843,7 @@ document.addEventListener("DOMContentLoaded", async () => {
               matchLink.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                window.location.href = sportPageUrl('football', match.eventId || match.marketId);
+                goToMatch('football', match);
               });
             }
           }, 0);
@@ -1863,7 +1918,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             <td>
               <div class="teams">
                 <strong class="team-1">
-                  <a href="${sportPageUrl('football', match.eventId || match.marketId)}">${match.match}</a>
+                  <a href="#" onclick="goToMatch('football', '${match.marketId}', '${match.eventId || ''}'); return false;">${match.match}</a>
                 </strong>
                 <strong class="team-2"><a href=""></a></strong>
               </div>
@@ -1994,7 +2049,7 @@ document.addEventListener("DOMContentLoaded", async () => {
               matchLink.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                window.location.href = sportPageUrl('tennis', match.eventId || match.marketId);
+                goToMatch('tennis', match);
               });
             }
           }, 0);
@@ -2051,7 +2106,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             <td class="sport-date bg-primary" style="color:white;">
               <div><span class="day">InPlay</span><span class="market-time">${localTime}</span></div>
             </td>
-            <td><div class="teams"><strong class="team-1"><a href="${sportPageUrl('tennis', match.eventId || match.marketId)}">${match.match}</a></strong></div></td>
+            <td><div class="teams"><strong class="team-1"><a href="#" onclick="goToMatch('tennis', '${match.marketId}', '${match.eventId || ''}'); return false;">${match.match}</a></strong></div></td>
             <td><div class="matched"><span class="TMFORDESK">${match.totalMatched}</span></div></td>
             <td><div class="box -blue"><strong>${back1.price}</strong><span>${back1.size}</span></div></td>
             <td><div class="box -pink"><strong>${lay1.price}</strong><span>${lay1.size}</span></div></td>

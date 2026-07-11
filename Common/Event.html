@@ -4848,7 +4848,19 @@ new Vue({
 var _pnlSocket;
 try { _pnlSocket = io("https://1xbetbackend.work.gd"); } catch(e) {}
 var socket = _pnlSocket;
-var matchId = new URLSearchParams(window.location.search).get("id");
+// BUG FIX: Market.html pe URL query-string style hai (?id=1.xxx), is liye
+// query param "id" hi seedha marketId hota hai. Lekin Event.html pe naye
+// URLs path-style hain (/Common/Event/<eventId>) — is page pe "id" query
+// param kabhi set hi nahi hota, is liye purana code hamesha matchId = null
+// deta tha aur PnL (calculateRunnerPnL / getRunnerAmounts / fetchMatched
+// waghera) sab `if (!matchId) return` guard se silently skip ho jate the.
+// Fix: upar wala already-resolved `marketId` (real market id — path se ya
+// sessionStorage 'evtMap:<eventId>' se resolve hota hai) use karo, aur
+// sirf legacy purane query-string URLs (?id=...) ke liye query param par
+// fallback rakho.
+var matchId = (typeof marketId !== 'undefined' && marketId)
+    ? String(marketId)
+    : new URLSearchParams(window.location.search).get("id");
 // ordersUrl already declared in <head> as const — reuse karo, reassign mat karo
 // ordersUrl = "https://1xbetbackend.work.gd/api/v1"; // already set
 

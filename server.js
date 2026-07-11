@@ -47,7 +47,13 @@ app.get("/Common/index",       (req, res) => send(res, "Common", "index.html"));
 app.get("/Common/index.html",  (req, res) => send(res, "Common", "index.html"));
 
 app.get("/Common/Dashboard",   (req, res) => send(res, "Common", "Dashboard.html"));
-app.get("/Common/Event",   (req, res) => send(res, "Common", "Event.html"));
+
+// ✅ Event page — naya path-style URL: /Common/Event/<eventId>
+//    Purana query-string format (/Common/Event?id=...) bhi backward-compat
+//    ke liye zinda rakha hai, kyunki purane bookmarks/links abhi bhi
+//    isi format mein ho sakte hain.
+app.get("/Common/Event/:eventId", (req, res) => send(res, "Common", "Event.html"));
+app.get("/Common/Event",          (req, res) => send(res, "Common", "Event.html"));
 
 app.get("/Common/Admin",       (req, res) => send(res, "Common", "Admin.html"));
 app.get("/Common/Admin.html",  (req, res) => send(res, "Common", "Admin.html"));

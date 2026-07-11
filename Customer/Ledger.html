@@ -710,16 +710,6 @@
       <div class="card-body">
 
         <!-- Loading / Error states -->
-        <!-- ✅ BUG FIX: "Account Ledger" card ka background WHITE/light hai
-             (BetPro-style.css se), lekin ye teeno status messages purane
-             dark-theme colors (#fff safed, #aaa halka gray) use kar rahe
-             the — is liye white background par ye text practically
-             INVISIBLE ho jata tha. Isi wajah se date select karke Submit
-             karne ke baad screen "blank" dikhti thi, chahe "Loading..."
-             ho raha ho ya "Koi settled bet nahi mili" wala message aa
-             chuka ho — text hamesha wahan maujood tha, sirf nazar nahi
-             aata tha. Ab dark, readable colors use kiye hain jo white
-             background par saaf dikhein ge. -->
         <div v-if="loading" style="color:#333; padding:12px;">Loading statement...</div>
         <div v-if="error"   style="color:#c0392b; padding:12px;">{{ error }}</div>
         <div v-if="!loading && ledger.length <= 1" style="color:#555; padding:12px;">
@@ -937,29 +927,6 @@
       if (typeof $ !== 'undefined') {
         $('#ReportFrom').datetimepicker('date', fromDate);
         $('#ReportTo').datetimepicker('date', toDate);
-
-        // ✅ BUG FIX: pehle hidden #From/#To inputs sirf DOMContentLoaded pe
-        // aaj ki date se set hote the aur phir kabhi update nahi hote the —
-        // user calendar se koi bhi date select karta, submit karne par
-        // fetchLedger() hamesha wahi purani (aaj wali) #From/#To value
-        // read karta rehta tha, is liye select ki hui date ke bets kabhi
-        // nahi aate the. Ab jab bhi user "From" ya "To" calendar se date
-        // change kare, hidden input turant us poore din (00:00:00 se
-        // 23:59:59 tak) ke hisaab se update ho jayega.
-        $('#ReportFrom').on('change.datetimepicker', function(e) {
-          if (!e.date) return;
-          var d = e.date.toDate();
-          d.setHours(0, 0, 0, 0);
-          var fi = document.getElementById('From');
-          if (fi) fi.value = d.toISOString();
-        });
-        $('#ReportTo').on('change.datetimepicker', function(e) {
-          if (!e.date) return;
-          var d = e.date.toDate();
-          d.setHours(23, 59, 59, 0);
-          var ti = document.getElementById('To');
-          if (ti) ti.value = d.toISOString();
-        });
       }
     } catch(e) {}
   });
@@ -977,28 +944,6 @@
 
   // ── DataTable init — statementold.html jaisa exact pattern (Print/Excel/PDF + mobile responsive) ──
   let _dtInitTries = 0;
-
-  // ✅ BUG FIX (insertBefore NotFoundError on Submit):
-  // DataTables plugin humesha #tableLedger ko apne "dataTables_wrapper"
-  // div ke andar move/wrap kar deta hai (aur mobile pe Responsive plugin
-  // rows ko bhi idhar-udhar move karta hai). Vue ka `v-if="!loading..."`
-  // isi <table> node ko loading state badalte hi DOM se nikal/wapas daalta
-  // hai apne purane virtual-DOM reference (insertBefore/removeChild) ke
-  // hisaab se — lekin DataTables ne DOM structure already badal diya hota
-  // hai, is liye wo reference node ab valid parent-child rishta nahi
-  // rakhta aur "NotFoundError: insertBefore ... not a child of this node"
-  // aata hai. Fix: har naye fetch se PEHLE DataTable instance ko
-  // `remove:true` ke saath destroy karo — ye plain <table> ko uski asli
-  // shape/jagah mein wapas la deta hai, taake Vue safely v-if se
-  // hata/dobara bana sake.
-  function destroyLedgerDataTable() {
-    try {
-      if (window.jQuery && jQuery.fn.DataTable && jQuery.fn.DataTable.isDataTable('#tableLedger')) {
-        jQuery('#tableLedger').DataTable().destroy(true);
-      }
-    } catch (e) { console.warn('[Statement] destroyLedgerDataTable error:', e.message); }
-  }
-
   function initLedgerDataTable() {
     const $table = window.jQuery ? jQuery('#tableLedger') : null;
 
@@ -1066,6 +1011,18 @@
     }
   }
 
+  // Table ko Vue ke v-if hatane se PEHLE hi DataTables se "chhuda" do,
+  // warna Vue purane (DataTables-wrapped) node reference se insertBefore
+  // karta hai jo ab us jagah ka child hi nahi raha -> NotFoundError crash
+  // -> Vue ka render corrupt ho jata hai -> screen blank reh jati hai.
+  function destroyLedgerDataTable() {
+    try {
+      if (window.jQuery && jQuery.fn.DataTable && jQuery.fn.DataTable.isDataTable('#tableLedger')) {
+        jQuery('#tableLedger').DataTable().destroy(true); // true = plain table DOM wapas
+      }
+    } catch (e) { console.warn('[Statement] destroyLedgerDataTable:', e.message); }
+  }
+
   new Vue({
     el: "#ledgerApp",
     data: {
@@ -1075,11 +1032,7 @@
     },
     methods: {
       async fetchLedger() {
-        // ✅ BUG FIX: v-if se table hatane se PEHLE DataTables ka DOM
-        // wrapping hata do, warna Vue ka patch insertBefore par crash
-        // karta hai (dekho destroyLedgerDataTable() comment upar).
-        destroyLedgerDataTable();
-
+        destroyLedgerDataTable();   // <-- loading=true se PEHLE, crash rokne ke liye
         this.loading = true;
         this.error   = null;
         const token  = localStorage.getItem("token");
@@ -1103,22 +1056,9 @@
           const filterTo   = toInput   ? new Date(toInput.value)   : null;
 
           // Step 3: Settled bets fetch (sirf is user ke)
-          // ✅ BUG FIX: pehle sirf "limit=500" bheja jata tha aur backend
-          // date ke baare mein kuch jaanta hi nahi tha — is liye hamesha
-          // sirf sabse RECENT 500 settled bets aate the. Agar user ne koi
-          // purani date select ki aur us window se bahar total bets 500 se
-          // zyada nikle, to select ki hui date ke bets frontend tak
-          // pahunchte hi nahi the (chahe database mein maujood hon).
-          // Fix: "to" (upper bound = selected range ka end) backend ko
-          // bhejo aur limit badha do — "from" jaan-boojh kar NAHI bheja,
-          // kyunke Opening Balance calculation ke liye selected range se
-          // PEHLE ke settled bets bhi isi list mein chahiye hote hain
-          // (warna Opening Balance hamesha 0 dikhne lag jayega).
           let allSettledRaw = [];
           try {
-            const _settledParams = new URLSearchParams({ limit: "5000" });
-            if (filterTo) _settledParams.set("to", filterTo.toISOString());
-            const res1 = await fetch(_STMT_API + "/orders/settled?" + _settledParams.toString(), {
+            const res1 = await fetch(_STMT_API + "/orders/settled?limit=500", {
               headers: { "Authorization": "Bearer " + token }
             });
             const j1 = await res1.json();

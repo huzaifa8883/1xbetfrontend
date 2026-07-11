@@ -1028,6 +1028,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
     return false;
   }
+
+  // ✅ Match click routing: Cricket => Market.html (marketId),
+  //    har doosri sport => Event.html (eventId).
+  function sportPageUrl(sport, id) {
+    const isCricket = (sport || '').toString().toLowerCase() === 'cricket';
+    return isCricket ? `/Common/Market.html?id=${id}` : `/Common/Event.html?id=${id}`;
+  }
 </script>
 
 <!-- ✅ Greyhound Sidebar List -->
@@ -1075,7 +1082,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           li.textContent = `${timeStr} ${match.match}`;
           li.style.cursor = 'pointer';
           li.addEventListener('click', () => {
-            window.location.href = `/Common/Market.html?id=${match.marketId}`;
+            window.location.href = sportPageUrl('greyhound', match.eventId || match.marketId);
           });
 
           listContainer.appendChild(li);
@@ -1136,7 +1143,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           li.textContent = `${timeStr} ${match.match}`;
           li.style.cursor = 'pointer';
           li.addEventListener('click', () => {
-            window.location.href = `/Common/Market.html?id=${encodeURIComponent(match.marketId)}`;
+            window.location.href = sportPageUrl('horse', encodeURIComponent(match.eventId || match.marketId));
           });
 
           listContainer.appendChild(li);
@@ -1204,7 +1211,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           div.className = 'chk11';
           div.style.cssText = 'text-align:center; margin:2px;';
           div.innerHTML = `
-            <a href="/Common/Market.html?id=${match.marketId}" style="color:white; width:auto;">
+            <a href="${sportPageUrl('horse', match.eventId || match.marketId)}" style="color:white; width:auto;">
               <b class="chkmobile">
                 <span class="slidedate">${localTime}</span><br>
                 <span class="slidename">${match.match}</span>
@@ -1290,7 +1297,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           div.className = 'chk11';
           div.style.cssText = 'text-align:center; margin:2px;';
           div.innerHTML = `
-            <a href="/Common/Market.html?id=${match.marketId}" style="color:white; width:auto;">
+            <a href="${sportPageUrl('greyhound', match.eventId || match.marketId)}" style="color:white; width:auto;">
               <b class="chkmobile">
                 <span class="slidedate">${localTime}</span><br>
                 <span class="slidename">${match.match}</span>
@@ -1377,7 +1384,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       li.textContent = match.match || 'match';
       li.style.cursor = 'pointer';
       li.addEventListener('click', () => {
-        window.location.href = `/Common/Market.html?id=${match.marketId || match.eventId || '0'}`;
+        window.location.href = sportPageUrl('tennis', match.eventId || match.marketId || '0');
       });
       listContainer.appendChild(li);
     });
@@ -1428,7 +1435,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       li.textContent = match.match || 'match';
       li.style.cursor = 'pointer';
       li.addEventListener('click', () => {
-        window.location.href = `/Common/Market.html?id=${match.marketId || match.eventId || '0'}`;
+        window.location.href = sportPageUrl('football', match.eventId || match.marketId || '0');
       });
       listContainer.appendChild(li);
     });
@@ -1781,7 +1788,7 @@ document.addEventListener("DOMContentLoaded", async () => {
               matchLink.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                window.location.href = `/Common/Market.html?id=${match.marketId}`;
+                window.location.href = sportPageUrl('football', match.eventId || match.marketId);
               });
             }
           }, 0);
@@ -1856,7 +1863,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             <td>
               <div class="teams">
                 <strong class="team-1">
-                  <a href="/Common/Market.html?id=${match.marketId}">${match.match}</a>
+                  <a href="${sportPageUrl('football', match.eventId || match.marketId)}">${match.match}</a>
                 </strong>
                 <strong class="team-2"><a href=""></a></strong>
               </div>
@@ -1987,7 +1994,7 @@ document.addEventListener("DOMContentLoaded", async () => {
               matchLink.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                window.location.href = `/Common/Market.html?id=${match.marketId}`;
+                window.location.href = sportPageUrl('tennis', match.eventId || match.marketId);
               });
             }
           }, 0);
@@ -2044,7 +2051,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             <td class="sport-date bg-primary" style="color:white;">
               <div><span class="day">InPlay</span><span class="market-time">${localTime}</span></div>
             </td>
-            <td><div class="teams"><strong class="team-1"><a href="/Common/Market.html?id=${match.marketId}">${match.match}</a></strong></div></td>
+            <td><div class="teams"><strong class="team-1"><a href="${sportPageUrl('tennis', match.eventId || match.marketId)}">${match.match}</a></strong></div></td>
             <td><div class="matched"><span class="TMFORDESK">${match.totalMatched}</span></div></td>
             <td><div class="box -blue"><strong>${back1.price}</strong><span>${back1.size}</span></div></td>
             <td><div class="box -pink"><strong>${lay1.price}</strong><span>${lay1.size}</span></div></td>

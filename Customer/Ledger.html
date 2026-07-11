@@ -710,9 +710,19 @@
       <div class="card-body">
 
         <!-- Loading / Error states -->
-        <div v-if="loading" style="color:#fff; padding:12px;">Loading statement...</div>
-        <div v-if="error"   style="color:#e55; padding:12px;">{{ error }}</div>
-        <div v-if="!loading && ledger.length <= 1" style="color:#aaa; padding:12px;">
+        <!-- ✅ BUG FIX: "Account Ledger" card ka background WHITE/light hai
+             (BetPro-style.css se), lekin ye teeno status messages purane
+             dark-theme colors (#fff safed, #aaa halka gray) use kar rahe
+             the — is liye white background par ye text practically
+             INVISIBLE ho jata tha. Isi wajah se date select karke Submit
+             karne ke baad screen "blank" dikhti thi, chahe "Loading..."
+             ho raha ho ya "Koi settled bet nahi mili" wala message aa
+             chuka ho — text hamesha wahan maujood tha, sirf nazar nahi
+             aata tha. Ab dark, readable colors use kiye hain jo white
+             background par saaf dikhein ge. -->
+        <div v-if="loading" style="color:#333; padding:12px;">Loading statement...</div>
+        <div v-if="error"   style="color:#c0392b; padding:12px;">{{ error }}</div>
+        <div v-if="!loading && ledger.length <= 1" style="color:#555; padding:12px;">
           Koi settled bet nahi mili. Jab match close ho ga to yahan dikhega.
         </div>
 

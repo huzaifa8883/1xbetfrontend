@@ -904,6 +904,17 @@
     }
   }
 
+  // catalog2 sirf marketId accept karta hai, eventId nahi — is liye jab
+  // hum path-style eventId URL pe navigate karte hain, real marketId ko
+  // sessionStorage mein save kar dete hain taaki agla Event.html load usay
+  // turant (bina kisi extra/failing API call ke) utha sake.
+  function rememberMarketId(eventId, marketId, sport) {
+    if (!eventId || !marketId) return;
+    try {
+      sessionStorage.setItem('evtMap:' + eventId, JSON.stringify({ marketId, sport, ts: Date.now() }));
+    } catch (e) { /* ignore */ }
+  }
+
   async function goToMatch(sport, matchOrMarketId, maybeEventId) {
     const isCricket = (sport || '').toString().toLowerCase() === 'cricket';
     const isObj = matchOrMarketId && typeof matchOrMarketId === 'object';
@@ -915,10 +926,12 @@
       return;
     }
     if (existingEventId) {
+      rememberMarketId(existingEventId, mId, sport);
       window.location.href = `/Common/Event/${existingEventId}`;
       return;
     }
     const realEventId = await resolveRealEventId(mId);
+    if (realEventId) rememberMarketId(realEventId, mId, sport);
     window.location.href = realEventId ? `/Common/Event/${realEventId}` : `/Common/Event?id=${mId}`;
   }
 
@@ -952,9 +965,53 @@
     GET /api/markets/live/:sport
   ============================================================ -->
 <script>
-  async function getSportByMarketId(marketId) {
+  // URL params (global, used by other scripts)
+  const urlParams = new URLSearchParams(window.location.search);
+
+  // ── Page ID resolution (path-style aur purana query-string dono support) ──
+  //    Naya URL: /Common/Event/<eventId>          -> PAGE_ID asal mein eventId hai
+  //    Purana URL: /Common/Event?id=<marketId>     -> PAGE_ID marketId hai
+  const _pageIds = getPageIdFromUrl();
+  const PAGE_ID   = _pageIds.eventIdFromPath || _pageIds.eventIdFromQuery || _pageIds.legacyIdFromQuery || '';
+  const IS_PATH_STYLE_URL = !!_pageIds.eventIdFromPath;
+
+  // catalog2 sirf real marketId (1.XXXXXX) accept karta hai, eventId nahi.
+  // Path-style URL (/Common/Event/<eventId>) ke case mein, dashboard/related-
+  // events click ke waqt real marketId sessionStorage mein save ho chuka
+  // hota hai ('evtMap:<eventId>' key) — usay yahan turant (sync) utha lo,
+  // is script block ke baaki functions chalne se pehle.
+  // Agar mile hi na (direct link/refresh/naya tab) to PAGE_ID hi use hoga,
+  // jo path-style case mein galat hoga (eventId hai, marketId nahi) —
+  // is fallback case ke liye backend mein eventId->marketId resolve karne
+  // wala route chahiye.
+  function resolveStoredMarketId(evId) {
+    if (!evId) return null;
     try {
-      const res  = await fetch(`${API_BASE}/markets/catalog2?id=${marketId}`);
+      const raw = sessionStorage.getItem('evtMap:' + evId);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return (parsed && parsed.marketId) ? String(parsed.marketId) : null;
+    } catch (e) { return null; }
+  }
+
+  const _storedMarketId = IS_PATH_STYLE_URL ? resolveStoredMarketId(PAGE_ID) : null;
+  if (IS_PATH_STYLE_URL && !_storedMarketId) {
+    console.warn('[Event] Real marketId session mein nahi mila (direct link/refresh) — catalog2 calls fail ho sakte hain jab tak backend eventId resolve na kare.');
+  }
+
+  const marketId  = _storedMarketId || PAGE_ID;
+  // eventId URL se lo — pehle 'eventId' param check karo, warna PAGE_ID use karo
+  // mv2.min.js Catalog.eventId use karta hai (jo catalog2 API se aata hai)
+  // lekin ListOrders function mein fallback ke liye ye global bhi rakho
+  const eventId   = _pageIds.eventIdFromPath || _pageIds.eventIdFromQuery || PAGE_ID || '';
+  const timeCode  = '';
+  const CommentrySignalR = 1;
+  const SsocketEnable    = 1;
+  const CatalogSignalR   = 0;
+
+  async function getSportByMarketId(id) {
+    try {
+      const res  = await fetch(`${API_BASE}/markets/catalog2?id=${id}`);
       const json = await res.json();
       console.log("Catalog2 API response:", json);
       const data = json.data || json;
@@ -972,10 +1029,8 @@
   }
 
   async function initMarketPage() {
-    const { eventIdFromPath, eventIdFromQuery, legacyIdFromQuery } = getPageIdFromUrl();
-    const id = eventIdFromPath || eventIdFromQuery || legacyIdFromQuery;
-    if (!id) return;
-    await getSportByMarketId(id);
+    if (!marketId) return;
+    await getSportByMarketId(marketId);
   }
 
   document.addEventListener('DOMContentLoaded', initMarketPage);
@@ -1032,42 +1087,13 @@
   }
 
   async function initRelatedEvents() {
-    const { eventIdFromPath, eventIdFromQuery, legacyIdFromQuery } = getPageIdFromUrl();
-    const id = eventIdFromPath || eventIdFromQuery || legacyIdFromQuery;
-    if (!id) return;
-    const sport = await getSportByMarketId(id);
+    if (!marketId) return;
+    const sport = await getSportByMarketId(marketId);
     console.log("Sport name:", sport);
     loadRelatedEventsBySport(sport);
   }
 
   initRelatedEvents();
-
-  // URL params (global, used by other scripts)
-  const urlParams = new URLSearchParams(window.location.search);
-
-  // ── Page ID resolution (path-style aur purana query-string dono support) ──
-  //    Naya URL: /Common/Event/<eventId>          -> PAGE_ID asal mein eventId hai
-  //    Purana URL: /Common/Event?id=<marketId>     -> PAGE_ID marketId hai
-  //
-  //    NOTE (backend dependency): catalog2 endpoint ko is PAGE_ID se hi
-  //    market/event dono resolve karne padte hain (id param generic hai,
-  //    marketId aur eventId dono accept karna chahiye). Agar catalog2 sirf
-  //    marketId accept karta hai to backend mein eventId->marketId resolve
-  //    karne wala route add karna hoga — abhi ke liye ID ko as-is pass
-  //    kar rahe hain, jaisa purani implementation bhi karti thi.
-  const _pageIds = getPageIdFromUrl();
-  const PAGE_ID   = _pageIds.eventIdFromPath || _pageIds.eventIdFromQuery || _pageIds.legacyIdFromQuery || '';
-  const IS_PATH_STYLE_URL = !!_pageIds.eventIdFromPath;
-
-  const marketId  = PAGE_ID;
-  // eventId URL se lo — pehle 'eventId' param check karo, warna PAGE_ID use karo
-  // mv2.min.js Catalog.eventId use karta hai (jo catalog2 API se aata hai)
-  // lekin ListOrders function mein fallback ke liye ye global bhi rakho
-  const eventId   = _pageIds.eventIdFromPath || _pageIds.eventIdFromQuery || PAGE_ID || '';
-  const timeCode  = '';
-  const CommentrySignalR = 1;
-  const SsocketEnable    = 1;
-  const CatalogSignalR   = 0;
 </script>
 
 

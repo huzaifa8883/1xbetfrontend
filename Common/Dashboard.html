@@ -1033,7 +1033,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   //    har doosri sport => Event.html (eventId).
   function sportPageUrl(sport, id) {
     const isCricket = (sport || '').toString().toLowerCase() === 'cricket';
-    return isCricket ? `/Common/Market.html?id=${id}` : `/Common/Event.html?id=${id}`;
+    return isCricket ? `/Common/Market.html?id=${id}` : `/Common/Event?id=${id}`;
   }
 </script>
 

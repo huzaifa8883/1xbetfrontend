@@ -1068,6 +1068,7 @@
           const toInput    = document.getElementById('To');
           const filterFrom = fromInput ? new Date(fromInput.value) : null;
           const filterTo   = toInput   ? new Date(toInput.value)   : null;
+          console.log("[Statement] Filter range:", filterFrom, "to", filterTo);
 
           // Step 3: Settled bets fetch (sirf is user ke)
           let allSettledRaw = [];
@@ -1169,6 +1170,10 @@
             const d = new Date(dep.created_at || dep.date);
             return d >= filterFrom && d <= filterTo;
           });
+          console.log("[Statement] Total settled fetched:", allSettled.length,
+                      "| In range:", settled.length,
+                      "| Total deposits fetched:", allDeposits.length,
+                      "| In range:", deposits.length);
 
           // ── Opening Balance row ───────────────────────────────
           const rows = [{
@@ -1370,16 +1375,48 @@ document.getElementById('betDetailModal').addEventListener('click', function(e) 
   if (e.target === this) window.closeBetModal();
 });
 
+// ✅ "M/D/YYYY h:mm A" format (jo fmtDisplay() likhta hai) ko Date object mein parse karo.
+// new Date(string) par bharosa nahi karte kyunki browser-dependent hai — manually parse karo.
+function parseDisplayDate(str) {
+  if (!str) return null;
+  var m = String(str).trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (!m) return null;
+  var mo = parseInt(m[1], 10) - 1, dy = parseInt(m[2], 10), yr = parseInt(m[3], 10);
+  var hr = parseInt(m[4], 10), mn = parseInt(m[5], 10);
+  var ap = m[6].toUpperCase();
+  if (ap === 'PM' && hr !== 12) hr += 12;
+  if (ap === 'AM' && hr === 12) hr = 0;
+  return new Date(yr, mo, dy, hr, mn, 0);
+}
+
 // ✅ Submit button: dates update karo aur Vue ledger refresh karo (page reload nahi)
 window.updateDates = function() {
-  // datetimepicker se hidden inputs already update ho jaate hain via datetimepicker events
-  // Sirf Vue instance ka fetchLedger call karna hai
+  // ⚠️ Pehle ye datetimepicker ke 'change' EVENT par bharosa karta tha taake #From/#To
+  // hidden inputs update ho jayein — lekin wo event reliably fire nahi ho raha tha,
+  // isliye select ki hui date filter mein apply hi nahi hoti thi.
+  // ✅ FIX: ab seedha visible DisplayFrom/DisplayTo (jo widget khud correctly update
+  // karta hai) se date parse karke hidden #From/#To set karte hain — event pe depend nahi.
+  var df = document.getElementById('DisplayFrom');
+  var dt = document.getElementById('DisplayTo');
+  var fi = document.getElementById('From');
+  var ti = document.getElementById('To');
+
+  var fromD = df ? parseDisplayDate(df.value) : null;
+  var toD   = dt ? parseDisplayDate(dt.value) : null;
+
+  if (fromD && fi) fi.value = fromD.toISOString();
+  if (toD && ti)   ti.value = toD.toISOString();
+
+  if ((df && df.value && !fromD) || (dt && dt.value && !toD)) {
+    console.warn('[Statement] Date parse failed:', df && df.value, dt && dt.value);
+  }
+
   setTimeout(function() {
     var vueApp = document.getElementById('ledgerApp')?.__vue__;
     if (vueApp && vueApp.fetchLedger) {
       vueApp.fetchLedger();
     }
-  }, 100);
+  }, 50);
   return false; // form submit rokein
 };
 

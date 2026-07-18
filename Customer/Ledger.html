@@ -927,6 +927,20 @@
       if (typeof $ !== 'undefined') {
         $('#ReportFrom').datetimepicker('date', fromDate);
         $('#ReportTo').datetimepicker('date', toDate);
+
+        // ✅ FIX: jab user calendar se koi date select kare to hidden
+        // #From / #To inputs ko sync karo — pehle koi listener nahi tha,
+        // isliye Submit dabane pe hamesha purani (aaj wali) date use ho rahi thi.
+        $('#ReportFrom').on('change.datetimepicker', function(e) {
+          if (!e.date) return;
+          var d = e.date.toDate ? e.date.toDate() : new Date(e.date);
+          if (fi) fi.value = d.toISOString();
+        });
+        $('#ReportTo').on('change.datetimepicker', function(e) {
+          if (!e.date) return;
+          var d = e.date.toDate ? e.date.toDate() : new Date(e.date);
+          if (ti) ti.value = d.toISOString();
+        });
       }
     } catch(e) {}
   });

@@ -1042,10 +1042,12 @@
     data: {
       ledger: [],
       loading: false,
-      error: null
+      error: null,
+      _fetchSeq: 0   // ✅ race-guard: overlapping fetchLedger() calls ko track karta hai
     },
     methods: {
       async fetchLedger() {
+        const mySeq = ++this._fetchSeq;   // ✅ ye call konsa number hai, note kar lo
         destroyLedgerDataTable();   // <-- loading=true se PEHLE, crash rokne ke liye
         this.loading = true;
         this.error   = null;
@@ -1274,6 +1276,11 @@
               amount: 0, balance: openingBalance, isOpen: false, type: 'info' });
           }
 
+          // ✅ Race-guard: agar iske baad koi naya fetchLedger() call shuru ho chuka hai,
+          // to ye purana (stale) result hai — UI/DataTable ko touch mat karo, warna
+          // destroy/init overlap se table blank/corrupt reh jaata hai.
+          if (mySeq !== this._fetchSeq) { return; }
+
           this.ledger = rows;
 
           // ✅ DataTable init karo — Vue render complete hone ke baad
@@ -1283,10 +1290,11 @@
           });
 
         } catch (err) {
+          if (mySeq !== this._fetchSeq) { return; } // stale call — ignore, newer call is in charge
           console.error("Error fetching ledger:", err);
           this.error = "Statement load karne mein masla aaya.";
         } finally {
-          this.loading = false;
+          if (mySeq === this._fetchSeq) { this.loading = false; }
         }
       },
 
@@ -1345,14 +1353,25 @@
             }
           });
 
+          // ✅ Debounce: marketSettled + userUpdated dono ek hi settlement ke liye
+          // (near-)saath fire ho sakte hain — isse pehle har event apna fetchLedger()
+          // chala deta tha, 2-3 overlapping calls ban jaate the jo DataTable ko
+          // corrupt kar dete the. Ab 300ms ke andar aane wale saare triggers
+          // ek hi refresh mein merge ho jaate hain.
+          let _refreshTimer = null;
+          const debouncedRefresh = () => {
+            clearTimeout(_refreshTimer);
+            _refreshTimer = setTimeout(() => this.fetchLedger(), 300);
+          };
+
           _sock.on("marketSettled", () => {
             console.log("[Statement] marketSettled — refreshing ledger");
-            this.fetchLedger();
+            debouncedRefresh();
           });
           _sock.on("userUpdated", (data) => {
             if (data && (data.event === 'settlement' || data.event === 'void')) {
               console.log("[Statement] userUpdated", data.event, "— refreshing ledger");
-              this.fetchLedger();
+              debouncedRefresh();
             }
           });
         } catch(e) { console.warn("[Statement] Socket init failed:", e.message); }

@@ -1043,11 +1043,21 @@
       ledger: [],
       loading: false,
       error: null,
-      _fetchSeq: 0   // ✅ race-guard: overlapping fetchLedger() calls ko track karta hai
+      _refetchPending: false   // ✅ agar fetch chalte waqt naya refresh request aaye to yahan queue hota hai
     },
     methods: {
       async fetchLedger() {
-        const mySeq = ++this._fetchSeq;   // ✅ ye call konsa number hai, note kar lo
+        // ✅ Reentrancy guard: agar ek fetch already chal raha hai to nayi call
+        // usi ko dubara shuru nahi karti — sirf "iske baad ek aur refresh chahiye"
+        // note kar deti hai. Isse overlapping calls kabhi bante hi nahi (na race,
+        // na livelock) aur koi bhi request "lost" bhi nahi hoti.
+        if (this.loading) {
+          this._refetchPending = true;
+          console.log("[Statement] fetchLedger already in progress — queued for after");
+          return;
+        }
+        this._refetchPending = false;
+
         destroyLedgerDataTable();   // <-- loading=true se PEHLE, crash rokne ke liye
         this.loading = true;
         this.error   = null;
@@ -1276,11 +1286,6 @@
               amount: 0, balance: openingBalance, isOpen: false, type: 'info' });
           }
 
-          // ✅ Race-guard: agar iske baad koi naya fetchLedger() call shuru ho chuka hai,
-          // to ye purana (stale) result hai — UI/DataTable ko touch mat karo, warna
-          // destroy/init overlap se table blank/corrupt reh jaata hai.
-          if (mySeq !== this._fetchSeq) { return; }
-
           this.ledger = rows;
 
           // ✅ DataTable init karo — Vue render complete hone ke baad
@@ -1290,11 +1295,15 @@
           });
 
         } catch (err) {
-          if (mySeq !== this._fetchSeq) { return; } // stale call — ignore, newer call is in charge
           console.error("Error fetching ledger:", err);
           this.error = "Statement load karne mein masla aaya.";
         } finally {
-          if (mySeq === this._fetchSeq) { this.loading = false; }
+          this.loading = false;
+          // ✅ Agar is fetch ke dauran koi naya refresh request queue hua tha, ab chalao
+          if (this._refetchPending) {
+            this._refetchPending = false;
+            this.fetchLedger();
+          }
         }
       },
 

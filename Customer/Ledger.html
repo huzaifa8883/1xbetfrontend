@@ -1029,10 +1029,18 @@
   // warna Vue purane (DataTables-wrapped) node reference se insertBefore
   // karta hai jo ab us jagah ka child hi nahi raha -> NotFoundError crash
   // -> Vue ka render corrupt ho jata hai -> screen blank reh jati hai.
+  //
+  // ⚠️ IMPORTANT: destroy(true) mat karo — wo <table> element ko DOM se
+  // PERMANENTLY hata deta hai. Vue ka virtual DOM us element ko abhi bhi
+  // apna manta hai, to agli baar render karte waqt Vue ka reference stale
+  // ho jaata hai aur table hamesha ke liye khaali comment placeholder
+  // (<!---->) ban jaata hai — chahe Vue ka data (ledger array) bilkul sahi
+  // ho. destroy() (bina true ke) sirf DataTables ka wrapper/pagination/UI
+  // hata kar plain <table> Vue ke paas hi DOM mein wapas chhod deta hai.
   function destroyLedgerDataTable() {
     try {
       if (window.jQuery && jQuery.fn.DataTable && jQuery.fn.DataTable.isDataTable('#tableLedger')) {
-        jQuery('#tableLedger').DataTable().destroy(true); // true = plain table DOM wapas
+        jQuery('#tableLedger').DataTable().destroy(); // ✅ table node DOM mein hi rehta hai
       }
     } catch (e) { console.warn('[Statement] destroyLedgerDataTable:', e.message); }
   }
@@ -1419,24 +1427,44 @@ function parseDisplayDate(str) {
 
 // ✅ Submit button: dates update karo aur Vue ledger refresh karo (page reload nahi)
 window.updateDates = function() {
-  // ⚠️ Pehle ye datetimepicker ke 'change' EVENT par bharosa karta tha taake #From/#To
-  // hidden inputs update ho jayein — lekin wo event reliably fire nahi ho raha tha,
-  // isliye select ki hui date filter mein apply hi nahi hoti thi.
-  // ✅ FIX: ab seedha visible DisplayFrom/DisplayTo (jo widget khud correctly update
-  // karta hai) se date parse karke hidden #From/#To set karte hain — event pe depend nahi.
-  var df = document.getElementById('DisplayFrom');
-  var dt = document.getElementById('DisplayTo');
   var fi = document.getElementById('From');
   var ti = document.getElementById('To');
+  var fromD = null, toD = null;
 
-  var fromD = df ? parseDisplayDate(df.value) : null;
-  var toD   = dt ? parseDisplayDate(dt.value) : null;
+  // ⚠️ Pehle sirf visible DisplayFrom/DisplayTo text parse karte the — lekin widget
+  // apna khud ka display-format use karta hai (kisi external bundle mein configured,
+  // jo hamare assumed "M/D/YYYY h:mm A" pattern se match nahi karta), isliye parsing
+  // silently fail ho rahi thi aur hidden #From/#To kabhi update hi nahi hote the.
+  // ✅ FIX: pehle widget ke apne internal API se seedha Date object lo (format-independent,
+  // hamesha sahi). Sirf agar widget na mile to text-parsing fallback ke taur pe use karo.
+  try {
+    if (typeof $ !== 'undefined' && $.fn && $.fn.datetimepicker) {
+      var fromM = $('#ReportFrom').datetimepicker('date');
+      var toM   = $('#ReportTo').datetimepicker('date');
+      if (fromM) fromD = fromM.toDate ? fromM.toDate() : new Date(fromM);
+      if (toM)   toD   = toM.toDate ? toM.toDate() : new Date(toM);
+    }
+  } catch (e) {
+    console.warn('[Statement] datetimepicker API read failed, falling back to text parse:', e.message);
+  }
+
+  // Fallback: widget API na mile ya kuch na de, to visible text parse karo
+  if (!fromD) {
+    var df = document.getElementById('DisplayFrom');
+    fromD = df ? parseDisplayDate(df.value) : null;
+  }
+  if (!toD) {
+    var dt = document.getElementById('DisplayTo');
+    toD = dt ? parseDisplayDate(dt.value) : null;
+  }
 
   if (fromD && fi) fi.value = fromD.toISOString();
   if (toD && ti)   ti.value = toD.toISOString();
 
-  if ((df && df.value && !fromD) || (dt && dt.value && !toD)) {
-    console.warn('[Statement] Date parse failed:', df && df.value, dt && dt.value);
+  console.log('[Statement] updateDates() -> From:', fi && fi.value, '| To:', ti && ti.value);
+
+  if (!fromD || !toD) {
+    console.warn('[Statement] Date resolve failed — From:', fromD, 'To:', toD);
   }
 
   setTimeout(function() {

@@ -5560,10 +5560,18 @@ async function fetchRunners() {
         }
 
         // Sub-market arrays the backend may include
+        // ✅ FIX: pehle yahan 'tossMarkets', 'bookmakerMarkets' jaise galat field
+        // names check ho rahe the — catalog2 API asal mein 'toss', 'bookmaker',
+        // 'fancy' waghera (bina "Markets" suffix ke) bhejta hai, jaisa isi file
+        // mein neeche inject('BookmakerMarkets', data.bookmaker || []) mein
+        // confirm hota hai. Galat naam ki wajah se ye poora block har submarket
+        // ke liye hamesha skip ho jaata tha — na allMarketIds mein submarket
+        // IDs aate the, na selectionIdToMarketId map banta tha — isliye
+        // submarket bets ka PnL/position kabhi nahi dikhta tha.
         const subKeys = [
-            'subMarkets', 'tossMarkets', 'bookmakerMarkets',
-            'fancyMarkets', 'fancy2Markets', 'figureMarkets',
-            'oddFigureMarkets', 'otherMarkets'
+            'subMarkets', 'toss', 'bookmaker',
+            'fancy', 'fancy2', 'figure',
+            'oddFigure', 'other'
         ];
         subKeys.forEach(key => {
             const arr = market[key];

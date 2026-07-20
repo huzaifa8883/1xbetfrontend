@@ -5387,8 +5387,15 @@ async function fetchUnMatched() {
     const tk = localStorage.getItem('token') || localStorage.getItem('wex3authtoken') || token;
     if (!tk) return;
     try {
-        // Current match ke markets ke saare pending orders
-        const res = await fetch(`${ordersUrl}/orders/pending?matchId=${encodeURIComponent(matchId)}`, {
+        // BUG FIX: Match Odds + har sub-market (Bookmaker/Toss/Fancy/etc.)
+        // ka apna alag marketId hota hai. Sirf matchId bhejne se backend
+        // ka exact-match filter sub-market bets ko exclude kar deta tha.
+        // allMarketIds (fetchRunners() se populated) mein sab IDs hain —
+        // wahi comma-separated bhejo taake sab market ke pending orders aa sakein.
+        const idsParam = (window.allMarketIds && window.allMarketIds.size > 0)
+            ? [...window.allMarketIds].join(',')
+            : matchId;
+        const res = await fetch(`${ordersUrl}/orders/pending?marketId=${encodeURIComponent(idsParam)}`, {
             headers: { "Authorization": "Bearer " + tk }
         });
         if (!res.ok) return;
@@ -5456,8 +5463,12 @@ async function fetchMatched() {
     const tk = localStorage.getItem('token') || localStorage.getItem('wex3authtoken') || token;
     if (!tk) return;
     try {
-        // Current match ke markets ke saare matched orders
-        const res = await fetch(`${ordersUrl}/orders/matched?matchId=${encodeURIComponent(matchId)}`, {
+        // BUG FIX: same as fetchUnMatched() — send every market ID for this
+        // match (Match Odds + all sub-markets), not just the main matchId.
+        const idsParam = (window.allMarketIds && window.allMarketIds.size > 0)
+            ? [...window.allMarketIds].join(',')
+            : matchId;
+        const res = await fetch(`${ordersUrl}/orders/matched?marketId=${encodeURIComponent(idsParam)}`, {
             headers: { "Authorization": "Bearer " + tk }
         });
         if (!res.ok) return;
@@ -5852,21 +5863,29 @@ setInterval(async () => {
 // ── AUTO-SETTLE TRIGGER ────────────────────────────────────────────
 // Jab market CLOSED detect ho to backend ko auto-settle trigger karo
 // Backend khud betfair se winner detect karega
-let _autoSettleTriggered = false;
+// BUG FIX: pehle sirf matchId (Match Odds) ke liye trigger hota tha, aur
+// _autoSettleTriggered ek single boolean tha — is liye:
+//   1) sub-markets (Bookmaker/Toss/Fancy/etc.) kabhi auto-settle ke liye
+//      call hi nahi hote the (inka apna alag marketId hai), unke MATCHED
+//      bets hamesha "matched" hi reh jaate the (settle nahi).
+//   2) ek market settle hote hi flag true ho jaata aur baaki sab (jinhe
+//      abhi settle hona tha) hamesha ke liye block ho jaate.
+// Fix: har market apna alag id + apna status track karta hai (Set).
+const _autoSettleTriggered = new Set();
 
-async function triggerAutoSettle() {
-    if (_autoSettleTriggered || !matchId) return;
+async function triggerAutoSettleFor(mktId) {
+    if (!mktId || _autoSettleTriggered.has(mktId)) return;
     const tk = localStorage.getItem('token') || getCookie('wexscktoken') || '';
     if (!tk) return;
 
     try {
-        const res = await fetch(`${ordersUrl}/orders/auto-settle/${encodeURIComponent(matchId)}`, {
+        const res = await fetch(`${ordersUrl}/orders/auto-settle/${encodeURIComponent(mktId)}`, {
             method:  'POST',
             headers: { 'Authorization': 'Bearer ' + tk, 'Content-Type': 'application/json' }
         });
         if (res.ok) {
-            _autoSettleTriggered = true;
-            console.log('[Market] Auto-settle triggered for', matchId);
+            _autoSettleTriggered.add(mktId);
+            console.log('[Market] Auto-settle triggered for', mktId);
             // 3 second baad bets refresh karo
             setTimeout(async () => {
                 await fetchUnMatched();
@@ -5876,19 +5895,46 @@ async function triggerAutoSettle() {
             }, 3000);
         }
     } catch (e) {
-        console.warn('[Market] Auto-settle trigger failed:', e.message);
+        console.warn('[Market] Auto-settle trigger failed for', mktId, ':', e.message);
     }
 }
 
-// Catalog status poll: CLOSED detect hone par auto-settle trigger karo
+// Backward-compatible wrapper (kahin aur name se call ho raha ho to)
+async function triggerAutoSettle() {
+    await triggerAutoSettleFor(matchId);
+}
+
+// Status poll: Match Odds + har sub-market ka apna status check karo — har
+// market independently close/settle hota hai, sirf Catalog (Match Odds) ka
+// status kaafi nahi tha.
 setInterval(async () => {
-    if (_autoSettleTriggered || !matchId) return;
+    if (!matchId) return;
     const vm = document.getElementById('app')?.__vue__;
     if (!vm) return;
-    const status = (vm.Catalog?.status || '').toUpperCase();
-    if (status === 'CLOSED') {
-        console.log('[Market] Catalog status=CLOSED detected — triggering auto-settle');
-        await triggerAutoSettle();
+
+    const candidates = [];
+    if (vm.Catalog) {
+        candidates.push({ id: String(vm.Catalog.marketId || matchId), status: vm.Catalog.status });
+    }
+    const subLists = [
+        'subMarkets', 'BookmakerMarkets', 'TossMarkets', 'FancyMarkets',
+        'Fancy2Markets', 'FigureMarkets', 'OddFigureMarkets',
+        'OtherMarkets', 'OtherRaceMarkets'
+    ];
+    subLists.forEach(key => {
+        const arr = vm[key];
+        if (Array.isArray(arr)) {
+            arr.forEach(m => {
+                if (m && m.marketId) candidates.push({ id: String(m.marketId), status: m.status });
+            });
+        }
+    });
+
+    for (const c of candidates) {
+        if ((c.status || '').toUpperCase() === 'CLOSED' && !_autoSettleTriggered.has(c.id)) {
+            console.log('[Market] status=CLOSED detected for', c.id, '— triggering auto-settle');
+            await triggerAutoSettleFor(c.id);
+        }
     }
 }, 3000);
 // ──────────────────────────────────────────────────────────────────
@@ -6570,34 +6616,53 @@ Vue.component('runner-aggregate', {
     };
   }
 
-  /* ── Vue mein inject karo ── */
+  /* ── Vue mein inject karo ──
+     BUG FIX: BookmakerMarkets/TossMarkets/FancyMarkets/Fancy2Markets/
+     FigureMarkets/OddFigureMarkets/OtherMarkets — ye sab mv2.min.js mein
+     Vue *computed* properties hain (`computed: {}` block ke andar), jo
+     sirf `this.subMarkets` se derive hoti hain aur inka koi setter nahi.
+     `vm[prop] = norm` ek computed property ko seedha assign karta hai —
+     Vue 2 mein ye silent no-op hota hai (ya sirf dev-warning), asal data
+     kabhi reactive state mein pahunchta hi nahi tha. Isi wajah se
+     Bookmaker/Toss/Fancy jaise "extra" submarkets ke runners/bets/PnL
+     kabhi live update nahi hote the.
+     Fix: asal reactive source `vm.subMarkets` mein push karo — computed
+     getters (jo already marketName/marketType keywords se filter karte
+     hain) khud-ba-khud sahi category mein bant lenge. */
   function injectMarkets(data) {
     const vm = getVm();
     if (!vm) { console.warn('[Markets] Vue not found'); return; }
+    if (!Array.isArray(vm.subMarkets)) vm.subMarkets = [];
 
-    const inject = (prop, arr) => {
+    const inject = (arr) => {
       if (!Array.isArray(arr) || !arr.length) return;
       const norm = arr.map(normalizeMarket);
-      if (!vm[prop] || vm[prop].length === 0) {
-        vm[prop] = norm;
-        console.log(`[Markets] ✅ ${prop} = ${norm.length}`);
-      } else {
-        const ids = new Set(vm[prop].map(m => m.marketId));
-        const add = norm.filter(m => !ids.has(m.marketId));
-        if (add.length) {
-          vm[prop] = [...vm[prop], ...add];
-          console.log(`[Markets] ➕ ${prop} += ${add.length}`);
-        }
+      const existingIds = new Set(vm.subMarkets.map(m => m.marketId));
+      const toAdd = norm.filter(m => m.marketId && !existingIds.has(m.marketId));
+
+      if (toAdd.length) {
+        vm.subMarkets = [...vm.subMarkets, ...toAdd];
+        console.log(`[Markets] ➕ subMarkets += ${toAdd.length}`);
       }
+
+      // Jo markets pehle se maujood hain unko refresh karo (status/runners/
+      // prices update) taake repeat poll se stale data na reh jaaye
+      norm.forEach(m => {
+        if (!m.marketId || toAdd.includes(m)) return;
+        const idx = vm.subMarkets.findIndex(x => x.marketId === m.marketId);
+        if (idx !== -1) {
+          Vue.set(vm.subMarkets, idx, Object.assign({}, vm.subMarkets[idx], m));
+        }
+      });
     };
 
-    inject('BookmakerMarkets', data.bookmaker  || []);
-    inject('TossMarkets',      data.toss        || []);
-    inject('FancyMarkets',     data.fancy       || []);
-    inject('Fancy2Markets',    data.fancy2      || []);
-    inject('FigureMarkets',    data.figure      || []);
-    inject('OddFigureMarkets', data.oddFigure   || []);
-    inject('OtherMarkets',     data.other       || []);
+    inject(data.bookmaker  || []);
+    inject(data.toss        || []);
+    inject(data.fancy       || []);
+    inject(data.fancy2      || []);
+    inject(data.figure      || []);
+    inject(data.oddFigure   || []);
+    inject(data.other       || []);
   }
 
   /* ── Flat list ko categories mein baat do ── */

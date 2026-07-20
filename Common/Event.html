@@ -4874,6 +4874,11 @@ var Matched = [];
 var allRunners = [];
 var runnerPnL = {};
 var selectionIdToRunner = {};  // selectionId (string) → runnerName mapping
+// ✅ SELF-HEAL FIX: runnerName (lowercase) → marketId. Kabhi kabhi koi order
+// (external/optimistic code se) Matched/UnMatched mein bina mktId ke aa jaata
+// hai — us case mein iska use karke order.rn (runner name) se sahi marketId
+// wapas nikal lete hain, taake wo order galat (main) market ke neeche na dikhe.
+var runnerNameToMarketId = {};
 var runnersReady = false;       // fetchRunners complete ho gaya?
 
 // ------------------------------------------------------------------
@@ -5117,6 +5122,20 @@ function render() {
     // (debugging aur kisi bhi external code ke liye).
     window.Matched   = Matched;
     window.UnMatched = UnMatched;
+
+    // ✅ SELF-HEAL: kabhi kabhi koi order (external code se, jaise bundle0a.js
+    // ka apna optimistic "order placed" push) bina mktId ke Matched/UnMatched
+    // mein aa jaata hai. Aisa order calculateRunnerPnL mein "blank mktId" ban
+    // kar sirf MAIN market ke PnL mein count hota hai — us submarket ke neeche
+    // kabhi nahi dikhta jahan bet asal mein lagi thi. Yahan har render se
+    // pehle aise orders ko unke runner naam se sahi marketId resolve karke
+    // theek karte hain.
+    [...Matched, ...UnMatched].forEach(o => {
+        if (!o.mktId && o.rn) {
+            const resolved = runnerNameToMarketId[o.rn.trim().toLowerCase()];
+            if (resolved) o.mktId = resolved;
+        }
+    });
 
     updateRunnerPnL();
 
@@ -5564,6 +5583,8 @@ async function fetchRunners() {
             market.runners.forEach(r => {
                 const sid = String(r.selectionId || r.selection_id || "");
                 if (sid) window.selectionIdToMarketId[sid] = mainMktId;
+                const rn = (r.runnerName || r.runner_name || "").trim().toLowerCase();
+                if (rn) runnerNameToMarketId[rn] = mainMktId;
             });
             allRunnerSources.push(...market.runners);
         }
@@ -5592,6 +5613,8 @@ async function fetchRunners() {
                         sub.runners.forEach(r => {
                             const sid = String(r.selectionId || r.selection_id || "");
                             if (sid && subMktId) window.selectionIdToMarketId[sid] = subMktId;
+                            const rn = (r.runnerName || r.runner_name || "").trim().toLowerCase();
+                            if (rn && subMktId) runnerNameToMarketId[rn] = subMktId;
                         });
                         allRunnerSources.push(...sub.runners);
                     }

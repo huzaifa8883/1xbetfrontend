@@ -3882,7 +3882,7 @@
                         <div class="btn-group btn-group-xs" style="width:100%; height:30px; margin-bottom:2px;">
                             <button class="btn btn-primary btn-xs" style="width:50%; border-right:solid" onclick="SHOWTV()">Tv</button>
 
-                                <button class="btn btn-primary btn-xs" style="width:50%" onclick="return false;">Score Card</button>
+                                <button class="btn btn-primary btn-xs" style="width:50%" onclick="SHOWLIVE(marketId)">Score Card</button>
                         </div>
                         <div id="TVDIVIFRAME" style="display:none;">
                         </div>
@@ -6807,13 +6807,8 @@ Vue.component('runner-aggregate', {
     }, 500);
   }
 
-  // ⛔ DISABLED: is filter ki wajah se cricket ke sub-markets (Bookmaker/Toss/
-  // Fancy waghera) load hone ke 2 second baad clear ho jate the aur wapis kabhi
-  // nahi aate the — kyunke ye backend se filter settings fetch karke unhe
-  // baar-baar (15 sec tak) hide kar deta tha. Match Odds ke ilawa saare markets
-  // ab hamesha visible rahenge. Agar future mein admin-panel se market
-  // filtering wapis chahiye ho to neeche wali line dobara enable kar dena.
-  // setTimeout(startAdminFilter, 1500);
+  // Page load ke 1.5 sekond baad start karo
+  setTimeout(startAdminFilter, 1500);
 
 })();
 </script>

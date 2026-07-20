@@ -891,12 +891,21 @@ new Vue({
   data: {
     bets: [],
     loading: false,
-    error: null
+    error: null,
+    hasLoadedOnce: false  // BUG FIX: track first load so background refreshes don't flicker
   },
   methods: {
     async fetchBetsHistory() {
-      this.loading = true;
-      this.error   = null;
+      // BUG FIX: pehle har call (initial load + har 10s poll + har socket
+      // event) par "this.loading = true" set hota tha. Template mein
+      // v-if="!loading && bets.length > 0" poori table ko hata deta tha
+      // is dauran, aur v-if="loading" "Loading bets..." dikha deta tha —
+      // isi se har 4-5 second baad data ek pal ke liye gayab ho ke wapis
+      // aata tha (flicker). Ab loading sirf PEHLI dafa (jab table khali
+      // hai) true hota hai — background refreshes mein table dikhti
+      // rehti hai, data silently update ho jata hai.
+      if (!this.hasLoadedOnce) this.loading = true;
+      this.error = null;
       const token  = localStorage.getItem("token");
       if (!token) { this.loading = false; return; }
 
@@ -936,6 +945,7 @@ new Vue({
         this.error = "Bets load karne mein masla aaya.";
       } finally {
         this.loading = false;
+        this.hasLoadedOnce = true;
       }
     }
   },

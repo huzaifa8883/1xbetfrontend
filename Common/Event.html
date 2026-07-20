@@ -5387,13 +5387,8 @@ async function fetchUnMatched() {
     const tk = localStorage.getItem('token') || localStorage.getItem('wex3authtoken') || token;
     if (!tk) return;
     try {
-        // BUG FIX: Match Odds + har sub-market (Bookmaker/Toss/Fancy/etc.)
-        // ka apna alag marketId hota hai. allMarketIds (fetchRunners() se
-        // populated) mein sab IDs hain — wahi comma-separated bhejo.
-        const idsParam = (window.allMarketIds && window.allMarketIds.size > 0)
-            ? [...window.allMarketIds].join(',')
-            : matchId;
-        const res = await fetch(`${ordersUrl}/orders/pending?marketId=${encodeURIComponent(idsParam)}`, {
+        // Current match ke markets ke saare pending orders
+        const res = await fetch(`${ordersUrl}/orders/pending?matchId=${encodeURIComponent(matchId)}`, {
             headers: { "Authorization": "Bearer " + tk }
         });
         if (!res.ok) return;
@@ -5461,12 +5456,8 @@ async function fetchMatched() {
     const tk = localStorage.getItem('token') || localStorage.getItem('wex3authtoken') || token;
     if (!tk) return;
     try {
-        // BUG FIX: same as fetchUnMatched() — send every market ID for this
-        // match (Match Odds + all sub-markets), not just the main matchId.
-        const idsParam = (window.allMarketIds && window.allMarketIds.size > 0)
-            ? [...window.allMarketIds].join(',')
-            : matchId;
-        const res = await fetch(`${ordersUrl}/orders/matched?marketId=${encodeURIComponent(idsParam)}`, {
+        // Current match ke markets ke saare matched orders
+        const res = await fetch(`${ordersUrl}/orders/matched?matchId=${encodeURIComponent(matchId)}`, {
             headers: { "Authorization": "Bearer " + tk }
         });
         if (!res.ok) return;
@@ -5861,27 +5852,21 @@ setInterval(async () => {
 // ── AUTO-SETTLE TRIGGER ────────────────────────────────────────────
 // Jab market CLOSED detect ho to backend ko auto-settle trigger karo
 // Backend khud betfair se winner detect karega
-//
-// BUG FIX: pehle sirf matchId (Match Odds) ke liye trigger hota tha, aur
-// _autoSettleTriggered ek single boolean tha — is liye sub-markets
-// (Bookmaker/Toss/Fancy/etc.) kabhi auto-settle ke liye call hi nahi hote
-// the aur unke MATCHED bets hamesha "matched" hi reh jaate the (settle
-// nahi hote). Fix: har market apna alag id + apna status track karta hai.
-const _autoSettleTriggered = new Set();
+let _autoSettleTriggered = false;
 
-async function triggerAutoSettleFor(mktId) {
-    if (!mktId || _autoSettleTriggered.has(mktId)) return;
+async function triggerAutoSettle() {
+    if (_autoSettleTriggered || !matchId) return;
     const tk = localStorage.getItem('token') || getCookie('wexscktoken') || '';
     if (!tk) return;
 
     try {
-        const res = await fetch(`${ordersUrl}/orders/auto-settle/${encodeURIComponent(mktId)}`, {
+        const res = await fetch(`${ordersUrl}/orders/auto-settle/${encodeURIComponent(matchId)}`, {
             method:  'POST',
             headers: { 'Authorization': 'Bearer ' + tk, 'Content-Type': 'application/json' }
         });
         if (res.ok) {
-            _autoSettleTriggered.add(mktId);
-            console.log('[Market] Auto-settle triggered for', mktId);
+            _autoSettleTriggered = true;
+            console.log('[Market] Auto-settle triggered for', matchId);
             // 3 second baad bets refresh karo
             setTimeout(async () => {
                 await fetchUnMatched();
@@ -5891,45 +5876,19 @@ async function triggerAutoSettleFor(mktId) {
             }, 3000);
         }
     } catch (e) {
-        console.warn('[Market] Auto-settle trigger failed for', mktId, ':', e.message);
+        console.warn('[Market] Auto-settle trigger failed:', e.message);
     }
 }
 
-// Backward-compatible wrapper (kahin aur name se call ho raha ho to)
-async function triggerAutoSettle() {
-    await triggerAutoSettleFor(matchId);
-}
-
-// Status poll: Match Odds + har sub-market ka apna status check karo —
-// har market independently close/settle hota hai.
+// Catalog status poll: CLOSED detect hone par auto-settle trigger karo
 setInterval(async () => {
-    if (!matchId) return;
+    if (_autoSettleTriggered || !matchId) return;
     const vm = document.getElementById('app')?.__vue__;
     if (!vm) return;
-
-    const candidates = [];
-    if (vm.Catalog) {
-        candidates.push({ id: String(vm.Catalog.marketId || matchId), status: vm.Catalog.status });
-    }
-    const subLists = [
-        'subMarkets', 'BookmakerMarkets', 'TossMarkets', 'FancyMarkets',
-        'Fancy2Markets', 'FigureMarkets', 'OddFigureMarkets',
-        'OtherMarkets', 'OtherRaceMarkets'
-    ];
-    subLists.forEach(key => {
-        const arr = vm[key];
-        if (Array.isArray(arr)) {
-            arr.forEach(m => {
-                if (m && m.marketId) candidates.push({ id: String(m.marketId), status: m.status });
-            });
-        }
-    });
-
-    for (const c of candidates) {
-        if ((c.status || '').toUpperCase() === 'CLOSED' && !_autoSettleTriggered.has(c.id)) {
-            console.log('[Market] status=CLOSED detected for', c.id, '— triggering auto-settle');
-            await triggerAutoSettleFor(c.id);
-        }
+    const status = (vm.Catalog?.status || '').toUpperCase();
+    if (status === 'CLOSED') {
+        console.log('[Market] Catalog status=CLOSED detected — triggering auto-settle');
+        await triggerAutoSettle();
     }
 }, 3000);
 // ──────────────────────────────────────────────────────────────────

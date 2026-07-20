@@ -1029,81 +1029,44 @@ document.addEventListener("DOMContentLoaded", async () => {
     return false;
   }
 
-  // ✅ Match click routing: Cricket => Market.html (marketId),
-  //    har doosri sport => Event.html (path-style /Common/Event/<eventId>).
+  // ✅ Match click routing:
+  //    Cricket        => /Common/Market.html?id=marketId   (unchanged)
+  //    Har doosri sport => /Common/Event/<real eventId>    (path style, no ?id=)
   //
-  //    Live match APIs sirf marketId dete hain, eventId nahi — isliye
-  //    non-cricket sports ke liye click par catalog2 se real eventId
-  //    resolve karte hain, phir path-style URL banate hain.
-  const _eventIdCache = new Map(); // marketId -> eventId (repeat clicks ke liye)
+  //    Live match-list APIs sirf marketId dete hain — asli eventId sirf
+  //    catalog2 API se milta hai (jo marketId leke real eventId return karta
+  //    hai). Isliye click par ek chhota resolve call karte hain, phir
+  //    path-style Event URL par navigate karte hain.
+  const EVENTID_CACHE = {}; // marketId -> eventId (baar baar fetch na karna pade)
 
-  async function resolveRealEventId(marketId) {
+  async function resolveEventId(marketId) {
     if (!marketId) return null;
-    if (_eventIdCache.has(marketId)) return _eventIdCache.get(marketId);
+    if (EVENTID_CACHE[marketId]) return EVENTID_CACHE[marketId];
     try {
-      const res  = await fetch(`${pricesUrl}/markets/catalog2?id=${encodeURIComponent(marketId)}`);
+      const res  = await fetch(`https://1xbetbackend.work.gd/api/v1/markets/catalog2?id=${encodeURIComponent(marketId)}`);
       const json = await res.json();
       const data = json.data || json;
-      const eventId = data.eventId || data.event?.id || null;
-      if (eventId) _eventIdCache.set(marketId, String(eventId));
-      return eventId ? String(eventId) : null;
+      const eid  = data.eventId || data.event?.id || null;
+      if (eid) EVENTID_CACHE[marketId] = eid;
+      return eid;
     } catch (err) {
-      console.error('⚠️ Error resolving eventId from marketId:', err.message);
+      console.warn('⚠️ eventId resolve failed for', marketId, err.message);
       return null;
     }
   }
 
-  // Sync helper — jab tak real eventId resolve nahi hota, marketId se
-  // fallback URL banata hai (purani query-string style), taaki link
-  // kabhi bhi broken na dikhe.
-  function sportPageUrl(sport, id) {
+  async function goToMatch(sport, marketId) {
+    if (!marketId) return;
     const isCricket = (sport || '').toString().toLowerCase() === 'cricket';
-    return isCricket ? `/Common/Market.html?id=${id}` : `/Common/Event?id=${id}`;
-  }
-
-  // Async navigator — actual click handlers isko call karenge.
-  // Usage: goToMatch('horse', match)              -> match object {marketId, eventId}
-  //        goToMatch('horse', marketId, eventId)   -> inline onclick attrs ke liye
-  // catalog2 sirf marketId accept karta hai, eventId nahi — is liye jab
-  // hum path-style eventId URL pe navigate karte hain, real marketId ko
-  // sessionStorage mein save kar dete hain taaki Event.html usay turant
-  // (bina kisi extra/failing API call ke) utha sake.
-  function rememberMarketId(eventId, marketId, sport) {
-    if (!eventId || !marketId) return;
-    try {
-      sessionStorage.setItem('evtMap:' + eventId, JSON.stringify({ marketId, sport, ts: Date.now() }));
-    } catch (e) { /* sessionStorage unavailable — ignore, Event.html fallback handle karega */ }
-  }
-
-  async function goToMatch(sport, matchOrMarketId, maybeEventId) {
-    const isCricket = (sport || '').toString().toLowerCase() === 'cricket';
-    const isObj = matchOrMarketId && typeof matchOrMarketId === 'object';
-    const marketId = isObj ? matchOrMarketId.marketId : matchOrMarketId;
-    const existingEventId = isObj ? matchOrMarketId.eventId : maybeEventId;
-
     if (isCricket) {
       window.location.href = `/Common/Market.html?id=${marketId}`;
       return;
     }
-
-    // Agar API ne pehle se hi eventId de diya hai to seedha use karo
-    if (existingEventId) {
-      rememberMarketId(existingEventId, marketId, sport);
-      window.location.href = `/Common/Event/${existingEventId}`;
-      return;
-    }
-
-    // Warna catalog2 se real eventId resolve karo
-    const realEventId = await resolveRealEventId(marketId);
-    if (realEventId) {
-      rememberMarketId(realEventId, marketId, sport);
-      window.location.href = `/Common/Event/${realEventId}`;
-    } else {
-      // Resolve fail ho jaye to purane query-string format pe fallback
-      window.location.href = `/Common/Event?id=${marketId}`;
-    }
+    const eventId = await resolveEventId(marketId);
+    window.location.href = `/Common/Event/${encodeURIComponent(eventId || marketId)}`;
   }
 </script>
+
 
 <!-- ✅ Greyhound Sidebar List -->
 <script>
@@ -1150,7 +1113,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           li.textContent = `${timeStr} ${match.match}`;
           li.style.cursor = 'pointer';
           li.addEventListener('click', () => {
-            goToMatch('greyhound', match);
+            goToMatch('greyhound', match.marketId);
           });
 
           listContainer.appendChild(li);
@@ -1211,7 +1174,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           li.textContent = `${timeStr} ${match.match}`;
           li.style.cursor = 'pointer';
           li.addEventListener('click', () => {
-            goToMatch('horse', match);
+            goToMatch('horse', match.marketId);
           });
 
           listContainer.appendChild(li);
@@ -1279,7 +1242,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           div.className = 'chk11';
           div.style.cssText = 'text-align:center; margin:2px;';
           div.innerHTML = `
-            <a href="#" onclick="goToMatch('horse', '${match.marketId}', '${match.eventId || ''}'); return false;" style="color:white; width:auto;">
+            <a href="#" onclick="goToMatch('horse', '${match.marketId}'); return false;" style="color:white; width:auto;">
               <b class="chkmobile">
                 <span class="slidedate">${localTime}</span><br>
                 <span class="slidename">${match.match}</span>
@@ -1365,7 +1328,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           div.className = 'chk11';
           div.style.cssText = 'text-align:center; margin:2px;';
           div.innerHTML = `
-            <a href="#" onclick="goToMatch('greyhound', '${match.marketId}', '${match.eventId || ''}'); return false;" style="color:white; width:auto;">
+            <a href="#" onclick="goToMatch('greyhound', '${match.marketId}'); return false;" style="color:white; width:auto;">
               <b class="chkmobile">
                 <span class="slidedate">${localTime}</span><br>
                 <span class="slidename">${match.match}</span>
@@ -1452,7 +1415,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       li.textContent = match.match || 'match';
       li.style.cursor = 'pointer';
       li.addEventListener('click', () => {
-        goToMatch('tennis', match);
+        goToMatch('tennis', match.marketId);
       });
       listContainer.appendChild(li);
     });
@@ -1503,7 +1466,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       li.textContent = match.match || 'match';
       li.style.cursor = 'pointer';
       li.addEventListener('click', () => {
-        goToMatch('football', match);
+        goToMatch('football', match.marketId);
       });
       listContainer.appendChild(li);
     });
@@ -1856,7 +1819,7 @@ document.addEventListener("DOMContentLoaded", async () => {
               matchLink.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                goToMatch('football', match);
+                goToMatch('football', match.marketId);
               });
             }
           }, 0);
@@ -1931,7 +1894,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             <td>
               <div class="teams">
                 <strong class="team-1">
-                  <a href="#" onclick="goToMatch('football', '${match.marketId}', '${match.eventId || ''}'); return false;">${match.match}</a>
+                  <a href="#" onclick="goToMatch('football', '${match.marketId}'); return false;">${match.match}</a>
                 </strong>
                 <strong class="team-2"><a href=""></a></strong>
               </div>
@@ -2062,7 +2025,7 @@ document.addEventListener("DOMContentLoaded", async () => {
               matchLink.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                goToMatch('tennis', match);
+                goToMatch('tennis', match.marketId);
               });
             }
           }, 0);
@@ -2119,7 +2082,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             <td class="sport-date bg-primary" style="color:white;">
               <div><span class="day">InPlay</span><span class="market-time">${localTime}</span></div>
             </td>
-            <td><div class="teams"><strong class="team-1"><a href="#" onclick="goToMatch('tennis', '${match.marketId}', '${match.eventId || ''}'); return false;">${match.match}</a></strong></div></td>
+            <td><div class="teams"><strong class="team-1"><a href="#" onclick="goToMatch('tennis', '${match.marketId}'); return false;">${match.match}</a></strong></div></td>
             <td><div class="matched"><span class="TMFORDESK">${match.totalMatched}</span></div></td>
             <td><div class="box -blue"><strong>${back1.price}</strong><span>${back1.size}</span></div></td>
             <td><div class="box -pink"><strong>${lay1.price}</strong><span>${lay1.size}</span></div></td>

@@ -876,84 +876,10 @@
 <script>
   const API_BASE = "https://1xbetbackend.work.gd/api/v1";
 
-  // Cricket => Market.html (marketId), Everything else => Event.html (path-style eventId).
+  // Cricket => Market.html (marketId), Everything else => Event.html (eventId).
   function sportPageUrl(sport, id) {
     const isCricket = (sport || '').toString().toLowerCase() === 'cricket';
-    return isCricket ? `/Common/Market.html?id=${id}` : `/Common/Event/${id}`;
-  }
-
-  // ── Async match navigator (dashboard.html jaisa) ────────────────
-  // Live match APIs sirf marketId dete hain, eventId nahi — isliye
-  // non-cricket sports ke liye click par catalog2 se real eventId
-  // resolve karte hain, phir path-style URL banate hain.
-  const _eventIdCache = new Map(); // marketId -> eventId
-
-  async function resolveRealEventId(marketId) {
-    if (!marketId) return null;
-    if (_eventIdCache.has(marketId)) return _eventIdCache.get(marketId);
-    try {
-      const res  = await fetch(`${API_BASE}/markets/catalog2?id=${encodeURIComponent(marketId)}`);
-      const json = await res.json();
-      const data = json.data || json;
-      const eid  = data.eventId || data.event?.id || null;
-      if (eid) _eventIdCache.set(marketId, String(eid));
-      return eid ? String(eid) : null;
-    } catch (err) {
-      console.error('⚠️ Error resolving eventId from marketId:', err.message);
-      return null;
-    }
-  }
-
-  // catalog2 sirf marketId accept karta hai, eventId nahi — is liye jab
-  // hum path-style eventId URL pe navigate karte hain, real marketId ko
-  // sessionStorage mein save kar dete hain taaki agla Event.html load usay
-  // turant (bina kisi extra/failing API call ke) utha sake.
-  function rememberMarketId(eventId, marketId, sport) {
-    if (!eventId || !marketId) return;
-    try {
-      sessionStorage.setItem('evtMap:' + eventId, JSON.stringify({ marketId, sport, ts: Date.now() }));
-    } catch (e) { /* ignore */ }
-  }
-
-  async function goToMatch(sport, matchOrMarketId, maybeEventId) {
-    const isCricket = (sport || '').toString().toLowerCase() === 'cricket';
-    const isObj = matchOrMarketId && typeof matchOrMarketId === 'object';
-    const mId = isObj ? (matchOrMarketId.marketId || matchOrMarketId.eventId) : matchOrMarketId;
-    const existingEventId = isObj ? matchOrMarketId.eventId : maybeEventId;
-
-    if (isCricket) {
-      window.location.href = `/Common/Market.html?id=${mId}`;
-      return;
-    }
-    if (existingEventId) {
-      rememberMarketId(existingEventId, mId, sport);
-      window.location.href = `/Common/Event/${existingEventId}`;
-      return;
-    }
-    const realEventId = await resolveRealEventId(mId);
-    if (realEventId) rememberMarketId(realEventId, mId, sport);
-    window.location.href = realEventId ? `/Common/Event/${realEventId}` : `/Common/Event?id=${mId}`;
-  }
-
-  // ── Page ID reader ────────────────────────────────────────────
-  // Naya format: /Common/Event/<eventId>  (path parameter)
-  // Purana format (fallback): /Common/Event?id=<marketId> ya ?eventId=<eventId>
-  function getPageIdFromUrl() {
-    const path = window.location.pathname; // e.g. /Common/Event/35805322.1930
-    const parts = path.split('/').filter(Boolean); // ["Common", "Event", "35805322.1930"]
-    const idx = parts.findIndex(p => p.toLowerCase() === 'event');
-    const pathId = (idx !== -1 && parts[idx + 1]) ? decodeURIComponent(parts[idx + 1]) : null;
-
-    const qp = new URLSearchParams(window.location.search);
-    const queryEventId  = qp.get('eventId');
-    const queryLegacyId = qp.get('id'); // purana format mein ye marketId hota tha
-
-    return {
-      // Naye path-style URLs mein ye asal mein eventId hai
-      eventIdFromPath: pathId,
-      eventIdFromQuery: queryEventId,
-      legacyIdFromQuery: queryLegacyId
-    };
+    return isCricket ? `/Common/Market.html?id=${id}` : `/Common/Event?id=${id}`;
   }
 </script>
 
@@ -965,53 +891,80 @@
     GET /api/markets/live/:sport
   ============================================================ -->
 <script>
-  // URL params (global, used by other scripts)
-  const urlParams = new URLSearchParams(window.location.search);
-
-  // ── Page ID resolution (path-style aur purana query-string dono support) ──
-  //    Naya URL: /Common/Event/<eventId>          -> PAGE_ID asal mein eventId hai
-  //    Purana URL: /Common/Event?id=<marketId>     -> PAGE_ID marketId hai
-  const _pageIds = getPageIdFromUrl();
-  const PAGE_ID   = _pageIds.eventIdFromPath || _pageIds.eventIdFromQuery || _pageIds.legacyIdFromQuery || '';
-  const IS_PATH_STYLE_URL = !!_pageIds.eventIdFromPath;
-
-  // catalog2 sirf real marketId (1.XXXXXX) accept karta hai, eventId nahi.
-  // Path-style URL (/Common/Event/<eventId>) ke case mein, dashboard/related-
-  // events click ke waqt real marketId sessionStorage mein save ho chuka
-  // hota hai ('evtMap:<eventId>' key) — usay yahan turant (sync) utha lo,
-  // is script block ke baaki functions chalne se pehle.
-  // Agar mile hi na (direct link/refresh/naya tab) to PAGE_ID hi use hoga,
-  // jo path-style case mein galat hoga (eventId hai, marketId nahi) —
-  // is fallback case ke liye backend mein eventId->marketId resolve karne
-  // wala route chahiye.
-  function resolveStoredMarketId(evId) {
-    if (!evId) return null;
-    try {
-      const raw = sessionStorage.getItem('evtMap:' + evId);
-      if (!raw) return null;
-      const parsed = JSON.parse(raw);
-      return (parsed && parsed.marketId) ? String(parsed.marketId) : null;
-    } catch (e) { return null; }
+  // ============================================================
+  // Event.html URL id resolution
+  //   New URL shape : /Common/Event/<eventId>        (path, no ?id=)
+  //   Legacy shape  : /Common/Event?id=<marketId>     (still supported)
+  //
+  //   Live match-list APIs sirf marketId jaanti hain, is liye jo bhi id
+  //   URL mein aaye (eventId ho ya marketId), yahan ek hi baar resolve
+  //   karke PAGE_MARKET_ID / PAGE_EVENT_ID mein cache kar lete hain —
+  //   baaki poora page (mv2.min.js samet) inhi do constants ko use karta hai.
+  // ============================================================
+  function getRawIdFromUrl() {
+    const parts = window.location.pathname.split('/').filter(Boolean);
+    if (parts.length >= 3 && parts[0].toLowerCase() === 'common' && parts[1].toLowerCase() === 'event') {
+      return decodeURIComponent(parts[2]);
+    }
+    // Legacy fallback: ?id= / ?eventId=
+    const qp = new URLSearchParams(window.location.search);
+    return qp.get('eventId') || qp.get('id') || '';
   }
 
-  const _storedMarketId = IS_PATH_STYLE_URL ? resolveStoredMarketId(PAGE_ID) : null;
-  if (IS_PATH_STYLE_URL && !_storedMarketId) {
-    console.warn('[Event] Real marketId session mein nahi mila (direct link/refresh) — catalog2 calls fail ho sakte hain jab tak backend eventId resolve na kare.');
+  function resolveIdsSync(rawId) {
+    if (!rawId) return { marketId: null, eventId: null };
+
+    // 1) Pehle isse seedha marketId maan ke catalog2 try karo (purane
+    //    ?id=marketId links backward-compatible rakhne ke liye).
+    try {
+      const xhr = new XMLHttpRequest();
+      xhr.open('GET', `${API_BASE}/markets/catalog2?id=${encodeURIComponent(rawId)}`, false);
+      xhr.send(null);
+      if (xhr.status >= 200 && xhr.status < 300) {
+        const json = JSON.parse(xhr.responseText);
+        const data = json.data || json;
+        if (data && (data.eventName || data.marketName || data.match)) {
+          return { marketId: rawId, eventId: data.eventId || data.event?.id || rawId };
+        }
+      }
+    } catch (e) {
+      console.warn('[Event] catalog2 direct lookup failed:', e);
+    }
+
+    // 2) Warna isse eventId maan ke event-markets se uska pehla market nikalo.
+    try {
+      const xhr2 = new XMLHttpRequest();
+      xhr2.open('GET', `${API_BASE}/markets/event-markets?eventId=${encodeURIComponent(rawId)}`, false);
+      xhr2.send(null);
+      if (xhr2.status >= 200 && xhr2.status < 300) {
+        const json2 = JSON.parse(xhr2.responseText);
+        const d = json2.data || json2;
+        const firstMarket =
+          (Array.isArray(d.matchOdds) && d.matchOdds[0]) ||
+          (Array.isArray(d.bookmaker) && d.bookmaker[0]) ||
+          (Array.isArray(d.toss) && d.toss[0]) ||
+          (Array.isArray(d.other) && d.other[0]) ||
+          null;
+        if (firstMarket && firstMarket.marketId) {
+          return { marketId: firstMarket.marketId, eventId: rawId };
+        }
+      }
+    } catch (e) {
+      console.warn('[Event] event-markets lookup failed:', e);
+    }
+
+    // 3) Resolve nahi hua — graceful fallback, page crash na ho.
+    console.warn('[Event] Could not resolve eventId → marketId, using raw id as-is:', rawId);
+    return { marketId: rawId, eventId: rawId };
   }
 
-  const marketId  = _storedMarketId || PAGE_ID;
-  // eventId URL se lo — pehle 'eventId' param check karo, warna PAGE_ID use karo
-  // mv2.min.js Catalog.eventId use karta hai (jo catalog2 API se aata hai)
-  // lekin ListOrders function mein fallback ke liye ye global bhi rakho
-  const eventId   = _pageIds.eventIdFromPath || _pageIds.eventIdFromQuery || PAGE_ID || '';
-  const timeCode  = '';
-  const CommentrySignalR = 1;
-  const SsocketEnable    = 1;
-  const CatalogSignalR   = 0;
+  const _resolvedIds  = resolveIdsSync(getRawIdFromUrl());
+  const PAGE_MARKET_ID = _resolvedIds.marketId;
+  const PAGE_EVENT_ID  = _resolvedIds.eventId;
 
-  async function getSportByMarketId(id) {
+  async function getSportByMarketId(marketId) {
     try {
-      const res  = await fetch(`${API_BASE}/markets/catalog2?id=${id}`);
+      const res  = await fetch(`${API_BASE}/markets/catalog2?id=${marketId}`);
       const json = await res.json();
       console.log("Catalog2 API response:", json);
       const data = json.data || json;
@@ -1029,8 +982,8 @@
   }
 
   async function initMarketPage() {
-    if (!marketId) return;
-    await getSportByMarketId(marketId);
+    if (!PAGE_MARKET_ID) return;
+    await getSportByMarketId(PAGE_MARKET_ID);
   }
 
   document.addEventListener('DOMContentLoaded', initMarketPage);
@@ -1064,7 +1017,7 @@
           const tr = document.createElement('tr');
           tr.className   = 'relatedtr';
           tr.style.cursor = 'pointer';
-          tr.onclick = () => { goToMatch(sport, event); };
+          tr.onclick = () => { window.location.href = sportPageUrl(sport, event.marketId || event.eventId); };
           tr.innerHTML = `
             <td class="sport-date" style="font-size:14px; padding:0 20px;">
               <div>
@@ -1087,13 +1040,21 @@
   }
 
   async function initRelatedEvents() {
-    if (!marketId) return;
-    const sport = await getSportByMarketId(marketId);
+    if (!PAGE_MARKET_ID) return;
+    const sport = await getSportByMarketId(PAGE_MARKET_ID);
     console.log("Sport name:", sport);
     loadRelatedEventsBySport(sport);
   }
 
   initRelatedEvents();
+
+  // Global vars (used by mv2.min.js aur baaki scripts neeche)
+  const marketId  = PAGE_MARKET_ID;
+  const eventId   = PAGE_EVENT_ID || '';
+  const timeCode  = '';
+  const CommentrySignalR = 1;
+  const SsocketEnable    = 1;
+  const CatalogSignalR   = 0;
 </script>
 
 
@@ -1128,7 +1089,7 @@
           li.textContent  = `${timeStr} ${match.match}`;
           li.style.cursor = 'pointer';
           li.addEventListener('click', () => {
-            goToMatch('greyhound', match);
+            window.location.href = sportPageUrl('greyhound', match.eventId || match.marketId);
           });
           listContainer.appendChild(li);
         });
@@ -1174,7 +1135,7 @@
           li.textContent  = `${timeStr} ${match.match}`;
           li.style.cursor = 'pointer';
           li.addEventListener('click', () => {
-            goToMatch('horse', match);
+            window.location.href = sportPageUrl('horse', encodeURIComponent(match.eventId || match.marketId));
           });
           listContainer.appendChild(li);
         });
@@ -1209,7 +1170,7 @@
                         const timeStr = new Date(match.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
                         const div = document.createElement('div');
                         div.className = 'chk11';
-                        div.innerHTML = `<a href="#" onclick="goToMatch('horse', '${match.marketId}', '${match.eventId || ''}'); return false;" style="color:white;"><b>${timeStr}<br>${match.match}</b></a>`;
+                        div.innerHTML = `<a href="${sportPageUrl('horse', match.eventId || match.marketId)}" style="color:white;"><b>${timeStr}<br>${match.match}</b></a>`;
                         container.appendChild(div);
                     });
                     $(container).slick({ slidesToShow: 8, slidesToScroll: 1, infinite: false, arrows: true });
@@ -1245,7 +1206,7 @@
           div.className = 'chk11';
           div.style.cssText = 'text-align:center; margin:2px;';
           div.innerHTML = `
-            <a href="#" onclick="goToMatch('greyhound', '${match.marketId}', '${match.eventId || ''}'); return false;" style="color:white; width:auto;">
+            <a href="${sportPageUrl('greyhound', match.eventId || match.marketId)}" style="color:white; width:auto;">
               <b class="chkmobile">
                 <span class="slidedate market-time">${timeStr}</span><br>
                 <span class="slidename">${match.match}</span>
@@ -1473,7 +1434,7 @@
           li.textContent  = match.match || 'Unknown Match';
           li.style.cursor = 'pointer';
           li.addEventListener('click', () => {
-            goToMatch('tennis', match);
+            window.location.href = sportPageUrl('tennis', match.eventId || match.marketId || '0');
           });
           listContainer.appendChild(li);
         });
@@ -1507,7 +1468,7 @@
           li.textContent  = match.match || 'Unknown Match';
           li.style.cursor = 'pointer';
           li.addEventListener('click', () => {
-            goToMatch('football', match);
+            window.location.href = sportPageUrl('football', match.eventId || match.marketId || '0');
           });
           listContainer.appendChild(li);
         });
@@ -4848,19 +4809,7 @@ new Vue({
 var _pnlSocket;
 try { _pnlSocket = io("https://1xbetbackend.work.gd"); } catch(e) {}
 var socket = _pnlSocket;
-// BUG FIX: Market.html pe URL query-string style hai (?id=1.xxx), is liye
-// query param "id" hi seedha marketId hota hai. Lekin Event.html pe naye
-// URLs path-style hain (/Common/Event/<eventId>) — is page pe "id" query
-// param kabhi set hi nahi hota, is liye purana code hamesha matchId = null
-// deta tha aur PnL (calculateRunnerPnL / getRunnerAmounts / fetchMatched
-// waghera) sab `if (!matchId) return` guard se silently skip ho jate the.
-// Fix: upar wala already-resolved `marketId` (real market id — path se ya
-// sessionStorage 'evtMap:<eventId>' se resolve hota hai) use karo, aur
-// sirf legacy purane query-string URLs (?id=...) ke liye query param par
-// fallback rakho.
-var matchId = (typeof marketId !== 'undefined' && marketId)
-    ? String(marketId)
-    : new URLSearchParams(window.location.search).get("id");
+var matchId = PAGE_MARKET_ID || new URLSearchParams(window.location.search).get("id");
 // ordersUrl already declared in <head> as const — reuse karo, reassign mat karo
 // ordersUrl = "https://1xbetbackend.work.gd/api/v1"; // already set
 
@@ -4874,11 +4823,6 @@ var Matched = [];
 var allRunners = [];
 var runnerPnL = {};
 var selectionIdToRunner = {};  // selectionId (string) → runnerName mapping
-// ✅ SELF-HEAL FIX: runnerName (lowercase) → marketId. Kabhi kabhi koi order
-// (external/optimistic code se) Matched/UnMatched mein bina mktId ke aa jaata
-// hai — us case mein iska use karke order.rn (runner name) se sahi marketId
-// wapas nikal lete hain, taake wo order galat (main) market ke neeche na dikhe.
-var runnerNameToMarketId = {};
 var runnersReady = false;       // fetchRunners complete ho gaya?
 
 // ------------------------------------------------------------------
@@ -5114,29 +5058,6 @@ function updateRunnerPnL() {
 // RENDER TABLES
 // ---------------------------
 function render() {
-    // ✅ FIX: Matched/UnMatched har jagah reassign (=) hote hain, is liye
-    // window.Matched ek dafa set karne se wo purane array reference pe hi
-    // atka reh jaata tha — live data se disconnect. render() hamesha har
-    // mutation ke baad chalta hai, is liye yahan resync karna guarantee
-    // karta hai ke window.Matched/UnMatched hamesha live array hon
-    // (debugging aur kisi bhi external code ke liye).
-    window.Matched   = Matched;
-    window.UnMatched = UnMatched;
-
-    // ✅ SELF-HEAL: kabhi kabhi koi order (external code se, jaise bundle0a.js
-    // ka apna optimistic "order placed" push) bina mktId ke Matched/UnMatched
-    // mein aa jaata hai. Aisa order calculateRunnerPnL mein "blank mktId" ban
-    // kar sirf MAIN market ke PnL mein count hota hai — us submarket ke neeche
-    // kabhi nahi dikhta jahan bet asal mein lagi thi. Yahan har render se
-    // pehle aise orders ko unke runner naam se sahi marketId resolve karke
-    // theek karte hain.
-    [...Matched, ...UnMatched].forEach(o => {
-        if (!o.mktId && o.rn) {
-            const resolved = runnerNameToMarketId[o.rn.trim().toLowerCase()];
-            if (resolved) o.mktId = resolved;
-        }
-    });
-
     updateRunnerPnL();
 
     // ------------------------------------------------------------------
@@ -5583,25 +5504,15 @@ async function fetchRunners() {
             market.runners.forEach(r => {
                 const sid = String(r.selectionId || r.selection_id || "");
                 if (sid) window.selectionIdToMarketId[sid] = mainMktId;
-                const rn = (r.runnerName || r.runner_name || "").trim().toLowerCase();
-                if (rn) runnerNameToMarketId[rn] = mainMktId;
             });
             allRunnerSources.push(...market.runners);
         }
 
         // Sub-market arrays the backend may include
-        // ✅ FIX: pehle yahan 'tossMarkets', 'bookmakerMarkets' jaise galat field
-        // names check ho rahe the — catalog2 API asal mein 'toss', 'bookmaker',
-        // 'fancy' waghera (bina "Markets" suffix ke) bhejta hai, jaisa isi file
-        // mein neeche inject('BookmakerMarkets', data.bookmaker || []) mein
-        // confirm hota hai. Galat naam ki wajah se ye poora block har submarket
-        // ke liye hamesha skip ho jaata tha — na allMarketIds mein submarket
-        // IDs aate the, na selectionIdToMarketId map banta tha — isliye
-        // submarket bets ka PnL/position kabhi nahi dikhta tha.
         const subKeys = [
-            'subMarkets', 'toss', 'bookmaker',
-            'fancy', 'fancy2', 'figure',
-            'oddFigure', 'other'
+            'subMarkets', 'tossMarkets', 'bookmakerMarkets',
+            'fancyMarkets', 'fancy2Markets', 'figureMarkets',
+            'oddFigureMarkets', 'otherMarkets'
         ];
         subKeys.forEach(key => {
             const arr = market[key];
@@ -5613,8 +5524,6 @@ async function fetchRunners() {
                         sub.runners.forEach(r => {
                             const sid = String(r.selectionId || r.selection_id || "");
                             if (sid && subMktId) window.selectionIdToMarketId[sid] = subMktId;
-                            const rn = (r.runnerName || r.runner_name || "").trim().toLowerCase();
-                            if (rn && subMktId) runnerNameToMarketId[rn] = subMktId;
                         });
                         allRunnerSources.push(...sub.runners);
                     }
@@ -6506,10 +6415,9 @@ Vue.component('runner-aggregate', {
 (function () {
   'use strict';
 
-  // Page ID (e.g. "1.258326097" purani query-string style, ya naya path-style
-  // eventId) — PAGE LOAD pe fix. Global `marketId`/`eventId` consts (upar
-  // define hue) se hi lete hain taaki dono jagah same resolution ho.
-  const MARKET_ID = (typeof marketId !== 'undefined' && marketId) || null;
+  // URL se marketId (e.g. "1.258326097") — PAGE LOAD pe fix
+  const MARKET_ID = (typeof PAGE_MARKET_ID !== 'undefined' && PAGE_MARKET_ID)
+    || new URLSearchParams(window.location.search).get('id');
 
   /* ── Vue instance ── */
   function getVm() {
@@ -6518,28 +6426,24 @@ Vue.component('runner-aggregate', {
   }
 
   /* ── eventId resolve karo ──────────────────────────────────────
+     URL ?id= mein MARKET_ID hoti hai (1.XXXXXX), eventId nahi.
      eventId resolve karne ka sahi order:
-       1. URL path-style eventId  (naya format: /Common/Event/<eventId>)
-       2. Vue vm.Catalog.eventId  (mv2.min.js yahan set karta hai)
-       3. URL ?eventId= param     (explicit, purana format)
-       4. catalog2 API call       (MARKET_ID se eventId nikalo, purana format)
+       1. Vue vm.Catalog.eventId  (mv2.min.js yahan set karta hai)
+       2. URL ?eventId= param     (explicit)
+       3. catalog2 API call       (MARKET_ID se eventId nikalo)
   ─────────────────────────────────────────────────────────────── */
   async function resolveEventId() {
-    // 1. Naya path-style URL — id already eventId hai
-    if (IS_PATH_STYLE_URL && PAGE_ID) {
-      return String(PAGE_ID);
-    }
-    // 2. Vue
+    // 1. Vue
     const vm = getVm();
     if (vm && vm.Catalog && vm.Catalog.eventId) {
       return String(vm.Catalog.eventId);
     }
-    // 3. URL explicit param
+    // 2. URL explicit param (legacy ?eventId=) ya humara path-resolved PAGE_EVENT_ID
     const p = new URLSearchParams(window.location.search);
-    const urlEid = p.get('eventId');
+    const urlEid = p.get('eventId') || (typeof PAGE_EVENT_ID !== 'undefined' ? PAGE_EVENT_ID : null);
     if (urlEid) return urlEid;
 
-    // 4. catalog2 API se resolve (MARKET_ID use karo, eventId nahi)
+    // 3. catalog2 API se resolve (MARKET_ID use karo, eventId nahi)
     if (!MARKET_ID) return null;
     try {
       const token = localStorage.getItem('token') || '';

@@ -3882,7 +3882,7 @@
                         <div class="btn-group btn-group-xs" style="width:100%; height:30px; margin-bottom:2px;">
                             <button class="btn btn-primary btn-xs" style="width:50%; border-right:solid" onclick="SHOWTV()">Tv</button>
 
-                                <button class="btn btn-primary btn-xs" style="width:50%" onclick="SHOWLIVE(marketId)">Score Card</button>
+                                <button class="btn btn-primary btn-xs" style="width:50%" onclick="return false;">Score Card</button>
                         </div>
                         <div id="TVDIVIFRAME" style="display:none;">
                         </div>
@@ -3897,38 +3897,7 @@
                         </div>
 
                             <div id="LIVEDIV" class="container">
-                                <!-- ✅ Apna scorecard — BPExch ke iframe ki jagah, seedha humare Catalog (Betfair) data se banta hai.
-                                     Koi external/third-party score-feed nahi — sirf woh data jo hum khud Betfair API se already la rahe hain. -->
-                                <div id="nx-scorecard" style="background:#2b2f35; color:#fff; padding:10px; min-height:200px;">
-                                    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #444; padding-bottom:8px; margin-bottom:8px;">
-                                        <div>
-                                            <div style="font-weight:bold; font-size:15px;">{{ Catalog.eventName || Catalog.marketName }}</div>
-                                            <div style="font-size:12px; color:#9aa0a6;">{{ Catalog.marketName }}</div>
-                                        </div>
-                                        <div style="text-align:right;">
-                                            <span v-bind:style="{ color: Catalog.status === 'OPEN' ? '#00B181' : (Catalog.status === 'SUSPENDED' ? '#ffc107' : '#ff5c5c'), fontWeight: 'bold', fontSize: '13px' }">{{ Catalog.status }}</span>
-                                            <div style="font-size:11px; color:#9aa0a6;">Matched: {{ Catalog.totalMatched || 0 }}</div>
-                                        </div>
-                                    </div>
-
-                                    <div v-if="Catalog.runners && Catalog.runners.length > 0">
-                                        <div v-for="runner in Catalog.runners" :key="runner.selectionId"
-                                             v-bind:style="{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 4px', borderBottom: '1px solid #3a3f47', opacity: (runner.status === 'REMOVED' || runner.status === 'LOSER') ? 0.5 : 1 }">
-                                            <div style="display:flex; align-items:center; gap:8px;">
-                                                <span v-if="runner.clothNumber" v-bind:style="{ display: 'inline-block', width: '20px', height: '20px', lineHeight: '20px', textAlign: 'center', borderRadius: '3px', fontSize: '11px', fontWeight: 'bold', background: runner.clothColor || '#555', color: (runner.clothColor === '#FFFFFF' ? '#000' : '#fff') }">{{ runner.clothNumber }}</span>
-                                                <span style="font-size:13px;">{{ runner.runnerName }}</span>
-                                                <span v-if="runner.status === 'WINNER'" style="font-size:11px; font-weight:bold; color:#00B181; border:1px solid #00B181; border-radius:3px; padding:0 4px;">WINNER</span>
-                                                <span v-else-if="runner.status === 'REMOVED'" style="font-size:11px; color:#ff5c5c;">REMOVED</span>
-                                            </div>
-                                            <div style="font-size:13px; font-weight:bold; color:#cfe8ff;" v-if="runner.lastPriceTraded">
-                                                {{ runner.lastPriceTraded }}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div v-else style="text-align:center; color:#9aa0a6; padding:20px 0; font-size:13px;">
-                                        Scorecard data loading...
-                                    </div>
-                                </div>
+                                <!-- ✅ Scorecard box hata diya gaya hai — user ki request par yahan ab kuch nahi dikhta -->
                             </div>
 
 
@@ -6502,6 +6471,59 @@ Vue.component('runner-aggregate', {
     inject('FigureMarkets',    data.figure      || []);
     inject('OddFigureMarkets', data.oddFigure   || []);
     inject('OtherMarkets',     data.other       || []);
+
+    // ✅ FIX: submarket runners ko order-tracking system ko bhi batao.
+    // Pehle sirf Vue ke props (upar wale inject() calls) update hote the —
+    // window.selectionIdToMarketId / window.allMarketIds (jo fetchMatched,
+    // fetchUnMatched aur calculateRunnerPnL use karte hain) ko kabhi pata hi
+    // nahi chalta tha ke submarket (Bookmaker/Toss/Fancy/...) mein konsa
+    // selectionId konse marketId ka hai. Isi wajah se submarket per lagi
+    // bet "Matched" mein nahi dikhti thi, runner ke neeche P&L nahi aata
+    // tha, aur settlement bhi us market ko sahi se match nahi kar pata tha.
+    registerSubmarketSelections(data);
+  }
+
+  // Submarket (Bookmaker/Toss/Fancy/Fancy2/Figure/OddFigure/Other) ke har
+  // runner ka selectionId → marketId register karo taake order-tracking
+  // (fetchMatched/fetchUnMatched/calculateRunnerPnL) unhe sahi market ke
+  // sath jod sake.
+  function registerSubmarketSelections(data) {
+    if (!window.selectionIdToMarketId) window.selectionIdToMarketId = {};
+    if (!window.allMarketIds) window.allMarketIds = new Set();
+    if (!window.selectionIdToRunner) window.selectionIdToRunner = {};
+
+    const groups = [
+      data.bookmaker, data.toss, data.fancy, data.fancy2,
+      data.figure, data.oddFigure, data.other
+    ];
+
+    let addedAny = false;
+    groups.forEach(group => {
+      if (!Array.isArray(group)) return;
+      group.forEach(mkt => {
+        const mktId = String(mkt.marketId || mkt.id || '');
+        if (!mktId) return;
+        window.allMarketIds.add(mktId);
+        const runners = Array.isArray(mkt.runners) ? mkt.runners : [];
+        runners.forEach(r => {
+          const sid = String(r.selectionId || r.selection_id || '');
+          const rn  = (r.runnerName || r.name || '').trim();
+          if (!sid) return;
+          window.selectionIdToMarketId[sid] = mktId;
+          if (rn) window.selectionIdToRunner[sid] = rn;
+          addedAny = true;
+        });
+      });
+    });
+
+    if (addedAny) {
+      // Naye submarket ke bets sahi mktId ke sath re-classify karne ke
+      // liye orders + P&L dobara fetch/refresh karo.
+      if (typeof window.fetchMatched === 'function')   window.fetchMatched();
+      if (typeof window.fetchUnMatched === 'function') window.fetchUnMatched();
+      if (typeof window.updateRunnerPnL === 'function') window.updateRunnerPnL();
+      if (typeof window.render === 'function')          window.render();
+    }
   }
 
   /* ── Flat list ko categories mein baat do ── */
@@ -6807,8 +6829,13 @@ Vue.component('runner-aggregate', {
     }, 500);
   }
 
-  // Page load ke 1.5 sekond baad start karo
-  setTimeout(startAdminFilter, 1500);
+  // ⛔ DISABLED: is filter ki wajah se cricket ke sub-markets (Bookmaker/Toss/
+  // Fancy waghera) load hone ke 2 second baad clear ho jate the aur wapis kabhi
+  // nahi aate the — kyunke ye backend se filter settings fetch karke unhe
+  // baar-baar (15 sec tak) hide kar deta tha. Match Odds ke ilawa saare markets
+  // ab hamesha visible rahenge. Agar future mein admin-panel se market
+  // filtering wapis chahiye ho to neeche wali line dobara enable kar dena.
+  // setTimeout(startAdminFilter, 1500);
 
 })();
 </script>

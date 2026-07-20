@@ -5109,6 +5109,15 @@ function updateRunnerPnL() {
 // RENDER TABLES
 // ---------------------------
 function render() {
+    // ✅ FIX: Matched/UnMatched har jagah reassign (=) hote hain, is liye
+    // window.Matched ek dafa set karne se wo purane array reference pe hi
+    // atka reh jaata tha — live data se disconnect. render() hamesha har
+    // mutation ke baad chalta hai, is liye yahan resync karna guarantee
+    // karta hai ke window.Matched/UnMatched hamesha live array hon
+    // (debugging aur kisi bhi external code ke liye).
+    window.Matched   = Matched;
+    window.UnMatched = UnMatched;
+
     updateRunnerPnL();
 
     // ------------------------------------------------------------------

@@ -5261,13 +5261,25 @@ window.getRunnerAmounts = function(runnerName, forMarketId) {
 // ---------------------------
 // FETCH FUNCTIONS
 // ---------------------------
+// BUG FIX: pehle sirf matchId (Match Odds market ki id) bheji jaati thi,
+// is liye backend sirf Match Odds ke orders return karta tha — submarkets
+// (Draw No Bet, Half Time, etc.) ke bets kabhi milte hi nahi the. Ab agar
+// fetchRunners() ne saare submarket ids window.allMarketIds mein jama kar
+// diye hain, wo sab comma-separated "marketIds" param mein bhejo.
+function _marketIdsQueryParam() {
+    if (window.allMarketIds && window.allMarketIds.size > 0) {
+        return `marketIds=${encodeURIComponent([...window.allMarketIds].join(','))}`;
+    }
+    return `matchId=${encodeURIComponent(matchId)}`;
+}
+
 async function fetchUnMatched() {
     if (!matchId) return;
     const tk = localStorage.getItem('token') || localStorage.getItem('wex3authtoken') || token;
     if (!tk) return;
     try {
-        // Current match ke markets ke saare pending orders
-        const res = await fetch(`${ordersUrl}/orders/pending?matchId=${encodeURIComponent(matchId)}`, {
+        // Current match ke markets ke saare pending orders (main + submarkets)
+        const res = await fetch(`${ordersUrl}/orders/pending?${_marketIdsQueryParam()}`, {
             headers: { "Authorization": "Bearer " + tk }
         });
         if (!res.ok) return;
@@ -5335,8 +5347,8 @@ async function fetchMatched() {
     const tk = localStorage.getItem('token') || localStorage.getItem('wex3authtoken') || token;
     if (!tk) return;
     try {
-        // Current match ke markets ke saare matched orders
-        const res = await fetch(`${ordersUrl}/orders/matched?matchId=${encodeURIComponent(matchId)}`, {
+        // Current match ke markets ke saare matched orders (main + submarkets)
+        const res = await fetch(`${ordersUrl}/orders/matched?${_marketIdsQueryParam()}`, {
             headers: { "Authorization": "Bearer " + tk }
         });
         if (!res.ok) return;

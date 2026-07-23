@@ -660,9 +660,14 @@
                             }
 
                             // Turant call karo (elements upar already DOM mein hain)
-                            initResultDateRange();
+                            try { initResultDateRange(); } catch(e) { console.warn('[Result] date-init error:', e.message); }
                             // Backup triggers — agar kisi wajah se upar wala turant kaam na kare
-                            document.addEventListener('DOMContentLoaded', initResultDateRange);
+                            document.addEventListener('DOMContentLoaded', function() {
+                                try { initResultDateRange(); } catch(e) { console.warn('[Result] date-init error:', e.message); }
+                            });
+                            window.addEventListener('load', function() {
+                                try { initResultDateRange(); } catch(e) { console.warn('[Result] date-init error:', e.message); }
+                            });
                             if (window.jQuery) { jQuery(document).ready(initResultDateRange); }
                             setTimeout(initResultDateRange, 300);
                         </script>
@@ -1844,7 +1849,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 </script>
 
-    <script type="text/javascript" src="https://cdn.datatables.net/responsive/2.2.5/js/dataTables.responsive.min.js"></script>
+    <!-- ✅ BUG FIX: pehle yahan Responsive JS DO BAAR load ho rahi thi —
+         ek standalone file (neeche wali line) aur ek "dt-1.10.21/r-2.2.5"
+         combined bundle jismein Responsive extension already shamil hai.
+         Dono ek saath load hone se Responsive extension DOUBLE-initialize
+         hota tha, jis wajah se "responsive-display" event kabhi theek se
+         fire nahi hota tha — isi liye mobile par green icon click karne
+         ke baad red nahi hota tha. Ab sirf combined bundle load hota hai. -->
     <script type="text/javascript" src="https://cdn.datatables.net/v/dt/dt-1.10.21/r-2.2.5/datatables.min.js"></script>
 
     <style>
@@ -1892,6 +1903,22 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
         .result-expand-green { background: #28a745; }
         .result-expand-red   { background: #dc3545; }
+
+        /* ✅ BUG FIX: Desktop par ye green "+" icon bilkul NAHI dikhna
+           chahiye — sirf row counting (1, 2, 3...) dikhni chahiye.
+           Mobile par icon aur counting dono saath dikhne chahiye (icon
+           expand/collapse ke liye, number sirf reference ke liye). */
+        .result-expand-num {
+            display: inline-block;
+            font-weight: 700;
+            color: #333;
+            margin-left: 4px;
+            vertical-align: middle;
+        }
+        @media (min-width: 768px) {
+            .result-expand-cell .result-expand-icon { display: none; }
+            .result-expand-cell .result-expand-num  { margin-left: 0; }
+        }
     </style>
 
     <script>
@@ -1992,10 +2019,26 @@ document.addEventListener("DOMContentLoaded", async () => {
         dtTable = $('#example').DataTable({
             "columnDefs": [
                 { "targets": 0, "orderable": false, "className": "dtr-control result-expand-cell", "render": function () {
-                    return '<span class="result-expand-icon result-expand-green">+</span>';
+                    // ✅ BUG FIX: pehle sirf icon render hota tha (har screen
+                    // size par same) — ab icon + number dono render hote hain,
+                    // CSS media query decide karti hai ke desktop par sirf
+                    // number dikhe aur mobile par icon+number dono. Number
+                    // ka actual value drawCallback mein bharte hain (neeche),
+                    // taake sort/search/paging ke baad bhi sahi sequence
+                    // (1,2,3...) dikhe.
+                    return '<span class="result-expand-icon result-expand-green">+</span>' +
+                           '<span class="result-expand-num"></span>';
                 } },
                 { "targets": 3, "type": "date" }
             ],
+            "drawCallback": function () {
+                var api = this.api();
+                var start = api.page.info().start;
+                api.column(0, { page: 'current' }).nodes().each(function (cell, i) {
+                    var numEl = cell.querySelector('.result-expand-num');
+                    if (numEl) numEl.textContent = (start + i + 1);
+                });
+            },
             "order": [[3, "desc"]],
             responsive: {
                 details: {
@@ -2148,24 +2191,47 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             // Market name + winner runner enrichment via /markets/catalog2?id=
             // Har market ke liye ek call karo (parallel)
+            //
+            // ✅ BUG FIX: "catalog2" jaise naam wale market-catalogue endpoints
+            // (Betfair-style listMarketCatalogue) aksar ek ARRAY return karte
+            // hain — chahe sirf ek hi id query ki ho. Purana code seedha
+            // `json.data || json` ko ek OBJECT maan kar `data.marketName` padhta
+            // tha; agar response array tha to `data.marketName` hamesha
+            // `undefined` aata — is liye Market Name hamesha khali reh jaati
+            // aur neeche wala fallback (`m.marketName = m.marketId`) chal
+            // jata tha, jisse Market Name ki jagah Market ID dikhta tha.
+            // Ab dono shapes (array ya seedha object) handle hote hain.
             const enrichPromises = [];
             markets.forEach(function(m) {
                 if (!m.marketName || !m.winner || !m.winnerNo) {
-                    const p = fetch(`https://1xbetbackend.work.gd/api/v1/markets/catalog2?id=${encodeURIComponent(m.marketId)}`)
+                    const p = fetch(`${API_BASE}/markets/catalog2?id=${encodeURIComponent(m.marketId)}`)
                         .then(r => {
                             if (!r.ok) { console.warn('[Result] catalog2 fetch failed', m.marketId, r.status); return null; }
                             return r.json();
                         })
                         .then(json => {
                             if (!json) return;
-                            // catalog2 wraps in data field
-                            const data = json.data || json;
-                            if (!data) return;
+                            // catalog2 wraps in data field — aur wo array ya object dono ho sakta hai
+                            let data = (json && json.data !== undefined) ? json.data : json;
+                            if (Array.isArray(data)) {
+                                data = data.find(x =>
+                                    String(x.marketId || x.market_id || x.id || '') === String(m.marketId)
+                                ) || data[0] || null;
+                            }
+                            if (!data) {
+                                console.warn('[Result] catalog2: no usable market object for', m.marketId, json);
+                                return;
+                            }
 
                             // Market name: data.marketName is the race name e.g. "R2 1660m Pace M"
                             if (!m.marketName) {
                                 m.marketName = data.marketName || data.market_name
-                                    || data.name || data.marketTypeName || '';
+                                    || data.name || data.marketTypeName
+                                    || (data.marketDescription && (data.marketDescription.marketName || data.marketDescription.market_name))
+                                    || '';
+                                if (!m.marketName) {
+                                    console.warn('[Result] catalog2: marketName field missing in response for', m.marketId, data);
+                                }
                             }
 
                             // Winner runner name + number (screenshot ki tarah "6. Champagnes")

@@ -1906,7 +1906,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (!tk) { ul.innerHTML = ''; return; }
 
             try {
-                var url = "https://1xbetbackend.work.gd/api" + '/orders/profitloss-summary'
+                var url = "https://1xbetbackend.work.gd/api/v1" + '/orders/profitloss-summary'
                     + '?from=' + encodeURIComponent(fromD.toISOString())
                     + '&to='   + encodeURIComponent(toD.toISOString());
                 var res  = await fetch(url, { headers: { Authorization: 'Bearer ' + tk } });

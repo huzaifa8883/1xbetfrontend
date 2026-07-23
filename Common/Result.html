@@ -2163,151 +2163,65 @@ document.addEventListener("DOMContentLoaded", async () => {
                 : byCategory;
 
             // Group by market_id → one row per market
-            // selectionId → runnerName lookup (har order mein runner_name hoti hai)
-            const runnerNames = {};  // selectionId → runnerName
-            filtered.forEach(o => {
-                const selId = String(o.selectionId || o.selection_id || '');
-                const rn    = o.runnerName || o.runner_name || '';
-                if (selId && rn) runnerNames[selId] = rn;
-            });
-
+            // winner_runner_name aur market_name ab DB mein stored hain — catalog2 ki zaroorat nahi
             const markets = new Map();
             filtered.forEach(o => {
                 const mktId = String(o.marketId || o.market_id || '');
                 if (!markets.has(mktId)) {
-                    // Market name: backend mein store nahi — event_name se banao
-                    // Betfair market IDs "1.XXXXXXXXX" format mein hote hain
-                    // Market name = event_name already readable hai e.g. "Maitland (AUS) 22nd Jun"
-                    // Market Name column ke liye eventName use karo — match name alag column mein bhi hai
-                    // lekin agar marketName field ho to use karo
-                    const mktName = o.marketName || o.market_name || '';
                     markets.set(mktId, {
                         marketId:   mktId,
-                        matchName:  o.eventName || o.event_name || '',
-                        marketName: mktName,   // will be enriched below
-                        date:       o.settled_at || o.created_at || '',
-                        winner:     '',
-                        winnerNo:   null,   // selection number e.g. "6" in "6. Champagnes"
+                        matchName:  o.eventName  || o.event_name  || '',
+                        marketName: o.marketName || o.market_name || '',
+                        date:       o.settled_at || o.created_at  || '',
+                        winner:     o.winnerRunnerName || '',
                         orders:     []
                     });
                 }
                 const m = markets.get(mktId);
                 m.orders.push(o);
 
-                // Winner runner name — direct se runner_name lo agar selection match kare
-                if (o.winning_selection_id) {
-                    const winId  = String(o.winning_selection_id);
-                    const selId  = String(o.selectionId || o.selection_id || '');
-                    const rn     = o.runnerName || o.runner_name || '';
-
-                    // Agar ye order winning runner ka hai — uska naam winner mein store karo
-                    if (selId === winId && rn) {
-                        m.winner = rn;
-                    }
-                    // Fallback: lookup table se
-                    if (!m.winner && runnerNames[winId]) {
-                        m.winner = runnerNames[winId];
-                    }
-                }
-            });
-
-            // Market name + winner runner enrichment via /markets/catalog2?id=
-            // Har market ke liye ek call karo (parallel)
-            //
-            // ✅ BUG FIX: "catalog2" jaise naam wale market-catalogue endpoints
-            // (Betfair-style listMarketCatalogue) aksar ek ARRAY return karte
-            // hain — chahe sirf ek hi id query ki ho. Purana code seedha
-            // `json.data || json` ko ek OBJECT maan kar `data.marketName` padhta
-            // tha; agar response array tha to `data.marketName` hamesha
-            // `undefined` aata — is liye Market Name hamesha khali reh jaati
-            // aur neeche wala fallback (`m.marketName = m.marketId`) chal
-            // jata tha, jisse Market Name ki jagah Market ID dikhta tha.
-            // Ab dono shapes (array ya seedha object) handle hote hain.
-            const enrichPromises = [];
-            markets.forEach(function(m) {
-                if (!m.marketName || !m.winner || !m.winnerNo) {
-                    const p = fetch(`${API_BASE}/markets/catalog2?id=${encodeURIComponent(m.marketId)}`)
-                        .then(r => {
-                            if (!r.ok) { console.warn('[Result] catalog2 fetch failed', m.marketId, r.status); return null; }
-                            return r.json();
-                        })
-                        .then(json => {
-                            if (!json) return;
-                            // catalog2 wraps in data field — aur wo array ya object dono ho sakta hai
-                            let data = (json && json.data !== undefined) ? json.data : json;
-                            if (Array.isArray(data)) {
-                                data = data.find(x =>
-                                    String(x.marketId || x.market_id || x.id || '') === String(m.marketId)
-                                ) || data[0] || null;
-                            }
-                            if (!data) {
-                                console.warn('[Result] catalog2: no usable market object for', m.marketId, json);
-                                return;
-                            }
-
-                            // Market name: data.marketName is the race name e.g. "R2 1660m Pace M"
-                            if (!m.marketName) {
-                                m.marketName = data.marketName || data.market_name
-                                    || data.name || data.marketTypeName
-                                    || (data.marketDescription && (data.marketDescription.marketName || data.marketDescription.market_name))
-                                    || '';
-                                if (!m.marketName) {
-                                    console.warn('[Result] catalog2: marketName field missing in response for', m.marketId, data);
-                                }
-                            }
-
-                            // Winner runner name + number (screenshot ki tarah "6. Champagnes")
-                            const winId = String(
-                                m.orders.find(o => o.winning_selection_id)?.winning_selection_id || ''
-                            );
-                            if (winId) {
-                                const runners = data.runners || data.Runners || [];
-                                const wr = runners.find(r =>
-                                    String(r.selectionId || r.id || r.selection_id || '') === winId
-                                );
-                                if (wr) {
-                                    if (!m.winner) m.winner = wr.runnerName || wr.runner_name || wr.name || '';
-                                    if (!m.winnerNo) {
-                                        m.winnerNo = wr.sortPriority || wr.sort_priority
-                                            || (wr.metadata && (wr.metadata.CLOTH_NUMBER || wr.metadata.STALL_DRAW))
-                                            || null;
-                                    }
-                                }
-                            }
-                        })
-                        .catch(err => console.warn('[Result] catalog2 error', m.marketId, err.message));
-                    enrichPromises.push(p);
-                }
-            });
-
-            // ✅ NEW: winner ke liye backend ka /orders/market-winner/:marketId
-            // bhi try karo — ye sirf CURRENT user tak simit nahi, POORI market
-            // (kisi bhi user) ke settled orders check karta hai, is liye
-            // winner milne ke chances kaafi zyada hain (dekho comment upar).
-            markets.forEach(function(m) {
+                // Winner: DB mein stored winnerRunnerName (settlement ke waqt save hua)
                 if (!m.winner) {
-                    const token = localStorage.getItem('token');
-                    const p = fetch(`${API_BASE}/orders/market-winner/${encodeURIComponent(m.marketId)}`, {
-                        headers: token ? { 'Authorization': 'Bearer ' + token } : {}
-                    })
-                        .then(r => r.ok ? r.json() : null)
-                        .then(json => {
-                            if (!json) return;
-                            const data = json.data || json;
-                            if (!m.winner && data && data.winnerName) m.winner = data.winnerName;
-                        })
-                        .catch(err => console.warn('[Result] market-winner error', m.marketId, err.message));
-                    enrichPromises.push(p);
+                    if (o.winnerRunnerName) {
+                        m.winner = o.winnerRunnerName;
+                    } else if (o.winning_selection_id) {
+                        // Purane records ke liye fallback: us order ka runner_name jiska selection_id match kare
+                        const winId = String(o.winning_selection_id);
+                        const selId = String(o.selectionId || o.selection_id || '');
+                        const rn    = o.runnerName || o.runner_name || '';
+                        if (selId === winId && rn) m.winner = rn;
+                    }
                 }
+
+                // Market name: settlement ke waqt DB mein save hua
+                if (!m.marketName && o.marketName) m.marketName = o.marketName;
             });
 
-            // Sab catalog calls ka wait karo
-            await Promise.all(enrichPromises);
+            // Sirf un markets ke liye market-winner API call karo
+            // jinmein winner abhi bhi blank hai (purane records)
+            const noWinnerMkts = [];
+            markets.forEach(m => { if (!m.winner) noWinnerMkts.push(m.marketId); });
 
-            // ✅ BUG FIX: Market Name ke liye ab bhi kuch na mila to raw
-            // Market ID (jaise "1.260296282") dikhane ki bajaye Match Name
-            // (event_name, jaise "Sandown Park (AUS) 23rd Jul") dikhao —
-            // ye user ke liye bohot zyada useful/readable hai raw ID se.
+            if (noWinnerMkts.length > 0) {
+                const tokenW = localStorage.getItem('token');
+                const winP   = noWinnerMkts.map(mktId =>
+                    fetch(`${API_BASE}/orders/market-winner/${encodeURIComponent(mktId)}`, {
+                        headers: { 'Authorization': 'Bearer ' + tokenW }
+                    })
+                    .then(r => r.ok ? r.json() : null)
+                    .then(d => {
+                        if (!d || !d.data) return;
+                        const m = markets.get(mktId);
+                        if (!m) return;
+                        if (d.data.winnerName)            m.winner    = d.data.winnerName;
+                        if (d.data.eventName && !m.matchName) m.matchName = d.data.eventName;
+                    })
+                    .catch(() => {})
+                );
+                await Promise.all(winP);
+            }
+
+            // Final fallback
             markets.forEach(function(m) {
                 if (!m.marketName) m.marketName = m.matchName || m.marketId;
                 if (!m.winner)     m.winner     = '-';

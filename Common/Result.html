@@ -521,11 +521,10 @@
                         <div class="row col-12">
                             <div class="col-6 col-md-3">
                                 <div class="input-group datee date" id="ReportFrom" data-target-input="nearest">
-                                    <input type="text"
+                                    <input type="date"
                                            class="form-control datetimepicker-input"
-                                           data-target="#ReportFrom"
                                            id="DisplayFrom" />
-                                    <div class="input-group-append" data-target="#ReportFrom" data-toggle="datetimepicker">
+                                    <div class="input-group-append" id="ReportFromIcon">
                                         <div class="input-group-text"><i class="fa fa-calendar"></i></div>
                                     </div>
                                 </div>
@@ -539,11 +538,10 @@
                             <strong>&nbsp;-&nbsp;</strong>
                             <div class="col-6 col-md-3">
                                 <div class="input-group date datee" id="ReportTo" data-target-input="nearest">
-                                    <input type="text"
+                                    <input type="date"
                                            class="form-control datetimepicker-input"
-                                           data-target="#ReportTo"
                                            id="DisplayTo" />
-                                    <div class="input-group-append" data-target="#ReportTo" data-toggle="datetimepicker">
+                                    <div class="input-group-append" id="ReportToIcon">
                                         <div class="input-group-text"><i class="fa fa-calendar"></i></div>
                                     </div>
                                 </div>
@@ -586,15 +584,16 @@
                             // ✅ Date range — HAMESHA current date se default ho, hardcoded 2025 wali
                             // nahi. Default window: (aaj - 4 din) 5:00 AM se (kal) 4:59 AM tak —
                             // taake "aaj" ke sabhi settled results is range mein aa jayein.
+                            //
+                            // Native <input type="date"> use kiya hai (koi external datepicker
+                            // library ki zaroorat nahi — is liye hamesha reliably kaam karega).
+                            // Time hamesha 5:00 AM (From) / 4:59 AM (To) fixed rehta hai — user
+                            // sirf date badalta hai, jaisa screenshot mein hai.
                             (function() {
                                 function pad(n) { return String(n).padStart(2, '0'); }
 
-                                function fmtDisplay(d) {
-                                    var h24 = d.getHours();
-                                    var ampm = h24 >= 12 ? 'PM' : 'AM';
-                                    var h12 = h24 % 12; if (h12 === 0) h12 = 12;
-                                    return (d.getMonth() + 1) + '/' + d.getDate() + '/' + d.getFullYear() +
-                                           ' ' + h12 + ':' + pad(d.getMinutes()) + ' ' + ampm;
+                                function toDateInputValue(d) {
+                                    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
                                 }
 
                                 function toLocalISO(d) {
@@ -615,41 +614,46 @@
                                 from.setDate(from.getDate() - 4);
                                 from.setHours(5, 0, 0, 0);
 
-                                window.__resultDateRange = { from: from, to: to };
-
                                 var displayFrom = document.getElementById('DisplayFrom');
                                 var displayTo   = document.getElementById('DisplayTo');
                                 var hiddenFrom  = document.getElementById('From');
                                 var hiddenTo    = document.getElementById('To');
 
-                                if (displayFrom) displayFrom.value = fmtDisplay(from);
-                                if (displayTo)   displayTo.value   = fmtDisplay(to);
-                                if (hiddenFrom)  hiddenFrom.value  = toLocalISO(from);
-                                if (hiddenTo)    hiddenTo.value    = toLocalISO(to);
+                                function applyRange(f, t) {
+                                    window.__resultDateRange = { from: f, to: t };
+                                    if (hiddenFrom) hiddenFrom.value = toLocalISO(f);
+                                    if (hiddenTo)   hiddenTo.value   = toLocalISO(t);
+                                }
 
-                                // Agar Tempus Dominus / bootstrap datetimepicker available ho
-                                // (bundle0a.js se) to use bhi init kar do — warna plain text
-                                // input hi rehne do (user manually edit kar sakta hai).
-                                function reparseAndReload(inputEl, hiddenEl) {
-                                    var v = new Date(inputEl.value);
-                                    if (!isNaN(v.getTime())) {
-                                        hiddenEl.value = toLocalISO(v);
-                                        if (typeof loadResultsTable === 'function') loadResultsTable();
+                                if (displayFrom) displayFrom.value = toDateInputValue(from);
+                                if (displayTo)   displayTo.value   = toDateInputValue(to);
+                                applyRange(from, to);
+
+                                // ✅ User jab bhi date change kare — dobara range banao aur turant
+                                // results reload karo (yehi missing tha, is liye date select karne
+                                // ka koi asar nahi hota tha).
+                                function onDateChanged() {
+                                    if (!displayFrom.value || !displayTo.value) return;
+                                    var f = new Date(displayFrom.value + 'T05:00:00');
+                                    var t = new Date(displayTo.value   + 'T04:59:00');
+                                    applyRange(f, t);
+                                    if (typeof loadResultsTable === 'function') loadResultsTable();
+                                }
+                                if (displayFrom) displayFrom.addEventListener('change', onDateChanged);
+                                if (displayTo)   displayTo.addEventListener('change', onDateChanged);
+
+                                // Calendar icon par click se bhi native picker khulay
+                                function openPicker(inputEl) {
+                                    if (inputEl && typeof inputEl.showPicker === 'function') {
+                                        inputEl.showPicker();
+                                    } else if (inputEl) {
+                                        inputEl.focus();
                                     }
                                 }
-                                if (displayFrom) displayFrom.addEventListener('change', function() { reparseAndReload(displayFrom, hiddenFrom); });
-                                if (displayTo)   displayTo.addEventListener('change', function() { reparseAndReload(displayTo, hiddenTo); });
-
-                                if (window.jQuery && jQuery.fn && jQuery.fn.datetimepicker) {
-                                    jQuery('#ReportFrom').datetimepicker({ format: 'M/D/YYYY h:mm A' });
-                                    jQuery('#ReportTo').datetimepicker({ format: 'M/D/YYYY h:mm A' });
-                                    jQuery('#ReportFrom').on('change.datetimepicker', function(e) {
-                                        if (e.date) { hiddenFrom.value = toLocalISO(e.date.toDate()); if (typeof loadResultsTable === 'function') loadResultsTable(); }
-                                    });
-                                    jQuery('#ReportTo').on('change.datetimepicker', function(e) {
-                                        if (e.date) { hiddenTo.value = toLocalISO(e.date.toDate()); if (typeof loadResultsTable === 'function') loadResultsTable(); }
-                                    });
-                                }
+                                var fromIcon = document.getElementById('ReportFromIcon');
+                                var toIcon   = document.getElementById('ReportToIcon');
+                                if (fromIcon) fromIcon.addEventListener('click', function() { openPicker(displayFrom); });
+                                if (toIcon)   toIcon.addEventListener('click', function() { openPicker(displayTo); });
                             })();
                         </script>
 
@@ -1963,36 +1967,43 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (dtTable) { dtTable.destroy(); }
         dtTable = $('#example').DataTable({
             "columnDefs": [
-                { "targets": 0, "orderable": false, "className": "dt-control", "defaultContent": "+" },
+                { "targets": 0, "orderable": false, "className": "dtr-control", "defaultContent": "" },
                 { "targets": 3, "type": "date" }
             ],
             "order": [[3, "desc"]],
-            responsive: true,
+            responsive: {
+                details: {
+                    type: 'column',
+                    target: 0
+                    // renderer default rehne do — yehi standard label:value
+                    // format banata hai jo hidden columns (Market Name/Date/
+                    // Result) ke liye chahiye, bina hamare manual system se
+                    // takraye (jo pehle double icon/auto-expand bug bana raha tha)
+                }
+            },
             "pageLength": 50,
             "language": { "emptyTable": "Koi settled market nahi mila is date range mein." }
         });
 
-        // + button click → settled bets child row
-        $('#example tbody').off('click', 'td.dt-control').on('click', 'td.dt-control', async function () {
-            var tr  = $(this).closest('tr');
-            var row = dtTable.row(tr);
+        // ✅ Row expand hone par (Responsive plugin ke apne control se) —
+        // hamari custom "settled bets" sub-table bhi child row ke andar
+        // add karo. Sirf EK hi expand-mechanism ab use ho raha hai.
+        $('#example').off('responsive-display.settledBets').on('responsive-display.settledBets', async function (e, dt, row, showHide) {
+            if (!showHide) return; // sirf jab row expand ho raha ho, collapse par nahi
+            var tr = $(row.node());
+            if (tr.data('betsLoaded')) return; // dobara fetch na ho
 
-            if (row.child.isShown()) {
-                row.child.hide();
-                tr.removeClass('shown');
-                $(this).text('+');
-                return;
-            }
-
-            $(this).text('⏳');
             var marketId  = tr.attr('data-market-id') || '';
             var matchName = tr.attr('data-match-name') || '';
             var orders = marketId
                 ? await fetchSettledBetsForMarket(marketId)
                 : await fetchSettledBetsByEventName(matchName, '');
-            row.child(buildBetsTable(orders)).show();
-            tr.addClass('shown');
-            $(this).text('−');
+
+            var existing = row.child();
+            if (existing && existing.length) {
+                existing.append(buildBetsTable(orders));
+            }
+            tr.data('betsLoaded', true);
         });
     }
 
@@ -2106,7 +2117,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             const enrichPromises = [];
             markets.forEach(function(m) {
                 if (!m.marketName || !m.winner || !m.winnerNo) {
-                    const p = fetch(`https://1xbetbackend.work.gd/api/markets/catalog2?id=${encodeURIComponent(m.marketId)}`)
+                    const p = fetch(`${API_BASE}/markets/catalog2?id=${encodeURIComponent(m.marketId)}`)
                         .then(r => r.ok ? r.json() : null)
                         .then(json => {
                             if (!json) return;
@@ -2166,7 +2177,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 tr.setAttribute('data-market-id', m.marketId);
                 tr.setAttribute('data-match-name', m.matchName);
                 tr.innerHTML = `
-                    <td class="dt-control" style="text-align:center;cursor:pointer;color:#28a745;font-weight:bold;">+</td>
+                    <td></td>
                     <td>${m.matchName || '-'}</td>
                     <td>${m.marketName || '-'}</td>
                     <td>${dateStr}</td>

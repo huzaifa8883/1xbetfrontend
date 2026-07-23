@@ -605,8 +605,9 @@
                 <i class="fa fa-align-justify"></i> Sports ProfitLoss <b>  </b>
             </div>
             <div class="card-body">
-                <ul class="nav nav-pills">
+                <ul class="nav nav-pills" id="plSportsPills">
                 </ul>
+                <div class="totalAmount" id="plTotalAmount"></div>
 
             </div>
         </div>
@@ -1787,6 +1788,152 @@ document.addEventListener("DOMContentLoaded", async () => {
         else {
             pollUserData();
         }
-    </script>  
+    </script>
+
+    <script>
+    // ══════════════════════════════════════════════════════════════
+    // ✅ NEW: Profit/Loss page — date-range filter + sport-wise totals
+    // Ye poora block naya hai. Pehle is page mein na to updateDates()
+    // function hi maujood tha (Submit button crash/no-op ho jaata tha),
+    // na hi "Sports ProfitLoss" wale numbers populate karne ka koi
+    // client-side code — sab kuch missing external bundle0a.js pe
+    // depend karta tha. Ab: date select karke Submit dabane par form
+    // (method="get") naye From/To ke saath navigate karta hai, aur
+    // page load pe hum URL se date range parse karke naya backend
+    // route (/orders/profitloss-summary) call karte hain jo sirf
+    // usi range ke SETTLED orders ka sport-wise total deta hai.
+    //
+    // ⚠️ LIMITATION: "BetFairGames" aur "TeenPatti Studio" jaise casino
+    // entries agar ek ALAG casino service/DB mein store hoti hain
+    // (jaisa is file mein defined casinoUrl se lagta hai), to wo
+    // Order table se nahi aa sakte — sirf sports/exchange bets
+    // (jo Order table mein hain) yahan dikhenge.
+    // ══════════════════════════════════════════════════════════════
+    (function () {
+        function pad(n) { return String(n).padStart(2, '0'); }
+
+        function fmtDisplay(d) {
+            var h = d.getHours(), ap = h >= 12 ? 'PM' : 'AM', h12 = h % 12;
+            if (h12 === 0) h12 = 12;
+            return (d.getMonth() + 1) + '/' + d.getDate() + '/' + d.getFullYear() + ' ' + h12 + ':' + pad(d.getMinutes()) + ' ' + ap;
+        }
+
+        function parseDisplayDate(str) {
+            if (!str) return null;
+            var m = String(str).trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+            if (!m) return null;
+            var mo = parseInt(m[1], 10) - 1, dy = parseInt(m[2], 10), yr = parseInt(m[3], 10);
+            var hr = parseInt(m[4], 10), mn = parseInt(m[5], 10);
+            var ap = m[6].toUpperCase();
+            if (ap === 'PM' && hr !== 12) hr += 12;
+            if (ap === 'AM' && hr === 12) hr = 0;
+            return new Date(yr, mo, dy, hr, mn, 0);
+        }
+
+        // ---------- Initial date range: URL (?From=&To=) > default (aaj) ----------
+        var qs    = new URLSearchParams(window.location.search);
+        var qFrom = qs.get('From');
+        var qTo   = qs.get('To');
+
+        var now        = new Date();
+        var todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+        var todayEnd   = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+
+        var initFrom = qFrom ? new Date(qFrom) : todayStart;
+        var initTo   = qTo   ? new Date(qTo)   : todayEnd;
+        if (isNaN(initFrom.getTime())) initFrom = todayStart;
+        if (isNaN(initTo.getTime()))   initTo   = todayEnd;
+
+        document.addEventListener('DOMContentLoaded', function () {
+            var df = document.getElementById('DisplayFrom');
+            var dt = document.getElementById('DisplayTo');
+            var fi = document.getElementById('From');
+            var ti = document.getElementById('To');
+
+            if (df) df.value = fmtDisplay(initFrom);
+            if (dt) dt.value = fmtDisplay(initTo);
+            if (fi) fi.value = initFrom.toISOString();
+            if (ti) ti.value = initTo.toISOString();
+
+            try {
+                if (typeof $ !== 'undefined' && $.fn && $.fn.datetimepicker) {
+                    $('#ReportFrom').datetimepicker({ format: 'M/D/YYYY h:mm A' });
+                    $('#ReportTo').datetimepicker({ format: 'M/D/YYYY h:mm A' });
+                    $('#ReportFrom').datetimepicker('date', initFrom);
+                    $('#ReportTo').datetimepicker('date', initTo);
+                }
+            } catch (e) { console.warn('[ProfitLoss] datetimepicker init failed:', e.message); }
+
+            fetchProfitLoss(initFrom, initTo);
+        });
+
+        // ---------- Submit button ----------
+        // Form method="get" hai, is liye "true" return karne se browser
+        // khud naye From/To (aur ClientId/EventTypeId) ke saath URL
+        // navigate karega — jaisa screenshot mein URL update hote dikha.
+        window.updateDates = function () {
+            var fi = document.getElementById('From');
+            var ti = document.getElementById('To');
+            var fromD = null, toD = null;
+
+            try {
+                if (typeof $ !== 'undefined' && $.fn && $.fn.datetimepicker) {
+                    var fromM = $('#ReportFrom').datetimepicker('date');
+                    var toM   = $('#ReportTo').datetimepicker('date');
+                    if (fromM) fromD = fromM.toDate ? fromM.toDate() : new Date(fromM);
+                    if (toM)   toD   = toM.toDate   ? toM.toDate()   : new Date(toM);
+                }
+            } catch (e) { console.warn('[ProfitLoss] datetimepicker read failed:', e.message); }
+
+            if (!fromD) { var dfEl = document.getElementById('DisplayFrom'); fromD = dfEl ? parseDisplayDate(dfEl.value) : null; }
+            if (!toD)   { var dtEl = document.getElementById('DisplayTo');   toD   = dtEl ? parseDisplayDate(dtEl.value)   : null; }
+
+            if (fromD && fi) fi.value = fromD.toISOString();
+            if (toD && ti)   ti.value = toD.toISOString();
+
+            return true; // form ko normal GET navigate hone do
+        };
+
+        // ---------- Fetch + render ----------
+        async function fetchProfitLoss(fromD, toD) {
+            var ul  = document.getElementById('plSportsPills');
+            var tot = document.getElementById('plTotalAmount');
+            if (!ul) return;
+            ul.innerHTML = '<li class="nav-item" style="padding:8px;">Loading...</li>';
+            if (tot) tot.textContent = '';
+
+            var tk = localStorage.getItem('token') || localStorage.getItem('wex3authtoken');
+            if (!tk) { ul.innerHTML = ''; return; }
+
+            try {
+                var url = ordersUrl + '/orders/profitloss-summary'
+                    + '?from=' + encodeURIComponent(fromD.toISOString())
+                    + '&to='   + encodeURIComponent(toD.toISOString());
+                var res  = await fetch(url, { headers: { Authorization: 'Bearer ' + tk } });
+                var json = await res.json();
+                var data = json.data || json;
+                var categories = data.categories || [];
+                var total = data.total || 0;
+
+                if (categories.length === 0) {
+                    ul.innerHTML = '<li class="nav-item" style="padding:8px; color:#555;">Is date range mein koi settled bet nahi mili.</li>';
+                    if (tot) tot.innerHTML = '<strong>Total Amount = 0</strong>';
+                    return;
+                }
+
+                ul.innerHTML = categories.map(function (c) {
+                    var amt = Math.round(c.amount).toLocaleString('en-US');
+                    return '<li class="nav-item"><a class="nav-link" style="color:#4dbd74; font-weight:600;" href="javascript:void(0);">'
+                         + c.name + ' (' + amt + ')</a></li>';
+                }).join('');
+
+                if (tot) tot.innerHTML = '<strong>Total Amount = ' + Math.round(total).toLocaleString('en-US') + '</strong>';
+            } catch (e) {
+                console.error('[ProfitLoss] fetch failed:', e);
+                ul.innerHTML = '<li class="nav-item" style="padding:8px; color:#c0392b;">Profit/Loss load nahi ho saka.</li>';
+            }
+        }
+    })();
+    </script>
 </body>
 </html>

@@ -1830,17 +1830,26 @@ document.addEventListener("DOMContentLoaded", async () => {
             return new Date(yr, mo, dy, hr, mn, 0);
         }
 
-        // ---------- Initial date range: URL (?From=&To=) > default (aaj) ----------
+        // ---------- Initial date range ----------
+        // ✅ FIX: page pe pehli baar aane par bhi URL mein (menu link se)
+        // pehle se koi purani From/To value ho sakti hai — pehle hum wo
+        // hamesha use kar lete the, is liye "current date default" kabhi
+        // nahi milta tha. Ab sirf tab URL ki date use karte hain jab ye
+        // navigation humare APNE Submit button se (isi page ke reload)
+        // aayi ho (document.referrer isi ProfitLoss page ka hoga) —
+        // warna (fresh visit / kisi aur page se) hamesha AAJ ki date
+        // default rahegi.
         var qs    = new URLSearchParams(window.location.search);
         var qFrom = qs.get('From');
         var qTo   = qs.get('To');
+        var cameFromOwnSubmit = document.referrer && document.referrer.indexOf('/Customer/ProfitLoss') !== -1;
 
         var now        = new Date();
         var todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
         var todayEnd   = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
 
-        var initFrom = qFrom ? new Date(qFrom) : todayStart;
-        var initTo   = qTo   ? new Date(qTo)   : todayEnd;
+        var initFrom = (cameFromOwnSubmit && qFrom) ? new Date(qFrom) : todayStart;
+        var initTo   = (cameFromOwnSubmit && qTo)   ? new Date(qTo)   : todayEnd;
         if (isNaN(initFrom.getTime())) initFrom = todayStart;
         if (isNaN(initTo.getTime()))   initTo   = todayEnd;
 

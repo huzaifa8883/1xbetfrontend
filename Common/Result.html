@@ -670,6 +670,28 @@
                             });
                             if (window.jQuery) { jQuery(document).ready(initResultDateRange); }
                             setTimeout(initResultDateRange, 300);
+
+                            // ✅ EXTRA SAFETY NET: agar page par koi AUR script
+                            // (jaise shared bundle0a.js) inputs ko baad mein khali
+                            // kar de, to ye guard 500ms interval par check karta
+                            // rahega — agar value khali mile to turant dobara set
+                            // kar dega. 5 second baad khud band ho jata hai
+                            // (performance ke liye) — us waqt tak user ka apna
+                            // change already respect ho chuka hoga.
+                            (function() {
+                                var __guardTicks = 0;
+                                var __guardTimer = setInterval(function() {
+                                    __guardTicks++;
+                                    var df = document.getElementById('DisplayFrom');
+                                    var dt = document.getElementById('DisplayTo');
+                                    if (df && dt && (!df.value || !dt.value)) {
+                                        console.warn('[Result] date inputs got cleared externally — re-applying default range');
+                                        __resultDateRangeInitDone = false;
+                                        try { initResultDateRange(); } catch(e) {}
+                                    }
+                                    if (__guardTicks >= 10) clearInterval(__guardTimer); // ~5 seconds
+                                }, 500);
+                            })();
                         </script>
 
                         <table id="example" width="100%" class="table-striped table-hover table-bordered table-sm display compact nowrap">
@@ -2258,12 +2280,36 @@ document.addEventListener("DOMContentLoaded", async () => {
                 }
             });
 
+            // ✅ NEW: winner ke liye backend ka /orders/market-winner/:marketId
+            // bhi try karo — ye sirf CURRENT user tak simit nahi, POORI market
+            // (kisi bhi user) ke settled orders check karta hai, is liye
+            // winner milne ke chances kaafi zyada hain (dekho comment upar).
+            markets.forEach(function(m) {
+                if (!m.winner) {
+                    const token = localStorage.getItem('token');
+                    const p = fetch(`${API_BASE}/orders/market-winner/${encodeURIComponent(m.marketId)}`, {
+                        headers: token ? { 'Authorization': 'Bearer ' + token } : {}
+                    })
+                        .then(r => r.ok ? r.json() : null)
+                        .then(json => {
+                            if (!json) return;
+                            const data = json.data || json;
+                            if (!m.winner && data && data.winnerName) m.winner = data.winnerName;
+                        })
+                        .catch(err => console.warn('[Result] market-winner error', m.marketId, err.message));
+                    enrichPromises.push(p);
+                }
+            });
+
             // Sab catalog calls ka wait karo
             await Promise.all(enrichPromises);
 
-            // Final fallback: market name blank raha to market_id hi dikhao
+            // ✅ BUG FIX: Market Name ke liye ab bhi kuch na mila to raw
+            // Market ID (jaise "1.260296282") dikhane ki bajaye Match Name
+            // (event_name, jaise "Sandown Park (AUS) 23rd Jul") dikhao —
+            // ye user ke liye bohot zyada useful/readable hai raw ID se.
             markets.forEach(function(m) {
-                if (!m.marketName) m.marketName = m.marketId;
+                if (!m.marketName) m.marketName = m.matchName || m.marketId;
                 if (!m.winner)     m.winner     = '-';
             });
 

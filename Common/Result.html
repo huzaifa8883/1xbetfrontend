@@ -582,56 +582,57 @@
 
                         <script>
                             // ✅ Date range — HAMESHA current date se default ho, hardcoded 2025 wali
-                            // nahi. Default window: (aaj - 4 din) 5:00 AM se (kal) 4:59 AM tak —
-                            // taake "aaj" ke sabhi settled results is range mein aa jayein.
+                            // nahi. Default window: (aaj - 4 din) 5:00 AM se (kal) 4:59 AM tak.
                             //
-                            // Native <input type="date"> use kiya hai (koi external datepicker
-                            // library ki zaroorat nahi — is liye hamesha reliably kaam karega).
-                            // Time hamesha 5:00 AM (From) / 4:59 AM (To) fixed rehta hai — user
-                            // sirf date badalta hai, jaisa screenshot mein hai.
-                            (function() {
-                                function pad(n) { return String(n).padStart(2, '0'); }
+                            // Native <input type="date"> use kiya hai. Robustness ke liye is
+                            // function ko multiple triggers se call kiya ja raha hai (inline +
+                            // DOMContentLoaded + jQuery ready) taake chahe page kaise bhi load ho,
+                            // date range hamesha current date par set ho jaye.
+                            function pad__rr(n) { return String(n).padStart(2, '0'); }
 
-                                function toDateInputValue(d) {
-                                    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
-                                }
+                            function toDateInputValue__rr(d) {
+                                return d.getFullYear() + '-' + pad__rr(d.getMonth() + 1) + '-' + pad__rr(d.getDate());
+                            }
 
-                                function toLocalISO(d) {
-                                    // Local wall-clock time ko ISO-jaisi string mein rakho (backend
-                                    // comparisons ke liye) — timezone shift avoid karne ke liye
-                                    // manually banaya, .toISOString() UTC shift kar deta hai.
-                                    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
-                                           'T' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
-                                }
+                            function toLocalISO__rr(d) {
+                                return d.getFullYear() + '-' + pad__rr(d.getMonth() + 1) + '-' + pad__rr(d.getDate()) +
+                                       'T' + pad__rr(d.getHours()) + ':' + pad__rr(d.getMinutes()) + ':' + pad__rr(d.getSeconds());
+                            }
 
-                                var now = new Date();
+                            var __resultDateRangeInitDone = false;
 
-                                var to = new Date(now);
-                                to.setDate(to.getDate() + 1);
-                                to.setHours(4, 59, 0, 0);
-
-                                var from = new Date(now);
-                                from.setDate(from.getDate() - 4);
-                                from.setHours(5, 0, 0, 0);
-
+                            function initResultDateRange() {
                                 var displayFrom = document.getElementById('DisplayFrom');
                                 var displayTo   = document.getElementById('DisplayTo');
                                 var hiddenFrom  = document.getElementById('From');
                                 var hiddenTo    = document.getElementById('To');
+                                if (!displayFrom || !displayTo) return; // DOM abhi ready nahi
 
                                 function applyRange(f, t) {
                                     window.__resultDateRange = { from: f, to: t };
-                                    if (hiddenFrom) hiddenFrom.value = toLocalISO(f);
-                                    if (hiddenTo)   hiddenTo.value   = toLocalISO(t);
+                                    if (hiddenFrom) hiddenFrom.value = toLocalISO__rr(f);
+                                    if (hiddenTo)   hiddenTo.value   = toLocalISO__rr(t);
                                 }
 
-                                if (displayFrom) displayFrom.value = toDateInputValue(from);
-                                if (displayTo)   displayTo.value   = toDateInputValue(to);
-                                applyRange(from, to);
+                                if (!__resultDateRangeInitDone) {
+                                    var now = new Date();
+
+                                    var to = new Date(now);
+                                    to.setDate(to.getDate() + 1);
+                                    to.setHours(4, 59, 0, 0);
+
+                                    var from = new Date(now);
+                                    from.setDate(from.getDate() - 4);
+                                    from.setHours(5, 0, 0, 0);
+
+                                    displayFrom.value = toDateInputValue__rr(from);
+                                    displayTo.value   = toDateInputValue__rr(to);
+                                    applyRange(from, to);
+                                    __resultDateRangeInitDone = true;
+                                }
 
                                 // ✅ User jab bhi date change kare — dobara range banao aur turant
-                                // results reload karo (yehi missing tha, is liye date select karne
-                                // ka koi asar nahi hota tha).
+                                // results reload karo
                                 function onDateChanged() {
                                     if (!displayFrom.value || !displayTo.value) return;
                                     var f = new Date(displayFrom.value + 'T05:00:00');
@@ -639,22 +640,31 @@
                                     applyRange(f, t);
                                     if (typeof loadResultsTable === 'function') loadResultsTable();
                                 }
-                                if (displayFrom) displayFrom.addEventListener('change', onDateChanged);
-                                if (displayTo)   displayTo.addEventListener('change', onDateChanged);
+                                displayFrom.removeEventListener('change', onDateChanged);
+                                displayTo.removeEventListener('change', onDateChanged);
+                                displayFrom.addEventListener('change', onDateChanged);
+                                displayTo.addEventListener('change', onDateChanged);
 
                                 // Calendar icon par click se bhi native picker khulay
                                 function openPicker(inputEl) {
                                     if (inputEl && typeof inputEl.showPicker === 'function') {
-                                        inputEl.showPicker();
+                                        try { inputEl.showPicker(); } catch (e) { inputEl.focus(); }
                                     } else if (inputEl) {
                                         inputEl.focus();
                                     }
                                 }
                                 var fromIcon = document.getElementById('ReportFromIcon');
                                 var toIcon   = document.getElementById('ReportToIcon');
-                                if (fromIcon) fromIcon.addEventListener('click', function() { openPicker(displayFrom); });
-                                if (toIcon)   toIcon.addEventListener('click', function() { openPicker(displayTo); });
-                            })();
+                                if (fromIcon) { fromIcon.onclick = function() { openPicker(displayFrom); }; }
+                                if (toIcon)   { toIcon.onclick   = function() { openPicker(displayTo); }; }
+                            }
+
+                            // Turant call karo (elements upar already DOM mein hain)
+                            initResultDateRange();
+                            // Backup triggers — agar kisi wajah se upar wala turant kaam na kare
+                            document.addEventListener('DOMContentLoaded', initResultDateRange);
+                            if (window.jQuery) { jQuery(document).ready(initResultDateRange); }
+                            setTimeout(initResultDateRange, 300);
                         </script>
 
                         <table id="example" width="100%" class="table-striped table-hover table-bordered table-sm display compact nowrap">
@@ -1868,6 +1878,20 @@ document.addEventListener("DOMContentLoaded", async () => {
         .settled-bets-wrap .no-bets { color:#aaa; text-align:center; padding:10px 0; }
         tr.dt-expand-btn td:first-child { cursor:pointer; }
         .dt-control { cursor: pointer; text-align: center; color: #28a745; font-size: 18px; font-weight: bold; }
+        .result-expand-cell { text-align: center; cursor: pointer; }
+        .result-expand-icon {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            line-height: 18px;
+            border-radius: 50%;
+            text-align: center;
+            font-weight: bold;
+            color: #fff;
+            cursor: pointer;
+        }
+        .result-expand-green { background: #28a745; }
+        .result-expand-red   { background: #dc3545; }
     </style>
 
     <script>
@@ -1967,7 +1991,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (dtTable) { dtTable.destroy(); }
         dtTable = $('#example').DataTable({
             "columnDefs": [
-                { "targets": 0, "orderable": false, "className": "dtr-control", "defaultContent": "" },
+                { "targets": 0, "orderable": false, "className": "dtr-control result-expand-cell", "render": function () {
+                    return '<span class="result-expand-icon result-expand-green">+</span>';
+                } },
                 { "targets": 3, "type": "date" }
             ],
             "order": [[3, "desc"]],
@@ -1985,25 +2011,33 @@ document.addEventListener("DOMContentLoaded", async () => {
             "language": { "emptyTable": "Koi settled market nahi mila is date range mein." }
         });
 
-        // ✅ Row expand hone par (Responsive plugin ke apne control se) —
-        // hamari custom "settled bets" sub-table bhi child row ke andar
-        // add karo. Sirf EK hi expand-mechanism ab use ho raha hai.
+        // ✅ Row expand/collapse hone par (Responsive plugin ke apne control se):
+        //   - icon ko explicitly green (+) / red (−) mein toggle karo (external
+        //     CSS pseudo-content par depend nahi karte — is liye hamesha dikhega)
+        //   - expand hote waqt hamari custom "settled bets" sub-table bhi
+        //     child row ke andar add karo
         $('#example').off('responsive-display.settledBets').on('responsive-display.settledBets', async function (e, dt, row, showHide) {
-            if (!showHide) return; // sirf jab row expand ho raha ho, collapse par nahi
-            var tr = $(row.node());
-            if (tr.data('betsLoaded')) return; // dobara fetch na ho
+            var tr   = $(row.node());
+            var icon = tr.find('> td.result-expand-cell .result-expand-icon');
 
-            var marketId  = tr.attr('data-market-id') || '';
-            var matchName = tr.attr('data-match-name') || '';
-            var orders = marketId
-                ? await fetchSettledBetsForMarket(marketId)
-                : await fetchSettledBetsByEventName(matchName, '');
+            if (showHide) {
+                icon.removeClass('result-expand-green').addClass('result-expand-red').text('−');
+                if (tr.data('betsLoaded')) return; // dobara fetch na ho
 
-            var existing = row.child();
-            if (existing && existing.length) {
-                existing.append(buildBetsTable(orders));
+                var marketId  = tr.attr('data-market-id') || '';
+                var matchName = tr.attr('data-match-name') || '';
+                var orders = marketId
+                    ? await fetchSettledBetsForMarket(marketId)
+                    : await fetchSettledBetsByEventName(matchName, '');
+
+                var existing = row.child();
+                if (existing && existing.length) {
+                    existing.append(buildBetsTable(orders));
+                }
+                tr.data('betsLoaded', true);
+            } else {
+                icon.removeClass('result-expand-red').addClass('result-expand-green').text('+');
             }
-            tr.data('betsLoaded', true);
         });
     }
 
@@ -2117,8 +2151,11 @@ document.addEventListener("DOMContentLoaded", async () => {
             const enrichPromises = [];
             markets.forEach(function(m) {
                 if (!m.marketName || !m.winner || !m.winnerNo) {
-                    const p = fetch(`${API_BASE}/markets/catalog2?id=${encodeURIComponent(m.marketId)}`)
-                        .then(r => r.ok ? r.json() : null)
+                    const p = fetch(`https://1xbetbackend.work.gd/api/v1/markets/catalog2?id=${encodeURIComponent(m.marketId)}`)
+                        .then(r => {
+                            if (!r.ok) { console.warn('[Result] catalog2 fetch failed', m.marketId, r.status); return null; }
+                            return r.json();
+                        })
                         .then(json => {
                             if (!json) return;
                             // catalog2 wraps in data field
@@ -2150,7 +2187,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                                 }
                             }
                         })
-                        .catch(() => {});
+                        .catch(err => console.warn('[Result] catalog2 error', m.marketId, err.message));
                     enrichPromises.push(p);
                 }
             });

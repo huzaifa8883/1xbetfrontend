@@ -2115,12 +2115,23 @@ document.addEventListener("DOMContentLoaded", async () => {
         const params   = new URLSearchParams(window.location.search);
         const sportId  = params.get('id') || '7';
 
-        // Category map (sport id → category string stored in order.category)
+        // Category map (sport id → possible category strings stored in order.category)
+        // ✅ BUG FIX: pehle sirf ek exact string thi (e.g. 'Horse Race'), lekin
+        // Betfair/catalog2 se aane wala actual category value 'Horse Racing' hota
+        // hai — "horse racing".includes("horse race") FALSE hai (extra "ing" ki
+        // wajah se strings overlap nahi karti), is liye Horse Race tab pe kabhi
+        // koi row nahi dikhti thi. Ab har sport ke liye multiple aliases check
+        // karte hain.
         const catMap = {
-            '1': 'Soccer', '2': 'Tennis', '4': 'Cricket',
-            '7': 'Horse Race', '8': 'Fancy', '12': 'Casino', '4339': 'Greyhound'
+            '1':    ['Soccer', 'Football'],
+            '2':    ['Tennis'],
+            '4':    ['Cricket'],
+            '7':    ['Horse Race', 'Horse Racing'],
+            '8':    ['Fancy'],
+            '12':   ['Casino'],
+            '4339': ['Greyhound', 'Greyhound Racing'],
         };
-        const catName = catMap[sportId] || '';
+        const catNames = catMap[sportId] || [];
 
         // ✅ Date range — page load pe set hui default range (ya user ne
         // date pickers se badli hui range) use karo
@@ -2143,12 +2154,14 @@ document.addEventListener("DOMContentLoaded", async () => {
             const data   = await res.json();
             const orders = (data.data && data.data.orders) ? data.data.orders : [];
 
-            // Filter by category if sportId given
-            const byCategory = catName
+            // Filter by category if sportId given (matches any alias)
+            const byCategory = catNames.length
                 ? orders.filter(o => {
                     const cat = (o.category || '').toLowerCase();
-                    const cn  = catName.toLowerCase();
-                    return cat.includes(cn) || cn.includes(cat);
+                    return catNames.some(cn => {
+                        const c = cn.toLowerCase();
+                        return cat.includes(c) || c.includes(cat);
+                    });
                   })
                 : orders;
 

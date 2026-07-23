@@ -582,6 +582,77 @@
                             })();
                         </script>
 
+                        <script>
+                            // ✅ Date range — HAMESHA current date se default ho, hardcoded 2025 wali
+                            // nahi. Default window: (aaj - 4 din) 5:00 AM se (kal) 4:59 AM tak —
+                            // taake "aaj" ke sabhi settled results is range mein aa jayein.
+                            (function() {
+                                function pad(n) { return String(n).padStart(2, '0'); }
+
+                                function fmtDisplay(d) {
+                                    var h24 = d.getHours();
+                                    var ampm = h24 >= 12 ? 'PM' : 'AM';
+                                    var h12 = h24 % 12; if (h12 === 0) h12 = 12;
+                                    return (d.getMonth() + 1) + '/' + d.getDate() + '/' + d.getFullYear() +
+                                           ' ' + h12 + ':' + pad(d.getMinutes()) + ' ' + ampm;
+                                }
+
+                                function toLocalISO(d) {
+                                    // Local wall-clock time ko ISO-jaisi string mein rakho (backend
+                                    // comparisons ke liye) — timezone shift avoid karne ke liye
+                                    // manually banaya, .toISOString() UTC shift kar deta hai.
+                                    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
+                                           'T' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+                                }
+
+                                var now = new Date();
+
+                                var to = new Date(now);
+                                to.setDate(to.getDate() + 1);
+                                to.setHours(4, 59, 0, 0);
+
+                                var from = new Date(now);
+                                from.setDate(from.getDate() - 4);
+                                from.setHours(5, 0, 0, 0);
+
+                                window.__resultDateRange = { from: from, to: to };
+
+                                var displayFrom = document.getElementById('DisplayFrom');
+                                var displayTo   = document.getElementById('DisplayTo');
+                                var hiddenFrom  = document.getElementById('From');
+                                var hiddenTo    = document.getElementById('To');
+
+                                if (displayFrom) displayFrom.value = fmtDisplay(from);
+                                if (displayTo)   displayTo.value   = fmtDisplay(to);
+                                if (hiddenFrom)  hiddenFrom.value  = toLocalISO(from);
+                                if (hiddenTo)    hiddenTo.value    = toLocalISO(to);
+
+                                // Agar Tempus Dominus / bootstrap datetimepicker available ho
+                                // (bundle0a.js se) to use bhi init kar do — warna plain text
+                                // input hi rehne do (user manually edit kar sakta hai).
+                                function reparseAndReload(inputEl, hiddenEl) {
+                                    var v = new Date(inputEl.value);
+                                    if (!isNaN(v.getTime())) {
+                                        hiddenEl.value = toLocalISO(v);
+                                        if (typeof loadResultsTable === 'function') loadResultsTable();
+                                    }
+                                }
+                                if (displayFrom) displayFrom.addEventListener('change', function() { reparseAndReload(displayFrom, hiddenFrom); });
+                                if (displayTo)   displayTo.addEventListener('change', function() { reparseAndReload(displayTo, hiddenTo); });
+
+                                if (window.jQuery && jQuery.fn && jQuery.fn.datetimepicker) {
+                                    jQuery('#ReportFrom').datetimepicker({ format: 'M/D/YYYY h:mm A' });
+                                    jQuery('#ReportTo').datetimepicker({ format: 'M/D/YYYY h:mm A' });
+                                    jQuery('#ReportFrom').on('change.datetimepicker', function(e) {
+                                        if (e.date) { hiddenFrom.value = toLocalISO(e.date.toDate()); if (typeof loadResultsTable === 'function') loadResultsTable(); }
+                                    });
+                                    jQuery('#ReportTo').on('change.datetimepicker', function(e) {
+                                        if (e.date) { hiddenTo.value = toLocalISO(e.date.toDate()); if (typeof loadResultsTable === 'function') loadResultsTable(); }
+                                    });
+                                }
+                            })();
+                        </script>
+
                         <table id="example" width="100%" class="table-striped table-hover table-bordered table-sm display compact nowrap">
                             <thead>
                                 <tr>
@@ -596,6 +667,7 @@
                             </tbody>
                         </table>
                     </div>
+
                 </div>
             </div>
         </div>
@@ -1928,9 +2000,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         const token = localStorage.getItem('token');
         if (!token) return;
 
-        // URL se sport id aur date range lo
+        // URL se sport id lo — default '7' (Horse Race), sport-tab highlight ke
+        // mutabiq (warna tab to Horse Race dikhta hai lekin data sab sports ka aata)
         const params   = new URLSearchParams(window.location.search);
-        const sportId  = params.get('id') || '';
+        const sportId  = params.get('id') || '7';
 
         // Category map (sport id → category string stored in order.category)
         const catMap = {
@@ -1938,6 +2011,19 @@ document.addEventListener("DOMContentLoaded", async () => {
             '7': 'Horse Race', '8': 'Fancy', '12': 'Casino', '4339': 'Greyhound'
         };
         const catName = catMap[sportId] || '';
+
+        // ✅ Date range — page load pe set hui default range (ya user ne
+        // date pickers se badli hui range) use karo
+        let fromDate = null, toDate = null;
+        if (window.__resultDateRange) {
+            fromDate = window.__resultDateRange.from;
+            toDate   = window.__resultDateRange.to;
+        } else {
+            const hiddenFrom = document.getElementById('From');
+            const hiddenTo   = document.getElementById('To');
+            if (hiddenFrom && hiddenFrom.value) fromDate = new Date(hiddenFrom.value);
+            if (hiddenTo   && hiddenTo.value)   toDate   = new Date(hiddenTo.value);
+        }
 
         try {
             const res  = await fetch(`${API_BASE}/orders/settled?limit=500`, {
@@ -1948,13 +2034,23 @@ document.addEventListener("DOMContentLoaded", async () => {
             const orders = (data.data && data.data.orders) ? data.data.orders : [];
 
             // Filter by category if sportId given
-            const filtered = catName
+            const byCategory = catName
                 ? orders.filter(o => {
                     const cat = (o.category || '').toLowerCase();
                     const cn  = catName.toLowerCase();
                     return cat.includes(cn) || cn.includes(cat);
                   })
                 : orders;
+
+            // ✅ Filter by selected date range (settled_at, fallback created_at)
+            const filtered = (fromDate && toDate)
+                ? byCategory.filter(o => {
+                    const ts = o.settled_at || o.created_at;
+                    if (!ts) return true; // date missing — hide mat karo
+                    const d = new Date(ts);
+                    return d >= fromDate && d <= toDate;
+                  })
+                : byCategory;
 
             // Group by market_id → one row per market
             // selectionId → runnerName lookup (har order mein runner_name hoti hai)
@@ -1981,6 +2077,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                         marketName: mktName,   // will be enriched below
                         date:       o.settled_at || o.created_at || '',
                         winner:     '',
+                        winnerNo:   null,   // selection number e.g. "6" in "6. Champagnes"
                         orders:     []
                     });
                 }
@@ -2008,7 +2105,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             // Har market ke liye ek call karo (parallel)
             const enrichPromises = [];
             markets.forEach(function(m) {
-                if (!m.marketName || !m.winner) {
+                if (!m.marketName || !m.winner || !m.winnerNo) {
                     const p = fetch(`https://1xbetbackend.work.gd/api/markets/catalog2?id=${encodeURIComponent(m.marketId)}`)
                         .then(r => r.ok ? r.json() : null)
                         .then(json => {
@@ -2023,17 +2120,22 @@ document.addEventListener("DOMContentLoaded", async () => {
                                     || data.name || data.marketTypeName || '';
                             }
 
-                            // Winner runner name: runners array has selectionId + runnerName
-                            if (!m.winner) {
-                                const winId = String(
-                                    m.orders.find(o => o.winning_selection_id)?.winning_selection_id || ''
+                            // Winner runner name + number (screenshot ki tarah "6. Champagnes")
+                            const winId = String(
+                                m.orders.find(o => o.winning_selection_id)?.winning_selection_id || ''
+                            );
+                            if (winId) {
+                                const runners = data.runners || data.Runners || [];
+                                const wr = runners.find(r =>
+                                    String(r.selectionId || r.id || r.selection_id || '') === winId
                                 );
-                                if (winId) {
-                                    const runners = data.runners || data.Runners || [];
-                                    const wr = runners.find(r =>
-                                        String(r.selectionId || r.id || r.selection_id || '') === winId
-                                    );
-                                    if (wr) m.winner = wr.runnerName || wr.runner_name || wr.name || '';
+                                if (wr) {
+                                    if (!m.winner) m.winner = wr.runnerName || wr.runner_name || wr.name || '';
+                                    if (!m.winnerNo) {
+                                        m.winnerNo = wr.sortPriority || wr.sort_priority
+                                            || (wr.metadata && (wr.metadata.CLOTH_NUMBER || wr.metadata.STALL_DRAW))
+                                            || null;
+                                    }
                                 }
                             }
                         })
@@ -2056,7 +2158,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             tbody.innerHTML = '';
 
             markets.forEach(function(m) {
-                const dateStr = m.date ? new Date(m.date).toLocaleString('en-GB') : '-';
+                const dateStr    = m.date ? new Date(m.date).toLocaleString('en-GB') : '-';
+                const winnerText = m.winner
+                    ? (m.winnerNo ? `${m.winnerNo}. ${m.winner}` : m.winner)
+                    : '-';
                 const tr = document.createElement('tr');
                 tr.setAttribute('data-market-id', m.marketId);
                 tr.setAttribute('data-match-name', m.matchName);
@@ -2065,7 +2170,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                     <td>${m.matchName || '-'}</td>
                     <td>${m.marketName || '-'}</td>
                     <td>${dateStr}</td>
-                    <td><strong style="color:#4caf50;">${m.winner || '-'}</strong></td>
+                    <td><strong style="color:#4caf50;">${winnerText}</strong></td>
                 `;
                 tbody.appendChild(tr);
             });

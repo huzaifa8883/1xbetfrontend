@@ -1096,7 +1096,8 @@ Texas Super Kings v San Francisco Unicorns                                </a>
 new Vue({
     el: '#app',
     data: {
-        bets: []
+        bets: [],
+        hasLoadedOnce: false
     },
     computed: {
         groupedBets() {
@@ -1109,21 +1110,73 @@ new Vue({
         }
     },
     methods: {
+        // ✅ FIX: pehle "/api/orders/with-category" call ho raha tha — ye
+        // endpoint backend mein kahin exist hi nahi karta (koi bhi route
+        // file mein aisa naam nahi mila), is liye bet yahan kabhi aata hi
+        // nahi tha. Ab wahi reliable "/orders/all" endpoint use kar rahe
+        // hain jo bethistory.html mein bhi kaam kar raha hai — ye sirf
+        // PENDING+MATCHED (yani abhi settle na hui) bets deta hai.
         async fetchBets() {
             try {
                 const token = localStorage.getItem("token");
-                const res = await fetch("https://1XBETBACKEND.WORK.GD/api/orders/with-category", {
+                if (!token) return;
+                const res = await fetch("https://1xbetbackend.work.gd/api/v1/orders/all", {
                     headers: { "Authorization": "Bearer " + token }
                 });
-                const data = await res.json();
-                this.bets = data; // ensure bet.category = sport, bet.event = match name
+                const json = await res.json();
+                const rawList = json?.data?.orders || json?.orders || [];
+
+                this.bets = rawList.map(o => ({
+                    requestId: o.request_id || o.requestId || o.id,
+                    category:  o.category || o.event_type || "Other",
+                    event:     o.event_name || o.eventName || o.event || "-",
+                    marketId:  o.market_id || o.marketId || "",
+                    // Market Position: BACK = positive, LAY = negative
+                    size: (o.side || "").toUpperCase() === "LAY"
+                        ? -parseFloat(o.size || 0)
+                        :  parseFloat(o.size || 0)
+                }));
             } catch (err) {
                 console.error("Error fetching bets:", err);
+            } finally {
+                this.hasLoadedOnce = true;
             }
         }
     },
     mounted() {
         this.fetchBets();
+
+        // ✅ NEW: live refresh — jab bhi koi nayi bet lage ya koi settle/void
+        // ho, list turant update ho jaye (page refresh ki zaroorat na ho).
+        if (typeof io !== 'undefined') {
+            try {
+                const _sock = io("https://1xbetbackend.work.gd");
+                const _tk   = localStorage.getItem("token");
+
+                _sock.on("connect", () => {
+                    if (_tk) {
+                        try {
+                            const payload = JSON.parse(atob(_tk.split('.')[1]));
+                            const uid = payload.id || payload.userId || payload.sub;
+                            if (uid) _sock.emit("JoinUserRoom", uid);
+                        } catch (e) { console.warn("[Liable] userId extract failed:", e.message); }
+                    }
+                });
+
+                ["marketSettled", "orderSettled", "betSettled", "marketClosed", "settled"].forEach(ev => {
+                    _sock.on(ev, () => this.fetchBets());
+                });
+
+                _sock.on("userUpdated", (data) => {
+                    if (data && (data.event === 'settlement' || data.event === 'void' || data.event === 'newOrder')) {
+                        this.fetchBets();
+                    }
+                });
+            } catch (e) { console.warn("[Liable] Socket init failed:", e.message); }
+        }
+
+        // Fallback: har 10 second poll (guarantee ke liye, socket miss ho to bhi)
+        setInterval(() => this.fetchBets(), 10000);
     }
 });
 </script>

@@ -909,23 +909,67 @@ new Vue({
       const token  = localStorage.getItem("token");
       if (!token) { this.loading = false; return; }
 
+      // ✅ FIX: pehle #EventTypeId (sport) aur #BetStatus (Active/Settled/
+      // Voided/Cancelled) dropdowns ka koi asar hi nahi hota tha — hamesha
+      // sirf active (PENDING+MATCHED) bets /orders/all se aate the. Ab
+      // dono dropdowns padh kar sahi endpoint + status choose karte hain.
+      const sportId    = document.getElementById('EventTypeId') ? document.getElementById('EventTypeId').value : '0';
+      const statusSel  = document.getElementById('BetStatus')   ? document.getElementById('BetStatus').value   : '0';
+
+      // Sport (category) keyword map — result.html mein bhi yehi pattern
+      // use kiya tha, kyunki "Horse Race" jaisa exact string category
+      // value "Horse Racing" se match nahi karta (substring mismatch).
+      const catKeywordMap = {
+          '1': ['soccer', 'football'],
+          '2': ['tennis'],
+          '4': ['cricket'],
+          '7': ['horse'],
+          '12': ['casino'],
+          '4339': ['greyhound']
+      };
+      const catKeywords = catKeywordMap[sportId] || [];
+
+      // Status dropdown → endpoint + status query
+      let url;
+      let statusFilter = null; // client-side extra filter agar zaroorat ho
+      if (statusSel === '2') {
+        // Settled
+        url = _BH_API + "/orders/settled?limit=500";
+      } else if (statusSel === '3') {
+        // Voided — exact enum value pakka nahi, dono candidate try karo
+        url = _BH_API + "/orders/all?status=" + encodeURIComponent("VOID,VOIDED");
+      } else if (statusSel === '4') {
+        // Cancelled
+        url = _BH_API + "/orders/all?status=" + encodeURIComponent("CANCELLED");
+      } else {
+        // Active (default)
+        url = _BH_API + "/orders/all";
+        statusFilter = ["MATCHED", "PENDING", "UNMATCHED"];
+      }
+
       try {
-        // /orders/all ab sirf PENDING + MATCHED return karta hai (SETTLED excluded)
-        const res  = await fetch(_BH_API + "/orders/all", {
+        const res  = await fetch(url, {
           headers: { "Authorization": "Bearer " + token }
         });
         const json = await res.json();
 
         // API response: { success, data: { orders: [...] } }
-        const rawList = json?.data?.orders || json?.orders || [];
+        let rawList = json?.data?.orders || json?.orders || [];
 
-        // SETTLED/VOIDED/CANCELLED bets filter karo — sirf active bets dikhao
-        const activeBets = rawList.filter(o => {
-          const st = (o.status || "").toUpperCase();
-          return st === "MATCHED" || st === "PENDING" || st === "UNMATCHED";
-        });
+        // Active tab ke liye client-side status filter (backward compatible)
+        if (statusFilter) {
+          rawList = rawList.filter(o => statusFilter.includes((o.status || "").toUpperCase()));
+        }
 
-        this.bets = activeBets.map((o, index) => ({
+        // ✅ Sport filter (category keyword match)
+        if (catKeywords.length) {
+          rawList = rawList.filter(o => {
+            const cat = (o.category || "").toLowerCase();
+            return catKeywords.some(k => cat.includes(k));
+          });
+        }
+
+        this.bets = rawList.map((o, index) => ({
             index:    index + 1,
             event:    o.event_name || o.eventName || o.event || "-",
             runner:   o.runner_name || o.runnerName || "-",
@@ -951,6 +995,13 @@ new Vue({
   },
   mounted() {
     this.fetchBetsHistory();
+
+    // ✅ FIX: EventTypeId/BetStatus dropdown badalte hi refresh ho jaye
+    const _self = this;
+    const _eventTypeSel = document.getElementById('EventTypeId');
+    const _betStatusSel = document.getElementById('BetStatus');
+    if (_eventTypeSel) _eventTypeSel.addEventListener('change', () => _self.fetchBetsHistory());
+    if (_betStatusSel) _betStatusSel.addEventListener('change', () => _self.fetchBetsHistory());
 
     // ✅ Socket: settlement ke baad bets automatically refresh ho jayein
     if (typeof io !== 'undefined') {

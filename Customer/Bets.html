@@ -1046,8 +1046,8 @@ new Vue({
     // Datetimepicker plugin update
     try {
       if (typeof $ !== 'undefined') {
-        .datetimepicker('date', fromDate);
-        .datetimepicker('date', toDate);
+        $('#ReportFrom').datetimepicker('date', fromDate);
+        $('#ReportTo').datetimepicker('date', toDate);
       }
     } catch(e) {}
   });

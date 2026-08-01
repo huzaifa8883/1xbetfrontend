@@ -47,6 +47,8 @@ app.get("/Common/index",       (req, res) => send(res, "Common", "index.html"));
 app.get("/Common/index.html",  (req, res) => send(res, "Common", "index.html"));
 
 app.get("/Common/Dashboard",   (req, res) => send(res, "Common", "Dashboard.html"));
+app.get("/Common/sap",   (req, res) => send(res, "Common", "sap.html"));
+
 
 // ✅ Event page — naya path-style URL: /Common/Event/<eventId>
 //    Purana query-string format (/Common/Event?id=...) bhi backward-compat

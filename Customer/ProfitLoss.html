@@ -1870,6 +1870,36 @@ document.addEventListener("DOMContentLoaded", async () => {
                     $('#ReportTo').datetimepicker({ format: 'M/D/YYYY h:mm A' });
                     $('#ReportFrom').datetimepicker('date', initFrom);
                     $('#ReportTo').datetimepicker('date', initTo);
+
+                    // ✅ FIX: agar user calendar widget use karne ki bajaye
+                    // seedha #DisplayFrom/#DisplayTo text box mein manually
+                    // date TYPE kare, to widget ka internal state kabhi
+                    // update nahi hota tha — is liye Submit dabane par
+                    // updateDates() hamesha widget ki PURANI date read kar
+                    // leta tha, manually typed date ignore ho jati thi.
+                    // Ab manual typing ko widget ke andar bhi sync karte hain.
+                    function syncManualEdit(inputId, widgetSelector) {
+                        var el = document.getElementById(inputId);
+                        if (!el) return;
+                        el.addEventListener('change', function () {
+                            var raw    = el.value;
+                            var parsed = parseDisplayDate(raw);
+                            if (!parsed) {
+                                var native = new Date(raw);
+                                if (!isNaN(native.getTime())) parsed = native;
+                            }
+                            if (!parsed) {
+                                console.warn('[ProfitLoss] Manual date typed but could not be parsed:', raw);
+                                return;
+                            }
+                            try { $(widgetSelector).datetimepicker('date', parsed); } catch (err) {}
+                            var hiddenId = (inputId === 'DisplayFrom') ? 'From' : 'To';
+                            var hidden = document.getElementById(hiddenId);
+                            if (hidden) hidden.value = parsed.toISOString();
+                        });
+                    }
+                    syncManualEdit('DisplayFrom', '#ReportFrom');
+                    syncManualEdit('DisplayTo',   '#ReportTo');
                 }
             } catch (e) { console.warn('[ProfitLoss] datetimepicker init failed:', e.message); }
 

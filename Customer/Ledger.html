@@ -941,6 +941,37 @@
           var d = e.date.toDate ? e.date.toDate() : new Date(e.date);
           if (ti) ti.value = d.toISOString();
         });
+
+        // ✅ FIX: agar user calendar widget use karne ki bajaye seedha
+        // #DisplayFrom/#DisplayTo text box mein manually date TYPE kare,
+        // to widget ka internal state kabhi update nahi hota tha — is liye
+        // Submit dabane par updateDates() hamesha widget ki PURANI date
+        // read kar leta tha, jo bhi manually typa gaya tha wo ignore ho
+        // jata tha. Ab manual typing ko widget ke andar bhi sync karte hain.
+        function syncManualEdit(inputId, widgetSelector) {
+          var el = document.getElementById(inputId);
+          if (!el) return;
+          el.addEventListener('change', function() {
+            var raw    = el.value;
+            var parsed = (typeof parseDisplayDate === 'function') ? parseDisplayDate(raw) : null;
+            if (!parsed) {
+              // Lenient fallback — browser ka apna date parser try karo
+              var native = new Date(raw);
+              if (!isNaN(native.getTime())) parsed = native;
+            }
+            if (!parsed) {
+              console.warn('[Statement] Manual date typed but could not be parsed:', raw);
+              return;
+            }
+            // Widget ko bhi update karo taake dono (widget + hidden field) sync rahein
+            try { $(widgetSelector).datetimepicker('date', parsed); } catch (err) {}
+            var hiddenId = (inputId === 'DisplayFrom') ? 'From' : 'To';
+            var hidden = document.getElementById(hiddenId);
+            if (hidden) hidden.value = parsed.toISOString();
+          });
+        }
+        syncManualEdit('DisplayFrom', '#ReportFrom');
+        syncManualEdit('DisplayTo',   '#ReportTo');
       }
     } catch(e) {}
   });

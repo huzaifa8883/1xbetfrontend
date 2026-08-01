@@ -543,6 +543,7 @@
 
                     <div class="dropdown-wrap">
                         <div class="dropdown">
+
                             <div class="designation">
                                 <span class="wallet-balance">B: -</span>
                                 <span class="wallet-exposure"> | L: - |</span>
@@ -2169,7 +2170,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const walletBalance  = document.querySelector(".wallet-balance");
     const walletExposure = document.querySelector(".wallet-exposure");
     if (walletBalance)  walletBalance.textContent  = `B: ${bal.toLocaleString()}`;
-    if (walletExposure) walletExposure.textContent = ` | L: ${liable.toLocaleString()} |`;
+    if (walletExposure) walletExposure.textContent = ` | L: -${liable.toLocaleString()} |`;
 
     // If settlement event, show notification
     if (data.event === "settlement" && data.settlement) {
@@ -2225,7 +2226,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (walletBalance) walletBalance.textContent = `B: ${Math.floor(user.wallet_balance ?? 0).toLocaleString()}`;
 
       const walletExposure = document.querySelector(".wallet-exposure");
-      if (walletExposure) walletExposure.textContent = ` | L: ${Math.floor(user.liable ?? 0).toLocaleString()} |`;
+      if (walletExposure) walletExposure.textContent = ` | L: -${Math.floor(user.liable ?? 0).toLocaleString()} |`;
     }
   } catch (err) {
     console.error("Error loading latest user info:", err);

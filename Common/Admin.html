@@ -1855,9 +1855,11 @@ function toggleLeagueCheckbox(sport, id, cbEl) {
   if (cbEl.checked) enabled.add(id); else enabled.delete(id);
 }
 
-// ✅ Match click → uske available markets show karo (read-only, informational —
-// asal market-selection ab bhi sport-wide "Markets" card se hoti hai)
-const loadedMatchMarkets = {};
+// Match click → selectable markets (checkboxes) with save-per-match
+// selMatchMarkets[eventId] = Set of selected marketType strings
+const loadedMatchMarkets  = {};
+const selMatchMarkets     = {};  // { eventId: Set<marketType> }
+
 async function toggleMatchMarkets(rowId, eventId) {
   const el    = document.getElementById(rowId);
   const caret = document.getElementById('caret-' + rowId);
@@ -1875,19 +1877,75 @@ async function toggleMatchMarkets(rowId, eventId) {
     return;
   }
 
+  el.innerHTML = '<div style="color:var(--text-secondary);padding:4px 0;">⏳ Markets load ho rahe hain...</div>';
+
   try {
-    const r = await api(`/api/v1/markets/event-markets?eventId=${eventId}`);
+    const r    = await api(`/api/v1/markets/event-markets?eventId=${eventId}`);
     const data = (r.success && r.data) ? r.data : null;
     const all  = (data && Array.isArray(data.all)) ? data.all : [];
-    const html = all.length
-      ? `<div style="display:flex;flex-wrap:wrap;gap:6px;">` +
-        all.map(m => `<span style="background:var(--bg-tertiary);padding:3px 8px;border-radius:4px;">${m.marketName || m.marketType || 'Market'}</span>`).join('') +
-        `</div>`
-      : `<span>Koi market nahi mila is match ke liye.</span>`;
+
+    if (!all.length) {
+      const html = '<span style="color:var(--text-secondary);">Koi market nahi mila is match ke liye.</span>';
+      loadedMatchMarkets[eventId] = html;
+      el.innerHTML = html;
+      return;
+    }
+
+    // Load previously saved selections for this event
+    if (!selMatchMarkets[eventId]) {
+      const saved = localStorage.getItem('matchMarkets_' + eventId);
+      selMatchMarkets[eventId] = saved ? new Set(JSON.parse(saved)) : new Set(all.map(m => m.marketType || m.marketId));
+    }
+    const sel = selMatchMarkets[eventId];
+
+    const html = `
+      <div style="margin-bottom:6px;font-size:11px;color:var(--text-secondary);">
+        ✅ Select karo kaunse markets is match mein dikhne chahiye:
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
+        ${all.map(m => {
+          const mType = m.marketType || m.marketId || '';
+          const mName = m.marketName || marketTypeName(mType) || mType;
+          const checked = sel.has(mType) ? 'checked' : '';
+          return `<label style="display:flex;align-items:center;gap:5px;background:var(--bg-tertiary);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;">
+            <input type="checkbox" ${checked} 
+              onchange="toggleMatchMarket('${eventId}','${mType}',this.checked)"
+              style="width:14px;height:14px;cursor:pointer;">
+            <span>${mName}</span>
+          </label>`;
+        }).join('')}
+      </div>
+      <button onclick="saveMatchMarkets('${eventId}')" 
+        style="background:var(--accent-green);color:#fff;border:none;border-radius:5px;padding:4px 12px;font-size:12px;cursor:pointer;">
+        💾 Save
+      </button>`;
+
     loadedMatchMarkets[eventId] = html;
     el.innerHTML = html;
   } catch (e) {
     el.innerHTML = `<span style="color:var(--accent-red);">Markets load nahi hue: ${e.message}</span>`;
+  }
+}
+
+function toggleMatchMarket(eventId, marketType, checked) {
+  if (!selMatchMarkets[eventId]) selMatchMarkets[eventId] = new Set();
+  if (checked) selMatchMarkets[eventId].add(marketType);
+  else         selMatchMarkets[eventId].delete(marketType);
+}
+
+async function saveMatchMarkets(eventId) {
+  const sel = selMatchMarkets[eventId];
+  if (!sel) return;
+  const arr = [...sel];
+  // localStorage mein save (per-match)
+  localStorage.setItem('matchMarkets_' + eventId, JSON.stringify(arr));
+  // Backend mein bhi save karo (match-specific market settings)
+  try {
+    await api('/api/v1/settings/match-markets', 'POST', { eventId, enabledMarketTypes: arr });
+    toast('✅ Markets saved for this match');
+  } catch(e) {
+    // Backend endpoint nahi to sirf localStorage
+    toast('✅ Markets saved locally');
   }
 }
 

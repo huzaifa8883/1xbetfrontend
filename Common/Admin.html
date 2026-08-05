@@ -1249,11 +1249,13 @@ const SPORTS = {
 let curSport = 'cricket';
 const selMarkets     = {};   // { sport: [marketId, ...] }
 const betfairLeagues = {};   // { sport: [{id, name}, ...] } — from Betfair API
+const betfairLeagueMatches = {}; // { sport: [{id, name, matches:[{eventId,marketId,name,startTime}]}] } — active leagues + their matches (agle 2 din)
 const betfairMarkets = {};   // { sport: [{id, name, desc}, ...] } — from Betfair API
 const enabledLeagues = {};   // { sport: Set<leagueId> }    — user selection
 
 Object.keys(SPORTS).forEach(k => {
   betfairLeagues[k] = [];
+  betfairLeagueMatches[k] = [];
   betfairMarkets[k] = [];
   enabledLeagues[k] = new Set();
   // Default: all markets enabled (backend se overwrite hoga)
@@ -1745,27 +1747,26 @@ async function fetchBetfairLeagues(k) {
   // Show loading state
   statusEl.style.color = 'var(--accent-cyan)';
   statusEl.textContent = 'Betfair se fetch ho raha hai...';
-  listEl.innerHTML = '<div class="league-loading">⏳ Betfair se leagues aa rahi hain...</div>';
+  listEl.innerHTML = '<div class="league-loading">⏳ Betfair se active leagues aa rahi hain...</div>';
   if (fetchBtn) fetchBtn.disabled = true;
 
   try {
-    // Try backend proxy first: GET /api/v1/markets/betfair/competitions?eventTypeId=<id>
-    const r = await api(`/api/v1/markets/betfair/competitions?eventTypeId=${eventTypeId}`);
+    // ✅ Sirf active leagues (jinke matches agle 2 din mein hain) — saari
+    // 100+ leagues ka dump nahi, jinme se zyadatar off-season hoti hain
+    const r = await api(`/api/v1/markets/betfair/active-leagues?eventTypeId=${eventTypeId}&hoursAhead=48`);
 
-    if (r.success && r.data && r.data.competitions && r.data.competitions.length > 0) {
-      // Backend returned live Betfair data
-      betfairLeagues[k] = r.data.competitions.map(c => ({
-        id:   String(c.competition ? c.competition.id : c.id),
-        name: c.competition ? c.competition.name : c.name,
-      }));
+    if (r.success && r.data && Array.isArray(r.data.leagues) && r.data.leagues.length > 0) {
+      betfairLeagueMatches[k] = r.data.leagues; // { id, name, matches:[{eventId,marketId,name,startTime}] }
+      betfairLeagues[k] = r.data.leagues.map(l => ({ id: l.id, name: l.name }));
+      const totalMatches = r.data.leagues.reduce((s, l) => s + l.matches.length, 0);
       statusEl.style.color = 'var(--accent-green)';
-      statusEl.textContent = `✅ ${betfairLeagues[k].length} leagues (Betfair Live)`;
+      statusEl.textContent = `✅ ${betfairLeagues[k].length} active leagues, ${totalMatches} matches (agle 2 din)`;
     } else {
-      throw new Error(r.message || 'No competitions returned');
+      throw new Error(r.message || 'Agle 2 din mein koi live match nahi mila');
     }
   } catch (e) {
-    // Fallback to hardcoded if backend not ready or fails
     console.warn('Betfair API fetch failed, using fallback:', e.message);
+    betfairLeagueMatches[k] = [];
     betfairLeagues[k] = BETFAIR_LEAGUES[k] || [];
     if (betfairLeagues[k].length > 0) {
       statusEl.style.color = 'var(--accent-orange)';
@@ -1773,7 +1774,7 @@ async function fetchBetfairLeagues(k) {
       toast(`⚠️ Betfair API unavailable, cached leagues use ho rahe hain`, 'error');
     } else {
       statusEl.style.color = 'var(--accent-red)';
-      statusEl.textContent = '❌ Koi league nahi mili';
+      statusEl.textContent = '❌ Agle 2 din mein koi active league nahi mili';
       toast(`❌ Leagues fetch nahi hui: ${e.message}`, 'error');
     }
   } finally {
@@ -1786,12 +1787,12 @@ function renderLeagues(k) {
   // ✅ Horse Race / Greyhound → country/track hierarchy
   if (isRacingSport(k)) { return renderTracks(k); }
 
-  const leagues  = betfairLeagues[k] || [];
+  const leagues  = betfairLeagueMatches[k] || [];
   const enabled  = enabledLeagues[k] || new Set();
   const listEl   = document.getElementById('league-list');
 
   if (leagues.length === 0) {
-    listEl.innerHTML = '<div class="league-empty">⚠️ Koi league nahi mili. "Fetch from Betfair" button dabao.</div>';
+    listEl.innerHTML = '<div class="league-empty">⚠️ Agle 2 din mein koi active league nahi mili. "Fetch from Betfair" button dabao.</div>';
     return;
   }
 
@@ -1802,17 +1803,92 @@ function renderLeagues(k) {
     return ae - be || a.name.localeCompare(b.name);
   });
 
-  listEl.innerHTML = sorted.map(l => {
+  listEl.innerHTML = `<div class="track-country-list">` + sorted.map(l => {
     const checked = enabled.has(l.id);
-    return `<div class="league-item${checked ? ' enabled' : ''}" onclick="toggleLeague('${k}','${l.id}',this)" id="li-${k}-${l.id}">
-      <input type="checkbox" ${checked ? 'checked' : ''} onclick="event.stopPropagation();toggleLeague('${k}','${l.id}',document.getElementById('li-${k}-${l.id}'))">
-      <div class="league-item-info">
-        <div class="league-item-name">${l.name}</div>
-        <div class="league-item-id">ID: ${l.id}</div>
-      </div>
-      <div class="league-enabled-dot"></div>
-    </div>`;
-  }).join('');
+    const rowId = `li-${k}-${l.id}`;
+    return `
+      <div class="track-country-group">
+        <div class="track-country-header" onclick="toggleLeagueGroup(this)">
+          <span class="track-country-caret">▸</span>
+          <span class="track-country-name">${l.name}</span>
+          <span class="track-country-count">${l.matches.length} match${l.matches.length===1?'':'es'} (agle 2 din)</span>
+          <label class="toggle" onclick="event.stopPropagation();" style="margin-left:auto;">
+            <input type="checkbox" ${checked ? 'checked' : ''}
+              onchange="toggleLeagueCheckbox('${k}','${l.id}',this)">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="track-list-inner" style="display:none;" id="${rowId}">
+          ${l.matches.map(m => {
+            const dt = m.startTime ? new Date(m.startTime).toLocaleString('en-GB', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' }) : '';
+            const mRowId = `match-${k}-${m.eventId}`;
+            return `
+              <div class="league-item" style="cursor:pointer;" onclick="toggleMatchMarkets('${mRowId}','${m.eventId}')">
+                <span class="track-country-caret" id="caret-${mRowId}">▸</span>
+                <div class="league-item-info">
+                  <div class="league-item-name">${m.name}</div>
+                  <div class="league-item-id">${dt}</div>
+                </div>
+              </div>
+              <div class="match-markets-inner" id="${mRowId}" style="display:none;padding:8px 16px 12px 40px;font-size:12px;color:var(--text-secondary);">
+                ⏳ Loading markets...
+              </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+  }).join('') + `</div>`;
+}
+
+function toggleLeagueGroup(headerEl) {
+  const inner = headerEl.nextElementSibling;
+  const caret = headerEl.querySelector('.track-country-caret');
+  const isOpen = inner.style.display !== 'none';
+  inner.style.display = isOpen ? 'none' : 'block';
+  caret.textContent = isOpen ? '▸' : '▾';
+}
+
+// Header-level enable/disable checkbox ke liye — league item row ki jagah
+// ab league checkbox group-header mein hai, is liye alag chhota function
+function toggleLeagueCheckbox(sport, id, cbEl) {
+  const enabled = enabledLeagues[sport];
+  if (!enabled) return;
+  if (cbEl.checked) enabled.add(id); else enabled.delete(id);
+}
+
+// ✅ Match click → uske available markets show karo (read-only, informational —
+// asal market-selection ab bhi sport-wide "Markets" card se hoti hai)
+const loadedMatchMarkets = {};
+async function toggleMatchMarkets(rowId, eventId) {
+  const el    = document.getElementById(rowId);
+  const caret = document.getElementById('caret-' + rowId);
+  const isOpen = el.style.display !== 'none';
+  if (isOpen) {
+    el.style.display = 'none';
+    if (caret) caret.textContent = '▸';
+    return;
+  }
+  el.style.display = 'block';
+  if (caret) caret.textContent = '▾';
+
+  if (loadedMatchMarkets[eventId]) {
+    el.innerHTML = loadedMatchMarkets[eventId];
+    return;
+  }
+
+  try {
+    const r = await api(`/api/v1/markets/event-markets?eventId=${eventId}`);
+    const data = (r.success && r.data) ? r.data : null;
+    const all  = (data && Array.isArray(data.all)) ? data.all : [];
+    const html = all.length
+      ? `<div style="display:flex;flex-wrap:wrap;gap:6px;">` +
+        all.map(m => `<span style="background:var(--bg-tertiary);padding:3px 8px;border-radius:4px;">${m.marketName || m.marketType || 'Market'}</span>`).join('') +
+        `</div>`
+      : `<span>Koi market nahi mila is match ke liye.</span>`;
+    loadedMatchMarkets[eventId] = html;
+    el.innerHTML = html;
+  } catch (e) {
+    el.innerHTML = `<span style="color:var(--accent-red);">Markets load nahi hue: ${e.message}</span>`;
+  }
 }
 
 function toggleLeague(sport, id, rowEl) {

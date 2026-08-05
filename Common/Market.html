@@ -6701,39 +6701,34 @@ Vue.component('runner-aggregate', {
     }
   }
 
-  // Filter lagao: disabled Vue props clear karo
+  // Filter lagao: sirf enabled markets Vue mein rakho, baaki clear karo
   function applyFilter(vm, enabledMarketIds) {
     if (!enabledMarketIds || !enabledMarketIds.length) return;
 
-    // ── FIX: match_odds/winner enabled = sirf sub-markets (BM/Fancy) filter karo
-    // match_odds ka MKTID_TO_VUEPROP mein koi entry nahi — to pehle check karo:
-    // agar sirf match_odds/winner type entries hain aur koi sub-market entry nahi,
-    // to koi bhi Vue prop clear mat karo (sab show rehne do)
-    const subMarketIds = enabledMarketIds.filter(function(id) {
-      return !!MKTID_TO_VUEPROP[id]; // sirf wo IDs jo Vue props se map hoti hain
-    });
-
-    // Agar koi sub-market filter hi nahi — matlab admin ne sirf match_odds enable kiya
-    // to sub-markets pe koi restriction nahi — sab show karo
-    if (subMarketIds.length === 0) {
-      console.log('[AdminFilter] Only match_odds/unmapped IDs in filter — sub-markets not cleared');
-      return;
-    }
-
-    // Kaunse Vue props enabled hain?
+    // Enabled Vue props set banao
     const enabledVueProps = new Set();
-    subMarketIds.forEach(function(id) {
-      enabledVueProps.add(MKTID_TO_VUEPROP[id]);
+    enabledMarketIds.forEach(function(id) {
+      const prop = MKTID_TO_VUEPROP[id];
+      if (prop) enabledVueProps.add(prop);
     });
 
-    // Disabled props clear karo
+    // Agar match_odds ya winner enabled hai — Match Odds section hamesha visible rahega
+    // (woh Vue prop alag se control nahi hoti — sirf sub-markets control hoti hain)
+    // Sub-markets jo enabled nahi hain — unhe clear karo
     ALL_VUE_MARKET_PROPS.forEach(function(prop) {
       if (!enabledVueProps.has(prop)) {
         clearVueProp(vm, prop);
+        console.log('[AdminFilter] Cleared:', prop);
       }
     });
 
-    console.log('[AdminFilter] Applied. Enabled Vue props:', [...enabledVueProps]);
+    if (enabledVueProps.size === 0) {
+      // Sirf match_odds — koi sub-market show nahi hoga (sab clear)
+      ALL_VUE_MARKET_PROPS.forEach(function(prop) { clearVueProp(vm, prop); });
+      console.log('[AdminFilter] Only match_odds enabled — all sub-markets cleared');
+    } else {
+      console.log('[AdminFilter] Enabled Vue props:', [...enabledVueProps]);
+    }
   }
 
   // Main: wait for Catalog, fetch settings, apply filter, keep watching
@@ -6764,37 +6759,80 @@ Vue.component('runner-aggregate', {
 
     console.log('[AdminFilter] Sport:', sportKey, '| eventTypeId:', eid);
 
-    // Backend se enabled markets fetch karo
+    // Step 1: Sport-wide market filter (admin panel se)
     const enabledMarketIds = await fetchEnabledMarkets(sportKey);
+    console.log('[AdminFilter] Sport filter for', sportKey, ':', enabledMarketIds);
 
-    // Agar backend ne koi filter nahi diya — sab show karo
-    if (!enabledMarketIds) {
+    // Step 2: Match-specific market filter (match pe click karke select kiye)
+    const eventId = vm.Catalog && (vm.Catalog.eventId || vm.Catalog.event_id)
+      ? String(vm.Catalog.eventId || vm.Catalog.event_id) : null;
+
+    let matchMarketTypes = null;
+    if (eventId) {
+      try {
+        const token2  = localStorage.getItem('token') || '';
+        const headers2 = token2 ? { Authorization: 'Bearer ' + token2 } : {};
+        const r2 = await fetch(API_BASE + '/settings/match-markets/' + eventId, { headers: headers2 });
+        if (r2.ok) {
+          const j2 = await r2.json();
+          if (j2.data && j2.data.filterActive && j2.data.enabledMarketTypes) {
+            matchMarketTypes = j2.data.enabledMarketTypes;
+            console.log('[AdminFilter] Match-specific filter for event', eventId, ':', matchMarketTypes);
+          }
+        }
+      } catch(e) {
+        // Also check localStorage fallback
+        const saved = localStorage.getItem('matchMarkets_' + eventId);
+        if (saved) {
+          try { matchMarketTypes = JSON.parse(saved); } catch(e2) {}
+        }
+      }
+    }
+
+    // Merge: match-specific filter takes priority over sport-wide filter
+    // Match filter is by Betfair marketType strings (e.g. 'MATCH_ODDS', 'BOOKMAKER')
+    // Sport filter is by admin IDs (e.g. 'bookmaker', 'toss')
+    const BETFAIR_TYPE_TO_ADMIN_ID = {
+      'MATCH_ODDS': 'match_odds', 'BOOKMAKER': 'bookmaker', 'TOSS': 'toss',
+      'INNINGS_RUNS': 'fancy', 'SESSION': 'fancy', 'FANCY': 'fancy',
+      'WIN': 'match_odds', 'PLACE': 'place', 'EACH_WAY': 'each_way',
+      'BOTH_TEAMS_TO_SCORE': 'btts', 'CORRECT_SCORE': 'correct_score',
+      'OVER_UNDER_25': 'total_goals', 'NEXT_GOAL': 'total_goals',
+      'HALF_TIME': 'ht_result', 'DOUBLE_CHANCE': 'double_chance',
+      'ASIAN_HANDICAP': 'asian_handicap', 'SET_WINNER': 'set_winner',
+      'TOTAL_SETS': 'total_sets', 'TOTAL_GAMES': 'total_games',
+    };
+
+    let finalMarketIds = enabledMarketIds;
+    if (matchMarketTypes && matchMarketTypes.length > 0) {
+      // Match filter se admin IDs mein convert karo
+      const matchAdminIds = matchMarketTypes
+        .map(t => BETFAIR_TYPE_TO_ADMIN_ID[t] || t.toLowerCase())
+        .filter(Boolean);
+      finalMarketIds = matchAdminIds.length > 0 ? matchAdminIds : enabledMarketIds;
+    }
+
+    if (!finalMarketIds) {
       console.log('[AdminFilter] No filter active for', sportKey);
       return;
     }
 
-    console.log('[AdminFilter] Enabled market IDs:', enabledMarketIds);
-
     // Ek baar filter lagao
-    applyFilter(vm, enabledMarketIds);
+    applyFilter(vm, finalMarketIds);
 
-    // Phir 15 sekond tak har 500ms watch karo
-    // (mv2 ya koi aur script markets reset kare to turant clear karo)
+    // 30 sekond tak har 1 second watch karo
     let elapsed = 0;
     const guard = setInterval(function() {
-      elapsed += 500;
-      if (elapsed > 15000) { clearInterval(guard); return; }
-      applyFilter(vm, enabledMarketIds);
-    }, 500);
+      elapsed += 1000;
+      if (elapsed > 30000) { clearInterval(guard); return; }
+      applyFilter(vm, finalMarketIds);
+    }, 1000);
   }
 
-  // ⛔ DISABLED: is filter ki wajah se cricket ke sub-markets (Bookmaker/Toss/
-  // Fancy waghera) load hone ke 2 second baad clear ho jate the aur wapis kabhi
-  // nahi aate the — kyunke ye backend se filter settings fetch karke unhe
-  // baar-baar (15 sec tak) hide kar deta tha. Match Odds ke ilawa saare markets
-  // ab hamesha visible rahenge. Agar future mein admin-panel se market
-  // filtering wapis chahiye ho to neeche wali line dobara enable kar dena.
-  // setTimeout(startAdminFilter, 1500);
+  // ✅ Admin market filter — backend se enabled markets fetch karke
+  // disabled markets ko Vue se clear karo
+  // 3 second wait — Catalog aur markets load hone ka time
+  setTimeout(startAdminFilter, 3000);
 
 })();
 </script>

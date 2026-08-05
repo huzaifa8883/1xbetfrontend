@@ -180,6 +180,15 @@
     .league-item.enabled .league-enabled-dot { display:block; }
     .league-loading { text-align:center; padding:30px; color:var(--text-secondary); font-size:13px; }
     .league-empty { text-align:center; padding:24px; color:var(--text-secondary); font-size:13px; border:1px dashed var(--border); border-radius:8px; }
+    /* ✅ NEW: Country → Track grouped UI (Horse Race / Greyhound) */
+    .track-country-list { display:flex; flex-direction:column; gap:8px; }
+    .track-country-group { border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+    .track-country-header { display:flex; align-items:center; gap:10px; padding:12px 16px; background:var(--bg-primary); cursor:pointer; transition:background 0.2s; }
+    .track-country-header:hover { background:var(--bg-hover); }
+    .track-country-caret { font-size:11px; color:var(--text-secondary); width:10px; }
+    .track-country-name { font-weight:700; font-size:14px; }
+    .track-country-count { font-size:11px; color:var(--text-secondary); margin-left:6px; }
+    .track-list-inner { padding:10px; display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:8px; background:rgba(0,0,0,0.12); }
 
     /* TOAST */
     #toast { position:fixed; bottom:24px; right:24px; z-index:9999; display:flex; flex-direction:column; gap:8px; }
@@ -464,7 +473,7 @@
         </div>
       </div>
       <div class="card-body">
-        <p style="font-size:12px;color:var(--text-secondary);margin-bottom:16px;">Betfair se available leagues fetch karo — checked leagues frontend pe show hongi, unchecked hidden rahegi.</p>
+        <p id="league-desc" style="font-size:12px;color:var(--text-secondary);margin-bottom:16px;">Betfair se available leagues fetch karo — checked leagues frontend pe show hongi, unchecked hidden rahegi.</p>
         <div class="league-grid" id="league-list"></div>
       </div>
     </div>
@@ -1277,6 +1286,33 @@ async function loadMarketSettingsFromBackend() {
   }
 }
 
+// ✅ FIX: pehle sirf localStorage se league selections load hoti thi —
+// agar koi doosre browser/device se save kare, ya localStorage clear ho
+// jaye, to admin panel purani/khaali state dikhata tha jabke backend
+// mein asal (of-record) settings maujood hoti thi. Ab markets ki tarah
+// backend se hi load karte hain (localStorage sirf offline fallback ke
+// liye reh gaya hai).
+async function loadLeagueSettingsFromBackend() {
+  try {
+    const res = await api('/api/v1/settings/leagues', 'GET');
+    if (res && typeof res.data === 'object') {
+      Object.keys(SPORTS).forEach(k => {
+        const saved = res.data[k];
+        if (saved && Array.isArray(saved.enabledLeagueIds)) {
+          enabledLeagues[k] = new Set(saved.enabledLeagueIds.map(String));
+          if (Array.isArray(saved.leagues) && saved.leagues.length) {
+            betfairLeagues[k] = saved.leagues;
+          }
+        }
+      });
+      renderLeagues(curSport);
+      console.log('[Admin] League settings loaded from backend', res.data);
+    }
+  } catch (e) {
+    console.warn('[Admin] Could not load league settings from backend:', e.message);
+  }
+}
+
 function initSports() {
   document.getElementById('sport-tabs').innerHTML = Object.entries(SPORTS).map(([k, s]) =>
     `<button class="sport-tab${k === curSport ? ' active' : ''}" onclick="selectSport('${k}')">${s.icon} ${s.name}</button>`
@@ -1285,8 +1321,9 @@ function initSports() {
   // Fetch both markets and leagues from Betfair
   fetchBetfairMarkets(curSport);
   fetchBetfairLeagues(curSport);
-  // Backend se saved market selections load karo
+  // Backend se saved market + league selections load karo (authoritative source)
   loadMarketSettingsFromBackend();
+  loadLeagueSettingsFromBackend();
 }
 
 function selectSport(k) {
@@ -1310,7 +1347,15 @@ function selectSport(k) {
 function renderSport(k) {
   const s   = SPORTS[k];
   document.getElementById('market-card-title').textContent = `${s.icon} ${s.name} — Markets`;
-  document.getElementById('league-card-title').textContent = `${s.icon} ${s.name} — Leagues`;
+  document.getElementById('league-card-title').textContent = isRacingSport(k)
+    ? `${s.icon} ${s.name} — Countries & Tracks`
+    : `${s.icon} ${s.name} — Leagues`;
+  const leagueDescEl = document.getElementById('league-desc');
+  if (leagueDescEl) {
+    leagueDescEl.textContent = isRacingSport(k)
+      ? 'Betfair se available countries aur unke tracks fetch karo — checked tracks ki races frontend pe show hongi, baaki hidden rahengi.'
+      : 'Betfair se available leagues fetch karo — checked leagues frontend pe show hongi, unchecked hidden rahegi.';
+  }
   renderMarkets(k);
 }
 
@@ -1386,7 +1431,118 @@ function toggleMarket(sport, id, checked) {
   else selMarkets[sport] = selMarkets[sport].filter(m => m !== id);
 }
 
-/* ---- Betfair Live Leagues (fetched from backend → Betfair API) ---- */
+/* ---- ✅ NEW: Country → Track hierarchy (Horse Race / Greyhound) ----
+   Racing sports Betfair pe "competitions" nahi rakhte — filter track
+   NAAM se hota hai. Reuse trick: betfairLeagues[k] ko flatten karke
+   {id: trackName, name: trackName} ki list bana dete hain — isse
+   generic toggleLeague()/saveLeagues() BINA CHANGE ke kaam kar jaate
+   hain (wahi backend endpoint, wahi Set-based selection logic). */
+const RACING_SPORTS = new Set(['horse_racing', 'greyhounds']);
+const betfairTracks  = {};   // { sport: { countries: [{code,name,tracks:[{name,eventCount}]}] } }
+
+function isRacingSport(k) { return RACING_SPORTS.has(k); }
+
+async function fetchBetfairTracks(k) {
+  const statusEl = document.getElementById('league-status');
+  const fetchBtn = document.getElementById('fetch-leagues-btn');
+  const listEl   = document.getElementById('league-list');
+  const eventTypeId = SPORTS[k].betfairId;
+
+  statusEl.style.color = 'var(--accent-cyan)';
+  statusEl.textContent = 'Betfair se tracks aa rahe hain...';
+  listEl.innerHTML = '<div class="league-loading">⏳ Betfair se countries/tracks aa rahe hain...</div>';
+  if (fetchBtn) fetchBtn.disabled = true;
+
+  try {
+    const r = await api(`/api/v1/markets/betfair/tracks?eventTypeId=${eventTypeId}`);
+    if (r.success && r.data && Array.isArray(r.data.countries)) {
+      betfairTracks[k] = r.data;
+      // Flatten for the generic save/toggle machinery (id = name = track name)
+      const flat = [];
+      r.data.countries.forEach(c => c.tracks.forEach(t => flat.push({ id: t.name, name: t.name, country: c.name })));
+      betfairLeagues[k] = flat;
+
+      const totalTracks = flat.length;
+      statusEl.style.color = 'var(--accent-green)';
+      statusEl.textContent = `✅ ${r.data.countries.length} countries, ${totalTracks} tracks (Betfair Live)`;
+    } else {
+      throw new Error(r.message || 'No tracks returned');
+    }
+  } catch (e) {
+    console.warn('Track fetch failed:', e.message);
+    betfairTracks[k] = { countries: [] };
+    betfairLeagues[k] = [];
+    statusEl.style.color = 'var(--accent-red)';
+    statusEl.textContent = '❌ Koi track nahi mila';
+    toast(`❌ Tracks fetch nahi hue: ${e.message}`, 'error');
+  } finally {
+    if (fetchBtn) fetchBtn.disabled = false;
+    renderTracks(k);
+  }
+}
+
+function renderTracks(k) {
+  const data    = betfairTracks[k] || { countries: [] };
+  const enabled = enabledLeagues[k] || new Set();
+  const listEl  = document.getElementById('league-list');
+
+  if (!data.countries.length) {
+    listEl.innerHTML = '<div class="league-empty">⚠️ Koi track nahi mila. "Fetch from Betfair" button dabao.</div>';
+    return;
+  }
+
+  listEl.innerHTML = `<div class="track-country-list">` + data.countries.map(country => {
+    const enabledCount = country.tracks.filter(t => enabled.has(t.name)).length;
+    return `
+      <div class="track-country-group">
+        <div class="track-country-header" onclick="toggleCountryGroup(this)">
+          <span class="track-country-caret">▸</span>
+          <span class="track-country-name">${country.name}</span>
+          <span class="track-country-count">${country.tracks.length} tracks${enabledCount ? ` · ${enabledCount} selected` : ''}</span>
+          <label class="toggle" onclick="event.stopPropagation();" style="margin-left:auto;">
+            <input type="checkbox" ${enabledCount === country.tracks.length ? 'checked' : ''}
+              onchange="toggleCountryAll('${k}','${country.code}',this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="track-list-inner" style="display:none;">
+          ${country.tracks.map(t => {
+            const checked = enabled.has(t.name);
+            const rowId = `li-${k}-${country.code}-${t.name.replace(/[^a-zA-Z0-9]/g,'_')}`;
+            return `<div class="league-item${checked ? ' enabled' : ''}" onclick="toggleLeague('${k}','${t.name.replace(/'/g,"\\'")}',this)" id="${rowId}">
+              <input type="checkbox" ${checked ? 'checked' : ''} onclick="event.stopPropagation();toggleLeague('${k}','${t.name.replace(/'/g,"\\'")}',document.getElementById('${rowId}'))">
+              <div class="league-item-info">
+                <div class="league-item-name">${t.name}</div>
+                <div class="league-item-id">${t.eventCount} race${t.eventCount===1?'':'s'} today</div>
+              </div>
+              <div class="league-enabled-dot"></div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+  }).join('') + `</div>`;
+}
+
+function toggleCountryGroup(headerEl) {
+  const inner = headerEl.nextElementSibling;
+  const caret = headerEl.querySelector('.track-country-caret');
+  const isOpen = inner.style.display !== 'none';
+  inner.style.display = isOpen ? 'none' : 'block';
+  caret.textContent = isOpen ? '▸' : '▾';
+}
+
+function toggleCountryAll(sport, countryCode, checked) {
+  const data = betfairTracks[sport];
+  if (!data) return;
+  const country = data.countries.find(c => c.code === countryCode);
+  if (!country) return;
+  const enabled = enabledLeagues[sport];
+  country.tracks.forEach(t => {
+    if (checked) enabled.add(t.name); else enabled.delete(t.name);
+  });
+  renderTracks(sport);
+}
+
 // No hardcoded leagues — all fetched live from Betfair via backend proxy
 
 /*
@@ -1578,6 +1734,9 @@ const BETFAIR_LEAGUES = {
 };
 
 async function fetchBetfairLeagues(k) {
+  // ✅ Horse Race / Greyhound → country/track hierarchy, competitions nahi
+  if (isRacingSport(k)) { return fetchBetfairTracks(k); }
+
   const statusEl  = document.getElementById('league-status');
   const fetchBtn  = document.getElementById('fetch-leagues-btn');
   const listEl    = document.getElementById('league-list');
@@ -1624,6 +1783,9 @@ async function fetchBetfairLeagues(k) {
 }
 
 function renderLeagues(k) {
+  // ✅ Horse Race / Greyhound → country/track hierarchy
+  if (isRacingSport(k)) { return renderTracks(k); }
+
   const leagues  = betfairLeagues[k] || [];
   const enabled  = enabledLeagues[k] || new Set();
   const listEl   = document.getElementById('league-list');
@@ -1682,7 +1844,8 @@ function saveLeagues() {
   });
   api('/api/v1/settings/leagues', 'POST', payload).catch(() => {});
   const total = Object.values(enabledLeagues).reduce((s, set) => s + set.size, 0);
-  toast(`✅ Leagues saved — ${total} leagues enabled across all sports`);
+  const label = isRacingSport(curSport) ? 'tracks' : 'leagues';
+  toast(`✅ Saved — ${total} ${label} enabled across all sports`);
 }
 
 async function saveMarkets() {

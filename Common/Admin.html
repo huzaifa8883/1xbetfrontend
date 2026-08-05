@@ -190,17 +190,6 @@
     .track-country-count { font-size:11px; color:var(--text-secondary); margin-left:6px; }
     .track-list-inner { padding:10px; display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:8px; background:rgba(0,0,0,0.12); }
 
-    /* ✅ NEW: Per-match market selection (replaces old sport-wide Markets card) */
-    .match-markets-inner { grid-column: 1 / -1; }
-    .match-market-toolbar { display:flex; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap; }
-    .match-market-count { font-size:11px; color:var(--accent-green); font-weight:700; background:rgba(0,255,136,0.08); padding:3px 10px; border-radius:20px; border:1px solid rgba(0,255,136,0.25); white-space:nowrap; }
-    .match-market-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:6px; }
-    .match-market-item { display:flex; align-items:center; gap:8px; background:var(--bg-primary); border:1px solid var(--border); border-radius:6px; padding:8px 10px; font-size:12px; cursor:pointer; transition:border-color .15s,background .15s; }
-    .match-market-item:hover { border-color:var(--border-bright); background:var(--bg-hover); }
-    .match-market-item input[type=checkbox] { width:14px; height:14px; accent-color:var(--accent-green); cursor:pointer; flex-shrink:0; }
-    .mm-badge { font-size:10px; color:var(--accent-green); background:rgba(0,255,136,0.08); border:1px solid rgba(0,255,136,0.25); padding:1px 7px; border-radius:20px; margin-left:8px; white-space:nowrap; display:none; }
-    .mm-badge.show { display:inline-block; }
-
     /* TOAST */
     #toast { position:fixed; bottom:24px; right:24px; z-index:9999; display:flex; flex-direction:column; gap:8px; }
     .toast-msg { padding:12px 20px; border-radius:8px; font-size:13px; font-weight:600; min-width:260px; animation:slideIn 0.3s ease; box-shadow:0 8px 24px rgba(0,0,0,0.4); }
@@ -460,6 +449,20 @@
       <div class="card-header"><div class="card-title">Select Sport</div></div>
       <div class="card-body"><div class="sport-tabs" id="sport-tabs"></div></div>
     </div>
+    <div class="card" style="margin-bottom:20px;">
+      <div class="card-header">
+        <div class="card-title" id="market-card-title">Markets</div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <span id="market-status" style="font-size:11px;color:var(--text-secondary);"></span>
+          <button class="btn btn-cyan btn-sm" onclick="fetchBetfairMarkets(curSport)" id="fetch-markets-btn">🔄 Fetch from Betfair</button>
+          <button class="btn btn-primary btn-sm" onclick="saveMarkets()">Save Markets</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <p style="font-size:12px;color:var(--text-secondary);margin-bottom:16px;">Betfair se available market types fetch karo — active markets frontend pe show honge.</p>
+        <div class="market-list" id="market-list"></div>
+      </div>
+    </div>
     <div class="card">
       <div class="card-header">
         <div class="card-title" id="league-card-title">Leagues</div>
@@ -470,7 +473,7 @@
         </div>
       </div>
       <div class="card-body">
-        <p id="league-desc" style="font-size:12px;color:var(--text-secondary);margin-bottom:16px;">Betfair se available leagues fetch karo — checked leagues frontend pe show hongi, unchecked hidden rahegi. Kisi bhi match par click karke uske andar ke individual markets select/unselect karo — wahi is match ke liye frontend par dikhega.</p>
+        <p id="league-desc" style="font-size:12px;color:var(--text-secondary);margin-bottom:16px;">Betfair se available leagues fetch karo — checked leagues frontend pe show hongi, unchecked hidden rahegi.</p>
         <div class="league-grid" id="league-list"></div>
       </div>
     </div>
@@ -1265,8 +1268,25 @@ Object.keys(SPORTS).forEach(k => {
   } catch(e) {}
 });
 
-// (Old sport-wide "market type" settings removed — market selection ab
-// per-match hoti hai, dekho toggleMatchMarkets() / saveMatchMarketsToBackend())
+// Backend se saved market selections load karo
+async function loadMarketSettingsFromBackend() {
+  try {
+    const res = await api('/api/v1/settings/markets', 'GET');
+    if (res && typeof res.data === 'object') {
+      Object.keys(SPORTS).forEach(k => {
+        const saved = res.data[k];
+        if (saved && Array.isArray(saved) && saved.length > 0) {
+          selMarkets[k] = saved;
+        }
+      });
+      // Re-render current sport markets with loaded selections
+      renderMarkets(curSport);
+      console.log('[Admin] Market settings loaded from backend', res.data);
+    }
+  } catch(e) {
+    console.warn('[Admin] Could not load market settings from backend:', e.message);
+  }
+}
 
 // ✅ FIX: pehle sirf localStorage se league selections load hoti thi —
 // agar koi doosre browser/device se save kare, ya localStorage clear ho
@@ -1300,8 +1320,11 @@ function initSports() {
     `<button class="sport-tab${k === curSport ? ' active' : ''}" onclick="selectSport('${k}')">${s.icon} ${s.name}</button>`
   ).join('');
   renderSport(curSport);
-  // Leagues fetch karo — matches aur unke per-match markets isi se aate hain
+  // Fetch both markets and leagues from Betfair
+  fetchBetfairMarkets(curSport);
   fetchBetfairLeagues(curSport);
+  // Backend se saved market + league selections load karo (authoritative source)
+  loadMarketSettingsFromBackend();
   loadLeagueSettingsFromBackend();
 }
 
@@ -1311,6 +1334,10 @@ function selectSport(k) {
     t.classList.toggle('active', Object.keys(SPORTS)[i] === k);
   });
   renderSport(k);
+  // Fetch markets from Betfair if not already loaded
+  if (!betfairMarkets[k] || betfairMarkets[k].length === 0) {
+    fetchBetfairMarkets(k);
+  }
   // Fetch leagues from Betfair if not already loaded
   if (!betfairLeagues[k] || betfairLeagues[k].length === 0) {
     fetchBetfairLeagues(k);
@@ -1321,19 +1348,68 @@ function selectSport(k) {
 
 function renderSport(k) {
   const s   = SPORTS[k];
+  document.getElementById('market-card-title').textContent = `${s.icon} ${s.name} — Markets`;
   document.getElementById('league-card-title').textContent = isRacingSport(k)
     ? `${s.icon} ${s.name} — Countries & Tracks`
     : `${s.icon} ${s.name} — Leagues`;
   const leagueDescEl = document.getElementById('league-desc');
   if (leagueDescEl) {
     leagueDescEl.textContent = isRacingSport(k)
-      ? 'Betfair se available countries aur unke tracks fetch karo — checked tracks ki races frontend pe show hongi, baaki hidden rahengi. Kisi race par click karke uske markets bhi select kar sakte ho.'
-      : 'Betfair se available leagues fetch karo — checked leagues frontend pe show hongi, unchecked hidden rahegi. Kisi bhi match par click karke uske andar ke individual markets select/unselect karo.';
+      ? 'Betfair se available countries aur unke tracks fetch karo — checked tracks ki races frontend pe show hongi, baaki hidden rahengi.'
+      : 'Betfair se available leagues fetch karo — checked leagues frontend pe show hongi, unchecked hidden rahegi.';
   }
+  renderMarkets(k);
 }
 
-// (renderMarkets()/fetchBetfairMarkets() removed — sport-wide "Markets"
-// card no longer exists; market selection ab per-match hoti hai)
+function renderMarkets(k) {
+  const s   = SPORTS[k];
+  const sel = selMarkets[k] || [];
+  // Use live fetched markets if available, otherwise fallback to static
+  const markets = (betfairMarkets[k] && betfairMarkets[k].length > 0) ? betfairMarkets[k] : s.markets;
+  document.getElementById('market-list').innerHTML = markets.map(m => `
+    <div class="market-item">
+      <div><div class="market-item-name">${m.name}</div><div class="market-item-desc">${m.desc || m.description || ''}</div></div>
+      <label class="toggle">
+        <input type="checkbox" ${sel.includes(m.id) ? 'checked' : ''} onchange="toggleMarket('${k}','${m.id}',this.checked)">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>`).join('');
+}
+
+async function fetchBetfairMarkets(k) {
+  const eventTypeId = SPORTS[k].betfairId;
+  const marketListEl  = document.getElementById('market-list');
+  const marketStatusEl = document.getElementById('market-status');
+  const fetchBtn = document.getElementById('fetch-markets-btn');
+
+  marketListEl.innerHTML = '<div class="league-loading">⏳ Betfair se markets aa rahe hain...</div>';
+  if (marketStatusEl) { marketStatusEl.style.color = 'var(--accent-cyan)'; marketStatusEl.textContent = 'Fetch ho raha hai...'; }
+  if (fetchBtn) fetchBtn.disabled = true;
+
+  try {
+    const r = await api(`/api/v1/markets/betfair/market-types?eventTypeId=${eventTypeId}`);
+    if (r.success && r.data && r.data.marketTypes && r.data.marketTypes.length > 0) {
+      betfairMarkets[k] = r.data.marketTypes.map(mt => ({
+        id:   mt.marketType || mt.id,
+        name: mt.marketType ? marketTypeName(mt.marketType) : mt.name,
+        desc: mt.desc || '',
+      }));
+      // Preserve selections — add any new market ids as selected by default
+      if (marketStatusEl) { marketStatusEl.style.color = 'var(--accent-green)'; marketStatusEl.textContent = `✅ ${betfairMarkets[k].length} markets (Betfair Live)`; }
+      toast(`✅ ${betfairMarkets[k].length} markets loaded from Betfair`);
+    } else {
+      throw new Error(r.message || 'No market types returned');
+    }
+  } catch(e) {
+    console.warn('Market types fetch failed:', e.message);
+    betfairMarkets[k] = []; // fallback to static SPORTS[k].markets
+    if (marketStatusEl) { marketStatusEl.style.color = 'var(--accent-orange)'; marketStatusEl.textContent = `⚠️ Cached (API unavailable)`; }
+  } finally {
+    if (fetchBtn) fetchBtn.disabled = false;
+    // Backend se saved selections restore karo (Betfair fetch ne override na kare)
+    await loadMarketSettingsFromBackend();
+  }
+}
 
 // Formats Betfair raw market type strings to readable names
 function marketTypeName(t) {
@@ -1434,19 +1510,54 @@ function renderTracks(k) {
         <div class="track-list-inner" style="display:none;">
           ${country.tracks.map(t => {
             const checked = enabled.has(t.name);
-            const rowId = `li-${k}-${country.code}-${t.name.replace(/[^a-zA-Z0-9]/g,'_')}`;
-            return `<div class="league-item${checked ? ' enabled' : ''}" onclick="toggleLeague('${k}','${t.name.replace(/'/g,"\\'")}',this)" id="${rowId}">
-              <input type="checkbox" ${checked ? 'checked' : ''} onclick="event.stopPropagation();toggleLeague('${k}','${t.name.replace(/'/g,"\\'")}',document.getElementById('${rowId}'))">
-              <div class="league-item-info">
-                <div class="league-item-name">${t.name}</div>
-                <div class="league-item-id">${t.eventCount} race${t.eventCount===1?'':'s'} today</div>
-              </div>
-              <div class="league-enabled-dot"></div>
-            </div>`;
+            const trackRowId = `track-${k}-${country.code}-${t.name.replace(/[^a-zA-Z0-9]/g,'_')}`;
+            const races = t.races || [];
+            return `
+              <div class="track-item-group" style="grid-column:1/-1;">
+                <div class="league-item${checked ? ' enabled' : ''}" style="cursor:pointer;" onclick="toggleTrackRaces(this,'${trackRowId}')">
+                  <span class="track-country-caret" id="caret-${trackRowId}">▸</span>
+                  <div class="league-item-info">
+                    <div class="league-item-name">${t.name}</div>
+                    <div class="league-item-id">${t.eventCount} race${t.eventCount===1?'':'s'} today</div>
+                  </div>
+                  <label class="toggle" onclick="event.stopPropagation();" style="margin-left:auto;">
+                    <input type="checkbox" ${checked ? 'checked' : ''}
+                      onchange="event.stopPropagation();toggleLeagueCheckbox('${k}','${t.name.replace(/'/g,"\\'")}',this)">
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+                <div class="track-races-inner" style="display:none;padding:6px 6px 6px 30px;">
+                  ${races.map(race => {
+                    const dt = race.startTime ? new Date(race.startTime).toLocaleString('en-GB', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' }) : '';
+                    const mRowId = `match-${k}-${race.eventId}`;
+                    return `
+                      <div class="league-item" style="cursor:pointer;" onclick="toggleMatchMarkets('${mRowId}','${race.eventId}')">
+                        <span class="track-country-caret" id="caret-${mRowId}">▸</span>
+                        <div class="league-item-info">
+                          <div class="league-item-name">${race.name}<span class="mm-badge" id="mm-badge-${race.eventId}"></span></div>
+                          <div class="league-item-id">${dt}</div>
+                        </div>
+                      </div>
+                      <div class="match-markets-inner" id="${mRowId}" style="display:none;padding:8px 16px 12px 40px;font-size:12px;color:var(--text-secondary);">
+                        ⏳ Loading markets...
+                      </div>`;
+                  }).join('') || '<span style="font-size:12px;color:var(--text-secondary);padding:6px 0;display:block;">Koi race nahi mila.</span>'}
+                </div>
+              </div>`;
           }).join('')}
         </div>
       </div>`;
   }).join('') + `</div>`;
+}
+
+// Track row click → uske races expand/collapse (enable-checkbox click se alag —
+// wo apna stopPropagation() rakhta hai upar)
+function toggleTrackRaces(headerEl, trackRowId) {
+  const inner = headerEl.nextElementSibling;
+  const caret = document.getElementById('caret-' + trackRowId);
+  const isOpen = inner.style.display !== 'none';
+  inner.style.display = isOpen ? 'none' : 'block';
+  if (caret) caret.textContent = isOpen ? '▸' : '▾';
 }
 
 function toggleCountryGroup(headerEl) {
@@ -1750,7 +1861,7 @@ function renderLeagues(k) {
               <div class="league-item" style="cursor:pointer;" onclick="toggleMatchMarkets('${mRowId}','${m.eventId}')">
                 <span class="track-country-caret" id="caret-${mRowId}">▸</span>
                 <div class="league-item-info">
-                  <div class="league-item-name">${m.name}<span class="mm-badge" id="mm-badge-${m.eventId}"></span></div>
+                  <div class="league-item-name">${m.name}</div>
                   <div class="league-item-id">${dt}</div>
                 </div>
               </div>
@@ -1779,14 +1890,9 @@ function toggleLeagueCheckbox(sport, id, cbEl) {
   if (cbEl.checked) enabled.add(id); else enabled.delete(id);
 }
 
-// ✅ Match click → uske ACTUAL markets (marketId ke sath) load karo aur
-// checkboxes se select/unselect karne do. Yehi selection market.html
-// (cricket) aur Event.html (football/tennis/horse/greyhound) par is
-// match ke liye respect hoti hai — filter backend mein persist hota hai.
-const loadedMatchMarkets    = {}; // eventId → markets array (cache)
-const matchMarketSelection  = {}; // eventId → Set<marketId>
-const matchMarketSaveTimers = {}; // eventId → debounce timer
-
+// ✅ Match click → uske available markets show karo (read-only, informational —
+// asal market-selection ab bhi sport-wide "Markets" card se hoti hai)
+const loadedMatchMarkets = {};
 async function toggleMatchMarkets(rowId, eventId) {
   const el    = document.getElementById(rowId);
   const caret = document.getElementById('caret-' + rowId);
@@ -1800,107 +1906,23 @@ async function toggleMatchMarkets(rowId, eventId) {
   if (caret) caret.textContent = '▾';
 
   if (loadedMatchMarkets[eventId]) {
-    renderMatchMarketList(el, eventId);
+    el.innerHTML = loadedMatchMarkets[eventId];
     return;
   }
 
-  el.innerHTML = `<div class="league-loading" style="padding:14px 0;">⏳ Markets load ho rahe hain...</div>`;
-
   try {
-    const [marketsRes, savedRes] = await Promise.all([
-      api(`/api/v1/markets/event-markets?eventId=${eventId}`),
-      api(`/api/v1/settings/match-markets/${eventId}`),
-    ]);
-    const data = (marketsRes.success && marketsRes.data) ? marketsRes.data : null;
+    const r = await api(`/api/v1/markets/event-markets?eventId=${eventId}`);
+    const data = (r.success && r.data) ? r.data : null;
     const all  = (data && Array.isArray(data.all)) ? data.all : [];
-    loadedMatchMarkets[eventId] = all;
-
-    const saved = (savedRes.success && savedRes.data) ? savedRes.data : null;
-    if (saved && saved.filterActive && Array.isArray(saved.enabledMarketIds)) {
-      matchMarketSelection[eventId] = new Set(saved.enabledMarketIds);
-    } else {
-      // Koi saved selection nahi mili → default: sab markets enabled
-      matchMarketSelection[eventId] = new Set(all.map(m => m.marketId));
-    }
-
-    renderMatchMarketList(el, eventId);
-    updateMatchBadge(eventId);
+    const html = all.length
+      ? `<div style="display:flex;flex-wrap:wrap;gap:6px;">` +
+        all.map(m => `<span style="background:var(--bg-tertiary);padding:3px 8px;border-radius:4px;">${m.marketName || m.marketType || 'Market'}</span>`).join('') +
+        `</div>`
+      : `<span>Koi market nahi mila is match ke liye.</span>`;
+    loadedMatchMarkets[eventId] = html;
+    el.innerHTML = html;
   } catch (e) {
     el.innerHTML = `<span style="color:var(--accent-red);">Markets load nahi hue: ${e.message}</span>`;
-  }
-}
-
-function renderMatchMarketList(el, eventId) {
-  const all = loadedMatchMarkets[eventId] || [];
-  const sel = matchMarketSelection[eventId] || new Set();
-
-  if (!all.length) {
-    el.innerHTML = `<span>Koi extra market nahi mila is match ke liye.</span>`;
-    return;
-  }
-
-  el.innerHTML = `
-    <div class="match-market-toolbar">
-      <span class="match-market-count" id="mm-count-${eventId}">${sel.size}/${all.length} markets selected</span>
-      <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();toggleAllMatchMarkets('${eventId}', true)">Select all</button>
-      <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();toggleAllMatchMarkets('${eventId}', false)">Clear all</button>
-    </div>
-    <div class="match-market-grid">
-      ${all.map(m => `
-        <label class="match-market-item" onclick="event.stopPropagation();">
-          <input type="checkbox" ${sel.has(m.marketId) ? 'checked' : ''}
-            onchange="onMatchMarketToggle('${eventId}','${m.marketId}',this.checked)">
-          <span>${m.marketName || m.marketType || 'Market'}</span>
-        </label>`).join('')}
-    </div>`;
-}
-
-function onMatchMarketToggle(eventId, marketId, checked) {
-  const sel = matchMarketSelection[eventId] || (matchMarketSelection[eventId] = new Set());
-  if (checked) sel.add(marketId); else sel.delete(marketId);
-
-  const all = loadedMatchMarkets[eventId] || [];
-  const countEl = document.getElementById('mm-count-' + eventId);
-  if (countEl) countEl.textContent = `${sel.size}/${all.length} markets selected`;
-  updateMatchBadge(eventId);
-  saveMatchMarketsDebounced(eventId);
-}
-
-function toggleAllMatchMarkets(eventId, selectAll) {
-  const all = loadedMatchMarkets[eventId] || [];
-  matchMarketSelection[eventId] = selectAll ? new Set(all.map(m => m.marketId)) : new Set();
-  const rowId = `match-${curSport}-${eventId}`;
-  const el = document.getElementById(rowId);
-  if (el) renderMatchMarketList(el, eventId);
-  updateMatchBadge(eventId);
-  saveMatchMarketsDebounced(eventId);
-}
-
-function updateMatchBadge(eventId) {
-  const badge = document.getElementById('mm-badge-' + eventId);
-  if (!badge) return;
-  const all = loadedMatchMarkets[eventId] || [];
-  const sel = matchMarketSelection[eventId] || new Set();
-  if (!all.length) { badge.classList.remove('show'); return; }
-  badge.textContent = `${sel.size}/${all.length}`;
-  badge.classList.add('show');
-}
-
-function saveMatchMarketsDebounced(eventId) {
-  clearTimeout(matchMarketSaveTimers[eventId]);
-  matchMarketSaveTimers[eventId] = setTimeout(() => saveMatchMarketsToBackend(eventId), 600);
-}
-
-async function saveMatchMarketsToBackend(eventId) {
-  const sel = matchMarketSelection[eventId] || new Set();
-  try {
-    await api('/api/v1/settings/match-markets', 'POST', {
-      eventId,
-      enabledMarketIds: [...sel],
-    });
-    toast(`✅ Markets saved for this match`);
-  } catch (e) {
-    toast(`⚠️ Save failed: ${e.message}`, 'error');
   }
 }
 
@@ -1935,6 +1957,26 @@ function saveLeagues() {
   const total = Object.values(enabledLeagues).reduce((s, set) => s + set.size, 0);
   const label = isRacingSport(curSport) ? 'tracks' : 'leagues';
   toast(`✅ Saved — ${total} ${label} enabled across all sports`);
+}
+
+async function saveMarkets() {
+  // Backend pe save karo (no localStorage)
+  const payload = {};
+  Object.keys(SPORTS).forEach(k => {
+    payload[k] = selMarkets[k] || [];
+  });
+
+  try {
+    const res = await api('/api/v1/settings/markets', 'POST', payload);
+    if (res && res.success !== false) {
+      const count = (selMarkets[curSport] || []).length;
+      toast('✅ ' + SPORTS[curSport].name + ' — ' + count + ' markets saved');
+    } else {
+      toast('❌ Save failed: ' + (res && res.message ? res.message : 'Unknown error'));
+    }
+  } catch(e) {
+    toast('❌ Save failed: ' + e.message);
+  }
 }
 
 /* ===================================================

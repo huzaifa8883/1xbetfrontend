@@ -885,15 +885,52 @@
     GET /api/markets/live/:sport
   ============================================================ -->
 <script>
+  // pricesToken — URL ?pricesToken= se ya env se (optional, scoreboard ke liye)
+  window._pricesToken = new URLSearchParams(window.location.search).get('pricesToken') || '';
+
+  function injectScoreboardToVue(scoreboard) {
+    if (!scoreboard) return;
+    // Wait for Vue vm, then set score prop
+    function tryInject(attempts) {
+      const el = document.getElementById('MarketView') || document.getElementById('app');
+      const vm = el && el.__vue__;
+      if (vm) {
+        try {
+          vm.$set ? vm.$set(vm, 'score', scoreboard) : (vm.score = scoreboard);
+          console.log('[Scoreboard] ✅ Injected into Vue score prop', {
+            team1: scoreboard.team1, t1_runs: scoreboard.t1_runs,
+            commentry: (scoreboard.commentry || '').slice(0, 50)
+          });
+        } catch(e) { console.warn('[Scoreboard] Vue inject failed:', e.message); }
+      } else if (attempts > 0) {
+        setTimeout(() => tryInject(attempts - 1), 400);
+      }
+    }
+    tryInject(20);
+  }
+
   async function getSportByMarketId(marketId) {
     try {
-      const res  = await fetch(`${API_BASE}/markets/catalog2?id=${marketId}`);
+      const pricesToken = window._pricesToken || '';
+      const url = `${API_BASE}/markets/catalog2?id=${encodeURIComponent(marketId)}`
+        + (pricesToken ? `&pricesToken=${encodeURIComponent(pricesToken)}` : '');
+      const res  = await fetch(url);
       const json = await res.json();
       console.log("Catalog2 API response:", json);
       const data = json.data || json;
 
       const matchName = data.eventName || data.marketName || data.match || 'Unknown Match';
       document.title = `${matchName} | BetPro`;
+
+      // scoreboard — inject into Vue if present (requires pricesToken)
+      if (data.scoreboard) {
+        injectScoreboardToVue(data.scoreboard);
+      }
+
+      // subMarkets hint — log for debugging
+      if (data.subMarkets && data.subMarkets.length) {
+        console.log(`[catalog2] ${data.subMarkets.length} subMarkets available`);
+      }
 
       // sport name return karo taake related events load ho sakein
       return data.eventType || data.sport?.name || null;
@@ -6624,14 +6661,19 @@ Vue.component('runner-aggregate', {
     // NOTE: MARKET_ID use karo (1.XXXXXX), eventId nahi
     if (!MARKET_ID) return;
     try {
-      const res  = await fetch(
-        `${API_BASE}/markets/catalog2?id=${encodeURIComponent(MARKET_ID)}`,
-        { headers }
-      );
+      const pricesToken = window._pricesToken || '';
+      const cat2Url = `${API_BASE}/markets/catalog2?id=${encodeURIComponent(MARKET_ID)}`
+        + (pricesToken ? `&pricesToken=${encodeURIComponent(pricesToken)}` : '');
+      const res  = await fetch(cat2Url, { headers });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       const d    = json.data || json;
       let   subs = d.subMarkets || [];
+
+      // scoreboard inject karo agar present ho (bpexch path)
+      if (d.scoreboard) {
+        window.injectScoreboardToVue && window.injectScoreboardToVue(d.scoreboard);
+      }
 
       // ✅ Per-match filter yahan bhi lagao
       if (allowedMarketIds) {
@@ -6642,7 +6684,7 @@ Vue.component('runner-aggregate', {
         injectMarkets(categorizeMkts(subs));
         console.log(`[Markets] ✅ catalog2 subMarkets → ${subs.length} markets`);
       } else {
-        console.log('[Markets] Is event pe Betfair mein koi extra markets nahi hain');
+        console.log('[Markets] Is event pe koi extra sub-markets nahi (catalog2)');
       }
     } catch (e2) {
       console.warn('[Markets] catalog2 fallback failed:', e2.message);

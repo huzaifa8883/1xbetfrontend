@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -1181,12 +1182,12 @@ document.addEventListener("DOMContentLoaded", async () => {
           return st >= twoHoursAgo;
         });
 
-        // SuperAdmin track filter OFF — bpexch jaisi full list
-        if (relevant.length === 0) {
+        const filtered = applyTrackFilter(relevant, filter);
+        if (filtered.length === 0) {
           listContainer.innerHTML = '<li style="color:white;">No live greyhound races found.</li>';
           return;
         }
-        relevant.forEach(match => {
+        filtered.forEach(match => {
           const li = document.createElement('li');
           li.classList.add('match-card');
 
@@ -1281,12 +1282,12 @@ document.addEventListener("DOMContentLoaded", async () => {
           return st >= twoHoursAgo;
         });
 
-        // SuperAdmin track filter OFF — bpexch jaisi full list
-        if (relevant.length === 0) {
+        const filtered = applyTrackFilter(relevant, filter);
+        if (filtered.length === 0) {
           listContainer.innerHTML = '<li style="color:white;">No live horse matches found.</li>';
           return;
         }
-        relevant.forEach(match => {
+        filtered.forEach(match => {
           const li = document.createElement('li');
           li.classList.add('match-card');
 
@@ -1358,7 +1359,10 @@ document.addEventListener("DOMContentLoaded", async () => {
           .filter(m => parseUTC(m.startTime) >= thirtyMinAgo)
           .sort((a, b) => parseUTC(a.startTime) - parseUTC(b.startTime));
 
-        // SuperAdmin track filter OFF — full bpexch list
+        // ✅ NEW: admin ke track selections apply karo
+        const trackFilter = await getLeagueFilter('horse');
+        relevant = applyTrackFilter(relevant, trackFilter);
+
         if (relevant.length === 0) {
           container.innerHTML = `<div style="text-align:center;color:white;padding:10px;">No upcoming races found.</div>`;
           return;
@@ -1445,7 +1449,10 @@ document.addEventListener("DOMContentLoaded", async () => {
           .filter(m => parseUTC(m.startTime) >= thirtyMinAgo)
           .sort((a, b) => parseUTC(a.startTime) - parseUTC(b.startTime));
 
-        // SuperAdmin track filter OFF — full bpexch list
+        // ✅ NEW: admin ke track selections apply karo
+        const trackFilter = await getLeagueFilter('greyhound');
+        relevant = applyTrackFilter(relevant, trackFilter);
+
         if (relevant.length === 0) {
           container.innerHTML = `<div style="text-align:center;color:white;padding:10px;">No upcoming races found.</div>`;
           return;

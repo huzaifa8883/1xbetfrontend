@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -1093,31 +1094,40 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   async function goToMatch(sport, matchOrMarketId, maybeEventId) {
-    const isCricket = (sport || '').toString().toLowerCase() === 'cricket';
+    const sportKey = (sport || '').toString().toLowerCase();
+    const isCricket = sportKey === 'cricket';
+    const isRacing = sportKey === 'horse' || sportKey === 'greyhound';
     const isObj = matchOrMarketId && typeof matchOrMarketId === 'object';
-    const marketId = isObj ? matchOrMarketId.marketId : matchOrMarketId;
+    const marketId = isObj ? (matchOrMarketId.marketId || matchOrMarketId.eventId) : matchOrMarketId;
     const existingEventId = isObj ? matchOrMarketId.eventId : maybeEventId;
 
     if (isCricket) {
-      window.location.href = `/Common/Market.html?id=${marketId}`;
+      window.location.href = `/Common/Market.html?id=${encodeURIComponent(marketId)}`;
       return;
     }
 
-    // Agar API ne pehle se hi eventId de diya hai to seedha use karo
-    if (existingEventId) {
-      rememberMarketId(existingEventId, marketId, sport);
+    // Horse/Greyhound composite ids like "35965742.0131" — path /Event/35965742.0131
+    // breaks (dot treated as extension) → always use query string with marketId
+    if (isRacing) {
+      const raceId = marketId || existingEventId;
+      if (raceId) rememberMarketId(raceId, raceId, sportKey);
+      window.location.href = `/Common/Event?id=${encodeURIComponent(raceId)}`;
+      return;
+    }
+
+    // Soccer/Tennis: prefer path-style eventId (no dots)
+    if (existingEventId && !String(existingEventId).includes('.')) {
+      rememberMarketId(existingEventId, marketId, sportKey);
       window.location.href = `/Common/Event/${existingEventId}`;
       return;
     }
 
-    // Warna catalog2 se real eventId resolve karo
     const realEventId = await resolveRealEventId(marketId);
-    if (realEventId) {
-      rememberMarketId(realEventId, marketId, sport);
+    if (realEventId && !String(realEventId).includes('.')) {
+      rememberMarketId(realEventId, marketId, sportKey);
       window.location.href = `/Common/Event/${realEventId}`;
     } else {
-      // Resolve fail ho jaye to purane query-string format pe fallback
-      window.location.href = `/Common/Event?id=${marketId}`;
+      window.location.href = `/Common/Event?id=${encodeURIComponent(marketId)}`;
     }
   }
 </script>
@@ -1666,25 +1676,26 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       if (result.success && Array.isArray(result.data)) {
         const filtered = applyLeagueFilter(result.data, filter);
-        const nonInPlay = filtered.filter(m => !isMatchInPlay(m));
-        if (matchCountElement) matchCountElement.textContent = nonInPlay.length;
+        // InPlay + non-InPlay dono section mein, label ke sath
+        if (matchCountElement) matchCountElement.textContent = filtered.length;
 
-        nonInPlay.forEach(match => {
+        filtered.forEach(match => {
           const startTime = new Date(match.startTime);
           const localTime = startTime.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 
           const today = new Date();
           const matchDate = new Date(match.startTime);
           let dayLabel = 'Upcoming';
-          if (matchDate.toDateString() === today.toDateString()) dayLabel = 'Today';
+          if (isMatchInPlay(match)) dayLabel = 'InPlay';
+          else if (matchDate.toDateString() === today.toDateString()) dayLabel = 'Today';
           else {
             const tomorrow = new Date();
             tomorrow.setDate(today.getDate() + 1);
             if (matchDate.toDateString() === tomorrow.toDateString()) dayLabel = 'Tomorrow';
           }
 
-          const bgClass = '';
-          const textColor = 'black';
+          const bgClass = isMatchInPlay(match) ? 'bg-primary' : '';
+          const textColor = isMatchInPlay(match) ? 'white' : 'black';
 
           // ✅ New runners-based odds format
           const r = match.runners || [];
@@ -1870,25 +1881,26 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       if (result.success && Array.isArray(result.data)) {
         const filtered = applyLeagueFilter(result.data, filter);
-        const nonInPlay = filtered.filter(m => !isMatchInPlay(m));
-        if (matchCountElement) matchCountElement.textContent = nonInPlay.length;
+        // InPlay + non-InPlay dono section mein, label ke sath
+        if (matchCountElement) matchCountElement.textContent = filtered.length;
 
-        nonInPlay.forEach(match => {
+        filtered.forEach(match => {
           const startTime = new Date(match.startTime);
           const localTime = startTime.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 
           const today = new Date();
           const matchDate = new Date(match.startTime);
           let dayLabel = 'Upcoming';
-          if (matchDate.toDateString() === today.toDateString()) dayLabel = 'Today';
+          if (isMatchInPlay(match)) dayLabel = 'InPlay';
+          else if (matchDate.toDateString() === today.toDateString()) dayLabel = 'Today';
           else {
             const tomorrow = new Date();
             tomorrow.setDate(today.getDate() + 1);
             if (matchDate.toDateString() === tomorrow.toDateString()) dayLabel = 'Tomorrow';
           }
 
-          const bgClass = '';
-          const textColor = 'black';
+          const bgClass = isMatchInPlay(match) ? 'bg-primary' : '';
+          const textColor = isMatchInPlay(match) ? 'white' : 'black';
 
           // ✅ New runners-based odds format (Football: Team1, Draw, Team2)
           const r = match.runners || [];
@@ -2075,25 +2087,26 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       if (result.success && Array.isArray(result.data)) {
         const filtered = applyLeagueFilter(result.data, filter);
-        const nonInPlay = filtered.filter(m => !isMatchInPlay(m));
-        if (countElement) countElement.textContent = nonInPlay.length;
+        // ✅ InPlay + upcoming dono Tennis section mein
+        if (countElement) countElement.textContent = filtered.length;
 
-        nonInPlay.forEach(match => {
+        filtered.forEach(match => {
           const startTime = new Date(match.startTime);
           const localTime = startTime.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 
           const today = new Date();
           const matchDate = new Date(match.startTime);
           let dayLabel = 'Upcoming';
-          if (matchDate.toDateString() === today.toDateString()) dayLabel = 'Today';
+          if (isMatchInPlay(match)) dayLabel = 'InPlay';
+          else if (matchDate.toDateString() === today.toDateString()) dayLabel = 'Today';
           else {
             const tomorrow = new Date();
             tomorrow.setDate(today.getDate() + 1);
             if (matchDate.toDateString() === tomorrow.toDateString()) dayLabel = 'Tomorrow';
           }
 
-          const bgClass = '';
-          const textColor = 'black';
+          const bgClass = isMatchInPlay(match) ? 'bg-primary' : '';
+          const textColor = isMatchInPlay(match) ? 'white' : 'black';
 
           // ✅ Tennis has only 2 runners (Player1, Player2) — no draw
           const r = match.runners || [];

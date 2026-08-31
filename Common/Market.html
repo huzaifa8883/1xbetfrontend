@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -5304,6 +5305,14 @@ window.getRunnerAmounts = function(runnerName, forMarketId) {
 // fetchRunners() ne saare submarket ids window.allMarketIds mein jama kar
 // diye hain, wo sab comma-separated "marketIds" param mein bhejo.
 function _marketIdsQueryParam() {
+    if (!window.allMarketIds) window.allMarketIds = new Set();
+    if (matchId) window.allMarketIds.add(String(matchId));
+    try {
+      var el = document.getElementById('MarketView') || document.getElementById('app');
+      var vm = el && el.__vue__;
+      if (vm && vm.Catalog && vm.Catalog.marketId) window.allMarketIds.add(String(vm.Catalog.marketId));
+      if (vm && vm.Catalog && vm.Catalog.eventId) window.allMarketIds.add(String(vm.Catalog.eventId));
+    } catch (e) {}
     if (window.allMarketIds && window.allMarketIds.size > 0) {
         return `marketIds=${encodeURIComponent([...window.allMarketIds].join(','))}`;
     }
@@ -5323,7 +5332,7 @@ async function fetchUnMatched() {
         const json = await res.json();
         let list = json.data?.orders || json.orders || [];
 
-        // Client-side filter: sirf current match ke marketIds wale orders
+        // Soft filter: keep order if marketId unknown OR in set (don't drop resolved 1.xxx vs composite mismatch)
         if (window.allMarketIds && window.allMarketIds.size > 0) {
             list = list.filter(o => {
                 const selId  = String(o.selection_id || o.selectionId || "");
@@ -5331,8 +5340,11 @@ async function fetchUnMatched() {
                     o.marketId || o.market_id ||
                     (selId && window.selectionIdToMarketId && window.selectionIdToMarketId[selId]) || ""
                 );
-                if (oMktId && !window.allMarketIds.has(oMktId)) return false;
-                return true;
+                if (!oMktId) return true; // no id → keep (backend already scoped)
+                if (window.allMarketIds.has(oMktId)) return true;
+                // also accept if either side is prefix of the other (composite vs 1.xxx still different — keep if selection maps)
+                if (selId && window.selectionIdToRunner && window.selectionIdToRunner[selId]) return true;
+                return false;
             });
         }
 
@@ -5392,7 +5404,7 @@ async function fetchMatched() {
         const json = await res.json();
         let list = json.data?.orders || json.orders || [];
 
-        // Client-side filter: sirf current match ke marketIds wale orders
+        // Soft filter: keep order if marketId unknown OR in set (don't drop resolved 1.xxx vs composite mismatch)
         if (window.allMarketIds && window.allMarketIds.size > 0) {
             list = list.filter(o => {
                 const selId  = String(o.selection_id || o.selectionId || "");
@@ -5400,8 +5412,11 @@ async function fetchMatched() {
                     o.marketId || o.market_id ||
                     (selId && window.selectionIdToMarketId && window.selectionIdToMarketId[selId]) || ""
                 );
-                if (oMktId && !window.allMarketIds.has(oMktId)) return false;
-                return true;
+                if (!oMktId) return true; // no id → keep (backend already scoped)
+                if (window.allMarketIds.has(oMktId)) return true;
+                // also accept if either side is prefix of the other (composite vs 1.xxx still different — keep if selection maps)
+                if (selId && window.selectionIdToRunner && window.selectionIdToRunner[selId]) return true;
+                return false;
             });
         }
 
@@ -6712,6 +6727,116 @@ Vue.component('runner-aggregate', {
     }, 200);
   })();
 
+})();
+</script>
+
+
+<!-- ===== ORDER MATCH DISPLAY FIX: marketId sync + soft filter + status normalize ===== -->
+<script>
+(function () {
+  'use strict';
+
+  // Keep allMarketIds in sync with Vue Catalog (main + resolved 1.xxx ids)
+  function syncMarketIdsFromVue() {
+    try {
+      var el = document.getElementById('MarketView') || document.getElementById('app');
+      var vm = el && el.__vue__;
+      if (!window.allMarketIds) window.allMarketIds = new Set();
+      if (typeof matchId !== 'undefined' && matchId) window.allMarketIds.add(String(matchId));
+      if (!vm || !vm.Catalog) return;
+      var c = vm.Catalog;
+      if (c.marketId) window.allMarketIds.add(String(c.marketId));
+      if (c.eventId) window.allMarketIds.add(String(c.eventId));
+      // sub market arrays
+      ['BookmakerMarkets','TossMarkets','FancyMarkets','Fancy2Markets','FigureMarkets','OddFigureMarkets','OtherMarkets','OtherRaceMarkets'].forEach(function (prop) {
+        var arr = vm[prop];
+        if (!Array.isArray(arr)) return;
+        arr.forEach(function (m) {
+          if (m && m.marketId) window.allMarketIds.add(String(m.marketId));
+        });
+      });
+    } catch (e) {}
+  }
+
+  // Patch _marketIdsQueryParam to always send every known id
+  function installQueryPatch() {
+    if (typeof window._marketIdsQueryParamOriginal === 'undefined' && typeof _marketIdsQueryParam === 'function') {
+      window._marketIdsQueryParamOriginal = _marketIdsQueryParam;
+    }
+    window._marketIdsQueryParam = function () {
+      syncMarketIdsFromVue();
+      var ids = new Set();
+      if (typeof matchId !== 'undefined' && matchId) ids.add(String(matchId));
+      if (window.allMarketIds) window.allMarketIds.forEach(function (id) { ids.add(String(id)); });
+      try {
+        var el = document.getElementById('MarketView') || document.getElementById('app');
+        var vm = el && el.__vue__;
+        if (vm && vm.Catalog && vm.Catalog.marketId) ids.add(String(vm.Catalog.marketId));
+      } catch (e) {}
+      if (ids.size === 0) return 'matchId=';
+      return 'marketIds=' + encodeURIComponent(Array.from(ids).join(','));
+    };
+    // also expose for modules that call global
+    if (typeof _marketIdsQueryParam !== 'undefined') {
+      try { _marketIdsQueryParam = window._marketIdsQueryParam; } catch (e) {}
+    }
+  }
+
+  // Normalize order status from backend variants
+  window.normalizeOrderStatus = function (o) {
+    var s = String(o.status || o.orderStatus || o.state || '').toUpperCase();
+    var matched = Number(o.matched || o.matchedSize || o.sizeMatched || 0);
+    var size = Number(o.size || o.stake || o.us || 0);
+    if (s === 'MATCHED' || s === 'COMPLETE' || s === 'COMPLETED' || s === 'EXECUTED' || s === 'FILLED') return 'MATCHED';
+    if (s === 'PARTIAL' || s === 'PARTIALLY_MATCHED' || s === 'PARTIAL_MATCHED') {
+      return matched > 0 ? 'MATCHED' : 'PENDING';
+    }
+    if (matched > 0 && size > 0 && matched >= size * 0.99) return 'MATCHED';
+    if (matched > 0) return 'MATCHED'; // show partial fills in matched list
+    if (s === 'PENDING' || s === 'OPEN' || s === 'UNMATCHED' || s === 'ACTIVE') return 'PENDING';
+    return s || 'PENDING';
+  };
+
+  // After any successful POST /orders — hard refresh both lists
+  function installPostOrderRefresh() {
+    var _fetch = window.fetch;
+    if (!_fetch || window._orderFetchPatched) return;
+    window._orderFetchPatched = true;
+    window.fetch = function (input, init) {
+      var url = typeof input === 'string' ? input : (input && input.url) || '';
+      var method = (init && init.method) || 'GET';
+      var p = _fetch.apply(this, arguments);
+      if (/\/orders(\?|$|\/)/.test(url) && !/cancel/.test(url) && String(method).toUpperCase() === 'POST') {
+        p.then(function (res) {
+          if (!res || !res.ok) return;
+          setTimeout(function () {
+            syncMarketIdsFromVue();
+            if (typeof fetchUnMatched === 'function') fetchUnMatched();
+            if (typeof fetchMatched === 'function') fetchMatched();
+            if (typeof render === 'function') try { render(); } catch (e) {}
+          }, 400);
+          setTimeout(function () {
+            if (typeof fetchUnMatched === 'function') fetchUnMatched();
+            if (typeof fetchMatched === 'function') fetchMatched();
+          }, 1500);
+        }).catch(function () {});
+      }
+      return p;
+    };
+  }
+
+  function boot() {
+    installQueryPatch();
+    installPostOrderRefresh();
+    syncMarketIdsFromVue();
+    setInterval(syncMarketIdsFromVue, 2000);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () { setTimeout(boot, 800); });
+  } else {
+    setTimeout(boot, 800);
+  }
 })();
 </script>
 

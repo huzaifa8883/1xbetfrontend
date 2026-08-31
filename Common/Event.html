@@ -1632,21 +1632,6 @@
 
   function pad(n) { return String(n).padStart(2, '0'); }
 
-  // ✅ BUG FIX: backend se marketStartTime kabhi bina 'Z'/offset suffix ke
-  // UTC string aata hai (jaise "2026-08-31T14:10:00"). new Date() aise string
-  // ko browser ki LOCAL timezone maan leta hai, is liye race ka actual time
-  // (jaise 2:10) galat time (jaise 9:10) ban jaata hai aur remaining/elapsed
-  // ka hisaab bhi ulta ho jaata hai. dashboard.html mein ye already fix hai
-  // (parseUTC helper) — ab yahan bhi wahi laga rahe hain.
-  function parseUTC(str) {
-    if (!str) return new Date(NaN);
-    if (typeof str !== 'string') return new Date(str);
-    if (!str.endsWith('Z') && !str.includes('+') && !/\d{2}:\d{2}$/.test(str.slice(-5))) {
-      str = str.replace(' ', 'T') + 'Z';
-    }
-    return new Date(str);
-  }
-
   function formatTimer(totalSeconds) {
     var sign = totalSeconds < 0 ? '-' : '';
     var abs  = Math.abs(totalSeconds);
@@ -1656,14 +1641,38 @@
     return sign + pad(h) + ':' + pad(m) + ':' + pad(s);
   }
 
+  // Backend often sends "2026-08-31T14:22:00" or ".0000000" WITHOUT Z.
+  // JS treats that as *local* time → in PKT (+5) elapsed is ~5h wrong.
+  // Race times from bpexch/Betfair are UTC instants — force UTC parse.
+  function parseAsUtcMs(iso) {
+    if (!iso) return NaN;
+    var s = String(iso).trim();
+    if (/^\d+$/.test(s)) return Number(s); // already epoch ms
+    // has explicit zone
+    if (/[zZ]$/.test(s) || /[+-]\d{2}:?\d{2}$/.test(s)) {
+      var t = new Date(s).getTime();
+      return t;
+    }
+    // strip long fractional seconds (.0000000)
+    s = s.replace(/(\.\d{3})\d+/, '$1');
+    // date-only
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) s += 'T00:00:00Z';
+    // ISO without zone → treat as UTC
+    else if (/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/.test(s)) {
+      s = s.replace(' ', 'T');
+      if (!/[zZ]$/.test(s) && !/[+-]\d{2}/.test(s)) s += 'Z';
+    }
+    return new Date(s).getTime();
+  }
+
   var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-  // Match ka scheduled start time "Jun 17, 2026 3:55 PM" jaisa format mein —
-  // header mein "current system time" ke bajaye yeh dikhana hai race sports ke liye.
+  // Local display of the race start (correct instant, shown in user TZ)
   function formatMatchDateTime(startTimeIso) {
     if (!startTimeIso) return '';
-    var d = parseUTC(startTimeIso);
-    if (isNaN(d.getTime())) return '';
+    var ms = parseAsUtcMs(startTimeIso);
+    if (isNaN(ms)) return '';
+    var d = new Date(ms);
     var hours = d.getHours();
     var ampm  = hours >= 12 ? 'PM' : 'AM';
     var h12   = hours % 12 || 12;
@@ -1723,7 +1732,7 @@
       if (!el) return;
 
       var now  = Date.now();
-      var st   = parseUTC(startTimeIso).getTime();
+      var st   = parseAsUtcMs(startTimeIso);
       if (isNaN(st)) { el.textContent = ''; return; }
       var diff = Math.floor((st - now) / 1000); // positive = remaining, negative = elapsed
 

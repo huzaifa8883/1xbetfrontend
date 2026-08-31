@@ -1452,10 +1452,10 @@ function filterRole(tbodyId, role) {
         <div class="tree-children">
           ${league.matches.map(m => renderMatchNode(m, league.id)).join('') || '<div class="tree-empty" style="padding:14px;">Koi match nahi</div>'}
           <div class="tree-bulkbar">
-            <span>Bulk:</span>
-            <a data-bulk="show" data-league="${league.id}">Sab dikhao</a>
+            <span>Select:</span>
+            <a data-bulk="show" data-league="${league.id}">✅ Sab ON</a>
             <span>·</span>
-            <a data-bulk="hide" data-league="${league.id}">Sab chupao</a>
+            <a data-bulk="hide" data-league="${league.id}">❌ Sab OFF</a>
           </div>
         </div>
       </div>`;

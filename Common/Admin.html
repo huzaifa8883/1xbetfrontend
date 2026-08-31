@@ -1,735 +1,1692 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SuperAdmin · Control Center</title>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <title>SuperAdmin Control Panel</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Exo+2:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #07090f;
-      --bg2: #0c1019;
-      --bg3: #121826;
-      --bg4: #1a2233;
-      --line: #1e2a3d;
-      --line2: #2a3a55;
-      --text: #e8eef7;
-      --muted: #8b9bb4;
-      --green: #22c55e;
-      --cyan: #22d3ee;
-      --violet: #a78bfa;
-      --orange: #fb923c;
-      --red: #f87171;
-      --side: 268px;
-      --radius: 14px;
-      --shadow: 0 20px 50px rgba(0,0,0,.45);
+      --bg-primary: #0a0e1a;
+      --bg-secondary: #0f1628;
+      --bg-card: #131d35;
+      --bg-hover: #1a2644;
+      --accent-green: #00ff88;
+      --accent-cyan: #00d4ff;
+      --accent-orange: #ff8c00;
+      --accent-red: #ff4444;
+      --accent-purple: #8b5cf6;
+      --text-primary: #e2e8f0;
+      --text-secondary: #8892a4;
+      --border: #1e2d4a;
+      --border-bright: #2a3f6a;
+      --sidebar-w: 260px;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'DM Sans', system-ui, sans-serif; }
-    body { display: flex; overflow: hidden; }
-    a { color: inherit; text-decoration: none; }
-    button, input, select { font: inherit; }
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-thumb { background: var(--line2); border-radius: 99px; }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html,body { height:100%; font-family:'Exo 2',sans-serif; background:var(--bg-primary); color:var(--text-primary); overflow-x:hidden; }
+    ::-webkit-scrollbar { width:5px; height:5px; }
+    ::-webkit-scrollbar-track { background:var(--bg-secondary); }
+    ::-webkit-scrollbar-thumb { background:var(--border-bright); border-radius:3px; }
 
-    /* ── Sidebar ── */
-    #sidebar {
-      width: var(--side); flex-shrink: 0; height: 100vh;
-      background: linear-gradient(180deg, #0b1220 0%, #090d16 100%);
-      border-right: 1px solid var(--line);
-      display: flex; flex-direction: column; padding: 18px 14px;
-      position: relative; z-index: 20;
-    }
-    .brand {
-      display: flex; align-items: center; gap: 12px; padding: 8px 10px 20px;
-      border-bottom: 1px solid var(--line); margin-bottom: 14px;
-    }
-    .brand-mark {
-      width: 40px; height: 40px; border-radius: 12px;
-      background: linear-gradient(135deg, var(--green), var(--cyan));
-      display: grid; place-items: center; font-family: 'Space Grotesk', sans-serif;
-      font-weight: 700; color: #04120a; font-size: 15px;
-      box-shadow: 0 0 24px rgba(34,197,94,.35);
-    }
-    .brand h1 { font-family: 'Space Grotesk', sans-serif; font-size: 17px; font-weight: 700; letter-spacing: .3px; }
-    .brand p { font-size: 11px; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; margin-top: 2px; }
-    .nav-label { font-size: 10px; letter-spacing: 1.8px; text-transform: uppercase; color: var(--muted); padding: 12px 12px 8px; }
-    .nav-item {
-      display: flex; align-items: center; gap: 11px; padding: 11px 12px; border-radius: 10px;
-      color: var(--muted); cursor: pointer; border: 1px solid transparent; margin-bottom: 3px;
-      transition: .18s ease; font-size: 13.5px; font-weight: 500;
-    }
-    .nav-item:hover { background: var(--bg3); color: var(--text); }
-    .nav-item.active {
-      background: rgba(34,197,94,.1); color: var(--green);
-      border-color: rgba(34,197,94,.25); box-shadow: inset 0 0 0 1px rgba(34,197,94,.08);
-    }
-    .nav-item svg { width: 18px; height: 18px; opacity: .9; }
-    .side-foot { margin-top: auto; padding: 12px; border-top: 1px solid var(--line); }
-    .user-chip {
-      display: flex; align-items: center; gap: 10px; padding: 10px;
-      background: var(--bg3); border-radius: 12px; border: 1px solid var(--line);
-    }
-    .user-chip .av {
-      width: 36px; height: 36px; border-radius: 10px;
-      background: linear-gradient(135deg, var(--violet), var(--cyan));
-      display: grid; place-items: center; font-weight: 700; font-size: 12px; color: #0b1020;
-    }
-    .user-chip .meta strong { display: block; font-size: 13px; }
-    .user-chip .meta span { font-size: 11px; color: var(--green); letter-spacing: 1px; text-transform: uppercase; }
+    /* SIDEBAR */
+    #sidebar { position:fixed; left:0; top:0; bottom:0; width:var(--sidebar-w); background:var(--bg-secondary); border-right:1px solid var(--border); display:flex; flex-direction:column; z-index:100; overflow-y:auto; }
+    .sidebar-logo { padding:20px 20px 15px; border-bottom:1px solid var(--border); }
+    .sidebar-logo .logo-text { font-family:'Rajdhani',sans-serif; font-size:22px; font-weight:700; letter-spacing:2px; background:linear-gradient(135deg,var(--accent-green),var(--accent-cyan)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+    .sidebar-logo .logo-sub { font-size:11px; color:var(--text-secondary); letter-spacing:3px; text-transform:uppercase; margin-top:2px; }
+    .status-dot { display:inline-block; width:7px; height:7px; background:var(--accent-green); border-radius:50%; margin-right:6px; box-shadow:0 0 8px var(--accent-green); animation:pulse-dot 2s infinite; }
+    @keyframes pulse-dot { 0%,100%{opacity:1}50%{opacity:0.4} }
+    .sidebar-user { padding:14px 16px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; }
+    .sidebar-user .avatar { width:38px; height:38px; border-radius:8px; background:linear-gradient(135deg,var(--accent-green),var(--accent-cyan)); display:flex; align-items:center; justify-content:center; font-family:'Rajdhani',sans-serif; font-weight:700; font-size:15px; color:#000; flex-shrink:0; }
+    .sidebar-user .uname { font-weight:600; font-size:13px; }
+    .sidebar-user .urole { font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--accent-green); margin-top:1px; }
+    .nav-section { padding:12px 8px 4px; }
+    .nav-label { font-size:9px; letter-spacing:3px; text-transform:uppercase; color:var(--text-secondary); padding:0 10px 8px; font-weight:600; }
+    .nav-item { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:8px; cursor:pointer; color:var(--text-secondary); font-size:13px; font-weight:500; transition:all 0.2s; margin-bottom:2px; border:1px solid transparent; text-decoration:none; }
+    .nav-item:hover { background:var(--bg-hover); color:var(--text-primary); }
+    .nav-item.active { background:rgba(0,255,136,0.08); color:var(--accent-green); border-color:rgba(0,255,136,0.2); }
+    .nav-icon { width:18px; height:18px; flex-shrink:0; }
+    .nav-badge { margin-left:auto; background:var(--accent-red); color:white; font-size:10px; padding:1px 6px; border-radius:10px; font-weight:600; }
+    .nav-badge.green { background:var(--accent-green); color:#000; }
 
-    /* ── Main ── */
-    #main { flex: 1; min-width: 0; height: 100vh; display: flex; flex-direction: column; background: var(--bg); }
-    .topbar {
-      height: 64px; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between;
-      padding: 0 28px; border-bottom: 1px solid var(--line); background: rgba(12,16,25,.85);
-      backdrop-filter: blur(12px); position: sticky; top: 0; z-index: 10;
-    }
-    .topbar h2 { font-family: 'Space Grotesk', sans-serif; font-size: 18px; font-weight: 600; }
-    .topbar-right { display: flex; align-items: center; gap: 12px; }
-    .pill {
-      font-size: 12px; padding: 7px 12px; border-radius: 999px; border: 1px solid var(--line);
-      background: var(--bg3); color: var(--cyan); font-variant-numeric: tabular-nums;
-    }
-    .content { flex: 1; overflow: auto; padding: 24px 28px 40px; }
-    .page { display: none; animation: fade .25s ease; }
-    .page.active { display: block; }
-    @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    /* MAIN */
+    #main { margin-left:var(--sidebar-w); min-height:100vh; display:flex; flex-direction:column; }
+    .topbar { background:var(--bg-secondary); border-bottom:1px solid var(--border); padding:12px 24px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:50; }
+    .topbar-title { font-family:'Rajdhani',sans-serif; font-size:18px; font-weight:700; letter-spacing:1px; }
+    .topbar-right { display:flex; align-items:center; gap:16px; }
+    .clock-display { font-family:'Rajdhani',sans-serif; font-size:14px; background:var(--bg-card); border:1px solid var(--border); padding:6px 14px; border-radius:6px; color:var(--accent-cyan); letter-spacing:1px; }
+    .topbar-balance { font-size:13px; color:var(--accent-green); font-weight:600; background:rgba(0,255,136,0.08); border:1px solid rgba(0,255,136,0.2); padding:5px 12px; border-radius:6px; }
 
-    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 22px; }
-    @media (max-width: 1100px) { .stats { grid-template-columns: repeat(2, 1fr); } }
-    .stat {
-      background: var(--bg3); border: 1px solid var(--line); border-radius: var(--radius);
-      padding: 18px 18px 16px; position: relative; overflow: hidden;
-    }
-    .stat::before { content: ''; position: absolute; inset: 0 auto 0 0; width: 3px; border-radius: 3px 0 0 3px; }
-    .stat.g::before { background: var(--green); } .stat.c::before { background: var(--cyan); }
-    .stat.v::before { background: var(--violet); } .stat.o::before { background: var(--orange); }
-    .stat .lbl { font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
-    .stat .val { font-family: 'Space Grotesk', sans-serif; font-size: 28px; font-weight: 700; }
-    .stat.g .val { color: var(--green); } .stat.c .val { color: var(--cyan); }
-    .stat.v .val { color: var(--violet); } .stat.o .val { color: var(--orange); }
+    /* PAGES */
+    .page-content { flex:1; padding:24px; display:none; }
+    .page-content.active { display:block; }
+    .page-top-accent { height:2px; background:linear-gradient(90deg,var(--accent-green),var(--accent-cyan),transparent); margin-bottom:24px; border-radius:2px; }
 
+    /* CARDS */
+    .card { background:var(--bg-card); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+    .card-header { padding:14px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; }
+    .card-title { font-family:'Rajdhani',sans-serif; font-size:16px; font-weight:700; letter-spacing:1px; }
+    .card-body { padding:20px; }
+
+    /* STATS */
+    .stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:16px; margin-bottom:24px; }
+    .stat-card { background:var(--bg-card); border:1px solid var(--border); border-radius:10px; padding:18px 20px; position:relative; overflow:hidden; transition:border-color 0.2s,transform 0.2s; }
+    .stat-card:hover { border-color:var(--border-bright); transform:translateY(-2px); }
+    .stat-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; }
+    .stat-card.green::before { background:var(--accent-green); }
+    .stat-card.cyan::before { background:var(--accent-cyan); }
+    .stat-card.orange::before { background:var(--accent-orange); }
+    .stat-card.purple::before { background:var(--accent-purple); }
+    .stat-label { font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--text-secondary); margin-bottom:8px; }
+    .stat-value { font-family:'Rajdhani',sans-serif; font-size:28px; font-weight:700; line-height:1; }
+    .stat-value.green { color:var(--accent-green); }
+    .stat-value.cyan { color:var(--accent-cyan); }
+    .stat-value.orange { color:var(--accent-orange); }
+    .stat-value.purple { color:var(--accent-purple); }
+    .stat-sub { font-size:12px; color:var(--text-secondary); margin-top:6px; }
+
+    /* TABLE */
+    .table-wrap { overflow-x:auto; }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    thead tr { background:rgba(255,255,255,0.03); border-bottom:1px solid var(--border); }
+    th { padding:11px 14px; text-align:left; font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--text-secondary); font-weight:600; white-space:nowrap; }
+    td { padding:12px 14px; border-bottom:1px solid rgba(255,255,255,0.04); vertical-align:middle; }
+    tbody tr:hover { background:rgba(255,255,255,0.03); }
+    tbody tr:last-child td { border-bottom:none; }
+
+    /* BADGES */
+    .badge { display:inline-block; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600; letter-spacing:0.5px; white-space:nowrap; }
+    .badge-green { background:rgba(0,255,136,0.12); color:var(--accent-green); border:1px solid rgba(0,255,136,0.3); }
+    .badge-red { background:rgba(255,68,68,0.12); color:var(--accent-red); border:1px solid rgba(255,68,68,0.3); }
+    .badge-orange { background:rgba(255,140,0,0.12); color:var(--accent-orange); border:1px solid rgba(255,140,0,0.3); }
+    .badge-cyan { background:rgba(0,212,255,0.12); color:var(--accent-cyan); border:1px solid rgba(0,212,255,0.3); }
+    .badge-purple { background:rgba(139,92,246,0.12); color:var(--accent-purple); border:1px solid rgba(139,92,246,0.3); }
+    .badge-gray { background:rgba(255,255,255,0.07); color:var(--text-secondary); border:1px solid var(--border); }
+
+    /* BUTTONS */
+    .btn { display:inline-flex; align-items:center; gap:6px; padding:8px 16px; border-radius:7px; border:none; cursor:pointer; font-family:'Exo 2',sans-serif; font-size:13px; font-weight:600; transition:all 0.2s; letter-spacing:0.5px; }
+    .btn-primary { background:linear-gradient(135deg,var(--accent-green),#00cc6a); color:#000; }
+    .btn-primary:hover { box-shadow:0 4px 15px rgba(0,255,136,0.3); transform:translateY(-1px); }
+    .btn-cyan { background:rgba(0,212,255,0.12); color:var(--accent-cyan); border:1px solid rgba(0,212,255,0.3); }
+    .btn-cyan:hover { background:rgba(0,212,255,0.22); }
+    .btn-danger { background:rgba(255,68,68,0.12); color:var(--accent-red); border:1px solid rgba(255,68,68,0.3); }
+    .btn-danger:hover { background:rgba(255,68,68,0.22); }
+    .btn-orange { background:rgba(255,140,0,0.12); color:var(--accent-orange); border:1px solid rgba(255,140,0,0.3); }
+    .btn-orange:hover { background:rgba(255,140,0,0.22); }
+    .btn-ghost { background:transparent; color:var(--text-secondary); border:1px solid var(--border); }
+    .btn-ghost:hover { background:var(--bg-hover); color:var(--text-primary); }
+    .btn-sm { padding:5px 10px; font-size:11px; }
+    .btn:disabled { opacity:0.5; cursor:not-allowed; transform:none!important; }
+
+    /* FORMS */
+    .form-group { margin-bottom:16px; }
+    .form-label { display:block; font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-secondary); margin-bottom:8px; font-weight:600; }
+    .form-input, .form-select { width:100%; background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); padding:10px 14px; border-radius:7px; font-family:'Exo 2',sans-serif; font-size:13px; outline:none; transition:border-color 0.2s; }
+    .form-input:focus, .form-select:focus { border-color:var(--accent-green); box-shadow:0 0 0 3px rgba(0,255,136,0.1); }
+    .form-select { cursor:pointer; appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238892a4' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 14px center; }
+    .search-input { background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); padding:8px 14px; border-radius:7px; font-family:'Exo 2',sans-serif; font-size:13px; outline:none; width:200px; transition:border-color 0.2s; }
+    .search-input:focus { border-color:var(--accent-cyan); }
+    .search-input::placeholder { color:var(--text-secondary); }
+
+    /* ═══════════ MODERN POLISH — subtle depth, glow, smoother motion ═══════════ */
+    body {
+      background:
+        radial-gradient(ellipse 900px 500px at 15% -10%, rgba(0,255,136,0.05), transparent 60%),
+        radial-gradient(ellipse 900px 500px at 100% 0%, rgba(0,212,255,0.05), transparent 60%),
+        var(--bg-primary);
+      background-attachment:fixed;
+    }
+    #sidebar { box-shadow:2px 0 24px rgba(0,0,0,0.35); backdrop-filter:saturate(1.1); }
+    .sidebar-logo .logo-text { text-shadow:0 0 24px rgba(0,255,136,0.25); }
+    .nav-item { position:relative; }
+    .nav-item.active { box-shadow:0 0 0 1px rgba(0,255,136,0.15) inset, 0 2px 12px rgba(0,255,136,0.08); }
+    .nav-item.active::before {
+      content:''; position:absolute; left:-8px; top:50%; transform:translateY(-50%);
+      width:3px; height:60%; border-radius:3px;
+      background:linear-gradient(180deg,var(--accent-green),var(--accent-cyan));
+      box-shadow:0 0 8px rgba(0,255,136,0.6);
+    }
+    .topbar { backdrop-filter:blur(10px); background:rgba(15,22,40,0.85); }
     .card {
-      background: var(--bg3); border: 1px solid var(--line); border-radius: var(--radius);
-      overflow: hidden; margin-bottom: 18px; box-shadow: var(--shadow);
+      box-shadow:0 1px 0 rgba(255,255,255,0.02) inset, 0 8px 24px rgba(0,0,0,0.18);
+      transition:border-color .2s, box-shadow .2s;
     }
-    .card-h {
-      display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
-      padding: 16px 18px; border-bottom: 1px solid var(--line); background: rgba(255,255,255,.02);
-    }
-    .card-h h3 { font-family: 'Space Grotesk', sans-serif; font-size: 15px; font-weight: 600; }
-    .card-h p { font-size: 12px; color: var(--muted); margin-top: 3px; }
-    .card-b { padding: 16px 18px; }
+    .card:hover { border-color:var(--border-bright); }
+    .card-header { background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent); }
+    .stat-card { box-shadow:0 8px 24px rgba(0,0,0,0.18); }
+    .stat-card::before { box-shadow:0 0 10px currentColor; }
+    .btn { position:relative; overflow:hidden; }
+    .btn-primary { box-shadow:0 2px 10px rgba(0,255,136,0.15); }
+    .badge { box-shadow:0 0 0 1px rgba(255,255,255,0.02) inset; }
+    .section-title { text-shadow:0 0 30px rgba(0,255,136,0.12); }
+    ::-webkit-scrollbar-thumb:hover { background:var(--accent-cyan); }
 
-    .btn {
-      display: inline-flex; align-items: center; gap: 7px; border: none; cursor: pointer;
-      border-radius: 10px; padding: 9px 14px; font-size: 13px; font-weight: 600;
-      transition: .15s ease;
+    /* ── Sports Tree component — uses same :root vars, drop-in themed ── */
+    .tree-wrap { display:flex; gap:16px; align-items:flex-start; }
+    .tree-sportrail {
+      width:130px; flex-shrink:0; display:flex; flex-direction:column; gap:6px;
+      position:sticky; top:16px;
     }
-    .btn:disabled { opacity: .5; cursor: not-allowed; }
-    .btn-primary { background: linear-gradient(135deg, #22c55e, #16a34a); color: #052e16; }
-    .btn-primary:hover { filter: brightness(1.08); transform: translateY(-1px); }
-    .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--line); }
-    .btn-ghost:hover { background: var(--bg4); color: var(--text); }
-    .btn-cyan { background: rgba(34,211,238,.12); color: var(--cyan); border: 1px solid rgba(34,211,238,.3); }
-    .btn-danger { background: rgba(248,113,113,.12); color: var(--red); border: 1px solid rgba(248,113,113,.28); }
-    .btn-sm { padding: 6px 10px; font-size: 12px; border-radius: 8px; }
+    .tree-sport-btn {
+      display:flex; flex-direction:column; align-items:center; gap:6px;
+      padding:14px 8px; border-radius:10px; cursor:pointer;
+      border:1px solid var(--border); background:var(--bg-card);
+      color:var(--text-secondary); transition:all .15s;
+      font-family:'Exo 2',sans-serif;
+    }
+    .tree-sport-btn .ico { font-size:20px; line-height:1; }
+    .tree-sport-btn .lbl { font-size:11px; font-weight:600; }
+    .tree-sport-btn:hover { background:var(--bg-hover); color:var(--text-primary); transform:translateY(-1px); }
+    .tree-sport-btn.active {
+      background:rgba(0,255,136,0.08); color:var(--accent-green);
+      border-color:rgba(0,255,136,0.35); box-shadow:0 0 0 1px rgba(0,255,136,0.15) inset, 0 4px 14px rgba(0,255,136,0.1);
+    }
+    .tree-sport-btn .cnt {
+      font-size:9px; padding:1px 6px; border-radius:8px;
+      background:var(--bg-hover); color:var(--text-secondary);
+    }
+    .tree-sport-btn.active .cnt { background:rgba(0,255,136,0.15); color:var(--accent-green); }
 
-    .badge {
-      display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 999px;
-      font-size: 11px; font-weight: 600;
+    .tree-main { flex:1; min-width:0; }
+    .tree-toolbar { display:flex; align-items:center; gap:10px; margin-bottom:12px; flex-wrap:wrap; }
+    .tree-search {
+      flex:1; min-width:180px; background:var(--bg-hover); border:1px solid var(--border);
+      border-radius:8px; padding:9px 12px; color:var(--text-primary); font-size:12px;
+      font-family:'Exo 2',sans-serif; outline:none; transition:border-color .15s;
     }
-    .badge-g { background: rgba(34,197,94,.12); color: var(--green); border: 1px solid rgba(34,197,94,.25); }
-    .badge-c { background: rgba(34,211,238,.12); color: var(--cyan); border: 1px solid rgba(34,211,238,.25); }
-    .badge-m { background: rgba(139,155,180,.12); color: var(--muted); border: 1px solid var(--line); }
-
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th { text-align: left; padding: 10px 12px; font-size: 10px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line); }
-    td { padding: 12px; border-bottom: 1px solid rgba(255,255,255,.04); }
-    tr:hover td { background: rgba(255,255,255,.02); }
-
-    /* ── Sports tree ── */
-    .sport-rail {
-      display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;
-    }
-    .sport-chip {
-      padding: 10px 14px; border-radius: 12px; border: 1px solid var(--line);
-      background: var(--bg2); color: var(--muted); cursor: pointer; font-weight: 600; font-size: 13px;
-      transition: .15s;
-    }
-    .sport-chip:hover { border-color: var(--line2); color: var(--text); }
-    .sport-chip.active {
-      background: rgba(34,197,94,.1); border-color: rgba(34,197,94,.35); color: var(--green);
+    .tree-search:focus { border-color:var(--accent-cyan); box-shadow:0 0 0 3px rgba(0,212,255,0.1); }
+    .tree-hours-select {
+      background:var(--bg-hover); border:1px solid var(--border); border-radius:8px;
+      padding:8px 10px; color:var(--text-primary); font-size:12px; cursor:pointer;
     }
 
-    .tree { display: flex; flex-direction: column; gap: 8px; }
-    .node {
-      border: 1px solid var(--line); border-radius: 12px; background: var(--bg2); overflow: hidden;
-    }
-    .node-h {
-      display: flex; align-items: center; gap: 10px; padding: 12px 14px; cursor: pointer;
-      user-select: none; transition: background .15s;
-    }
-    .node-h:hover { background: var(--bg4); }
-    .caret {
-      width: 18px; height: 18px; display: grid; place-items: center; color: var(--muted);
-      transition: transform .15s; font-size: 11px;
-    }
-    .node.open > .node-h .caret { transform: rotate(90deg); color: var(--cyan); }
-    .node-title { font-weight: 600; font-size: 14px; flex: 1; min-width: 0; }
-    .node-meta { font-size: 11px; color: var(--muted); }
-    .node-body { display: none; padding: 0 10px 12px 28px; border-top: 1px solid rgba(255,255,255,.04); }
-    .node.open > .node-body { display: block; }
+    .tree-node { border:1px solid var(--border); border-radius:10px; margin-bottom:8px; overflow:hidden; background:var(--bg-card); transition:border-color .15s; }
+    .tree-node:hover { border-color:var(--border-bright); }
+    .tree-row { display:flex; align-items:center; gap:10px; padding:11px 14px; cursor:pointer; transition:background .12s; user-select:none; }
+    .tree-row:hover { background:var(--bg-hover); }
+    .tree-caret { width:14px; flex-shrink:0; color:var(--text-secondary); font-size:11px; transition:transform .15s; }
+    .tree-node.open > .tree-row .tree-caret { transform:rotate(90deg); color:var(--accent-cyan); }
 
-    .match-row, .mkt-row {
-      display: flex; align-items: center; gap: 10px; padding: 10px 12px; margin-top: 8px;
-      border-radius: 10px; border: 1px solid var(--line); background: var(--bg3);
-    }
-    .match-row:hover, .mkt-row:hover { border-color: var(--line2); }
-    .match-row.selected, .mkt-row.selected {
-      border-color: rgba(34,197,94,.4); background: rgba(34,197,94,.06);
-    }
-    .match-row .name { flex: 1; font-size: 13px; font-weight: 500; }
-    .match-row .time { font-size: 11px; color: var(--muted); margin-right: 6px; }
-    .mkt-row .name { flex: 1; font-size: 12.5px; }
+    .tree-check { width:17px; height:17px; flex-shrink:0; accent-color:var(--accent-green); cursor:pointer; }
+    .tree-label { flex:1; min-width:0; font-size:13px; color:var(--text-primary); font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .tree-meta { font-size:10.5px; color:var(--text-secondary); flex-shrink:0; white-space:nowrap; }
+    .tree-badge { font-size:9.5px; padding:2px 7px; border-radius:6px; flex-shrink:0; font-weight:600; letter-spacing:.3px; }
+    .tree-badge.live { background:rgba(255,68,68,0.12); color:var(--accent-red); }
+    .tree-badge.upcoming { background:rgba(0,212,255,0.1); color:var(--accent-cyan); }
 
-    .sw {
-      position: relative; width: 40px; height: 22px; flex-shrink: 0;
-    }
-    .sw input { opacity: 0; width: 0; height: 0; }
-    .sw span {
-      position: absolute; inset: 0; background: var(--line2); border-radius: 99px; cursor: pointer; transition: .2s;
-    }
-    .sw span:before {
-      content: ''; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px;
-      background: #fff; border-radius: 50%; transition: .2s;
-    }
-    .sw input:checked + span { background: var(--green); }
-    .sw input:checked + span:before { transform: translateX(18px); }
+    .tree-children { display:none; padding:2px 0 6px 30px; border-top:1px solid var(--border); }
+    .tree-node.open > .tree-children { display:block; }
 
-    .empty {
-      text-align: center; padding: 36px 16px; color: var(--muted); font-size: 13px;
-      border: 1px dashed var(--line); border-radius: 12px;
-    }
-    .hint {
-      background: rgba(34,211,238,.06); border: 1px solid rgba(34,211,238,.2);
-      color: var(--cyan); padding: 10px 14px; border-radius: 10px; font-size: 12.5px; margin-bottom: 14px;
-    }
-    .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .tree-league-row .tree-label { font-weight:600; }
+    .tree-match-row .tree-row { padding:9px 14px 9px 8px; }
+    .tree-market-row .tree-row { padding:7px 14px 7px 8px; cursor:default; }
+    .tree-market-row .tree-label { font-size:12px; color:var(--text-secondary); }
+    .tree-market-row.tree-market-on .tree-label { color:var(--text-primary); }
 
-    #toast { position: fixed; bottom: 22px; right: 22px; z-index: 100; display: flex; flex-direction: column; gap: 8px; }
-    .toast {
-      min-width: 260px; padding: 12px 16px; border-radius: 12px; font-size: 13px; font-weight: 600;
-      box-shadow: var(--shadow); animation: slide .25s ease;
-    }
-    .toast.ok { background: rgba(34,197,94,.15); border: 1px solid rgba(34,197,94,.4); color: var(--green); }
-    .toast.err { background: rgba(248,113,113,.15); border: 1px solid rgba(248,113,113,.4); color: var(--red); }
-    @keyframes slide { from { transform: translateX(30px); opacity: 0; } to { transform: none; opacity: 1; } }
+    .tree-empty { padding:30px; text-align:center; color:var(--text-secondary); font-size:12px; }
+    .tree-skel { padding:30px; text-align:center; color:var(--text-secondary); font-size:12px; }
+    .tree-loading-dot::after { content:'⋯'; animation:tree-blink 1.2s infinite; }
+    @keyframes tree-blink { 0%,100%{opacity:.3} 50%{opacity:1} }
 
-    .loading { color: var(--muted); font-size: 13px; padding: 20px; text-align: center; }
+    .tree-bulkbar { display:flex; align-items:center; gap:8px; padding:8px 14px; background:var(--bg-secondary); border-top:1px solid var(--border); font-size:11px; color:var(--text-secondary); }
+    .tree-bulkbar a { color:var(--accent-cyan); cursor:pointer; font-weight:600; }
+    .tree-bulkbar a:hover { text-decoration:underline; }
+
+    .tree-savebar {
+      position:sticky; bottom:0; margin-top:14px; padding:12px 16px;
+      background:var(--bg-card); border:1px solid var(--border-bright); border-radius:10px;
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      box-shadow:0 8px 24px rgba(0,0,0,0.3);
+    }
+    .tree-savebar .dirty-count { font-size:12px; color:var(--accent-orange); font-weight:600; }
+
+    /* MODALS */
+    .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.75); display:flex; align-items:center; justify-content:center; z-index:1000; backdrop-filter:blur(4px); opacity:0; pointer-events:none; transition:opacity 0.2s; }
+    .modal-overlay.open { opacity:1; pointer-events:all; }
+    .modal { background:var(--bg-secondary); border:1px solid var(--border-bright); border-radius:12px; width:480px; max-width:95vw; max-height:90vh; overflow-y:auto; box-shadow:0 25px 60px rgba(0,0,0,0.5); transform:scale(0.95); transition:transform 0.2s; }
+    .modal-overlay.open .modal { transform:scale(1); }
+    .modal-header { padding:18px 22px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+    .modal-title { font-family:'Rajdhani',sans-serif; font-size:18px; font-weight:700; letter-spacing:1px; }
+    .modal-close { background:none; border:none; color:var(--text-secondary); cursor:pointer; font-size:20px; line-height:1; padding:4px; }
+    .modal-close:hover { color:var(--text-primary); }
+    .modal-body { padding:22px; }
+    .modal-footer { padding:16px 22px; border-top:1px solid var(--border); display:flex; gap:10px; justify-content:flex-end; }
+
+    /* MISC */
+    .toolbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .section-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:12px; }
+    .section-title { font-family:'Rajdhani',sans-serif; font-size:22px; font-weight:700; letter-spacing:1px; }
+    .section-sub { font-size:12px; color:var(--text-secondary); margin-top:2px; }
+    .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+    @media(max-width:768px){ .grid-2{grid-template-columns:1fr} }
+    .action-group { display:flex; gap:5px; }
+    .amount-pos { color:var(--accent-green); font-weight:600; }
+    .amount-neg { color:var(--accent-red); font-weight:600; }
+    .loading-cell { text-align:center; padding:30px; color:var(--text-secondary); }
+    .info-box { background:rgba(0,255,136,0.06); border:1px solid rgba(0,255,136,0.2); border-radius:8px; padding:10px 14px; font-size:12px; color:var(--accent-green); margin-bottom:16px; }
+    .creator-cell { display:flex; flex-direction:column; gap:3px; }
+
+    /* SPORT TABS */
+    .sport-tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:20px; }
+    .sport-tab { padding:8px 14px; border-radius:7px; cursor:pointer; font-size:12px; font-weight:600; border:1px solid var(--border); color:var(--text-secondary); background:transparent; transition:all 0.2s; font-family:'Exo 2',sans-serif; }
+    .sport-tab:hover { background:var(--bg-hover); color:var(--text-primary); }
+    .sport-tab.active { background:rgba(0,255,136,0.1); color:var(--accent-green); border-color:rgba(0,255,136,0.3); }
+    .market-list { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:10px; }
+    .market-item { background:var(--bg-primary); border:1px solid var(--border); border-radius:8px; padding:14px 16px; display:flex; align-items:center; justify-content:space-between; }
+    .market-item-name { font-size:13px; font-weight:600; }
+    .market-item-desc { font-size:11px; color:var(--text-secondary); margin-top:2px; }
+    .toggle { position:relative; width:42px; height:22px; cursor:pointer; display:inline-block; }
+    .toggle input { opacity:0; width:0; height:0; }
+    .toggle-slider { position:absolute; inset:0; background:var(--border); border-radius:22px; transition:0.3s; }
+    .toggle-slider:before { content:''; position:absolute; width:16px; height:16px; background:white; border-radius:50%; left:3px; top:3px; transition:0.3s; }
+    .toggle input:checked + .toggle-slider { background:var(--accent-green); }
+    .toggle input:checked + .toggle-slider:before { transform:translateX(20px); }
+    .league-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:8px; }
+    .league-item { background:var(--bg-primary); border:1px solid var(--border); border-radius:8px; padding:12px 16px; display:flex; align-items:center; gap:12px; transition:border-color 0.2s,background 0.2s; cursor:pointer; }
+    .league-item:hover { border-color:var(--border-bright); background:var(--bg-hover); }
+    .league-item.enabled { border-color:rgba(0,255,136,0.3); background:rgba(0,255,136,0.04); }
+    .league-item input[type=checkbox] { width:16px; height:16px; accent-color:var(--accent-green); cursor:pointer; flex-shrink:0; }
+    .league-item-info { flex:1; min-width:0; }
+    .league-item-name { font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .league-item-id { font-size:10px; color:var(--text-secondary); margin-top:2px; font-family:'Rajdhani',sans-serif; letter-spacing:0.5px; }
+    .league-enabled-dot { width:7px; height:7px; border-radius:50%; background:var(--accent-green); box-shadow:0 0 6px var(--accent-green); flex-shrink:0; display:none; }
+    .league-item.enabled .league-enabled-dot { display:block; }
+    .league-loading { text-align:center; padding:30px; color:var(--text-secondary); font-size:13px; }
+    .league-empty { text-align:center; padding:24px; color:var(--text-secondary); font-size:13px; border:1px dashed var(--border); border-radius:8px; }
+    /* ✅ NEW: Country → Track grouped UI (Horse Race / Greyhound) */
+    .track-country-list { display:flex; flex-direction:column; gap:8px; }
+    .track-country-group { border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+    .track-country-header { display:flex; align-items:center; gap:10px; padding:12px 16px; background:var(--bg-primary); cursor:pointer; transition:background 0.2s; }
+    .track-country-header:hover { background:var(--bg-hover); }
+    .track-country-caret { font-size:11px; color:var(--text-secondary); width:10px; }
+    .track-country-name { font-weight:700; font-size:14px; }
+    .track-country-count { font-size:11px; color:var(--text-secondary); margin-left:6px; }
+    .track-list-inner { padding:10px; display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:8px; background:rgba(0,0,0,0.12); }
+
+    /* TOAST */
+    #toast { position:fixed; bottom:24px; right:24px; z-index:9999; display:flex; flex-direction:column; gap:8px; }
+    .toast-msg { padding:12px 20px; border-radius:8px; font-size:13px; font-weight:600; min-width:260px; animation:slideIn 0.3s ease; box-shadow:0 8px 24px rgba(0,0,0,0.4); }
+    .toast-success { background:rgba(0,255,136,0.15); border:1px solid rgba(0,255,136,0.4); color:var(--accent-green); }
+    .toast-error { background:rgba(255,68,68,0.15); border:1px solid rgba(255,68,68,0.4); color:var(--accent-red); }
+    @keyframes slideIn { from{transform:translateX(40px);opacity:0} to{transform:translateX(0);opacity:1} }
   </style>
 </head>
 <body>
-  <aside id="sidebar">
-    <div class="brand">
-      <div class="brand-mark">BP</div>
-      <div>
-        <h1>BetPro Admin</h1>
-        <p>Control Center</p>
-      </div>
-    </div>
-    <div class="nav-label">Main</div>
-    <div class="nav-item active" data-page="dashboard" onclick="showPage('dashboard', this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
-      Dashboard
-    </div>
-    <div class="nav-item" data-page="users" onclick="showPage('users', this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-      Users
-    </div>
-    <div class="nav-label">Exchange</div>
-    <div class="nav-item" data-page="sports" onclick="showPage('sports', this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-      Sports Settings
-    </div>
-    <div class="side-foot">
-      <div class="user-chip">
-        <div class="av" id="sa-avatar">SA</div>
-        <div class="meta">
-          <strong id="sidebar-username">Admin</strong>
-          <span id="sidebar-role">SuperAdmin</span>
-        </div>
-      </div>
-      <button class="btn btn-ghost btn-sm" style="width:100%;margin-top:10px;justify-content:center;" onclick="logout()">Logout</button>
-    </div>
-  </aside>
 
-  <div id="main">
-    <div class="topbar">
-      <h2 id="page-title">Dashboard</h2>
-      <div class="topbar-right">
-        <div class="pill" id="clock">--:--:--</div>
-      </div>
-    </div>
-    <div class="content">
+<div id="toast"></div>
 
-      <!-- DASHBOARD -->
-      <div class="page active" id="page-dashboard">
-        <div class="stats">
-          <div class="stat g"><div class="lbl">Users</div><div class="val" id="st-users">—</div></div>
-          <div class="stat c"><div class="lbl">Active sports</div><div class="val" id="st-sports">5</div></div>
-          <div class="stat v"><div class="lbl">Enabled leagues</div><div class="val" id="st-leagues">—</div></div>
-          <div class="stat o"><div class="lbl">Selected matches</div><div class="val" id="st-matches">—</div></div>
-        </div>
-        <div class="card">
-          <div class="card-h"><div><h3>Quick tip</h3><p>Sports Settings se next 48h leagues → matches → markets select karo. Sirf selected items dashboard pe dikhenge.</p></div></div>
-        </div>
-      </div>
-
-      <!-- USERS (simple) -->
-      <div class="page" id="page-users">
-        <div class="card">
-          <div class="card-h">
-            <div><h3>Users</h3><p>Recent accounts</p></div>
-            <button class="btn btn-cyan btn-sm" onclick="loadUsers()">Refresh</button>
-          </div>
-          <div class="card-b table-wrap">
-            <table>
-              <thead><tr><th>User</th><th>Role</th><th>Balance</th><th>Status</th></tr></thead>
-              <tbody id="users-body"><tr><td colspan="4" class="loading">Loading…</td></tr></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- SPORTS SETTINGS — TREE -->
-      <div class="page" id="page-sports">
-        <div class="hint">
-          Tree: <strong>Sport → League/Track (next 48h) → Match → Markets</strong>.
-          Toggle se dashboard pe show/hide. Save dabao to persist.
-        </div>
-        <div class="sport-rail" id="sport-rail"></div>
-        <div class="card">
-          <div class="card-h">
-            <div>
-              <h3 id="sport-tree-title">Sports tree</h3>
-              <p id="sport-tree-sub">Select a sport</p>
-            </div>
-            <div class="toolbar">
-              <button class="btn btn-cyan btn-sm" id="btn-fetch-tree" onclick="fetchSportTree()">↻ Fetch 48h data</button>
-              <button class="btn btn-primary btn-sm" onclick="saveSportTree()">Save selection</button>
-            </div>
-          </div>
-          <div class="card-b">
-            <div id="tree-status" class="loading" style="display:none;"></div>
-            <div id="sport-tree" class="tree">
-              <div class="empty">Upar se sport choose karo, phir “Fetch 48h data”.</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
+<!-- SIDEBAR -->
+<nav id="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-text">⚡ BETMASTER</div>
+    <div class="logo-sub"><span class="status-dot"></span>SuperAdmin Panel</div>
+  </div>
+  <div class="sidebar-user">
+    <div class="avatar" id="sa-avatar">SA</div>
+    <div>
+      <div class="uname" id="sidebar-username">Loading...</div>
+      <div class="urole" id="sidebar-role">Super Admin</div>
     </div>
   </div>
-  <div id="toast"></div>
+  <div class="nav-section">
+    <div class="nav-label">Main</div>
+    <a class="nav-item active" data-page="dashboard">
+      <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1" stroke-width="2"/></svg>
+      Dashboard
+    </a>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">User Management</div>
+    <a class="nav-item" data-page="admins">
+      <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+      Admins <span class="nav-badge green" id="cnt-admins">0</span>
+    </a>
+    <a class="nav-item" data-page="supermasters">
+      <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+      SuperMasters <span class="nav-badge" id="cnt-sm">0</span>
+    </a>
+    <a class="nav-item" data-page="masters">
+      <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      Masters <span class="nav-badge" id="cnt-m">0</span>
+    </a>
+    <a class="nav-item" data-page="users">
+      <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+      Users <span class="nav-badge" id="cnt-u">0</span>
+    </a>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">Finance</div>
+    <a class="nav-item" data-page="balances">
+      <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      All Balances
+    </a>
+    <a class="nav-item" data-page="transactions">
+      <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+      Transactions
+    </a>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">Settings</div>
+    <a class="nav-item" data-page="sports">
+      <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 2"/></svg>
+      Sports Settings
+    </a>
+    <a class="nav-item" data-page="activity">
+      <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+      Activity Log
+    </a>
+  </div>
+  <div style="flex:1"></div>
+  <div style="padding:16px;">
+<button class="btn btn-danger btn-sm" style="width:100%;justify-content:center;" onclick="window.location.href='https://nxexch.com/superadmin_login'">      <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+      Logout
+    </button>
+  </div>
+</nav>
+
+<!-- MAIN AREA -->
+<div id="main">
+  <div class="topbar">
+    <div class="topbar-title" id="page-title">Dashboard</div>
+    <div class="topbar-right">
+      <div class="topbar-balance">Balance: <span id="my-balance">—</span></div>
+      <div class="clock-display" id="clock">--:--:--</div>
+    </div>
+  </div>
+
+  <!-- =========== DASHBOARD =========== -->
+  <div class="page-content active" id="page-dashboard">
+    <div class="page-top-accent"></div>
+    <div class="stats-grid">
+      <div class="stat-card green"><div class="stat-label">Admins</div><div class="stat-value green" id="s-admins">—</div><div class="stat-sub">Total accounts</div></div>
+      <div class="stat-card cyan"><div class="stat-label">SuperMasters</div><div class="stat-value cyan" id="s-sm">—</div><div class="stat-sub">Total accounts</div></div>
+      <div class="stat-card orange"><div class="stat-label">Masters</div><div class="stat-value orange" id="s-m">—</div><div class="stat-sub">Total accounts</div></div>
+      <div class="stat-card purple"><div class="stat-label">Users</div><div class="stat-value purple" id="s-u">—</div><div class="stat-sub">Total accounts</div></div>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header"><div class="card-title">Quick Actions</div></div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:10px;">
+          <button class="btn btn-primary" onclick="switchPage('admins');setTimeout(()=>openModal('createModal'),100)">+ Create Admin</button>
+          <button class="btn btn-cyan" onclick="switchPage('balances')">💰 View All Balances</button>
+          <button class="btn btn-orange" onclick="switchPage('sports')">⚙️ Sports Settings</button>
+          <button class="btn btn-ghost" onclick="switchPage('activity')">📋 Activity Log</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Recent Transactions</div><span class="badge badge-green" style="font-size:10px;">Live</span></div>
+        <div class="card-body" style="max-height:280px;overflow-y:auto;" id="dash-recent">
+          <div class="loading-cell">Loading...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========== USER TABLES (Admins / SuperMasters / Masters / Users) =========== -->
+  <div class="page-content" id="page-admins">
+    <div class="page-top-accent"></div>
+    <div class="section-header">
+      <div><div class="section-title">🛡️ Admins</div><div class="section-sub">Only SuperAdmin can create Admin accounts</div></div>
+      <button class="btn btn-primary" onclick="openCreate('Admin')">+ Create Admin</button>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Admin Accounts</div>
+        <div class="toolbar">
+          <input class="search-input" placeholder="Search..." oninput="filterTbl('tb-admins',this.value)">
+          <select class="form-select" style="width:130px;" onchange="filterStatus('tb-admins',this.value)">
+            <option value="">All Status</option><option>Active</option><option>Inactive</option><option>Suspended</option>
+          </select>
+        </div>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>#</th><th>Username</th><th>Phone</th><th>Created By</th><th>Wallet</th><th>Credit</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody id="tb-admins"><tr><td colspan="8" class="loading-cell">Loading...</td></tr></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <div class="page-content" id="page-supermasters">
+    <div class="page-top-accent"></div>
+    <div class="section-header">
+      <div><div class="section-title">⭐ SuperMasters</div><div class="section-sub">Manage SuperMaster accounts</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">SuperMaster Accounts</div>
+        <div class="toolbar">
+          <input class="search-input" placeholder="Search..." oninput="filterTbl('tb-sm',this.value)">
+          <select class="form-select" style="width:130px;" onchange="filterStatus('tb-sm',this.value)">
+            <option value="">All Status</option><option>Active</option><option>Inactive</option><option>Suspended</option>
+          </select>
+        </div>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>#</th><th>Username</th><th>Phone</th><th>Created By</th><th>Wallet</th><th>Credit</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody id="tb-sm"><tr><td colspan="8" class="loading-cell">Loading...</td></tr></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <div class="page-content" id="page-masters">
+    <div class="page-top-accent"></div>
+    <div class="section-header">
+      <div><div class="section-title">👥 Masters</div><div class="section-sub">Manage Master accounts</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Master Accounts</div>
+        <div class="toolbar">
+          <input class="search-input" placeholder="Search..." oninput="filterTbl('tb-m',this.value)">
+        </div>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>#</th><th>Username</th><th>Phone</th><th>Created By</th><th>Wallet</th><th>Credit</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody id="tb-m"><tr><td colspan="8" class="loading-cell">Loading...</td></tr></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <div class="page-content" id="page-users">
+    <div class="page-top-accent"></div>
+    <div class="section-header">
+      <div><div class="section-title">👤 Users</div><div class="section-sub">Manage User accounts</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">User Accounts</div>
+        <div class="toolbar">
+          <input class="search-input" placeholder="Search..." oninput="filterTbl('tb-u',this.value)">
+        </div>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>#</th><th>Username</th><th>Phone</th><th>Created By</th><th>Wallet</th><th>Credit</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody id="tb-u"><tr><td colspan="8" class="loading-cell">Loading...</td></tr></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <!-- =========== ALL BALANCES =========== -->
+  <div class="page-content" id="page-balances">
+    <div class="page-top-accent"></div>
+    <div class="section-header">
+      <div><div class="section-title">💰 All Balances</div><div class="section-sub">Wallet & credit balances of all users</div></div>
+      <button class="btn btn-cyan btn-sm" onclick="loadBalances()">↻ Refresh</button>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Balance Overview</div>
+        <div class="toolbar">
+          <select class="form-select" style="width:150px;" onchange="filterRole('tb-bal',this.value)">
+            <option value="">All Roles</option><option>Admin</option><option>SuperMaster</option><option>Master</option><option>User</option>
+          </select>
+          <input class="search-input" placeholder="Search..." oninput="filterTbl('tb-bal',this.value)">
+        </div>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>#</th><th>Username</th><th>Role</th><th>Created By</th><th>Wallet</th><th>Credit</th><th>Status</th><th>Action</th></tr></thead>
+        <tbody id="tb-bal"><tr><td colspan="8" class="loading-cell">Loading...</td></tr></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <!-- =========== TRANSACTIONS =========== -->
+  <div class="page-content" id="page-transactions">
+    <div class="page-top-accent"></div>
+    <div class="section-header">
+      <div><div class="section-title">🔄 Transactions</div><div class="section-sub">All deposit & withdrawal records</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Transaction History</div>
+        <div class="toolbar">
+          <select class="form-select" style="width:150px;" id="tx-filter-type" onchange="loadTransactions()">
+            <option value="">All Types</option><option value="deposit">Deposit</option><option value="withdrawal">Withdrawal</option>
+          </select>
+        </div>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>#</th><th>User</th><th>Role</th><th>Type</th><th>Amount</th><th>From→To</th><th>Description</th><th>Date</th></tr></thead>
+        <tbody id="tb-tx"><tr><td colspan="8" class="loading-cell">Loading...</td></tr></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <!-- =========== SPORTS SETTINGS =========== -->
+  <div class="page-content" id="page-sports">
+    <div class="page-top-accent"></div>
+    <div class="section-header">
+      <div>
+        <div class="section-title">⚙️ Sports Settings</div>
+        <div class="section-sub">Sport → League/Country → Match → Market — jo select karoge wohi dashboard pe dikhega</div>
+      </div>
+    </div>
+
+    <div class="card" style="padding:16px;">
+      <div class="tree-wrap">
+        <!-- Left rail: sport picker -->
+        <div class="tree-sportrail" id="tree-sportrail"></div>
+
+        <!-- Right: tree -->
+        <div class="tree-main">
+          <div class="tree-toolbar">
+            <input type="text" class="tree-search" id="tree-search" placeholder="League ya match search karo…">
+            <select class="tree-hours-select" id="tree-hours">
+              <option value="24">Next 24h</option>
+              <option value="48" selected>Next 48h</option>
+              <option value="72">Next 72h</option>
+              <option value="168">Next 7 days</option>
+            </select>
+            <button class="btn btn-cyan btn-sm" id="tree-refresh-btn">🔄 Refresh</button>
+          </div>
+
+          <div id="tree-container"></div>
+
+          <div class="tree-savebar" id="tree-savebar" style="display:none;">
+            <span class="dirty-count" id="tree-dirty-count">0 changes pending</span>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-sm" id="tree-discard-btn" style="background:var(--bg-hover);color:var(--text-secondary);">Discard</button>
+              <button class="btn btn-primary btn-sm" id="tree-save-btn">💾 Save Changes</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========== ACTIVITY LOG =========== -->
+  <div class="page-content" id="page-activity">
+    <div class="page-top-accent"></div>
+    <div class="section-header">
+      <div><div class="section-title">📋 Activity Log</div><div class="section-sub">Transaction-based activity of all users</div></div>
+      <div class="toolbar">
+        <select class="form-select" style="width:140px;" id="act-filter-type" onchange="loadActivity()">
+          <option value="">All Actions</option><option value="deposit">Deposit</option><option value="withdrawal">Withdrawal</option>
+          <option value="credit-deposit">Credit Deposit</option><option value="credit-withdrawal">Credit Withdrawal</option>
+        </select>
+        <button class="btn btn-ghost btn-sm" onclick="loadActivity()">↻ Refresh</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">System Activity</div></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Date/Time</th><th>User</th><th>Role</th><th>Type</th><th>Amount</th><th>Description</th><th>From</th><th>To</th></tr></thead>
+        <tbody id="tb-act"><tr><td colspan="8" class="loading-cell">Loading...</td></tr></tbody>
+      </table></div>
+    </div>
+  </div>
+</div>
+
+<!-- =========== MODALS =========== -->
+
+<!-- Create User Modal -->
+<div class="modal-overlay" id="createModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="create-modal-title">Create User</div>
+      <button class="modal-close" onclick="closeModal('createModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="info-box" id="create-info-box"></div>
+      <form id="create-form" onsubmit="submitCreate(event)">
+        <input type="hidden" id="create-role-input">
+        <div class="form-group">
+          <label class="form-label">Username *</label>
+          <input type="text" id="cf-username" class="form-input" placeholder="Minimum 3 characters" required minlength="3" maxlength="60">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password *</label>
+          <input type="password" id="cf-password" class="form-input" placeholder="Minimum 6 characters" required minlength="6">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Phone</label>
+          <input type="text" id="cf-phone" class="form-input" placeholder="Optional">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Initial Balance</label>
+          <input type="number" id="cf-balance" class="form-input" placeholder="0.00" min="0" step="0.01" value="0">
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('createModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitCreate()">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- Send Money Modal -->
+<div class="modal-overlay" id="sendModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">💸 Send Money</div>
+      <button class="modal-close" onclick="closeModal('sendModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:var(--bg-primary);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:16px;">
+        <div style="font-size:11px;color:var(--text-secondary);">Sending to</div>
+        <div style="font-size:18px;font-weight:700;font-family:'Rajdhani',sans-serif;" id="send-to-name">—</div>
+        <div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">
+          Role: <span id="send-to-role" style="color:var(--accent-cyan);">—</span> &nbsp;|&nbsp;
+          Current Wallet: <span id="send-to-balance" style="color:var(--accent-green);">—</span>
+        </div>
+      </div>
+      <input type="hidden" id="send-user-id">
+      <div class="form-group">
+        <label class="form-label">Type</label>
+        <select id="send-type" class="form-select">
+          <option value="deposit">Deposit (Add Money)</option>
+          <option value="withdrawal">Withdrawal (Take Money Back)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Amount *</label>
+        <input type="number" id="send-amount" class="form-input" placeholder="Enter amount" min="0.01" step="0.01" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description *</label>
+        <input type="text" id="send-desc" class="form-input" placeholder="e.g. Monthly transfer" required>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('sendModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitSend()">Send</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit User Modal -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">✏️ Edit User</div>
+      <button class="modal-close" onclick="closeModal('editModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-user-id">
+      <div class="form-group">
+        <label class="form-label">Username</label>
+        <input type="text" id="edit-username" class="form-input">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Phone</label>
+        <input type="text" id="edit-phone" class="form-input">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Status</label>
+        <select id="edit-status" class="form-select">
+          <option>Active</option><option>Inactive</option><option>Suspended</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">New Password (leave blank to keep)</label>
+        <input type="password" id="edit-password" class="form-input" placeholder="Optional">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('editModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitEdit()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- Balance Detail Modal -->
+<div class="modal-overlay" id="detailModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">👁️ User Details</div>
+      <button class="modal-close" onclick="closeModal('detailModal')">✕</button>
+    </div>
+    <div class="modal-body" id="detail-body">Loading...</div>
+  </div>
+</div>
+
+
 
 <script>
+/* ===================================================
+   CONFIG
+   =================================================== */
 const API = 'https://1xbetbackend.work.gd';
-const SPORTS = {
-  cricket:      { name: 'Cricket',      betfairId: '4',    icon: '🏏' },
-  football:     { name: 'Football',     betfairId: '1',    icon: '⚽' },
-  tennis:       { name: 'Tennis',       betfairId: '2',    icon: '🎾' },
-  horse_racing: { name: 'Horse Racing', betfairId: '7',    icon: '🏇' },
-  greyhounds:   { name: 'Greyhound',    betfairId: '4339', icon: '🐕' },
-};
-const RACING = new Set(['horse_racing', 'greyhounds']);
-function isRacing(k) { return RACING.has(k); }
 
-let curSport = 'cricket';
-/** treeState[sport] = { leagues: [{id,name,matches:[{eventId,marketId,name,startTime,enabled,markets:[{marketId,marketName,enabled}]}]}] } */
-const treeState = {};
-/** selection[sport] = { leagueIds:Set, matchIds:Set, marketIds:Set } */
-const selection = {};
-
-Object.keys(SPORTS).forEach(k => {
-  selection[k] = {
-    leagueIds: new Set(JSON.parse(localStorage.getItem('sel_leagues_' + k) || '[]')),
-    matchIds:  new Set(JSON.parse(localStorage.getItem('sel_matches_' + k) || '[]')),
-    marketIds: new Set(JSON.parse(localStorage.getItem('sel_markets_' + k) || '[]')),
-  };
-  treeState[k] = { leagues: [] };
-});
-
+/* ===================================================
+   UTILS
+   =================================================== */
 function token() { return localStorage.getItem('token') || ''; }
+
 async function api(path, method = 'GET', body = null) {
   const opts = {
     method,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token() ? { Authorization: 'Bearer ' + token() } : {}),
-    },
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}` },
   };
   if (body) opts.body = JSON.stringify(body);
-  const r = await fetch(API + path, opts);
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j.message || ('HTTP ' + r.status));
-  return j;
+  try {
+    const r = await fetch(API + path, opts);
+    if (r.status === 401) { localStorage.removeItem('token'); window.location.href = '/Users/Login'; return { success: false, message: 'Session expired' }; }
+    const data = await r.json();
+    return data;
+  } catch (e) {
+    return { success: false, message: 'Network error: ' + e.message };
+  }
 }
 
-function toast(msg, type = 'ok') {
+/* ===================================================
+   GLOBAL USER CACHE
+   Resolves parent_id → {username, role} even when
+   backend JOIN fails (BIGINT type mismatch on MySQL)
+   =================================================== */
+const userCache = {};
+
+function cacheUsers(arr) {
+  (arr || []).forEach(u => {
+    if (u && u.id) userCache[String(u.id)] = { username: u.username, role: u.role };
+    if (u && u.parent && u.parent.id) userCache[String(u.parent.id)] = { username: u.parent.username, role: u.parent.role };
+  });
+}
+
+async function ensureUserInCache(id) {
+  if (!id || userCache[String(id)]) return;
+  try {
+    const r = await api('/api/v1/users/' + id);
+    if (r.success && r.data && r.data.user) {
+      const u = r.data.user;
+      userCache[String(u.id)] = { username: u.username, role: u.role };
+    }
+  } catch (e) {}
+}
+
+function toast(msg, type = 'success') {
   const el = document.createElement('div');
-  el.className = 'toast ' + type;
+  el.className = `toast-msg toast-${type}`;
   el.textContent = msg;
   document.getElementById('toast').appendChild(el);
-  setTimeout(() => el.remove(), 3500);
+  setTimeout(() => el.remove(), 4000);
 }
 
-function showPage(id, el) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+function fmt(n) { return '₹' + parseFloat(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function fmtDate(d) { if (!d) return '—'; return new Date(d).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+
+/* ===================================================
+   MODAL
+   =================================================== */
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+/* Close modal on overlay click */
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
+});
+
+/* ===================================================
+   NAVIGATION
+   =================================================== */
+const PAGE_TITLES = {
+  dashboard: 'Dashboard', admins: 'Admins', supermasters: 'SuperMasters',
+  masters: 'Masters', users: 'Users', balances: 'All Balances',
+  transactions: 'Transactions', sports: 'Sports Settings', activity: 'Activity Log',
+};
+
+function switchPage(page) {
+  document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.getElementById('page-' + id).classList.add('active');
-  if (el) el.classList.add('active');
-  const titles = { dashboard: 'Dashboard', users: 'Users', sports: 'Sports Settings' };
-  document.getElementById('page-title').textContent = titles[id] || id;
-  if (id === 'sports') renderSportRail();
-  if (id === 'users') loadUsers();
-  if (id === 'dashboard') refreshStats();
+  const pg = document.getElementById('page-' + page);
+  if (pg) pg.classList.add('active');
+  const nav = document.querySelector(`.nav-item[data-page="${page}"]`);
+  if (nav) nav.classList.add('active');
+  document.getElementById('page-title').textContent = PAGE_TITLES[page] || page;
+
+  if (page === 'admins')       loadList('Admin',       'admin', 'tb-admins', 'cnt-admins', 's-admins');
+  else if (page === 'supermasters') loadList('SuperMaster', 'sm',    'tb-sm',    'cnt-sm',    's-sm');
+  else if (page === 'masters')      loadList('Master',      'm',     'tb-m',     'cnt-m',     's-m');
+  else if (page === 'users')        loadList('User',        'u',     'tb-u',     'cnt-u',     's-u');
+  else if (page === 'balances')     loadBalances();
+  else if (page === 'transactions') loadTransactions();
+  else if (page === 'sports')       initSportsTree();
+  else if (page === 'activity')     loadActivity();
+  else if (page === 'dashboard')    loadDashboard();
 }
 
+document.querySelectorAll('.nav-item[data-page]').forEach(el => {
+  el.addEventListener('click', () => switchPage(el.dataset.page));
+});
+
+/* ===================================================
+   CLOCK + SELF
+   =================================================== */
+function tick() {
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+setInterval(tick, 1000); tick();
+
+async function loadSelf() {
+  try {
+    const r = await api('/api/v1/auth/me');
+    if (r.success) {
+      const u = r.data.user;
+      if (u && u.id) userCache[String(u.id)] = { username: u.username, role: u.role };
+      document.getElementById('sidebar-username').textContent = u.username;
+      document.getElementById('sidebar-role').textContent = u.role;
+      document.getElementById('sa-avatar').textContent = (u.username || 'SA').slice(0, 2).toUpperCase();
+      document.getElementById('my-balance').textContent = fmt(u.wallet_balance);
+    }
+  } catch (e) {}
+}
+
+/* ===================================================
+   CREATOR BADGE
+   Priority: 1) backend JOIN result  2) local cache  3) async fetch
+   =================================================== */
+const ROLE_COLORS = { SuperAdmin: 'badge-green', Admin: 'badge-cyan', SuperMaster: 'badge-orange', Master: 'badge-purple', User: 'badge-gray' };
+
+function creatorBadgeHTML(username, role) {
+  return `<div class="creator-cell">
+    <span style="font-weight:600;font-size:13px;">${username}</span>
+    <span class="badge ${ROLE_COLORS[role] || 'badge-gray'}" style="font-size:10px;width:fit-content;">${role}</span>
+  </div>`;
+}
+
+function creatorCell(user) {
+  // 1. Backend JOIN returned parent object
+  const p = user.parent;
+  if (p && p.username) return creatorBadgeHTML(p.username, p.role);
+
+  // 2. Resolve from local cache
+  const cached = userCache[String(user.parent_id)];
+  if (user.parent_id && cached) return creatorBadgeHTML(cached.username, cached.role);
+
+  // 3. parent_id exists but not in cache — fetch async, show placeholder
+  if (user.parent_id) {
+    ensureUserInCache(user.parent_id);
+    return `<span style="color:var(--text-secondary);font-size:12px;">Loading...</span>`;
+  }
+
+  // 4. No parent = root account
+  return '<span style="color:var(--text-secondary);font-size:12px;">—</span>';
+}
+
+/* ===================================================
+   USER ROW
+   =================================================== */
+function userRow(u, i) {
+  const statusBadge = u.status === 'Active' ? 'badge-green' : (u.status === 'Suspended' ? 'badge-orange' : 'badge-red');
+  // Safely encode user data for onclick
+  const uJson = JSON.stringify({ id: u.id, username: u.username, role: u.role, wallet_balance: u.wallet_balance }).replace(/'/g, "\'");
+  const uEditJson = JSON.stringify({ id: u.id, username: u.username, phone: u.phone, status: u.status }).replace(/'/g, "\'");
+  const uFullJson = JSON.stringify(u).replace(/'/g, "\'");
+  return `<tr data-search="${(u.username || '').toLowerCase()}" data-status="${u.status || ''}" data-role="${u.role}">
+    <td style="color:var(--text-secondary);font-size:12px;">${i + 1}</td>
+    <td>
+      <div style="font-weight:600;">${u.username}</div>
+      <div style="font-size:11px;color:var(--text-secondary);">ID: ${u.id}</div>
+    </td>
+    <td style="color:var(--text-secondary);">${u.phone || '—'}</td>
+    <td>${creatorCell(u)}</td>
+    <td class="amount-pos">${fmt(u.wallet_balance)}</td>
+    <td style="color:var(--accent-cyan);">${fmt(u.credit_balance)}</td>
+    <td><span class="badge ${statusBadge}">${u.status || 'Inactive'}</span></td>
+    <td>
+      <div class="action-group">
+        <button class="btn btn-orange btn-sm" title="Send Money" onclick='openSend(${JSON.stringify({ id: u.id, username: u.username, role: u.role, wallet_balance: u.wallet_balance })})'>💸</button>
+        <button class="btn btn-cyan btn-sm" title="Details" onclick='openDetail(${JSON.stringify(u)})'>👁️</button>
+        <button class="btn btn-ghost btn-sm" title="Edit" onclick='openEdit(${JSON.stringify({ id: u.id, username: u.username, phone: u.phone, status: u.status })})'>✏️</button>
+        <button class="btn btn-danger btn-sm" title="Delete" onclick="deleteUser(${u.id},'${u.username}')">🗑️</button>
+      </div>
+    </td>
+  </tr>`;
+}
+
+/* ===================================================
+   LOAD LIST (Admins / SuperMasters / Masters / Users)
+   =================================================== */
+const ENDPOINTS = {
+  Admin: '/api/v1/users/admin',
+  SuperMaster: '/api/v1/users/supermasters',
+  Master: '/api/v1/users/masters',
+  User: '/api/v1/users/user',
+};
+
+async function loadList(role, key, tbodyId, cntId, statId) {
+  const tbody = document.getElementById(tbodyId);
+  tbody.innerHTML = `<tr><td colspan="8" class="loading-cell">Loading ${role}s...</td></tr>`;
+  try {
+    const r = await api(ENDPOINTS[role]);
+    if (!r.success) {
+      tbody.innerHTML = `<tr><td colspan="8" class="loading-cell" style="color:var(--accent-red);">${r.message}</td></tr>`;
+      return;
+    }
+    const arr = r.data.admins || r.data.masters || r.data.users || [];
+    if (document.getElementById(cntId)) document.getElementById(cntId).textContent = arr.length;
+    if (document.getElementById(statId)) document.getElementById(statId).textContent = arr.length;
+    if (!arr.length) {
+      tbody.innerHTML = `<tr><td colspan="8" class="loading-cell">No ${role}s found</td></tr>`;
+      return;
+    }
+    cacheUsers(arr);
+    tbody.innerHTML = arr.map((u, i) => userRow(u, i)).join('');
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="8" class="loading-cell" style="color:var(--accent-red);">Error: ${e.message}</td></tr>`;
+  }
+}
+
+/* ===================================================
+   ALL BALANCES
+   =================================================== */
+async function loadBalances() {
+  const tbody = document.getElementById('tb-bal');
+  tbody.innerHTML = `<tr><td colspan="8" class="loading-cell">Loading...</td></tr>`;
+  try {
+    const r = await api('/api/v1/users/all-balances');
+    if (!r.success) {
+      tbody.innerHTML = `<tr><td colspan="8" class="loading-cell" style="color:var(--accent-red);">${r.message}</td></tr>`;
+      return;
+    }
+    const arr = r.data.users || [];
+    if (!arr.length) {
+      tbody.innerHTML = `<tr><td colspan="8" class="loading-cell">No users found</td></tr>`;
+      return;
+    }
+    cacheUsers(arr);
+    const roleB = { Admin: 'badge-green', SuperMaster: 'badge-cyan', Master: 'badge-orange', User: 'badge-purple' };
+    const statusB = { Active: 'badge-green', Inactive: 'badge-red', Suspended: 'badge-orange' };
+    tbody.innerHTML = arr.map((u, i) => `
+      <tr data-search="${(u.username || '').toLowerCase()}" data-role="${u.role}">
+        <td style="color:var(--text-secondary);font-size:12px;">${i + 1}</td>
+        <td><div style="font-weight:600;">${u.username}</div><div style="font-size:11px;color:var(--text-secondary);">ID: ${u.id}</div></td>
+        <td><span class="badge ${roleB[u.role] || 'badge-gray'}">${u.role}</span></td>
+        <td>${creatorCell(u)}</td>
+        <td class="amount-pos">${fmt(u.wallet_balance)}</td>
+        <td style="color:var(--accent-cyan);">${fmt(u.credit_balance)}</td>
+        <td><span class="badge ${statusB[u.status] || 'badge-red'}">${u.status}</span></td>
+        <td>
+          <button class="btn btn-orange btn-sm" onclick='openSend(${JSON.stringify({ id: u.id, username: u.username, role: u.role, wallet_balance: u.wallet_balance })})'>💸 Send</button>
+        </td>
+      </tr>`).join('');
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="8" class="loading-cell" style="color:var(--accent-red);">Error: ${e.message}</td></tr>`;
+  }
+}
+
+/* ===================================================
+   TRANSACTIONS
+   =================================================== */
+async function loadTransactions() {
+  const tbody = document.getElementById('tb-tx');
+  tbody.innerHTML = `<tr><td colspan="8" class="loading-cell">Loading...</td></tr>`;
+  const typeFilter = document.getElementById('tx-filter-type').value;
+  const qs = typeFilter ? `?type=${typeFilter}` : '';
+  try {
+    const r = await api('/api/v1/users/all-transactions' + qs);
+    if (!r.success) {
+      tbody.innerHTML = `<tr><td colspan="8" class="loading-cell" style="color:var(--accent-red);">${r.message}</td></tr>`;
+      return;
+    }
+    const arr = r.data.transactions || [];
+    if (!arr.length) {
+      tbody.innerHTML = `<tr><td colspan="8" class="loading-cell">No transactions found</td></tr>`;
+      return;
+    }
+    // Cache users from transaction results
+    arr.forEach(tx => { if (tx.user && tx.user.id) userCache[String(tx.user.id)] = { username: tx.user.username, role: tx.user.role }; });
+    const typeB = { deposit: 'badge-green', withdrawal: 'badge-red', 'credit-deposit': 'badge-cyan', 'credit-withdrawal': 'badge-orange', BET_PLACED: 'badge-purple', BET_SETTLEMENT: 'badge-cyan', BET_CANCELLED: 'badge-orange' };
+    tbody.innerHTML = arr.map((tx, i) => {
+      const u = tx.user || userCache[String(tx.user_id)] || null;
+      const fromU = userCache[String(tx.from_user_id)];
+      const toU   = userCache[String(tx.to_user_id)];
+      return `
+      <tr>
+        <td style="color:var(--text-secondary);font-size:12px;">${i + 1}</td>
+        <td style="font-weight:600;">${u ? u.username : (tx.user_id ? 'ID:' + tx.user_id : '—')}</td>
+        <td>${u ? `<span class="badge ${ROLE_COLORS[u.role] || 'badge-gray'}" style="font-size:10px;">${u.role}</span>` : '—'}</td>
+        <td><span class="badge ${typeB[tx.type] || 'badge-gray'}">${tx.type}</span></td>
+        <td class="${tx.type === 'deposit' || tx.type === 'credit-deposit' ? 'amount-pos' : 'amount-neg'}">${fmt(tx.amount)}</td>
+        <td style="font-size:12px;color:var(--text-secondary);">${fromU ? fromU.username : (tx.from_user_id || '—')} → ${toU ? toU.username : (tx.to_user_id || '—')}</td>
+        <td style="font-size:12px;color:var(--text-secondary);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${tx.description || '—'}</td>
+        <td style="font-size:12px;color:var(--text-secondary);white-space:nowrap;">${fmtDate(tx.created_at || tx.createdAt)}</td>
+      </tr>`;
+    }).join('');
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="8" class="loading-cell" style="color:var(--accent-red);">Error: ${e.message}</td></tr>`;
+  }
+}
+
+/* ===================================================
+   ACTIVITY LOG
+   =================================================== */
+async function loadActivity() {
+  const tbody = document.getElementById('tb-act');
+  tbody.innerHTML = `<tr><td colspan="8" class="loading-cell">Loading...</td></tr>`;
+  const typeFilter = document.getElementById('act-filter-type').value;
+  const qs = typeFilter ? `?type=${typeFilter}` : '';
+  try {
+    const r = await api('/api/v1/users/activity-log' + qs);
+    if (!r.success) {
+      tbody.innerHTML = `<tr><td colspan="8" class="loading-cell" style="color:var(--accent-red);">${r.message}</td></tr>`;
+      return;
+    }
+    const arr = r.data.logs || [];
+    if (!arr.length) {
+      tbody.innerHTML = `<tr><td colspan="8" class="loading-cell">No activity found</td></tr>`;
+      return;
+    }
+    // Cache users from log results
+    arr.forEach(tx => { if (tx.user && tx.user.id) userCache[String(tx.user.id)] = { username: tx.user.username, role: tx.user.role }; });
+
+    const typeB = { deposit: 'badge-green', withdrawal: 'badge-red', 'credit-deposit': 'badge-cyan', 'credit-withdrawal': 'badge-orange', BET_PLACED: 'badge-purple', BET_SETTLEMENT: 'badge-cyan', BET_CANCELLED: 'badge-orange' };
+
+    tbody.innerHTML = arr.map(tx => {
+      const u      = tx.user || userCache[String(tx.user_id)] || null;
+      const fromU  = userCache[String(tx.from_user_id)];
+      const toU    = userCache[String(tx.to_user_id)];
+      const uName  = u ? u.username : (tx.user_id ? `ID:${tx.user_id}` : '—');
+      const uRole  = u ? u.role : null;
+      return `
+      <tr>
+        <td style="font-size:12px;color:var(--text-secondary);white-space:nowrap;">${fmtDate(tx.created_at || tx.createdAt)}</td>
+        <td style="font-weight:600;">${uName}</td>
+        <td>${uRole ? `<span class="badge ${ROLE_COLORS[uRole] || 'badge-gray'}" style="font-size:10px;">${uRole}</span>` : '—'}</td>
+        <td><span class="badge ${typeB[tx.type] || 'badge-gray'}">${tx.type}</span></td>
+        <td class="${tx.type === 'deposit' || tx.type === 'credit-deposit' ? 'amount-pos' : 'amount-neg'}">${fmt(tx.amount)}</td>
+        <td style="font-size:12px;color:var(--text-secondary);">${tx.description || '—'}</td>
+        <td style="font-size:12px;color:var(--text-secondary);">${fromU ? fromU.username : (tx.from_user_id || '—')}</td>
+        <td style="font-size:12px;color:var(--text-secondary);">${toU ? toU.username : (tx.to_user_id || '—')}</td>
+      </tr>`;
+    }).join('');
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="8" class="loading-cell" style="color:var(--accent-red);">Error: ${e.message}</td></tr>`;
+  }
+}
+
+/* ===================================================
+   DASHBOARD
+   =================================================== */
+async function loadDashboard() {
+  try {
+    const r = await api('/api/v1/users/dashboard');
+    if (!r.success) return;
+    const c = r.data.counts;
+    document.getElementById('s-admins').textContent    = c.admins;
+    document.getElementById('s-sm').textContent        = c.supermasters;
+    document.getElementById('s-m').textContent         = c.masters;
+    document.getElementById('s-u').textContent         = c.users;
+    document.getElementById('cnt-admins').textContent  = c.admins;
+    document.getElementById('cnt-sm').textContent      = c.supermasters;
+    document.getElementById('cnt-m').textContent       = c.masters;
+    document.getElementById('cnt-u').textContent       = c.users;
+
+    const txArr = r.data.recentTransactions || [];
+    const el = document.getElementById('dash-recent');
+    if (!txArr.length) { el.innerHTML = '<div class="loading-cell">No recent transactions</div>'; return; }
+    const typeB = { deposit: 'badge-green', withdrawal: 'badge-red', 'credit-deposit': 'badge-cyan', 'credit-withdrawal': 'badge-orange', BET_PLACED: 'badge-purple' };
+    el.innerHTML = txArr.map(tx => {
+      const u = tx.user || userCache[String(tx.user_id)] || null;
+      return `
+        <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);">
+          <span class="badge ${typeB[tx.type] || 'badge-gray'}" style="font-size:10px;">${tx.type}</span>
+          <div style="flex:1;font-size:12px;">
+            <span style="font-weight:600;">${u ? u.username : 'ID:' + tx.user_id}</span>
+            <span style="color:var(--text-secondary);margin-left:6px;">${tx.description || ''}</span>
+          </div>
+          <span class="${tx.type === 'deposit' || tx.type === 'credit-deposit' ? 'amount-pos' : 'amount-neg'}" style="font-size:13px;">${fmt(tx.amount)}</span>
+        </div>`;
+    }).join('');
+  } catch (e) {}
+}
+
+/* ===================================================
+   CREATE USER
+   =================================================== */
+const CREATE_INFO = {
+  Admin:       'SuperAdmin only can create Admin accounts.',
+  SuperMaster: 'Admin or SuperAdmin can create SuperMaster accounts.',
+  Master:      'SuperMaster, Admin or SuperAdmin can create Master accounts.',
+  User:        'Master and above can create User accounts.',
+};
+
+function openCreate(role) {
+  document.getElementById('create-role-input').value = role;
+  document.getElementById('create-modal-title').textContent = `Create ${role}`;
+  document.getElementById('create-info-box').textContent = CREATE_INFO[role] || '';
+  document.getElementById('create-form').reset();
+  openModal('createModal');
+}
+
+async function submitCreate() {
+  const role           = document.getElementById('create-role-input').value;
+  const username       = document.getElementById('cf-username').value.trim();
+  const password       = document.getElementById('cf-password').value;
+  const phone          = document.getElementById('cf-phone').value.trim();
+  const initial_balance = parseFloat(document.getElementById('cf-balance').value) || 0;
+
+  if (!username || username.length < 3) { toast('Username must be at least 3 characters', 'error'); return; }
+  if (!password || password.length < 6) { toast('Password must be at least 6 characters', 'error'); return; }
+
+  try {
+    const r = await api('/api/v1/users/create', 'POST', { username, password, phone: phone || undefined, role, initial_balance });
+    if (r.success) {
+      toast(`✅ ${role} '${username}' created successfully!`);
+      closeModal('createModal');
+      // Cache newly created user
+      if (r.data && r.data.user) {
+        const nu = r.data.user;
+        userCache[String(nu.id)] = { username: nu.username, role: nu.role };
+      }
+      const tbMap = {
+        Admin:       ['Admin',       'admin', 'tb-admins', 'cnt-admins', 's-admins'],
+        SuperMaster: ['SuperMaster', 'sm',    'tb-sm',    'cnt-sm',    's-sm'],
+        Master:      ['Master',      'm',     'tb-m',     'cnt-m',     's-m'],
+        User:        ['User',        'u',     'tb-u',     'cnt-u',     's-u'],
+      };
+      if (tbMap[role]) loadList(...tbMap[role]);
+      loadDashboard();
+    } else {
+      toast('❌ ' + r.message, 'error');
+    }
+  } catch (e) {
+    toast('❌ Server error: ' + e.message, 'error');
+  }
+}
+
+/* ===================================================
+   SEND MONEY
+   =================================================== */
+function openSend(u) {
+  document.getElementById('send-user-id').value        = u.id;
+  document.getElementById('send-to-name').textContent  = u.username;
+  document.getElementById('send-to-role').textContent  = u.role;
+  document.getElementById('send-to-balance').textContent = fmt(u.wallet_balance);
+  document.getElementById('send-amount').value = '';
+  document.getElementById('send-desc').value   = '';
+  openModal('sendModal');
+}
+
+async function submitSend() {
+  const userId      = parseInt(document.getElementById('send-user-id').value);
+  const type        = document.getElementById('send-type').value;
+  const amount      = parseFloat(document.getElementById('send-amount').value);
+  const description = document.getElementById('send-desc').value.trim();
+
+  if (!amount || amount <= 0) { toast('Enter a valid amount', 'error'); return; }
+  if (!description)           { toast('Description is required', 'error'); return; }
+
+  try {
+    const r = await api('/api/v1/users/transaction', 'POST', { type, amount, userId, description });
+    if (r.success) {
+      toast(`✅ ${type === 'deposit' ? 'Deposit' : 'Withdrawal'} of ${fmt(amount)} successful!`);
+      closeModal('sendModal');
+      document.getElementById('my-balance').textContent = fmt(r.data.currentUserBalance);
+      // Refresh active page data
+      const active = document.querySelector('.page-content.active');
+      if (active) switchPage(active.id.replace('page-', ''));
+    } else {
+      toast('❌ ' + r.message, 'error');
+    }
+  } catch (e) {
+    toast('❌ Server error: ' + e.message, 'error');
+  }
+}
+
+/* ===================================================
+   EDIT USER
+   =================================================== */
+function openEdit(u) {
+  document.getElementById('edit-user-id').value    = u.id;
+  document.getElementById('edit-username').value   = u.username || '';
+  document.getElementById('edit-phone').value      = u.phone || '';
+  document.getElementById('edit-status').value     = u.status || 'Active';
+  document.getElementById('edit-password').value   = '';
+  openModal('editModal');
+}
+
+async function submitEdit() {
+  const id   = document.getElementById('edit-user-id').value;
+  const body = {
+    username: document.getElementById('edit-username').value.trim(),
+    phone:    document.getElementById('edit-phone').value.trim() || null,
+    status:   document.getElementById('edit-status').value,
+  };
+  const pw = document.getElementById('edit-password').value;
+  if (pw) body.password = pw;
+
+  if (!body.username || body.username.length < 3) { toast('Username must be at least 3 characters', 'error'); return; }
+
+  try {
+    const r = await api(`/api/v1/users/${id}`, 'PUT', body);
+    if (r.success) {
+      toast('✅ User updated successfully!');
+      closeModal('editModal');
+      // Update cache
+      userCache[String(id)] = { username: body.username, role: userCache[String(id)]?.role || '' };
+      const active = document.querySelector('.page-content.active');
+      if (active) switchPage(active.id.replace('page-', ''));
+    } else {
+      toast('❌ ' + r.message, 'error');
+    }
+  } catch (e) {
+    toast('❌ Server error: ' + e.message, 'error');
+  }
+}
+
+/* ===================================================
+   DELETE USER
+   =================================================== */
+async function deleteUser(id, name) {
+  if (!confirm(`Delete user '${name}'?\nThis action cannot be undone.`)) return;
+  try {
+    const r = await api(`/api/v1/users/${id}`, 'DELETE');
+    if (r.success) {
+      toast(`✅ User '${name}' deleted`);
+      delete userCache[String(id)];
+      const active = document.querySelector('.page-content.active');
+      if (active) switchPage(active.id.replace('page-', ''));
+    } else {
+      toast('❌ ' + r.message, 'error');
+    }
+  } catch (e) {
+    toast('❌ Server error: ' + e.message, 'error');
+  }
+}
+
+/* ===================================================
+   USER DETAIL MODAL
+   =================================================== */
+function openDetail(u) {
+  const roleB = { Admin: 'badge-green', SuperMaster: 'badge-cyan', Master: 'badge-orange', User: 'badge-purple', SuperAdmin: 'badge-green' };
+  // Resolve parent from cache if backend JOIN missed it
+  const p = u.parent || (u.parent_id && userCache[String(u.parent_id)] ? { ...userCache[String(u.parent_id)], id: u.parent_id } : null);
+  document.getElementById('detail-body').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+      <div style="background:var(--bg-primary);border:1px solid var(--border);border-radius:8px;padding:14px;">
+        <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text-secondary);margin-bottom:6px;">Username</div>
+        <div style="font-size:20px;font-weight:700;font-family:'Rajdhani',sans-serif;">${u.username}</div>
+        <div style="margin-top:4px;"><span class="badge ${roleB[u.role] || 'badge-gray'}">${u.role}</span></div>
+      </div>
+      <div style="background:var(--bg-primary);border:1px solid var(--border);border-radius:8px;padding:14px;">
+        <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text-secondary);margin-bottom:6px;">Created By</div>
+        ${p ? `<div style="font-size:16px;font-weight:700;font-family:'Rajdhani',sans-serif;">${p.username}</div><div style="margin-top:4px;"><span class="badge ${roleB[p.role] || 'badge-gray'}">${p.role}</span></div>` : '<div style="color:var(--text-secondary);">—</div>'}
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+      <div style="background:rgba(0,255,136,0.06);border:1px solid rgba(0,255,136,0.2);border-radius:8px;padding:14px;">
+        <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text-secondary);margin-bottom:6px;">Wallet Balance</div>
+        <div style="font-size:24px;font-weight:700;font-family:'Rajdhani',sans-serif;color:var(--accent-green);">${fmt(u.wallet_balance)}</div>
+      </div>
+      <div style="background:rgba(0,212,255,0.06);border:1px solid rgba(0,212,255,0.2);border-radius:8px;padding:14px;">
+        <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text-secondary);margin-bottom:6px;">Credit Balance</div>
+        <div style="font-size:24px;font-weight:700;font-family:'Rajdhani',sans-serif;color:var(--accent-cyan);">${fmt(u.credit_balance)}</div>
+      </div>
+    </div>
+    <div style="background:var(--bg-primary);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:16px;font-size:13px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div><span style="color:var(--text-secondary);">Phone:</span> ${u.phone || '—'}</div>
+        <div><span style="color:var(--text-secondary);">Status:</span> ${u.status}</div>
+        <div><span style="color:var(--text-secondary);">User ID:</span> ${u.id}</div>
+        <div><span style="color:var(--text-secondary);">Parent ID:</span> ${u.parent_id || '—'}</div>
+        <div style="grid-column:1/-1;"><span style="color:var(--text-secondary);">Last Login:</span> ${fmtDate(u.last_login)}</div>
+        <div style="grid-column:1/-1;"><span style="color:var(--text-secondary);">Created:</span> ${fmtDate(u.created_at || u.createdAt)}</div>
+      </div>
+    </div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="closeModal('detailModal');openSend(${JSON.stringify({ id: u.id, username: u.username, role: u.role, wallet_balance: u.wallet_balance })})">
+      💸 Send Money to ${u.username}
+    </button>`;
+  openModal('detailModal');
+}
+
+/* ===================================================
+   FILTER HELPERS
+   =================================================== */
+function filterTbl(tbodyId, query) {
+  document.querySelectorAll(`#${tbodyId} tr`).forEach(r => {
+    r.style.display = (r.dataset.search || '').includes(query.toLowerCase()) ? '' : 'none';
+  });
+}
+function filterStatus(tbodyId, status) {
+  document.querySelectorAll(`#${tbodyId} tr`).forEach(r => {
+    r.style.display = !status || r.dataset.status === status ? '' : 'none';
+  });
+}
+function filterRole(tbodyId, role) {
+  document.querySelectorAll(`#${tbodyId} tr`).forEach(r => {
+    r.style.display = !role || r.dataset.role === role ? '' : 'none';
+  });
+}
+
+/* ===================================================
+   SPORTS SETTINGS — TREE UI (Sport → League/Country → Match → Market)
+   =================================================== */
+(function () {
+  'use strict';
+
+  const SPORTS = [
+    { key: 'soccer',    eventTypeId: '1',    name: 'Soccer',    icon: '⚽', racing: false },
+    { key: 'tennis',    eventTypeId: '2',    name: 'Tennis',    icon: '🎾', racing: false },
+    { key: 'cricket',   eventTypeId: '4',    name: 'Cricket',   icon: '🏏', racing: false },
+    { key: 'horse',     eventTypeId: '7',    name: 'Horse Race',icon: '🐎', racing: true  },
+    { key: 'greyhound', eventTypeId: '4339', name: 'Greyhound', icon: '🐕', racing: true  },
+  ];
+
+  let curSport = SPORTS[0];
+  let treeData = [];          // normalized: [{id,name,matches:[{eventId,name,startTime,visible,markets:null|[]}]}]
+  let dirty = new Map();      // key `match:<eventId>` or `market:<eventId>:<marketId>` -> {type, eventId, marketId, visible, leagueId, sportKey}
+  let expandedLeagues = new Set();
+  let expandedMatches = new Set();
+
+  // Reuses admin.html's existing api(path, method, body) helper —
+  // auth header + 401-redirect already handled there, no duplication.
+
+  /* ── Sport rail ── */
+  function renderSportRail() {
+    const rail = document.getElementById('tree-sportrail');
+    rail.innerHTML = SPORTS.map(s => `
+      <div class="tree-sport-btn${s.key === curSport.key ? ' active' : ''}" data-sport="${s.key}">
+        <div class="ico">${s.icon}</div>
+        <div class="lbl">${s.name}</div>
+      </div>
+    `).join('');
+    rail.querySelectorAll('.tree-sport-btn').forEach(el => {
+      el.addEventListener('click', () => {
+        if (dirty.size > 0 && !confirm(`${dirty.size} unsaved change(s) discard ho jayenge — sport switch karna hai?`)) return;
+        dirty.clear();
+        updateSaveBar();
+        curSport = SPORTS.find(s => s.key === el.dataset.sport);
+        expandedLeagues.clear();
+        expandedMatches.clear();
+        renderSportRail();
+        loadTree();
+      });
+    });
+  }
+
+  /* ── Data loading ── */
+  async function loadTree() {
+    const container = document.getElementById('tree-container');
+    container.innerHTML = `<div class="tree-skel">Loading ${curSport.name}<span class="tree-loading-dot"></span></div>`;
+
+    const hours = document.getElementById('tree-hours').value || '48';
+
+    try {
+      const json = await api(`/api/v1/admin/visibility/tree?eventTypeId=${curSport.eventTypeId}&hoursAhead=${hours}`);
+      if (!json.success) throw new Error(json.message || 'load failed');
+      treeData = json.data.leagues || json.data.countries || [];
+      renderTree();
+    } catch (err) {
+      container.innerHTML = `<div class="tree-empty">⚠️ Load failed: ${escapeHtml(err.message)}</div>`;
+    }
+  }
+
+  async function loadMarketsForMatch(eventId) {
+    const json = await api(`/api/v1/admin/visibility/markets?eventId=${encodeURIComponent(eventId)}&eventTypeId=${curSport.eventTypeId}`);
+    if (!json.success) throw new Error(json.message || 'markets load failed');
+    return json.data.markets || [];
+  }
+
+  /* ── Render ── */
+  function renderTree() {
+    const container = document.getElementById('tree-container');
+    const q = (document.getElementById('tree-search').value || '').toLowerCase().trim();
+
+    const filtered = treeData
+      .map(l => ({
+        ...l,
+        matches: l.matches.filter(m => !q || l.name.toLowerCase().includes(q) || m.name.toLowerCase().includes(q)),
+      }))
+      .filter(l => !q || l.matches.length > 0 || l.name.toLowerCase().includes(q));
+
+    if (!filtered.length) {
+      container.innerHTML = `<div class="tree-empty">Is window mein ${curSport.name} ki koi league/match nahi mili.</div>`;
+      return;
+    }
+
+    container.innerHTML = filtered.map(renderLeagueNode).join('');
+    bindTreeEvents();
+  }
+
+  function renderLeagueNode(league) {
+    const open = expandedLeagues.has(league.id);
+    const visibleCount = league.matches.filter(m => effectiveVisible('match', m.eventId, m.visible)).length;
+    return `
+      <div class="tree-node tree-league-row${open ? ' open' : ''}" data-league="${league.id}">
+        <div class="tree-row" data-toggle="league" data-league="${league.id}">
+          <span class="tree-caret">▶</span>
+          <span class="tree-label">${escapeHtml(league.name)}</span>
+          <span class="tree-meta">${visibleCount}/${league.matches.length} shown</span>
+        </div>
+        <div class="tree-children">
+          ${league.matches.map(m => renderMatchNode(m, league.id)).join('') || '<div class="tree-empty" style="padding:14px;">Koi match nahi</div>'}
+          <div class="tree-bulkbar">
+            <span>Bulk:</span>
+            <a data-bulk="show" data-league="${league.id}">Sab dikhao</a>
+            <span>·</span>
+            <a data-bulk="hide" data-league="${league.id}">Sab chupao</a>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  function renderMatchNode(m, leagueId) {
+    const open = expandedMatches.has(m.eventId);
+    const vis = effectiveVisible('match', m.eventId, m.visible);
+    const isLive = m.startTime && new Date(m.startTime) <= new Date();
+    return `
+      <div class="tree-node tree-match-row${open ? ' open' : ''}" data-match="${m.eventId}">
+        <div class="tree-row">
+          <span class="tree-caret" data-toggle="match" data-match="${m.eventId}" data-league="${leagueId}">▶</span>
+          <input type="checkbox" class="tree-check" data-visible-toggle="match" data-match="${m.eventId}" data-league="${leagueId}" ${vis ? 'checked' : ''}>
+          <span class="tree-label" data-toggle="match" data-match="${m.eventId}" data-league="${leagueId}">${escapeHtml(m.name)}</span>
+          ${isLive ? '<span class="tree-badge live">LIVE</span>' : `<span class="tree-badge upcoming">${formatTime(m.startTime)}</span>`}
+        </div>
+        <div class="tree-children" id="mkts-${cssEsc(m.eventId)}">
+          <div class="tree-skel" style="padding:10px 0;">Markets loading<span class="tree-loading-dot"></span></div>
+        </div>
+      </div>`;
+  }
+
+  function renderMarketRows(eventId, markets) {
+    const wrap = document.getElementById(`mkts-${cssEsc(eventId)}`);
+    if (!wrap) return;
+    if (!markets.length) {
+      wrap.innerHTML = '<div class="tree-empty" style="padding:10px 0;">Koi market nahi mila</div>';
+      return;
+    }
+    wrap.innerHTML = markets.map(mk => {
+      const vis = effectiveVisible('market', `${eventId}:${mk.marketId}`, mk.visible);
+      return `
+        <div class="tree-node tree-market-row${vis ? ' tree-market-on' : ''}">
+          <div class="tree-row">
+            <span class="tree-caret" style="visibility:hidden;">▶</span>
+            <input type="checkbox" class="tree-check" data-visible-toggle="market" data-match="${eventId}" data-market="${mk.marketId}" ${vis ? 'checked' : ''}>
+            <span class="tree-label">${escapeHtml(mk.marketName)}</span>
+            <span class="tree-meta">${escapeHtml(mk.marketType || '')}</span>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  /* ── Dirty-state tracking (batched save) ── */
+  function effectiveVisible(kind, key, serverValue) {
+    const dk = kind === 'match' ? `match:${key}` : `market:${key}`;
+    if (dirty.has(dk)) return dirty.get(dk).visible;
+    return serverValue !== false; // default visible unless explicitly false
+  }
+
+  function setDirty(kind, opts) {
+    const dk = kind === 'match' ? `match:${opts.eventId}` : `market:${opts.eventId}:${opts.marketId}`;
+    // ✅ sportKey hamesha attach karo (jab dirty change hoti hai, wahi sport
+    // active hota hai) — is se save time pe curSport switch ho chuka ho tab
+    // bhi galat sport ko changes apply nahi hote.
+    dirty.set(dk, { type: kind, sportKey: curSport.key, ...opts });
+    updateSaveBar();
+  }
+
+  function updateSaveBar() {
+    const bar = document.getElementById('tree-savebar');
+    const count = document.getElementById('tree-dirty-count');
+    if (dirty.size === 0) { bar.style.display = 'none'; return; }
+    bar.style.display = 'flex';
+    count.textContent = `${dirty.size} change${dirty.size > 1 ? 's' : ''} pending`;
+  }
+
+  /* ── Events ── */
+  function bindTreeEvents() {
+    document.querySelectorAll('[data-toggle="league"]').forEach(el => {
+      el.addEventListener('click', () => {
+        const id = el.dataset.league;
+        expandedLeagues.has(id) ? expandedLeagues.delete(id) : expandedLeagues.add(id);
+        renderTree();
+      });
+    });
+
+    document.querySelectorAll('[data-toggle="match"]').forEach(el => {
+      el.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const id = el.dataset.match;
+        if (expandedMatches.has(id)) {
+          expandedMatches.delete(id);
+        } else {
+          expandedMatches.add(id);
+        }
+        renderTree();
+        if (expandedMatches.has(id)) {
+          try {
+            const markets = await loadMarketsForMatch(id);
+            renderMarketRows(id, markets);
+          } catch (err) {
+            const wrap = document.getElementById(`mkts-${cssEsc(id)}`);
+            if (wrap) wrap.innerHTML = `<div class="tree-empty" style="padding:10px 0;">⚠️ ${escapeHtml(err.message)}</div>`;
+          }
+        }
+      });
+    });
+
+    document.querySelectorAll('[data-visible-toggle="match"]').forEach(el => {
+      el.addEventListener('click', e => e.stopPropagation());
+      el.addEventListener('change', () => {
+        setDirty('match', { eventId: el.dataset.match, leagueId: el.dataset.league, visible: el.checked });
+      });
+    });
+
+    document.querySelectorAll('[data-visible-toggle="market"]').forEach(el => {
+      el.addEventListener('click', e => e.stopPropagation());
+      el.addEventListener('change', () => {
+        setDirty('market', { eventId: el.dataset.match, marketId: el.dataset.market, visible: el.checked });
+        el.closest('.tree-market-row').classList.toggle('tree-market-on', el.checked);
+      });
+    });
+
+    document.querySelectorAll('[data-bulk]').forEach(el => {
+      el.addEventListener('click', () => {
+        const leagueId = el.dataset.league;
+        const league = treeData.find(l => String(l.id) === String(leagueId));
+        if (!league) return;
+        const show = el.dataset.bulk === 'show';
+        league.matches.forEach(m => setDirty('match', { eventId: m.eventId, leagueId, visible: show }));
+        renderTree();
+      });
+    });
+  }
+
+  /* ── Save / discard ── */
+  async function saveDirty() {
+    const btn = document.getElementById('tree-save-btn');
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+    try {
+      const changes = Array.from(dirty.values());
+      for (const c of changes) {
+        const url = c.type === 'match'
+          ? '/api/v1/admin/visibility/match'
+          : '/api/v1/admin/visibility/market';
+        const body = c.type === 'match'
+          ? { eventId: c.eventId, sportKey: c.sportKey, visible: c.visible }
+          : { eventId: c.eventId, marketId: c.marketId, sportKey: c.sportKey, visible: c.visible };
+        await api(url, 'POST', body);
+      }
+      dirty.clear();
+      updateSaveBar();
+      await loadTree();
+      toast('✅ Saved');
+    } catch (err) {
+      toast('⚠️ Save failed: ' + err.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '💾 Save Changes';
+    }
+  }
+
+  function discardDirty() {
+    dirty.clear();
+    updateSaveBar();
+    renderTree();
+  }
+
+  /* ── Helpers ── */
+  function escapeHtml(s) { return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function cssEsc(s) { return String(s).replace(/[^a-zA-Z0-9_-]/g, '_'); }
+  function formatTime(iso) {
+    if (!iso) return '';
+    try {
+      const d = new Date(iso);
+      return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    } catch (_) { return ''; }
+  }
+  function toast(msg) {
+    if (typeof window.toast === 'function' && window.toast !== toast) { window.toast(msg); return; }
+    const t = document.createElement('div');
+    t.textContent = msg;
+    t.style.cssText = 'position:fixed;bottom:20px;right:20px;background:var(--bg-card);border:1px solid var(--border-bright);color:var(--text-primary);padding:10px 16px;border-radius:8px;font-size:12px;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,0.3);';
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 2500);
+  }
+
+  function debounce(fn, ms) {
+    let t;
+    return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+  }
+
+  /* ── Wire up toolbar (once DOM ready) ── */
+  function wireToolbar() {
+    document.getElementById('tree-search').addEventListener('input', debounce(renderTree, 150));
+    document.getElementById('tree-hours').addEventListener('change', loadTree);
+    document.getElementById('tree-refresh-btn').addEventListener('click', loadTree);
+    document.getElementById('tree-save-btn').addEventListener('click', saveDirty);
+    document.getElementById('tree-discard-btn').addEventListener('click', discardDirty);
+  }
+
+  /* ── Init (called from switchPage('sports')) ── */
+  let _wired = false;
+  window.initSportsTree = function () {
+    if (!_wired) { wireToolbar(); _wired = true; }
+    renderSportRail();
+    loadTree();
+  };
+})();
+/* ===================================================
+   LOGOUT
+   =================================================== */
 function logout() {
-  if (!confirm('Logout?')) return;
+  if (!confirm('Logout from admin panel?')) return;
   localStorage.removeItem('token');
+  sessionStorage.clear();
+  // Hard redirect — back button se wapas nahi aa sakta
   window.location.replace('/Users/Login');
 }
 
-/* ── Clock ── */
-setInterval(() => {
-  document.getElementById('clock').textContent = new Date().toLocaleTimeString('en-GB', { hour12: false });
-}, 1000);
-
-/* ── Users ── */
-async function loadUsers() {
-  const body = document.getElementById('users-body');
-  body.innerHTML = '<tr><td colspan="4" class="loading">Loading…</td></tr>';
-  try {
-    const r = await api('/api/v1/admin/users').catch(() => api('/api/v1/users'));
-    const list = r.data?.users || r.data || [];
-    if (!Array.isArray(list) || !list.length) {
-      body.innerHTML = '<tr><td colspan="4" class="loading">No users / endpoint missing</td></tr>';
-      return;
-    }
-    body.innerHTML = list.slice(0, 50).map(u => `
-      <tr>
-        <td><strong>${u.username || u.name || '—'}</strong></td>
-        <td><span class="badge badge-c">${u.role || 'user'}</span></td>
-        <td>${Number(u.wallet_balance ?? u.balance ?? 0).toLocaleString()}</td>
-        <td><span class="badge badge-g">${u.status || 'active'}</span></td>
-      </tr>`).join('');
-  } catch (e) {
-    body.innerHTML = `<tr><td colspan="4" class="loading">${e.message}</td></tr>`;
-  }
-}
-
-function refreshStats() {
-  let leagues = 0, matches = 0;
-  Object.keys(selection).forEach(k => {
-    leagues += selection[k].leagueIds.size;
-    matches += selection[k].matchIds.size;
-  });
-  document.getElementById('st-leagues').textContent = leagues;
-  document.getElementById('st-matches').textContent = matches;
-}
-
-/* ── Sports tree ── */
-function renderSportRail() {
-  const rail = document.getElementById('sport-rail');
-  rail.innerHTML = Object.entries(SPORTS).map(([k, s]) => `
-    <button class="sport-chip ${k === curSport ? 'active' : ''}" onclick="selectSport('${k}')">
-      ${s.icon} ${s.name}
-    </button>`).join('');
-  document.getElementById('sport-tree-title').textContent = SPORTS[curSport].name + ' · next 48 hours';
-  document.getElementById('sport-tree-sub').textContent = isRacing(curSport)
-    ? 'Country / track → races → Win market'
-    : 'Leagues → matches → markets';
-  renderTree();
-}
-
-function selectSport(k) {
-  curSport = k;
-  renderSportRail();
-}
-
-async function fetchSportTree() {
-  const status = document.getElementById('tree-status');
-  const btn = document.getElementById('btn-fetch-tree');
-  status.style.display = 'block';
-  status.textContent = 'Fetching next 48h from exchange…';
-  btn.disabled = true;
-  try {
-    if (isRacing(curSport)) await fetchRacingTree(curSport);
-    else await fetchLeagueTree(curSport);
-    status.style.display = 'none';
-    toast('Tree updated');
-    renderTree();
-  } catch (e) {
-    status.textContent = 'Failed: ' + e.message;
-    toast(e.message, 'err');
-  } finally {
-    btn.disabled = false;
-  }
-}
-
-async function fetchLeagueTree(k) {
-  const eventTypeId = SPORTS[k].betfairId;
-  const r = await api(`/api/v1/markets/betfair/active-leagues?eventTypeId=${eventTypeId}&hoursAhead=48`);
-  const leagues = (r.data && r.data.leagues) || [];
-  treeState[k].leagues = leagues.map(l => ({
-    id: String(l.id),
-    name: l.name,
-    matches: (l.matches || []).map(m => ({
-      eventId: String(m.eventId),
-      marketId: m.marketId ? String(m.marketId) : null,
-      name: m.name,
-      startTime: m.startTime,
-      markets: null, // lazy
-    })),
-  }));
-}
-
-async function fetchRacingTree(k) {
-  const eventTypeId = SPORTS[k].betfairId;
-  const r = await api(`/api/v1/markets/betfair/tracks?eventTypeId=${eventTypeId}`);
-  const countries = (r.data && r.data.countries) || [];
-  // Flatten: each track becomes a "league" node
-  const leagues = [];
-  countries.forEach(c => {
-    (c.tracks || []).forEach(t => {
-      leagues.push({
-        id: `${c.code}::${t.name}`,
-        name: `${t.name} (${c.name || c.code})`,
-        matches: (t.races || []).map(race => ({
-          eventId: String(race.eventId),
-          marketId: String(race.eventId), // composite race id
-          name: race.name,
-          startTime: race.startTime,
-          markets: [{ marketId: String(race.eventId), marketName: 'Win', enabled: true }],
-        })),
-      });
-    });
-  });
-  treeState[k].leagues = leagues;
-}
-
-function toggleNode(el) {
-  el.closest('.node').classList.toggle('open');
-}
-
-function renderTree() {
-  const root = document.getElementById('sport-tree');
-  const leagues = treeState[curSport].leagues || [];
-  const sel = selection[curSport];
-  if (!leagues.length) {
-    root.innerHTML = '<div class="empty">No data yet. Click “Fetch 48h data”.</div>';
-    return;
-  }
-  root.innerHTML = leagues.map((l, li) => {
-    const leagueOn = sel.leagueIds.has(l.id) || l.matches.some(m => sel.matchIds.has(m.eventId));
-    return `
-      <div class="node" id="league-${li}">
-        <div class="node-h" onclick="toggleNode(this)">
-          <span class="caret">▶</span>
-          <div class="node-title">${escapeHtml(l.name)}</div>
-          <span class="node-meta">${l.matches.length} match${l.matches.length === 1 ? '' : 'es'}</span>
-          <label class="sw" onclick="event.stopPropagation()">
-            <input type="checkbox" ${leagueOn ? 'checked' : ''} onchange="toggleLeague('${curSport}','${escapeAttr(l.id)}', this.checked)">
-            <span></span>
-          </label>
-        </div>
-        <div class="node-body">
-          ${l.matches.map((m, mi) => {
-            const on = sel.matchIds.has(m.eventId);
-            return `
-              <div class="match-row ${on ? 'selected' : ''}">
-                <label class="sw">
-                  <input type="checkbox" ${on ? 'checked' : ''} onchange="toggleMatch('${curSport}','${escapeAttr(l.id)}','${escapeAttr(m.eventId)}', this.checked)">
-                  <span></span>
-                </label>
-                <span class="time">${fmtTime(m.startTime)}</span>
-                <span class="name">${escapeHtml(m.name)}</span>
-                <button class="btn btn-ghost btn-sm" onclick="loadMatchMarkets('${curSport}',${li},${mi})">Markets ▾</button>
-              </div>
-              <div id="mkts-${li}-${mi}" style="display:none;padding:0 0 8px 36px;"></div>
-            `;
-          }).join('')}
-        </div>
-      </div>`;
-  }).join('');
-}
-
-async function loadMatchMarkets(sport, li, mi) {
-  const box = document.getElementById(`mkts-${li}-${mi}`);
-  if (!box) return;
-  if (box.style.display !== 'none' && box.dataset.loaded) {
-    box.style.display = 'none';
-    return;
-  }
-  box.style.display = 'block';
-  const league = treeState[sport].leagues[li];
-  const match = league.matches[mi];
-  if (match.markets && match.markets.length) {
-    box.innerHTML = renderMarketsHtml(sport, match);
-    box.dataset.loaded = '1';
-    return;
-  }
-  box.innerHTML = '<div class="loading">Loading markets…</div>';
-  try {
-    if (isRacing(sport)) {
-      match.markets = [{ marketId: match.marketId || match.eventId, marketName: 'Win' }];
-    } else {
-      const r = await api(`/api/v1/markets/event-markets?eventId=${encodeURIComponent(match.eventId)}`);
-      const all = (r.data && r.data.all) || [];
-      match.markets = all.map(m => ({
-        marketId: String(m.marketId),
-        marketName: m.marketName || m.marketType || 'Market',
-      }));
-      if (!match.markets.length && match.marketId) {
-        match.markets = [{ marketId: String(match.marketId), marketName: 'Match Odds' }];
-      }
-    }
-    box.innerHTML = renderMarketsHtml(sport, match);
-    box.dataset.loaded = '1';
-  } catch (e) {
-    box.innerHTML = `<div class="empty">${e.message}</div>`;
-  }
-}
-
-function renderMarketsHtml(sport, match) {
-  const sel = selection[sport];
-  if (!match.markets.length) return '<div class="empty">No markets</div>';
-  return match.markets.map(m => {
-    const on = sel.marketIds.has(m.marketId) || (sel.matchIds.has(match.eventId) && sel.marketIds.size === 0);
-    return `
-      <div class="mkt-row ${on ? 'selected' : ''}">
-        <label class="sw">
-          <input type="checkbox" ${on ? 'checked' : ''} onchange="toggleMarket('${sport}','${escapeAttr(match.eventId)}','${escapeAttr(m.marketId)}', this.checked)">
-          <span></span>
-        </label>
-        <span class="name">${escapeHtml(m.marketName)}</span>
-        <span class="badge badge-m">${escapeHtml(m.marketId)}</span>
-      </div>`;
-  }).join('');
-}
-
-function toggleLeague(sport, leagueId, on) {
-  const sel = selection[sport];
-  const league = (treeState[sport].leagues || []).find(l => l.id === leagueId);
-  if (on) {
-    sel.leagueIds.add(leagueId);
-    if (league) league.matches.forEach(m => sel.matchIds.add(m.eventId));
-  } else {
-    sel.leagueIds.delete(leagueId);
-    if (league) league.matches.forEach(m => {
-      sel.matchIds.delete(m.eventId);
-      (m.markets || []).forEach(mk => sel.marketIds.delete(mk.marketId));
-    });
-  }
-  renderTree();
-  refreshStats();
-}
-
-function toggleMatch(sport, leagueId, eventId, on) {
-  const sel = selection[sport];
-  if (on) {
-    sel.matchIds.add(eventId);
-    sel.leagueIds.add(leagueId);
-  } else {
-    sel.matchIds.delete(eventId);
-    const league = (treeState[sport].leagues || []).find(l => l.id === leagueId);
-    if (league) {
-      (league.matches.find(m => m.eventId === eventId)?.markets || []).forEach(mk => sel.marketIds.delete(mk.marketId));
-      if (!league.matches.some(m => sel.matchIds.has(m.eventId))) sel.leagueIds.delete(leagueId);
-    }
-  }
-  renderTree();
-  refreshStats();
-}
-
-function toggleMarket(sport, eventId, marketId, on) {
-  const sel = selection[sport];
-  if (on) {
-    sel.marketIds.add(marketId);
-    sel.matchIds.add(eventId);
-  } else {
-    sel.marketIds.delete(marketId);
-  }
-  renderTree();
-  refreshStats();
-}
-
-async function saveSportTree() {
-  // localStorage
-  Object.keys(SPORTS).forEach(k => {
-    localStorage.setItem('sel_leagues_' + k, JSON.stringify([...selection[k].leagueIds]));
-    localStorage.setItem('sel_matches_' + k, JSON.stringify([...selection[k].matchIds]));
-    localStorage.setItem('sel_markets_' + k, JSON.stringify([...selection[k].marketIds]));
-  });
-  // Backend (best-effort)
-  try {
-    const leaguesPayload = {};
-    const marketsPayload = {};
-    Object.keys(SPORTS).forEach(k => {
-      leaguesPayload[k] = {
-        enabledLeagueIds: [...selection[k].leagueIds],
-        enabledMatchIds: [...selection[k].matchIds],
-      };
-      marketsPayload[k] = [...selection[k].marketIds];
-    });
-    await api('/api/v1/settings/leagues', 'POST', leaguesPayload).catch(() => {});
-    await api('/api/v1/settings/markets', 'POST', marketsPayload).catch(() => {});
-    // Per-match market filters
-    for (const k of Object.keys(SPORTS)) {
-      for (const eventId of selection[k].matchIds) {
-        const mids = [...selection[k].marketIds];
-        if (!mids.length) continue;
-        await api(`/api/v1/settings/match-markets/${encodeURIComponent(eventId)}`, 'POST', {
-          enabledMarketIds: mids,
-          filterActive: true,
-        }).catch(() => {});
-      }
-    }
-    toast('Saved — dashboard will use this selection');
-  } catch (e) {
-    toast('Saved locally (API: ' + e.message + ')', 'err');
-  }
-  refreshStats();
-}
-
-function fmtTime(iso) {
-  if (!iso) return '';
-  try {
-    return new Date(iso).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
-  } catch { return ''; }
-}
-function escapeHtml(s) {
-  return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
-function escapeAttr(s) {
-  return String(s || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-}
-
-/* ── Init ── */
+/* ===================================================
+   INIT
+   =================================================== */
 window.addEventListener('DOMContentLoaded', () => {
-  if (!token()) { window.location.href = '/Users/Login'; return; }
+  const tk = token();
+  if (!tk) { window.location.href = '/Users/Login'; return; }
+
   try {
-    const payload = JSON.parse(atob(token().split('.')[1]));
+    const payload = JSON.parse(atob(tk.split('.')[1]));
     document.getElementById('sidebar-username').textContent = payload.username || 'Admin';
-    document.getElementById('sidebar-role').textContent = payload.role || 'SuperAdmin';
-    document.getElementById('sa-avatar').textContent = (payload.username || 'SA').slice(0, 2).toUpperCase();
-  } catch (_) {}
-  renderSportRail();
-  refreshStats();
+    document.getElementById('sidebar-role').textContent     = payload.role     || 'SuperAdmin';
+    document.getElementById('sa-avatar').textContent        = (payload.username || 'SA').slice(0, 2).toUpperCase();
+    // Cache self
+    if (payload.id) userCache[String(payload.id)] = { username: payload.username, role: payload.role };
+  } catch (e) {}
+
+  loadSelf();
+  loadDashboard();
 });
 </script>
 </body>

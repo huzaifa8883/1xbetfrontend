@@ -1403,7 +1403,7 @@ function filterRole(tbodyId, role) {
     const hours = document.getElementById('tree-hours').value || '48';
 
     try {
-      const json = await api(`/api/v1/admin/visibility/tree?eventTypeId=${curSport.eventTypeId}&hoursAhead=${hours}`);
+      const json = await api(`/api/v1/markets/admin/visibility/tree?eventTypeId=${curSport.eventTypeId}&hoursAhead=${hours}`);
       if (!json.success) throw new Error(json.message || 'load failed');
       treeData = json.data.leagues || json.data.countries || [];
       renderTree();
@@ -1413,7 +1413,7 @@ function filterRole(tbodyId, role) {
   }
 
   async function loadMarketsForMatch(eventId) {
-    const json = await api(`/api/v1/admin/visibility/markets?eventId=${encodeURIComponent(eventId)}&eventTypeId=${curSport.eventTypeId}`);
+    const json = await api(`/api/v1/markets/admin/visibility/markets?eventId=${encodeURIComponent(eventId)}&eventTypeId=${curSport.eventTypeId}`);
     if (!json.success) throw new Error(json.message || 'markets load failed');
     return json.data.markets || [];
   }
@@ -1592,8 +1592,8 @@ function filterRole(tbodyId, role) {
       const changes = Array.from(dirty.values());
       for (const c of changes) {
         const url = c.type === 'match'
-          ? '/api/v1/admin/visibility/match'
-          : '/api/v1/admin/visibility/market';
+          ? '/api/v1/markets/admin/visibility/match'
+          : '/api/v1/markets/admin/visibility/market';
         const body = c.type === 'match'
           ? { eventId: c.eventId, sportKey: c.sportKey, visible: c.visible }
           : { eventId: c.eventId, marketId: c.marketId, sportKey: c.sportKey, visible: c.visible };

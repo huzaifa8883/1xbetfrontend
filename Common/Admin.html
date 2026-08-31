@@ -1434,17 +1434,25 @@ function filterRole(tbodyId, role) {
     }
 
     container.innerHTML = filtered.map(renderLeagueNode).join('');
-    bindTreeEvents();
+    bindTreeEventsOnce();
+    applyIndeterminate();
   }
 
   function renderLeagueNode(league) {
     const open = expandedLeagues.has(league.id);
     const visibleCount = league.matches.filter(m => effectiveVisible('match', m.eventId, m.visible)).length;
+    // ✅ League/Track-level checkbox — horse/greyhound ke liye ye "track select"
+    // hai (track = league yahan), lekin har sport ke liye kaam karta hai:
+    // checked/unchecked tab league ke saare matches ek saath toggle ho jate hain.
+    const allVisible = league.matches.length > 0 && visibleCount === league.matches.length;
+    const noneVisible = visibleCount === 0;
     return `
       <div class="tree-node tree-league-row${open ? ' open' : ''}" data-league="${league.id}">
-        <div class="tree-row" data-toggle="league" data-league="${league.id}">
-          <span class="tree-caret">▶</span>
-          <span class="tree-label">${escapeHtml(league.name)}</span>
+        <div class="tree-row">
+          <span class="tree-caret" data-toggle="league" data-league="${league.id}">▶</span>
+          <input type="checkbox" class="tree-check" data-visible-toggle="league" data-league="${league.id}"
+                 ${allVisible ? 'checked' : ''} ${!allVisible && !noneVisible ? 'data-indeterminate="1"' : ''}>
+          <span class="tree-label" data-toggle="league" data-league="${league.id}">${escapeHtml(league.name)}</span>
           <span class="tree-meta">${visibleCount}/${league.matches.length} shown</span>
         </div>
         <div class="tree-children">
@@ -1516,25 +1524,38 @@ function filterRole(tbodyId, role) {
     count.textContent = `${dirty.size} change${dirty.size > 1 ? 's' : ''} pending`;
   }
 
-  /* ── Events ── */
-  function bindTreeEvents() {
-    document.querySelectorAll('[data-toggle="league"]').forEach(el => {
-      el.addEventListener('click', () => {
-        const id = el.dataset.league;
+  /* ── Events ──
+     ✅ FIX: pehle ye function har renderTree() ke baad querySelectorAll+
+     addEventListener se listeners lagata tha. Market checkboxes renderTree()
+     ke *baad* async load hoke renderMarketRows() se alag inject hote hain,
+     is liye unpe kabhi listener lagta hi nahi tha — check/uncheck karne pe
+     save bar kabhi nahi aata tha aur dirty state track hi nahi hoti thi.
+     Fix: ek hi baar #tree-container pe delegated listener lagao (init me),
+     jo DOM mein baad me add hone wale kisi bhi checkbox/row pe bhi kaam
+     karega — chahe wo renderTree() se aaya ho ya renderMarketRows() se. */
+  function applyIndeterminate() {
+    document.querySelectorAll('[data-indeterminate="1"]').forEach(el => { el.indeterminate = true; });
+  }
+
+  function bindTreeEventsOnce() {
+    const container = document.getElementById('tree-container');
+    if (!container || container.dataset.wired) return;
+    container.dataset.wired = '1';
+
+    container.addEventListener('click', async (e) => {
+      const leagueToggle = e.target.closest('[data-toggle="league"]');
+      if (leagueToggle) {
+        const id = leagueToggle.dataset.league;
         expandedLeagues.has(id) ? expandedLeagues.delete(id) : expandedLeagues.add(id);
         renderTree();
-      });
-    });
+        return;
+      }
 
-    document.querySelectorAll('[data-toggle="match"]').forEach(el => {
-      el.addEventListener('click', async (e) => {
+      const matchToggle = e.target.closest('[data-toggle="match"]');
+      if (matchToggle) {
         e.stopPropagation();
-        const id = el.dataset.match;
-        if (expandedMatches.has(id)) {
-          expandedMatches.delete(id);
-        } else {
-          expandedMatches.add(id);
-        }
+        const id = matchToggle.dataset.match;
+        expandedMatches.has(id) ? expandedMatches.delete(id) : expandedMatches.add(id);
         renderTree();
         if (expandedMatches.has(id)) {
           try {
@@ -1545,22 +1566,40 @@ function filterRole(tbodyId, role) {
             if (wrap) wrap.innerHTML = `<div class="tree-empty" style="padding:10px 0;">⚠️ ${escapeHtml(err.message)}</div>`;
           }
         }
-      });
+        return;
+      }
+
+      // Checkbox clicks shouldn't also trigger the row's expand/collapse toggle
+      if (e.target.matches('[data-visible-toggle]')) {
+        e.stopPropagation();
+      }
     });
 
-    document.querySelectorAll('[data-visible-toggle="match"]').forEach(el => {
-      el.addEventListener('click', e => e.stopPropagation());
-      el.addEventListener('change', () => {
+    container.addEventListener('change', (e) => {
+      const el = e.target;
+      if (!el.matches('[data-visible-toggle]')) return;
+
+      if (el.dataset.visibleToggle === 'league') {
+        // Track/league checkbox → cascade to har match usi league ke andar
+        const league = treeData.find(l => String(l.id) === String(el.dataset.league));
+        if (league) {
+          league.matches.forEach(m => {
+            setDirty('match', { eventId: m.eventId, leagueId: league.id, visible: el.checked });
+          });
+        }
+        renderTree();
+        return;
+      }
+
+      if (el.dataset.visibleToggle === 'match') {
         setDirty('match', { eventId: el.dataset.match, leagueId: el.dataset.league, visible: el.checked });
-      });
-    });
+        return;
+      }
 
-    document.querySelectorAll('[data-visible-toggle="market"]').forEach(el => {
-      el.addEventListener('click', e => e.stopPropagation());
-      el.addEventListener('change', () => {
+      if (el.dataset.visibleToggle === 'market') {
         setDirty('market', { eventId: el.dataset.match, marketId: el.dataset.market, visible: el.checked });
-        el.closest('.tree-market-row').classList.toggle('tree-market-on', el.checked);
-      });
+        el.closest('.tree-market-row')?.classList.toggle('tree-market-on', el.checked);
+      }
     });
   }
 

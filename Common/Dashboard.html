@@ -1025,15 +1025,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   // "Ballarat (AUS) 23rd Jul" → track "Ballarat"). Storage wahi
   // /settings/leagues endpoint use karta hai — bas enabledLeagueIds
   // mein track names hote hain (numeric competition IDs ki jagah).
+  // Track filter OFF — stale admin league settings were wiping horse
+  // (0 races) and restricting greyhound (only a few tracks). Show all
+  // races from API; admin visibility (hide list) is handled on backend.
   function applyTrackFilter(matches, filter) {
-    if (!filter || !filter.enabledIds || filter.enabledIds.length === 0) return matches;
-    const enabledTracks = new Set(filter.enabledIds.map(t => String(t).trim().toLowerCase()));
-    return matches.filter(m => {
-      const matchName = (m.match || '').trim().toLowerCase();
-      // Track name event ke naam ke shuru mein hota hai: "Ballarat (AUS) ..."
-      const trackName = (matchName.split('(')[0] || matchName).trim();
-      return enabledTracks.has(trackName);
-    });
+    return matches;
   }
 
   // ✅ Reliable inPlay detection — server field + startTime fallback
@@ -1352,14 +1348,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       if (data.success && Array.isArray(data.data) && data.data.length > 0) {
         const now = new Date();
-        const thirtyMinAgo = new Date(now.getTime() - 30 * 60_000);
+        const lookback = new Date(now.getTime() - 2 * 60 * 60_000);
 
-        // Filter: 30 min pehle se aage, sort by time ascending
+        // Soft time filter + no track whitelist (backend already curated)
         let relevant = data.data
-          .filter(m => parseUTC(m.startTime) >= thirtyMinAgo)
+          .filter(m => !m.startTime || parseUTC(m.startTime) >= lookback)
           .sort((a, b) => parseUTC(a.startTime) - parseUTC(b.startTime));
 
-        // ✅ NEW: admin ke track selections apply karo
         const trackFilter = await getLeagueFilter('horse');
         relevant = applyTrackFilter(relevant, trackFilter);
 
@@ -1442,14 +1437,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       if (data.success && Array.isArray(data.data) && data.data.length > 0) {
         const now = new Date();
-        const thirtyMinAgo = new Date(now.getTime() - 30 * 60_000);
+        const lookback = new Date(now.getTime() - 2 * 60 * 60_000);
 
-        // Filter: 30 min pehle se aage, sort by time ascending
         let relevant = data.data
-          .filter(m => parseUTC(m.startTime) >= thirtyMinAgo)
+          .filter(m => !m.startTime || parseUTC(m.startTime) >= lookback)
           .sort((a, b) => parseUTC(a.startTime) - parseUTC(b.startTime));
 
-        // ✅ NEW: admin ke track selections apply karo
         const trackFilter = await getLeagueFilter('greyhound');
         relevant = applyTrackFilter(relevant, trackFilter);
 

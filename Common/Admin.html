@@ -227,9 +227,7 @@
     .tree-loading-dot::after { content:'⋯'; animation:tree-blink 1.2s infinite; }
     @keyframes tree-blink { 0%,100%{opacity:.3} 50%{opacity:1} }
 
-    .tree-bulkbar { display:flex; align-items:center; gap:8px; padding:8px 14px; background:var(--bg-secondary); border-top:1px solid var(--border); font-size:11px; color:var(--text-secondary); }
-    .tree-bulkbar a { color:var(--accent-cyan); cursor:pointer; font-weight:600; }
-    .tree-bulkbar a:hover { text-decoration:underline; }
+
 
     .tree-savebar {
       position:sticky; bottom:0; margin-top:14px; padding:12px 16px;
@@ -1451,12 +1449,6 @@ function filterRole(tbodyId, role) {
         </div>
         <div class="tree-children">
           ${league.matches.map(m => renderMatchNode(m, league.id)).join('') || '<div class="tree-empty" style="padding:14px;">Koi match nahi</div>'}
-          <div class="tree-bulkbar">
-            <span>Select:</span>
-            <a data-bulk="show" data-league="${league.id}">✅ Sab ON</a>
-            <span>·</span>
-            <a data-bulk="hide" data-league="${league.id}">❌ Sab OFF</a>
-          </div>
         </div>
       </div>`;
   }
@@ -1568,17 +1560,6 @@ function filterRole(tbodyId, role) {
       el.addEventListener('change', () => {
         setDirty('market', { eventId: el.dataset.match, marketId: el.dataset.market, visible: el.checked });
         el.closest('.tree-market-row').classList.toggle('tree-market-on', el.checked);
-      });
-    });
-
-    document.querySelectorAll('[data-bulk]').forEach(el => {
-      el.addEventListener('click', () => {
-        const leagueId = el.dataset.league;
-        const league = treeData.find(l => String(l.id) === String(leagueId));
-        if (!league) return;
-        const show = el.dataset.bulk === 'show';
-        league.matches.forEach(m => setDirty('match', { eventId: m.eventId, leagueId, visible: show }));
-        renderTree();
       });
     });
   }

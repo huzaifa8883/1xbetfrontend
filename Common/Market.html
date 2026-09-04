@@ -6295,79 +6295,80 @@ Vue.component('runner-aggregate', {
             $('#TVDIV').hide();
             $('#TVDIVIFRAME').hide().empty();
 
-            var eid = getMediaEventId();
+            var marketIdLocal = '';
+            var eventIdLocal = '';
+            try {
+                var el = document.getElementById('MarketView') || document.getElementById('app');
+                var vm = el && el.__vue__;
+                if (vm && vm.Catalog) {
+                    marketIdLocal = String(vm.Catalog.marketId || '');
+                    eventIdLocal = String(vm.Catalog.eventId || '');
+                }
+            } catch (e) {}
+            if (!marketIdLocal && typeof marketId !== 'undefined') marketIdLocal = String(marketId || '');
+            if (!eventIdLocal) eventIdLocal = (typeof getMediaEventId === 'function' ? getMediaEventId() : '') || '';
+
             var $box = $('#LIVEDIV');
             if (!$box.length) return;
+            $box.show();
 
-            $box.html(
-              '<div class="widgets" style="max-width:100%;width:100%;padding:4px;">'
-              + '  <div id="sr-widget" class="sr-widget sr-widget-1" data-sr-widget="match.lmtlight" style="min-height:280px;"></div>'
-              + '  <div id="scorecard-status" style="padding:10px;color:#bbb;font-size:13px;">Loading scorecard…</div>'
-              + '</div>'
-            ).show();
-
-            function mountSir(srId) {
-                if (!srId) {
-                    $('#scorecard-status').text('Scorecard is not available for this event yet.');
-                    return;
+            // 1) Immediately show live score from Vue / last poll (no SR required)
+            try {
+                if (typeof window.__renderNxScoreCard === 'function') {
+                    window.__renderNxScoreCard();
                 }
-                ensureSirLoader(function () {
-                    try {
-                        // clear previous widget node
-                        var w = document.querySelector('.sr-widget-1');
-                        if (w) w.innerHTML = '';
-                        if (typeof SIR === 'function') {
-                            SIR('addWidget', '.sr-widget-1', 'match.lmtLight', {
-                                layout: 'double',
-                                collapseTo: 'momentum',
-                                matchId: Number(srId) || srId
-                            });
-                            $('#scorecard-status').text('');
-                            console.log('[ScoreCard] SIR widget mounted matchId=' + srId);
-                        } else {
-                            $('#scorecard-status').text('SportRadar loader failed');
-                        }
-                    } catch (e) {
-                        console.warn('[ScoreCard] SIR error', e);
-                        $('#scorecard-status').text('Scorecard error: ' + (e.message || e));
-                    }
-                });
-            }
+            } catch (e) {}
 
-            // 1) already on Catalog?
-            var cached = getSportRadarMatchId();
-            if (cached) { mountSir(cached); return; }
+            // Ensure live poll is running
+            if (typeof window.startLiveScorePoll === 'function') window.startLiveScorePoll();
 
-            // 2) backend resolve (scrapes bpexch with session → SR matchId)
+            // 2) Optional: try real SportRadar widget if mapping exists
             var apiBase = (typeof pricesUrl !== 'undefined' && pricesUrl) ? pricesUrl
                 : (typeof API_BASE !== 'undefined' ? API_BASE : 'https://1xbetbackend.work.gd/api/v1');
-            var qid = eid || (typeof marketId !== 'undefined' ? marketId : '');
-            if (!qid) {
-                $('#scorecard-status').text('Scorecard: market/event id missing');
-                return;
-            }
             var token = localStorage.getItem('token') || '';
-            fetch(apiBase + '/markets/scorecard-id?id=' + encodeURIComponent(qid), {
-                headers: token ? { Authorization: 'Bearer ' + token } : {}
-            })
-            .then(function (r) { return r.json(); })
-            .then(function (j) {
-                var sr = (j && j.data && j.data.srMatchId) || (j && j.srMatchId) || null;
-                if (sr) {
-                    try {
-                        var el = document.getElementById('MarketView') || document.getElementById('app');
-                        var vm = el && el.__vue__;
-                        if (vm && vm.Catalog) vm.Catalog.srMatchId = sr;
-                    } catch (e) {}
-                    mountSir(sr);
-                } else {
-                    $('#scorecard-status').text('Scorecard mapping not found for this match.');
-                }
-            })
-            .catch(function (e) {
-                console.warn('[ScoreCard] API failed', e);
-                $('#scorecard-status').text('Scorecard API failed — deploy scorecard-id route?');
-            });
+            var headers = token ? { Authorization: 'Bearer ' + token } : {};
+            var tryIds = [];
+            if (marketIdLocal) tryIds.push(marketIdLocal);
+            if (eventIdLocal && eventIdLocal !== marketIdLocal) tryIds.push(eventIdLocal);
+
+            function trySr(i) {
+                if (i >= tryIds.length) return;
+                var qid = tryIds[i];
+                fetch(apiBase + '/markets/scorecard-id?id=' + encodeURIComponent(qid), { headers: headers })
+                  .then(function (r) { return r.json(); })
+                  .then(function (j) {
+                    var sr = (j && j.data && j.data.srMatchId) || null;
+                    if (sr && String(sr) !== String(eventIdLocal) && String(sr) !== String(marketIdLocal).replace(/^1\./,'')) {
+                      $box.html('<div class="widgets" style="max-width:100%;width:100%;padding:4px;"><div id="sr-widget" class="sr-widget sr-widget-1" data-sr-widget="match.lmtlight" style="min-height:280px;"></div></div>');
+                      if (typeof ensureSirLoader === 'function') {
+                        ensureSirLoader(function () {
+                          try {
+                            if (typeof SIR === 'function') {
+                              SIR('addWidget', '.sr-widget-1', 'match.lmtLight', {
+                                layout: 'double', collapseTo: 'momentum', matchId: Number(sr) || sr
+                              });
+                              console.log('[ScoreCard] SIR mounted', sr);
+                            }
+                          } catch (e) {
+                            if (typeof window.__renderNxScoreCard === 'function') window.__renderNxScoreCard();
+                          }
+                        });
+                      }
+                    } else {
+                      trySr(i + 1);
+                    }
+                  })
+                  .catch(function () { trySr(i + 1); });
+            }
+            trySr(0);
+
+            // Re-render panel after short delay (score may arrive from poll)
+            setTimeout(function () {
+              if (typeof window.__renderNxScoreCard === 'function') window.__renderNxScoreCard();
+            }, 800);
+            setTimeout(function () {
+              if (typeof window.__renderNxScoreCard === 'function') window.__renderNxScoreCard();
+            }, 2000);
         }
 
         function SHOWTV() {
@@ -7043,5 +7044,165 @@ Vue.component('runner-aggregate', {
 })();
 </script>
     <!-- getRunnerAmounts is defined in the main PNL script above -->
+
+<!-- ===== LIVE SCOREBOARD + SCORE CARD (no SportRadar id required) ===== -->
+<script>
+(function () {
+  'use strict';
+
+  function getVm() {
+    var el = document.getElementById('MarketView') || document.getElementById('app');
+    return el && el.__vue__ ? el.__vue__ : null;
+  }
+
+  function getMarketIdForLive() {
+    try {
+      var vm = getVm();
+      if (vm && vm.Catalog && vm.Catalog.marketId) return String(vm.Catalog.marketId);
+    } catch (e) {}
+    try {
+      var q = new URLSearchParams(window.location.search).get('id');
+      if (q) return q;
+    } catch (e2) {}
+    if (typeof marketId !== 'undefined' && marketId) return String(marketId);
+    return '';
+  }
+
+  function normalizeScore(sb) {
+    if (!sb || typeof sb !== 'object') return null;
+    return {
+      team1: sb.team1 || sb.home || '',
+      team2: sb.team2 || sb.away || '',
+      t1_runs: sb.t1_runs ?? sb.team1Runs ?? 0,
+      t1_wickets: sb.t1_wickets ?? sb.team1Wickets ?? 0,
+      t1_overs: sb.t1_overs ?? sb.team1Overs ?? '',
+      t1_crr: sb.t1_crr ?? sb.team1Crr ?? sb.crr ?? '',
+      t2_runs: sb.t2_runs ?? sb.team2Runs ?? 0,
+      t2_wickets: sb.t2_wickets ?? sb.team2Wickets ?? 0,
+      t2_overs: sb.t2_overs ?? sb.team2Overs ?? '',
+      t2_crr: sb.t2_crr ?? sb.team2Crr ?? '',
+      commentry: sb.commentry || sb.commentary || sb.news || '',
+      commentary: sb.commentary || sb.commentry || sb.news || '',
+      recent_string: sb.recent_string || sb.recentString || sb.thisOver || '',
+      lastOverLabel: sb.lastOverLabel || 'This Over',
+      rrr: sb.rrr || '',
+      target: sb.target || '',
+      status: sb.status || ''
+    };
+  }
+
+  function injectScore(sb) {
+    var score = normalizeScore(sb);
+    if (!score) return;
+    if (typeof window.injectScoreboardToVue === 'function') {
+      window.injectScoreboardToVue(score);
+    } else {
+      var vm = getVm();
+      if (vm) {
+        try {
+          if (vm.$set) vm.$set(vm, 'score', score);
+          else vm.score = score;
+        } catch (e) {}
+      }
+    }
+    // Keep Score Card panel in sync if open
+    renderScoreCardPanel(score);
+  }
+
+  function renderScoreCardPanel(score) {
+    var box = document.getElementById('LIVEDIV');
+    if (!box || box.style.display === 'none') return;
+    if (!score) {
+      var vm = getVm();
+      score = vm && vm.score ? normalizeScore(vm.score) : null;
+    }
+    if (!score) return;
+
+    var t1 = score.team1 || 'Team 1';
+    var t2 = score.team2 || 'Team 2';
+    var s1 = (score.t1_runs != null ? score.t1_runs : '-') + '/' + (score.t1_wickets != null ? score.t1_wickets : '-');
+    var o1 = score.t1_overs != null && score.t1_overs !== '' ? ' (' + score.t1_overs + ')' : '';
+    var s2 = (score.t2_runs != null ? score.t2_runs : '-') + '/' + (score.t2_wickets != null ? score.t2_wickets : '-');
+    var o2 = score.t2_overs != null && score.t2_overs !== '' ? ' (' + score.t2_overs + ')' : '';
+    var crr = score.t1_crr || score.t2_crr || '';
+    var recent = score.recent_string || '';
+    var comm = score.commentry || score.commentary || '';
+
+    box.innerHTML =
+      '<div id="nx-live-scorecard" style="background:#0f172a;color:#e2e8f0;border-radius:8px;overflow:hidden;font-family:Roboto Condensed,Arial,sans-serif;">' +
+      '  <div style="background:linear-gradient(90deg,#059669,#0ea5e9);padding:8px 12px;font-weight:700;font-size:14px;">LIVE SCORECARD</div>' +
+      '  <div style="display:flex;justify-content:space-between;padding:12px 14px;border-bottom:1px solid #1e293b;">' +
+      '    <div><div style="font-size:13px;color:#94a3b8;">' + t1 + '</div><div style="font-size:22px;font-weight:700;">' + s1 + '<span style="font-size:13px;color:#94a3b8;">' + o1 + '</span></div></div>' +
+      '    <div style="text-align:right;"><div style="font-size:13px;color:#94a3b8;">' + t2 + '</div><div style="font-size:22px;font-weight:700;">' + s2 + '<span style="font-size:13px;color:#94a3b8;">' + o2 + '</span></div></div>' +
+      '  </div>' +
+      (crr !== '' && crr != null ? '<div style="padding:6px 14px;font-size:12px;color:#94a3b8;">CRR: <b style="color:#f8fafc;">' + crr + '</b></div>' : '') +
+      (recent ? '<div style="padding:6px 14px;font-size:12px;"><span style="color:#94a3b8;">' + (score.lastOverLabel || 'This Over') + ':</span> <b style="color:#38bdf8;">' + recent + '</b></div>' : '') +
+      (comm ? '<div style="margin:8px 12px 12px;padding:10px;background:#14532d;border-radius:6px;color:#bbf7d0;font-weight:700;font-size:14px;text-align:center;">' + comm + '</div>' : '') +
+      '</div>';
+  }
+
+  // Expose for SHOWSC
+  window.__renderNxScoreCard = renderScoreCardPanel;
+  window.__injectNxScore = injectScore;
+
+  var _liveScoreTimer = null;
+  var _liveScoreBusy = false;
+
+  async function pollLiveScore() {
+    if (_liveScoreBusy) return;
+    var mid = getMarketIdForLive();
+    if (!mid) return;
+    _liveScoreBusy = true;
+    try {
+      var apiBase = (typeof pricesUrl !== 'undefined' && pricesUrl) ? pricesUrl
+        : (typeof API_BASE !== 'undefined' ? API_BASE : 'https://1xbetbackend.work.gd/api/v1');
+      var token = localStorage.getItem('token') || '';
+      var pricesToken = window._pricesToken || '';
+      var url = apiBase + '/markets/catalog2?id=' + encodeURIComponent(mid)
+        + (pricesToken ? '&pricesToken=' + encodeURIComponent(pricesToken) : '');
+      var res = await fetch(url, { headers: token ? { Authorization: 'Bearer ' + token } : {}, cache: 'no-store' });
+      if (!res.ok) return;
+      var json = await res.json();
+      var d = json.data || json;
+      if (d && d.scoreboard) {
+        injectScore(d.scoreboard);
+      } else if (d && (d.news || d.commentry)) {
+        injectScore({ commentry: d.news || d.commentry, commentary: d.news || d.commentry });
+      }
+      // also try Data endpoint for fresher books + scoreboard
+      try {
+        var url2 = apiBase + '/markets/Data?id=' + encodeURIComponent(mid)
+          + (pricesToken ? '&pricesToken=' + encodeURIComponent(pricesToken) : '');
+        var res2 = await fetch(url2, { headers: token ? { Authorization: 'Bearer ' + token } : {}, cache: 'no-store' });
+        if (res2.ok) {
+          var j2 = await res2.json();
+          var d2 = j2.data || j2;
+          if (d2 && d2.scoreboard) injectScore(d2.scoreboard);
+          else if (d2 && d2.news) injectScore({ commentry: d2.news, commentary: d2.news });
+        }
+      } catch (e2) {}
+    } catch (e) {
+      console.warn('[LiveScore] poll failed', e.message || e);
+    } finally {
+      _liveScoreBusy = false;
+    }
+  }
+
+  function startLiveScorePoll() {
+    if (_liveScoreTimer) return;
+    pollLiveScore();
+    _liveScoreTimer = setInterval(pollLiveScore, 2500);
+    console.log('[LiveScore] polling every 2.5s');
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () { setTimeout(startLiveScorePoll, 1200); });
+  } else {
+    setTimeout(startLiveScorePoll, 1200);
+  }
+  window.startLiveScorePoll = startLiveScorePoll;
+})();
+</script>
+
 </body>
 </html>

@@ -7079,14 +7079,19 @@ Vue.component('runner-aggregate', {
         } catch (e) {}
       }
     }
-    // Keep Score Card panel in sync if open
-    renderScoreCardPanel(score);
+    // Keep Score Card panel in sync only if NOT using bpexch iframe
+    var box2 = document.getElementById('LIVEDIV');
+    if (box2 && !box2.querySelector('iframe#livesc')) {
+      renderScoreCardPanel(score);
+    }
   }
 
 
   function renderScoreCardPanel(score) {
     var box = document.getElementById('LIVEDIV');
     if (!box || box.style.display === 'none') return;
+    // Do NOT overwrite bpexch LiveScoreCard iframe
+    if (box.querySelector('iframe#livesc')) return;
     if (!score) {
       var vm = getVm();
       score = vm && vm.score ? normalizeScore(vm.score) : null;

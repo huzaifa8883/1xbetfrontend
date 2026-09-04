@@ -1,4 +1,5 @@
 
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -6295,42 +6296,26 @@ Vue.component('runner-aggregate', {
             $('#TVDIVIFRAME').hide().empty();
 
             var eid = getMediaEventId();
-            var srId = getSportRadarMatchId();
             var $box = $('#LIVEDIV');
             if (!$box.length) return;
 
-            // Build scorecard UI
-            var html = ''
-              + '<div class="widgets" style="max-width:100%;width:100%;">'
-              + '  <div id="sr-widget" class="sr-widget sr-widget-1" data-sr-widget="match.lmtlight"></div>'
-              + '  <div id="scorecard-fallback" style="display:none;min-height:220px;"></div>'
-              + '  <div id="scorecard-status" style="padding:8px;color:#aaa;font-size:12px;">Loading scorecard…</div>'
-              + '</div>';
-            $box.html(html).show();
+            $box.html(
+              '<div class="widgets" style="max-width:100%;width:100%;padding:4px;">'
+              + '  <div id="sr-widget" class="sr-widget sr-widget-1" data-sr-widget="match.lmtlight" style="min-height:280px;"></div>'
+              + '  <div id="scorecard-status" style="padding:10px;color:#bbb;font-size:13px;">Loading scorecard…</div>'
+              + '</div>'
+            ).show();
 
-            function loadIframeFallback() {
-                var urls = [];
-                if (eid) {
-                    urls.push(BPEXCH_TV_BASE + '/Common/Scorecard?id=' + encodeURIComponent(eid));
-                    urls.push(BPEXCH_TV_ALT  + '/Common/Scorecard?id=' + encodeURIComponent(eid));
-                    urls.push(BPEXCH_TV_BASE + '/Common/ScorecardIframe?id=' + encodeURIComponent(eid));
-                    urls.push(BPEXCH_TV_ALT  + '/Common/ScorecardIframe?id=' + encodeURIComponent(eid));
-                }
-                if (!urls.length) {
-                    $('#scorecard-status').text('Scorecard: event id nahi mila');
+            function mountSir(srId) {
+                if (!srId) {
+                    $('#scorecard-status').text('Scorecard is not available for this event yet.');
                     return;
                 }
-                var src = urls[0];
-                $('#scorecard-fallback').html(
-                    '<iframe id="livesc" scrolling="no" frameborder="0" style="width:100%;min-height:320px;border:0;" src="' + src + '"></iframe>'
-                ).show();
-                $('#sr-widget').hide();
-                $('#scorecard-status').text('');
-            }
-
-            if (srId) {
                 ensureSirLoader(function () {
                     try {
+                        // clear previous widget node
+                        var w = document.querySelector('.sr-widget-1');
+                        if (w) w.innerHTML = '';
                         if (typeof SIR === 'function') {
                             SIR('addWidget', '.sr-widget-1', 'match.lmtLight', {
                                 layout: 'double',
@@ -6338,17 +6323,51 @@ Vue.component('runner-aggregate', {
                                 matchId: Number(srId) || srId
                             });
                             $('#scorecard-status').text('');
-                            return;
+                            console.log('[ScoreCard] SIR widget mounted matchId=' + srId);
+                        } else {
+                            $('#scorecard-status').text('SportRadar loader failed');
                         }
                     } catch (e) {
-                        console.warn('[ScoreCard] SIR widget failed', e);
+                        console.warn('[ScoreCard] SIR error', e);
+                        $('#scorecard-status').text('Scorecard error: ' + (e.message || e));
                     }
-                    loadIframeFallback();
                 });
-            } else {
-                // No SportRadar id on catalog — try bpexch iframe (they map event→SR internally)
-                loadIframeFallback();
             }
+
+            // 1) already on Catalog?
+            var cached = getSportRadarMatchId();
+            if (cached) { mountSir(cached); return; }
+
+            // 2) backend resolve (scrapes bpexch with session → SR matchId)
+            var apiBase = (typeof pricesUrl !== 'undefined' && pricesUrl) ? pricesUrl
+                : (typeof API_BASE !== 'undefined' ? API_BASE : 'https://1xbetbackend.work.gd/api/v1');
+            var qid = eid || (typeof marketId !== 'undefined' ? marketId : '');
+            if (!qid) {
+                $('#scorecard-status').text('Scorecard: market/event id missing');
+                return;
+            }
+            var token = localStorage.getItem('token') || '';
+            fetch(apiBase + '/markets/scorecard-id?id=' + encodeURIComponent(qid), {
+                headers: token ? { Authorization: 'Bearer ' + token } : {}
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (j) {
+                var sr = (j && j.data && j.data.srMatchId) || (j && j.srMatchId) || null;
+                if (sr) {
+                    try {
+                        var el = document.getElementById('MarketView') || document.getElementById('app');
+                        var vm = el && el.__vue__;
+                        if (vm && vm.Catalog) vm.Catalog.srMatchId = sr;
+                    } catch (e) {}
+                    mountSir(sr);
+                } else {
+                    $('#scorecard-status').text('Scorecard mapping not found for this match.');
+                }
+            })
+            .catch(function (e) {
+                console.warn('[ScoreCard] API failed', e);
+                $('#scorecard-status').text('Scorecard API failed — deploy scorecard-id route?');
+            });
         }
 
         function SHOWTV() {

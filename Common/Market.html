@@ -6296,54 +6296,53 @@ Vue.component('runner-aggregate', {
             $('#TVDIVIFRAME').hide().empty();
 
             var marketIdLocal = '';
-            var eventIdLocal = '';
             try {
                 var el = document.getElementById('MarketView') || document.getElementById('app');
                 var vm = el && el.__vue__;
-                if (vm && vm.Catalog) {
-                    marketIdLocal = String(vm.Catalog.marketId || '');
-                    eventIdLocal = String(vm.Catalog.eventId || '');
+                if (vm && vm.Catalog && vm.Catalog.marketId) {
+                    marketIdLocal = String(vm.Catalog.marketId);
                 }
             } catch (e) {}
+            if (!marketIdLocal) {
+                try { marketIdLocal = new URLSearchParams(window.location.search).get('id') || ''; } catch (e2) {}
+            }
             if (!marketIdLocal && typeof marketId !== 'undefined') marketIdLocal = String(marketId || '');
-            if (!eventIdLocal && typeof getMediaEventId === 'function') eventIdLocal = getMediaEventId() || '';
+            if (!marketIdLocal && typeof getMediaEventId === 'function') marketIdLocal = getMediaEventId() || '';
 
             var $box = $('#LIVEDIV');
             if (!$box.length) return;
-
-            var apiBase = (typeof pricesUrl !== 'undefined' && pricesUrl) ? pricesUrl
-                : (typeof API_BASE !== 'undefined' ? API_BASE : 'https://1xbetbackend.work.gd/api/v1');
-            var qid = marketIdLocal || eventIdLocal || '';
-            if (!qid) {
-                $box.html('<div style="padding:12px;color:#94a3b8;">No market id</div>').show();
+            if (!marketIdLocal) {
+                $box.html('<div style="padding:12px;color:#94a3b8;">Market id missing</div>').show();
                 return;
             }
 
-            // Exact bpexch design: same-origin iframe → backend proxies bpexch Scorecard HTML (SIR widget)
-            var src = apiBase + '/markets/scorecard-html?id=' + encodeURIComponent(qid)
-              + (eventIdLocal ? '&eventId=' + encodeURIComponent(eventIdLocal) : '')
-              + '&_=' + Date.now();
+            // Exact bpexch scorecard (confirmed URL)
+            var src = 'https://bpexch.xyz/Common/LiveScoreCard?id=' + encodeURIComponent(marketIdLocal);
 
             $box.html(
-              '<iframe id="livesc" scrolling="no" frameborder="0" ' +
-              'style="width:100%;min-height:320px;height:360px;border:0;background:#0b1220;display:block;" ' +
-              'src="' + src + '"></iframe>'
+                '<iframe id="livesc" class="responsive-iframe" scrolling="no" frameborder="0" ' +
+                'allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" ' +
+                'allowfullscreen="allowfullscreen" ' +
+                'style="width:100%;height:190px;min-height:190px;border:0;display:block;background:#0b1220;" ' +
+                'src="' + src + '"></iframe>'
             ).show();
 
-            // Auto-resize from bpexch postMessage { h: number }
+            // bpexch postMessage height resize
             window.__nxScorecardMsg = function (event) {
-              try {
-                var h = event && event.data && event.data.h;
-                if (!h || h < 40) return;
-                var ifr = document.getElementById('livesc');
-                if (ifr) ifr.style.height = (Math.ceil(h) + 20) + 'px';
-              } catch (e) {}
+                try {
+                    var h = event && event.data && event.data.h;
+                    if (!h || h < 40) return;
+                    var ifr = document.getElementById('livesc');
+                    if (ifr) {
+                        ifr.style.height = Math.max(190, Math.ceil(h) + 10) + 'px';
+                    }
+                } catch (e) {}
             };
             window.removeEventListener('message', window.__nxScorecardMsg);
             window.addEventListener('message', window.__nxScorecardMsg);
 
             if (typeof window.startLiveScorePoll === 'function') window.startLiveScorePoll();
-            console.log('[ScoreCard] loading bpexch proxy', src);
+            console.log('[ScoreCard] bpexch LiveScoreCard', src);
         }
 
         function SHOWTV() {

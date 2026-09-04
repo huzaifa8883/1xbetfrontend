@@ -3920,7 +3920,7 @@
                         <div class="btn-group btn-group-xs" style="width:100%; height:30px; margin-bottom:2px;">
                             <button class="btn btn-primary btn-xs" style="width:50%; border-right:solid" onclick="SHOWTV()">Tv</button>
 
-                                <button class="btn btn-primary btn-xs" style="width:50%" onclick="return false;">Score Card</button>
+                                <button class="btn btn-primary btn-xs" style="width:50%" onclick="SHOWSC()">Score Card</button>
                         </div>
                         <div id="TVDIVIFRAME" style="display:none;">
                         </div>
@@ -3934,8 +3934,10 @@
 </div>
                         </div>
 
-                            <div id="LIVEDIV" class="container">
-                                <!-- ✅ Scorecard box hata diya gaya hai — user ki request par yahan ab kuch nahi dikhta -->
+                            <div id="LIVEDIV" class="container" style="display:none;padding:0;">
+                                <div class="widgets" style="max-width:100%;width:100%;">
+                                    <div id="sr-widget" class="sr-widget sr-widget-1" data-sr-widget="match.lmtlight"></div>
+                                </div>
                             </div>
 
 
@@ -6209,97 +6211,202 @@ Vue.component('runner-aggregate', {
             window.attachEvent("onmessage", onMessage, false);
         }
         
-        function SHOWTV() {
-            show_tv_tab = true;
-            if ($("#TVDIV").is(":visible")) {
-                $("#TVDIV").hide();
-                $("#LIVEDIV").hide();
-                clearInterval();
-                $("#sr-widget").hide();
-                var element = document.getElementById("UnrealPlayer1_Video");
+        
+        // ── TV + ScoreCard (bpexch-style) ──────────────────────────────
+        // SportRadar client id from bpexch scorecard page
+        var SR_CLIENT = '8ee45b574e2781d581b0b0a133803906';
+        var BPEXCH_TV_BASE = 'https://bpexch.live';
+        var BPEXCH_TV_ALT  = 'https://www.bpexch.xyz';
+
+        function getMediaEventId() {
+            try {
+                var el = document.getElementById('MarketView') || document.getElementById('app');
+                var vm = el && el.__vue__;
+                if (vm && vm.Catalog) {
+                    if (vm.Catalog.eventId) return String(vm.Catalog.eventId);
+                    if (vm.Catalog.marketId) return String(vm.Catalog.marketId);
+                }
+            } catch (e) {}
+            if (typeof eventId !== 'undefined' && eventId) return String(eventId);
+            if (typeof marketId !== 'undefined' && marketId) return String(marketId);
+            try {
+                var qp = new URLSearchParams(window.location.search);
+                return qp.get('eventId') || qp.get('id') || '';
+            } catch (e2) { return ''; }
+        }
+
+        function getSportRadarMatchId() {
+            try {
+                var el = document.getElementById('MarketView') || document.getElementById('app');
+                var vm = el && el.__vue__;
+                if (vm && vm.Catalog) {
+                    var c = vm.Catalog;
+                    var sid = c.srMatchId || c.sportRadarMatchId || c.scoreboardMatchId
+                        || (c.scoreboard && (c.scoreboard.matchId || c.scoreboard.MatchId))
+                        || (c.scores && (c.scores.matchId || c.scores.id));
+                    if (sid) return String(sid);
+                }
+            } catch (e) {}
+            return null;
+        }
+
+        function ensureSirLoader(cb) {
+            if (typeof window.SIR === 'function') { cb(); return; }
+            var s = document.createElement('script');
+            s.src = 'https://widgets.sir.sportradar.com/' + SR_CLIENT + '/widgetloader';
+            s.async = true;
+            s.onload = function () {
+                try {
+                    (function(a,b,c,d,e,f,g,h,i){
+                        a[e]||(i=a[e]=function(){(a[e].q=a[e].q||[]).push(arguments)},i.l=1*new Date,i.o=f,
+                        g=b.createElement(c),h=b.getElementsByTagName(c)[0],g.async=1,g.src=d,g.setAttribute('n',e),h.parentNode.insertBefore(g,h))
+                    })(window,document,'script','https://widgets.sir.sportradar.com/'+SR_CLIENT+'/widgetloader','SIR',{language:'en',theme:false});
+                } catch (e) {}
+                setTimeout(cb, 300);
+            };
+            s.onerror = function () { cb(); };
+            document.head.appendChild(s);
+        }
+
+        function stopUnrealIfAny() {
+            try {
+                var element = document.getElementById('UnrealPlayer1_Video');
                 if (element != null) {
                     element.parentNode.removeChild(element);
+                }
+                if (typeof streams !== 'undefined' && streams && streams.forEach) {
                     streams.forEach(function (str) {
-                        if (str.player !== null) {
-                            str.player.Stop();
-                        }
-                        document.querySelector(str.container).style.display = 'none';
-                        document.querySelector(str.el).style.display = 'none';
-                        document.querySelector(str.unreal).style.display = 'none';
-                        document.querySelector(str.unreal).player = null;
+                        try {
+                            if (str.player !== null) str.player.Stop();
+                            document.querySelector(str.container).style.display = 'none';
+                            document.querySelector(str.el).style.display = 'none';
+                            document.querySelector(str.unreal).style.display = 'none';
+                            document.querySelector(str.unreal).player = null;
+                        } catch (e) {}
                     });
                 }
-            } else {
-                PlayChannelFunction();
-                $("#LIVEDIV").hide();
-                $("#sr-widget").hide();
-                StatusCon();
+            } catch (e) {}
+        }
+
+        function SHOWSC() {
+            show_tv_tab = false;
+            stopUnrealIfAny();
+            $('#TVDIV').hide();
+            $('#TVDIVIFRAME').hide().empty();
+
+            var eid = getMediaEventId();
+            var srId = getSportRadarMatchId();
+            var $box = $('#LIVEDIV');
+            if (!$box.length) return;
+
+            // Build scorecard UI
+            var html = ''
+              + '<div class="widgets" style="max-width:100%;width:100%;">'
+              + '  <div id="sr-widget" class="sr-widget sr-widget-1" data-sr-widget="match.lmtlight"></div>'
+              + '  <div id="scorecard-fallback" style="display:none;min-height:220px;"></div>'
+              + '  <div id="scorecard-status" style="padding:8px;color:#aaa;font-size:12px;">Loading scorecard…</div>'
+              + '</div>';
+            $box.html(html).show();
+
+            function loadIframeFallback() {
+                var urls = [];
+                if (eid) {
+                    urls.push(BPEXCH_TV_BASE + '/Common/Scorecard?id=' + encodeURIComponent(eid));
+                    urls.push(BPEXCH_TV_ALT  + '/Common/Scorecard?id=' + encodeURIComponent(eid));
+                    urls.push(BPEXCH_TV_BASE + '/Common/ScorecardIframe?id=' + encodeURIComponent(eid));
+                    urls.push(BPEXCH_TV_ALT  + '/Common/ScorecardIframe?id=' + encodeURIComponent(eid));
+                }
+                if (!urls.length) {
+                    $('#scorecard-status').text('Scorecard: event id nahi mila');
+                    return;
+                }
+                var src = urls[0];
+                $('#scorecard-fallback').html(
+                    '<iframe id="livesc" scrolling="no" frameborder="0" style="width:100%;min-height:320px;border:0;" src="' + src + '"></iframe>'
+                ).show();
+                $('#sr-widget').hide();
+                $('#scorecard-status').text('');
             }
+
+            if (srId) {
+                ensureSirLoader(function () {
+                    try {
+                        if (typeof SIR === 'function') {
+                            SIR('addWidget', '.sr-widget-1', 'match.lmtLight', {
+                                layout: 'double',
+                                collapseTo: 'momentum',
+                                matchId: Number(srId) || srId
+                            });
+                            $('#scorecard-status').text('');
+                            return;
+                        }
+                    } catch (e) {
+                        console.warn('[ScoreCard] SIR widget failed', e);
+                    }
+                    loadIframeFallback();
+                });
+            } else {
+                // No SportRadar id on catalog — try bpexch iframe (they map event→SR internally)
+                loadIframeFallback();
+            }
+        }
+
+        function SHOWTV() {
+            show_tv_tab = true;
+            if ($('#TVDIVIFRAME').is(':visible') || $('#TVDIV').is(':visible')) {
+                $('#TVDIV').hide();
+                $('#TVDIVIFRAME').hide().empty();
+                $('#LIVEDIV').hide();
+                stopUnrealIfAny();
+                return;
+            }
+            $('#LIVEDIV').hide();
+            stopUnrealIfAny();
+            PlayChannelFunction();
+            if (typeof StatusCon === 'function') StatusCon();
         }
 
         function PlayChannelFunction() {
-            $.get('/Common/Market?handler=ChannelData&Evid=' + 35041878, function (data) {
-                if (data == '') {
-                    if ($("#TVDIVIFRAME").is(":visible")) {
-                        document.getElementById('TVDIVIFRAME').innerHTML = "";
-                        $("#TVDIVIFRAME").hide();
+            var evid = getMediaEventId();
+            if (!evid) {
+                $('#TVDIVIFRAME').html(
+                    '<div style="padding:12px;color:#ccc;">TV: event id nahi mila</div>'
+                ).show();
+                return;
+            }
+            // 1) try local ChannelData handler (legacy)
+            var triedLocal = false;
+            function showIframe() {
+                var src = BPEXCH_TV_BASE + '/Common/TvIframe?id=' + encodeURIComponent(evid);
+                $('#TVDIVIFRAME').html(
+                    '<iframe scrolling="no" frameborder="no" id="TVIFRAME" style="width:100%;min-height:280px;border:0;" src="' + src + '"></iframe>'
+                ).show();
+                $('#TVDIV').hide();
+            }
+            try {
+                $.get('/Common/Market?handler=ChannelData&Evid=' + encodeURIComponent(evid), function (data) {
+                    triedLocal = true;
+                    if (!data) {
+                        showIframe();
                     } else {
-                        document.getElementById('TVDIVIFRAME').innerHTML = "<iframe scrolling=no frameborder='no' id='TVIFRAME' src='https://www.bpexch.xyz/Common/TvIframe?id=35041878'></iframe>";
-                        $("#TVDIVIFRAME").show();
+                        $('#TVDIVIFRAME').empty().hide();
+                        $('#TVDIV').show();
+                        if (typeof playChannel === 'function') playChannel(data);
+                        else showIframe();
                     }
-                } else {
-                    document.getElementById('TVDIVIFRAME').innerHTML = "";
-                    $("#TVDIVIFRAME").hide();
-                    $("#TVDIV").show();
-                    playChannel(data);
-                }
-            });
-        }
-        
-        function SHOWLIVE(MID) {
-            show_tv_tab = false;
-            if ($("#TVDIVIFRAME").is(":visible")) {
-                $("#TVDIVIFRAME").hide();
+                }).fail(function () {
+                    showIframe();
+                });
+            } catch (e) {
+                showIframe();
             }
-            if ($("#LIVEDIV").is(":visible")) {
-                $("#TVDIV").hide();
-                $("#LIVEDIV").hide();
-                $("#sr-widget").hide();
-                var element = document.getElementById("UnrealPlayer1_Video");
-                if (element != null) {
-                    element.parentNode.removeChild(element);
-                    streams.forEach(function (str) {
-                        if (str.player !== null) {
-                            str.player.Stop();
-                        }
-                        document.querySelector(str.container).style.display = 'none';
-                        document.querySelector(str.el).style.display = 'none';
-                        document.querySelector(str.unreal).style.display = 'none';
-                        document.querySelector(str.unreal).player = null;
-                    });
-                }
-            } else {
-                var element = document.getElementById("UnrealPlayer1_Video");
-                if (element != null) {
-                    element.parentNode.removeChild(element);
-                    streams.forEach(function (str) {
-                        if (str.player !== null) {
-                            str.player.Stop();
-                        }
-                        document.querySelector(str.container).style.display = 'none';
-                        document.querySelector(str.el).style.display = 'none';
-                        document.querySelector(str.unreal).style.display = 'none';
-                        document.querySelector(str.unreal).player = null;
-                    });
-                }
+        }
 
-                $("#TVDIV").hide();
-                $("#LIVEDIV").show();
-                $("#sr-widget").show();
-                // ✅ Apna scorecard Vue se already live-bound hai (Catalog.runners/status) —
-                //    koi external iframe src set karne ki zaroorat nahi.
-            }
+        function SHOWLIVE(MID) {
+            // Alias → Score Card
+            SHOWSC();
         }
+
 
         function MarketTab(cityName, element) {
             if (cityName === null) {

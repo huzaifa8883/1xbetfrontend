@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -1680,12 +1681,45 @@
            h12 + ':' + pad(d.getMinutes()) + ' ' + ampm;
   }
 
+  function formatRaceTitleTime(startTimeIso) {
+    if (!startTimeIso) return '';
+    var ms = parseAsUtcMs(startTimeIso);
+    if (isNaN(ms)) return '';
+    var d = new Date(ms);
+    var hours = d.getHours();
+    var ampm  = hours >= 12 ? 'pm' : 'am';
+    var h12   = hours % 12 || 12;
+    return h12 + ':' + pad(d.getMinutes()) + ' ' + ampm;
+  }
+
+  // Strip leading clock from eventName and prefix with device-local race time (bpexch-style)
+  function fixRaceEventTitle(startTimeIso) {
+    try {
+      var root = document.getElementById('MarketView') || document.getElementById('app');
+      var vm = root && root.__vue__;
+      if (!vm || !vm.Catalog) return;
+      var eid = String(vm.Catalog.eventTypeId || '');
+      if (eid !== '7' && eid !== '4339') return;
+      var t = formatRaceTitleTime(startTimeIso);
+      if (!t) return;
+      var en = String(vm.Catalog.eventName || '');
+      // remove any leading time token: "9:20 AM ", "2:20 pm ", "14:20 ", etc.
+      var rest = en.replace(/^\s*\d{1,2}:\d{2}\s*(AM|PM|am|pm)?\s*/i, '').trim();
+      if (!rest) rest = en;
+      var fixed = t + ' ' + rest;
+      if (vm.Catalog.eventName !== fixed) {
+        vm.$set ? vm.$set(vm.Catalog, 'eventName', fixed) : (vm.Catalog.eventName = fixed);
+      }
+    } catch (e) {}
+  }
+
   function updateHeaderDateTime(startTimeIso) {
     var el = document.getElementById('header-current-datetime');
     if (!el) return;
     var formatted = formatMatchDateTime(startTimeIso);
     if (!formatted) return;
     if (el.textContent !== formatted) el.textContent = formatted;
+    fixRaceEventTitle(startTimeIso);
   }
 
   var _headerDateObserver = null;
@@ -6768,12 +6802,12 @@ Vue.component('runner-aggregate', {
       ifLose: r.ifLose || 0,
       jockeyName:   (r.jockeyName || null) ? (r.jockeyName).replace(/^\s*\(\d+\)\s*/, '').trim() || null : null,
       // Silk image — Betfair COLOURS_FILENAME_URL se aati hai (asal Betfair CDN image)
-      silkUrl:      r.silkUrl || null,                 // sirf actual image URL — kabhi hex color nahi
-      silkColor:    r.clothColor || null,               // hex fallback color (jab silk image na ho)
-      clothNumber:  r.clothNumber || null,
+      silkUrl:      (r.silkUrl && String(r.silkUrl).indexOf('http') === 0) ? r.silkUrl : null,
+      silkColor:    r.silkColor || r.clothColor || null,
+      clothNumber:  r.clothNumber || r.sortPriority || null,
       sortPriority: r.sortPriority || null,
-      clothColor:   r.clothColor  || null,   // position-based fallback color
-      clothStriped: r.clothStriped || false, // greyhound trap 6 — black/white stripe pattern
+      clothColor:   r.clothColor || r.silkColor || null,
+      clothStriped: r.clothStriped || false,
       metadataDict: r.metadataDict || null,
       indB1: r.indB1 || '',
       indL1: r.indL1 || '',
@@ -7113,6 +7147,40 @@ Vue.component('runner-aggregate', {
     });
   }
 
+  // Fill missing silks / trap colors on race runners (bpexch-style jackets)
+  var RACE_COLORS = ['#E63946','#FFFFFF','#1D3557','#F4D03F','#2ECC71','#111111','#F39C12','#8E44AD',
+    '#16A085','#E74C3C','#3498DB','#F1C40F','#E67E22','#1ABC9C','#95A5A6','#2C3E50'];
+  var GREY_COLORS = ['#E63946','#1D3557','#FFFFFF','#F4D03F','#2ECC71','#111111','#F39C12','#E91E63'];
+
+  function enrichRunnerSilks(vm) {
+    try {
+      if (!vm || !vm.Catalog || !Array.isArray(vm.Catalog.runners)) return;
+      var eid = String(vm.Catalog.eventTypeId || '');
+      if (eid !== '7' && eid !== '4339') return;
+      var isGrey = eid === '4339';
+      vm.Catalog.runners.forEach(function (r, idx) {
+        if (!r) return;
+        var meta = r.metadataDict || r.metadata || {};
+        if (typeof meta === 'string') {
+          try { meta = JSON.parse(meta); } catch (e) { meta = {}; }
+        }
+        var cloth = r.clothNumber || meta.CLOTH_NUMBER || meta.TRAP || meta.trap || r.sortPriority || (idx + 1);
+        var pos = parseInt(cloth, 10) || (idx + 1);
+        if (!r.clothNumber) r.clothNumber = String(pos);
+        var color = r.clothColor || r.silkColor || (isGrey ? GREY_COLORS[(pos - 1) % GREY_COLORS.length] : RACE_COLORS[(pos - 1) % RACE_COLORS.length]);
+        r.clothColor = color;
+        r.silkColor = color;
+        if (isGrey && pos === 6) r.clothStriped = true;
+        var url = r.silkUrl || meta.COLOURS_FILENAME_URL || meta.colours_filename_url || null;
+        if (url && String(url).indexOf('http') === 0) r.silkUrl = url;
+        else r.silkUrl = null;
+        if (!r.jockeyName) r.jockeyName = meta.JOCKEY_NAME || meta.jockey_name || null;
+      });
+    } catch (e) {
+      console.warn('[RaceCleaner] silk enrich failed', e);
+    }
+  }
+
   // getClothColor ko Vue methods mein add karo taake template mein call ho sake
   (function patchVueMethods() {
     function tryPatch() {
@@ -7125,6 +7193,14 @@ Vue.component('runner-aggregate', {
         // Vue 2 mein direct property set karo
         vm.getClothColor = window.getClothColor;
         console.log('[RaceCleaner] getClothColor Vue method added');
+      }
+      enrichRunnerSilks(vm);
+      // re-apply when runners update
+      if (!window._silkEnrichInterval) {
+        window._silkEnrichInterval = setInterval(function () {
+          var v = getVm();
+          if (v) enrichRunnerSilks(v);
+        }, 2000);
       }
     }
     setTimeout(tryPatch, 500);

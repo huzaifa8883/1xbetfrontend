@@ -1,6 +1,4 @@
 
-
-Files
 <!doctype html>
 <html lang="en">
 <head>
@@ -1683,45 +1681,12 @@ Files
            h12 + ':' + pad(d.getMinutes()) + ' ' + ampm;
   }
 
-  function formatRaceTitleTime(startTimeIso) {
-    if (!startTimeIso) return '';
-    var ms = parseAsUtcMs(startTimeIso);
-    if (isNaN(ms)) return '';
-    var d = new Date(ms);
-    var hours = d.getHours();
-    var ampm  = hours >= 12 ? 'pm' : 'am';
-    var h12   = hours % 12 || 12;
-    return h12 + ':' + pad(d.getMinutes()) + ' ' + ampm;
-  }
-
-  // Strip leading clock from eventName and prefix with device-local race time (bpexch-style)
-  function fixRaceEventTitle(startTimeIso) {
-    try {
-      var root = document.getElementById('MarketView') || document.getElementById('app');
-      var vm = root && root.__vue__;
-      if (!vm || !vm.Catalog) return;
-      var eid = String(vm.Catalog.eventTypeId || '');
-      if (eid !== '7' && eid !== '4339') return;
-      var t = formatRaceTitleTime(startTimeIso);
-      if (!t) return;
-      var en = String(vm.Catalog.eventName || '');
-      // remove any leading time token: "9:20 AM ", "2:20 pm ", "14:20 ", etc.
-      var rest = en.replace(/^\s*\d{1,2}:\d{2}\s*(AM|PM|am|pm)?\s*/i, '').trim();
-      if (!rest) rest = en;
-      var fixed = t + ' ' + rest;
-      if (vm.Catalog.eventName !== fixed) {
-        vm.$set ? vm.$set(vm.Catalog, 'eventName', fixed) : (vm.Catalog.eventName = fixed);
-      }
-    } catch (e) {}
-  }
-
   function updateHeaderDateTime(startTimeIso) {
     var el = document.getElementById('header-current-datetime');
     if (!el) return;
     var formatted = formatMatchDateTime(startTimeIso);
     if (!formatted) return;
     if (el.textContent !== formatted) el.textContent = formatted;
-    fixRaceEventTitle(startTimeIso);
   }
 
   var _headerDateObserver = null;
@@ -1997,11 +1962,7 @@ Files
                                         </span>
                                     </p>
                                     <p v-if="score.team1 != ''">{{ score.lastOverLabel }} : &nbsp; {{ score.recent_string }}</p>
-                                    <p v-if="score.target > 0 || score.rrr">
-                                        <span v-if="score.toWin">{{ score.toWin }}</span>
-                                        <span v-else-if="score.ballsText">{{ score.ballsText }}</span>
-                                        <span v-if="score.rrr">&nbsp;&nbsp;&nbsp;&nbsp; RRR: {{ score.rrr }}</span>
-                                    </p>
+                                    <p v-if="score.target > 0 && score.team2 != ''">{{ score.toWin }} &nbsp;&nbsp;&nbsp;&nbsp; RRR: {{ score.rrr }}</p>
                                 </div>
                             </div>
                         </div>
@@ -2152,12 +2113,12 @@ Files
                 {{ Catalog.status2 }}
             </div>
         </template>
-        <div v-else-if="(Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED') && !(runner.price1 || runner.lay1 || (runner.back && runner.back[0]))">
+        <div v-else-if="Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED'">
             <div class="runner-disabled">
                 {{ Catalog.status }}
             </div>
         </div>
-        <div v-else-if="IsRunnerDisabled(runner.status) && !(runner.price1 || runner.lay1)">
+        <div v-else-if="IsRunnerDisabled(runner.status)">
             <div class="runner-disabled">
                 {{ runner.status }}
             </div>
@@ -2290,12 +2251,12 @@ Files
                 {{ Catalog.status2 }}
             </div>
         </template>
-        <div v-else-if="(Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED') && !(runner.price1 || runner.lay1 || (runner.back && runner.back[0]))">
+        <div v-else-if="Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED'">
             <div class="runner-disabled">
                 {{ Catalog.status }}
             </div>
         </div>
-        <div v-else-if="IsRunnerDisabled(runner.status) && !(runner.price1 || runner.lay1)">
+        <div v-else-if="IsRunnerDisabled(runner.status)">
             <div class="runner-disabled">
                 {{ runner.status }}
             </div>
@@ -2421,12 +2382,12 @@ Files
                 {{ Catalog.status2 }}
             </div>
         </template>
-        <div v-else-if="(Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED') && !(runner.price1 || runner.lay1 || (runner.back && runner.back[0]))">
+        <div v-else-if="Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED'">
             <div class="runner-disabled">
                 {{ Catalog.status }}
             </div>
         </div>
-        <div v-else-if="IsRunnerDisabled(runner.status) && !(runner.price1 || runner.lay1)">
+        <div v-else-if="IsRunnerDisabled(runner.status)">
             <div class="runner-disabled">
                 {{ runner.status }}
             </div>
@@ -2551,12 +2512,12 @@ Files
                 {{ Catalog.status2 }}
             </div>
         </template>
-        <div v-else-if="(Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED') && !(runner.price1 || runner.lay1 || (runner.back && runner.back[0]))">
+        <div v-else-if="Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED'">
             <div class="runner-disabled">
                 {{ Catalog.status }}
             </div>
         </div>
-        <div v-else-if="IsRunnerDisabled(runner.status) && !(runner.price1 || runner.lay1)">
+        <div v-else-if="IsRunnerDisabled(runner.status)">
             <div class="runner-disabled">
                 {{ runner.status }}
             </div>
@@ -2682,12 +2643,12 @@ Files
                 {{ Catalog.status2 }}
             </div>
         </template>
-        <div v-else-if="(Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED') && !(runner.price1 || runner.lay1 || (runner.back && runner.back[0]))">
+        <div v-else-if="Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED'">
             <div class="runner-disabled">
                 {{ Catalog.status }}
             </div>
         </div>
-        <div v-else-if="IsRunnerDisabled(runner.status) && !(runner.price1 || runner.lay1)">
+        <div v-else-if="IsRunnerDisabled(runner.status)">
             <div class="runner-disabled">
                 {{ runner.status }}
             </div>
@@ -2812,12 +2773,12 @@ Files
                 {{ Catalog.status2 }}
             </div>
         </template>
-        <div v-else-if="(Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED') && !(runner.price1 || runner.lay1 || (runner.back && runner.back[0]))">
+        <div v-else-if="Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED'">
             <div class="runner-disabled">
                 {{ Catalog.status }}
             </div>
         </div>
-        <div v-else-if="IsRunnerDisabled(runner.status) && !(runner.price1 || runner.lay1)">
+        <div v-else-if="IsRunnerDisabled(runner.status)">
             <div class="runner-disabled">
                 {{ runner.status }}
             </div>
@@ -3019,12 +2980,12 @@ Files
                 {{ Catalog.status2 }}
             </div>
         </template>
-        <div v-else-if="(Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED') && !(runner.price1 || runner.lay1 || (runner.back && runner.back[0]))">
+        <div v-else-if="Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED'">
             <div class="runner-disabled">
                 {{ Catalog.status }}
             </div>
         </div>
-        <div v-else-if="IsRunnerDisabled(runner.status) && !(runner.price1 || runner.lay1)">
+        <div v-else-if="IsRunnerDisabled(runner.status)">
             <div class="runner-disabled">
                 {{ runner.status }}
             </div>
@@ -3157,12 +3118,12 @@ Files
                 {{ Catalog.status2 }}
             </div>
         </template>
-        <div v-else-if="(Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED') && !(runner.price1 || runner.lay1 || (runner.back && runner.back[0]))">
+        <div v-else-if="Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED'">
             <div class="runner-disabled">
                 {{ Catalog.status }}
             </div>
         </div>
-        <div v-else-if="IsRunnerDisabled(runner.status) && !(runner.price1 || runner.lay1)">
+        <div v-else-if="IsRunnerDisabled(runner.status)">
             <div class="runner-disabled">
                 {{ runner.status }}
             </div>
@@ -3289,12 +3250,12 @@ Files
                 {{ Catalog.status2 }}
             </div>
         </template>
-        <div v-else-if="(Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED') && !(runner.price1 || runner.lay1 || (runner.back && runner.back[0]))">
+        <div v-else-if="Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED'">
             <div class="runner-disabled">
                 {{ Catalog.status }}
             </div>
         </div>
-        <div v-else-if="IsRunnerDisabled(runner.status) && !(runner.price1 || runner.lay1)">
+        <div v-else-if="IsRunnerDisabled(runner.status)">
             <div class="runner-disabled">
                 {{ runner.status }}
             </div>
@@ -3420,12 +3381,12 @@ Files
                 {{ Catalog.status2 }}
             </div>
         </template>
-        <div v-else-if="(Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED') && !(runner.price1 || runner.lay1 || (runner.back && runner.back[0]))">
+        <div v-else-if="Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED'">
             <div class="runner-disabled">
                 {{ Catalog.status }}
             </div>
         </div>
-        <div v-else-if="IsRunnerDisabled(runner.status) && !(runner.price1 || runner.lay1)">
+        <div v-else-if="IsRunnerDisabled(runner.status)">
             <div class="runner-disabled">
                 {{ runner.status }}
             </div>
@@ -3552,12 +3513,12 @@ Files
                 {{ Catalog.status2 }}
             </div>
         </template>
-        <div v-else-if="(Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED') && !(runner.price1 || runner.lay1 || (runner.back && runner.back[0]))">
+        <div v-else-if="Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED'">
             <div class="runner-disabled">
                 {{ Catalog.status }}
             </div>
         </div>
-        <div v-else-if="IsRunnerDisabled(runner.status) && !(runner.price1 || runner.lay1)">
+        <div v-else-if="IsRunnerDisabled(runner.status)">
             <div class="runner-disabled">
                 {{ runner.status }}
             </div>
@@ -3684,12 +3645,12 @@ Files
                 {{ Catalog.status2 }}
             </div>
         </template>
-        <div v-else-if="(Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED') && !(runner.price1 || runner.lay1 || (runner.back && runner.back[0]))">
+        <div v-else-if="Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED'">
             <div class="runner-disabled">
                 {{ Catalog.status }}
             </div>
         </div>
-        <div v-else-if="IsRunnerDisabled(runner.status) && !(runner.price1 || runner.lay1)">
+        <div v-else-if="IsRunnerDisabled(runner.status)">
             <div class="runner-disabled">
                 {{ runner.status }}
             </div>
@@ -3894,12 +3855,12 @@ Files
                 {{ Catalog.status2 }}
             </div>
         </template>
-        <div v-else-if="(Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED') && !(runner.price1 || runner.lay1 || (runner.back && runner.back[0]))">
+        <div v-else-if="Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED'">
             <div class="runner-disabled">
                 {{ Catalog.status }}
             </div>
         </div>
-        <div v-else-if="IsRunnerDisabled(runner.status) && !(runner.price1 || runner.lay1)">
+        <div v-else-if="IsRunnerDisabled(runner.status)">
             <div class="runner-disabled">
                 {{ runner.status }}
             </div>
@@ -4030,12 +3991,12 @@ Files
                 {{ Catalog.status2 }}
             </div>
         </template>
-        <div v-else-if="(Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED') && !(runner.price1 || runner.lay1 || (runner.back && runner.back[0]))">
+        <div v-else-if="Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED'">
             <div class="runner-disabled">
                 {{ Catalog.status }}
             </div>
         </div>
-        <div v-else-if="IsRunnerDisabled(runner.status) && !(runner.price1 || runner.lay1)">
+        <div v-else-if="IsRunnerDisabled(runner.status)">
             <div class="runner-disabled">
                 {{ runner.status }}
             </div>
@@ -4086,7 +4047,7 @@ Files
                         <div class="btn-group btn-group-xs" style="width:100%; height:30px; margin-bottom:2px;">
                             <button class="btn btn-primary btn-xs" style="width:50%; border-right:solid" onclick="SHOWTV()">Tv</button>
 
-                                <button class="btn btn-primary btn-xs" style="width:50%" onclick="SHOWSC()">Score Card</button>
+                                <button class="btn btn-primary btn-xs" style="width:50%" onclick="return false;">Score Card</button>
                         </div>
                         <div id="TVDIVIFRAME" style="display:none;">
                         </div>
@@ -4100,10 +4061,8 @@ Files
 </div>
                         </div>
 
-                            <div id="LIVEDIV" class="container" style="display:none;padding:0;">
-                                <div class="widgets" style="max-width:100%;width:100%;">
-                                    <div id="sr-widget" class="sr-widget sr-widget-1" data-sr-widget="match.lmtlight"></div>
-                                </div>
+                            <div id="LIVEDIV" class="container">
+                                <!-- ✅ Scorecard box hata diya gaya hai — user ki request par yahan ab kuch nahi dikhta -->
                             </div>
 
 
@@ -6389,195 +6348,97 @@ Vue.component('runner-aggregate', {
             window.attachEvent("onmessage", onMessage, false);
         }
         
-        
-        // ── TV + ScoreCard (bpexch-style) ──────────────────────────────
-        // SportRadar client id from bpexch scorecard page
-        var SR_CLIENT = '8ee45b574e2781d581b0b0a133803906';
-        var BPEXCH_TV_BASE = 'https://bpexch.live';
-        var BPEXCH_TV_ALT  = 'https://www.bpexch.xyz';
-
-        function getMediaEventId() {
-            try {
-                var el = document.getElementById('MarketView') || document.getElementById('app');
-                var vm = el && el.__vue__;
-                if (vm && vm.Catalog) {
-                    if (vm.Catalog.eventId) return String(vm.Catalog.eventId);
-                    if (vm.Catalog.marketId) return String(vm.Catalog.marketId);
-                }
-            } catch (e) {}
-            if (typeof eventId !== 'undefined' && eventId) return String(eventId);
-            if (typeof marketId !== 'undefined' && marketId) return String(marketId);
-            try {
-                var qp = new URLSearchParams(window.location.search);
-                return qp.get('eventId') || qp.get('id') || '';
-            } catch (e2) { return ''; }
-        }
-
-        function getSportRadarMatchId() {
-            try {
-                var el = document.getElementById('MarketView') || document.getElementById('app');
-                var vm = el && el.__vue__;
-                if (vm && vm.Catalog) {
-                    var c = vm.Catalog;
-                    var sid = c.srMatchId || c.sportRadarMatchId || c.scoreboardMatchId
-                        || (c.scoreboard && (c.scoreboard.matchId || c.scoreboard.MatchId))
-                        || (c.scores && (c.scores.matchId || c.scores.id));
-                    if (sid) return String(sid);
-                }
-            } catch (e) {}
-            return null;
-        }
-
-        function ensureSirLoader(cb) {
-            if (typeof window.SIR === 'function') { cb(); return; }
-            var s = document.createElement('script');
-            s.src = 'https://widgets.sir.sportradar.com/' + SR_CLIENT + '/widgetloader';
-            s.async = true;
-            s.onload = function () {
-                try {
-                    (function(a,b,c,d,e,f,g,h,i){
-                        a[e]||(i=a[e]=function(){(a[e].q=a[e].q||[]).push(arguments)},i.l=1*new Date,i.o=f,
-                        g=b.createElement(c),h=b.getElementsByTagName(c)[0],g.async=1,g.src=d,g.setAttribute('n',e),h.parentNode.insertBefore(g,h))
-                    })(window,document,'script','https://widgets.sir.sportradar.com/'+SR_CLIENT+'/widgetloader','SIR',{language:'en',theme:false});
-                } catch (e) {}
-                setTimeout(cb, 300);
-            };
-            s.onerror = function () { cb(); };
-            document.head.appendChild(s);
-        }
-
-        function stopUnrealIfAny() {
-            try {
-                var element = document.getElementById('UnrealPlayer1_Video');
-                if (element != null) {
-                    element.parentNode.removeChild(element);
-                }
-                if (typeof streams !== 'undefined' && streams && streams.forEach) {
-                    streams.forEach(function (str) {
-                        try {
-                            if (str.player !== null) str.player.Stop();
-                            document.querySelector(str.container).style.display = 'none';
-                            document.querySelector(str.el).style.display = 'none';
-                            document.querySelector(str.unreal).style.display = 'none';
-                            document.querySelector(str.unreal).player = null;
-                        } catch (e) {}
-                    });
-                }
-            } catch (e) {}
-        }
-
-        function SHOWSC() {
-            show_tv_tab = false;
-            stopUnrealIfAny();
-            $('#TVDIV').hide();
-            $('#TVDIVIFRAME').hide().empty();
-
-            var marketIdLocal = '';
-            try {
-                var el = document.getElementById('MarketView') || document.getElementById('app');
-                var vm = el && el.__vue__;
-                if (vm && vm.Catalog && vm.Catalog.marketId) {
-                    marketIdLocal = String(vm.Catalog.marketId);
-                }
-            } catch (e) {}
-            if (!marketIdLocal) {
-                try { marketIdLocal = new URLSearchParams(window.location.search).get('id') || ''; } catch (e2) {}
-            }
-            if (!marketIdLocal && typeof marketId !== 'undefined') marketIdLocal = String(marketId || '');
-            if (!marketIdLocal && typeof getMediaEventId === 'function') marketIdLocal = getMediaEventId() || '';
-
-            var $box = $('#LIVEDIV');
-            if (!$box.length) return;
-            if (!marketIdLocal) {
-                $box.html('<div style="padding:12px;color:#94a3b8;">Market id missing</div>').show();
-                return;
-            }
-
-            // Exact bpexch scorecard (confirmed URL)
-            var src = 'https://bpexch.xyz/Common/LiveScoreCard?id=' + encodeURIComponent(marketIdLocal);
-
-            $box.html(
-                '<iframe id="livesc" class="responsive-iframe" scrolling="no" frameborder="0" ' +
-                'allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" ' +
-                'allowfullscreen="allowfullscreen" ' +
-                'style="width:100%;height:190px;min-height:190px;border:0;display:block;background:#0b1220;" ' +
-                'src="' + src + '"></iframe>'
-            ).show();
-
-            // bpexch postMessage height resize
-            window.__nxScorecardMsg = function (event) {
-                try {
-                    var h = event && event.data && event.data.h;
-                    if (!h || h < 40) return;
-                    var ifr = document.getElementById('livesc');
-                    if (ifr) {
-                        ifr.style.height = Math.max(190, Math.ceil(h) + 10) + 'px';
-                    }
-                } catch (e) {}
-            };
-            window.removeEventListener('message', window.__nxScorecardMsg);
-            window.addEventListener('message', window.__nxScorecardMsg);
-
-            if (typeof window.startLiveScorePoll === 'function') window.startLiveScorePoll();
-            console.log('[ScoreCard] bpexch LiveScoreCard', src);
-        }
-
         function SHOWTV() {
             show_tv_tab = true;
-            if ($('#TVDIVIFRAME').is(':visible') || $('#TVDIV').is(':visible')) {
-                $('#TVDIV').hide();
-                $('#TVDIVIFRAME').hide().empty();
-                $('#LIVEDIV').hide();
-                stopUnrealIfAny();
-                return;
+            if ($("#TVDIV").is(":visible")) {
+                $("#TVDIV").hide();
+                $("#LIVEDIV").hide();
+                clearInterval();
+                $("#sr-widget").hide();
+                var element = document.getElementById("UnrealPlayer1_Video");
+                if (element != null) {
+                    element.parentNode.removeChild(element);
+                    streams.forEach(function (str) {
+                        if (str.player !== null) {
+                            str.player.Stop();
+                        }
+                        document.querySelector(str.container).style.display = 'none';
+                        document.querySelector(str.el).style.display = 'none';
+                        document.querySelector(str.unreal).style.display = 'none';
+                        document.querySelector(str.unreal).player = null;
+                    });
+                }
+            } else {
+                PlayChannelFunction();
+                $("#LIVEDIV").hide();
+                $("#sr-widget").hide();
+                StatusCon();
             }
-            $('#LIVEDIV').hide();
-            stopUnrealIfAny();
-            PlayChannelFunction();
-            if (typeof StatusCon === 'function') StatusCon();
         }
 
         function PlayChannelFunction() {
-            var evid = getMediaEventId();
-            if (!evid) {
-                $('#TVDIVIFRAME').html(
-                    '<div style="padding:12px;color:#ccc;">TV: event id nahi mila</div>'
-                ).show();
-                return;
-            }
-            // 1) try local ChannelData handler (legacy)
-            var triedLocal = false;
-            function showIframe() {
-                var src = BPEXCH_TV_BASE + '/Common/TvIframe?id=' + encodeURIComponent(evid);
-                $('#TVDIVIFRAME').html(
-                    '<iframe scrolling="no" frameborder="no" id="TVIFRAME" style="width:100%;min-height:280px;border:0;" src="' + src + '"></iframe>'
-                ).show();
-                $('#TVDIV').hide();
-            }
-            try {
-                $.get('/Common/Market?handler=ChannelData&Evid=' + encodeURIComponent(evid), function (data) {
-                    triedLocal = true;
-                    if (!data) {
-                        showIframe();
+            $.get('/Common/Market?handler=ChannelData&Evid=' + 35041878, function (data) {
+                if (data == '') {
+                    if ($("#TVDIVIFRAME").is(":visible")) {
+                        document.getElementById('TVDIVIFRAME').innerHTML = "";
+                        $("#TVDIVIFRAME").hide();
                     } else {
-                        $('#TVDIVIFRAME').empty().hide();
-                        $('#TVDIV').show();
-                        if (typeof playChannel === 'function') playChannel(data);
-                        else showIframe();
+                        document.getElementById('TVDIVIFRAME').innerHTML = "<iframe scrolling=no frameborder='no' id='TVIFRAME' src='https://www.bpexch.xyz/Common/TvIframe?id=35041878'></iframe>";
+                        $("#TVDIVIFRAME").show();
                     }
-                }).fail(function () {
-                    showIframe();
-                });
-            } catch (e) {
-                showIframe();
+                } else {
+                    document.getElementById('TVDIVIFRAME').innerHTML = "";
+                    $("#TVDIVIFRAME").hide();
+                    $("#TVDIV").show();
+                    playChannel(data);
+                }
+            });
+        }
+        
+        function SHOWLIVE(MID) {
+            show_tv_tab = false;
+            if ($("#TVDIVIFRAME").is(":visible")) {
+                $("#TVDIVIFRAME").hide();
+            }
+            if ($("#LIVEDIV").is(":visible")) {
+                $("#TVDIV").hide();
+                $("#LIVEDIV").hide();
+                $("#sr-widget").hide();
+                var element = document.getElementById("UnrealPlayer1_Video");
+                if (element != null) {
+                    element.parentNode.removeChild(element);
+                    streams.forEach(function (str) {
+                        if (str.player !== null) {
+                            str.player.Stop();
+                        }
+                        document.querySelector(str.container).style.display = 'none';
+                        document.querySelector(str.el).style.display = 'none';
+                        document.querySelector(str.unreal).style.display = 'none';
+                        document.querySelector(str.unreal).player = null;
+                    });
+                }
+            } else {
+                var element = document.getElementById("UnrealPlayer1_Video");
+                if (element != null) {
+                    element.parentNode.removeChild(element);
+                    streams.forEach(function (str) {
+                        if (str.player !== null) {
+                            str.player.Stop();
+                        }
+                        document.querySelector(str.container).style.display = 'none';
+                        document.querySelector(str.el).style.display = 'none';
+                        document.querySelector(str.unreal).style.display = 'none';
+                        document.querySelector(str.unreal).player = null;
+                    });
+                }
+
+                $("#TVDIV").hide();
+                $("#LIVEDIV").show();
+                $("#sr-widget").show();
+                // ✅ Apna scorecard Vue se already live-bound hai (Catalog.runners/status) —
+                //    koi external iframe src set karne ki zaroorat nahi.
             }
         }
-
-        function SHOWLIVE(MID) {
-            // Alias → Score Card
-            SHOWSC();
-        }
-
 
         function MarketTab(cityName, element) {
             if (cityName === null) {
@@ -6803,20 +6664,18 @@ Vue.component('runner-aggregate', {
       ifWin:  r.ifWin  || 0,
       ifLose: r.ifLose || 0,
       jockeyName:   (r.jockeyName || null) ? (r.jockeyName).replace(/^\s*\(\d+\)\s*/, '').trim() || null : null,
-      // Silk image — Betfair COLOURS_FILENAME_URL se aati hai (asal Betfair CDN image)
       // Silk: bpexch silkColor is often full image URL (https://bp-silks.lhre.net/...)
       silkUrl: (function () {
         var u = r.silkUrl || r.silkColor || null;
         if (u && typeof u === 'string' && u.indexOf('http') === 0) return u;
-        if (r.silkUrl && String(r.silkUrl).indexOf('http') === 0) return r.silkUrl;
-        return null;
+        return (r.silkUrl && String(r.silkUrl).indexOf('http') === 0) ? r.silkUrl : null;
       })(),
       silkColor: (r.clothColor && String(r.clothColor).charAt(0) === '#') ? r.clothColor
                  : (r.silkColor && String(r.silkColor).charAt(0) === '#') ? r.silkColor : null,
-      clothNumber:  r.clothNumber || r.sortPriority || null,
+      clothNumber:  r.clothNumber || null,
       sortPriority: r.sortPriority || null,
       clothColor:   (r.clothColor && String(r.clothColor).charAt(0) === '#') ? r.clothColor
-                    : (r.silkColor && String(r.silkColor).charAt(0) === '#') ? r.silkColor : null,
+                    : (r.silkColor && String(r.silkColor).charAt(0) === '#') ? r.silkColor : (r.clothColor || null),
       clothStriped: r.clothStriped || false,
       metadataDict: r.metadataDict || null,
       indB1: r.indB1 || '',
@@ -6918,7 +6777,8 @@ Vue.component('runner-aggregate', {
         await new Promise(r => setTimeout(r, 200));
       }
       const eid = String(vm.Catalog.eventTypeId || '');
-      if (eid === '7' || eid === '4339') {
+      const mid = String(vm.Catalog.marketId || MARKET_ID || '');
+      if (eid === '7' || eid === '4339' || /^\d{6,}\.\d+$/.test(mid)) {
         console.log('[Markets] Horse/Greyhound — additional markets nahi load honge');
         return;
       }
@@ -7144,387 +7004,70 @@ Vue.component('runner-aggregate', {
   }
 
   function clearRaceExtraMarkets(vm) {
+    if (!vm) return;
     const eid = String(vm.Catalog && vm.Catalog.eventTypeId || '');
-    if (eid !== '7' && eid !== '4339') return; // sirf horse/greyhound ke liye
+    // composite race id also means horse/greyhound
+    const mid = String((vm.Catalog && vm.Catalog.marketId) || '');
+    const isRace = (eid === '7' || eid === '4339' || /^\d{6,}\.\d+$/.test(mid));
+    if (!isRace) return;
 
     ['OtherMarkets', 'OtherRaceMarkets', 'BookmakerMarkets',
      'TossMarkets', 'FancyMarkets', 'Fancy2Markets',
      'FigureMarkets', 'OddFigureMarkets'].forEach(function(prop) {
       if (vm[prop] && vm[prop].length > 0) {
         vm[prop].splice(0, vm[prop].length);
-        console.log('[RaceCleaner] Cleared:', prop);
       }
     });
   }
 
-  // Fill missing silks / trap colors on race runners (bpexch-style jackets)
-  var RACE_COLORS = ['#E63946','#FFFFFF','#1D3557','#F4D03F','#2ECC71','#111111','#F39C12','#8E44AD',
-    '#16A085','#E74C3C','#3498DB','#F1C40F','#E67E22','#1ABC9C','#95A5A6','#2C3E50'];
-  var GREY_COLORS = ['#E63946','#1D3557','#FFFFFF','#F4D03F','#2ECC71','#111111','#F39C12','#E91E63'];
-
-  function enrichRunnerSilks(vm) {
-    try {
-      if (!vm || !vm.Catalog || !Array.isArray(vm.Catalog.runners)) return;
-      var eid = String(vm.Catalog.eventTypeId || '');
-      if (eid !== '7' && eid !== '4339') return;
-      var isGrey = eid === '4339';
-      vm.Catalog.runners.forEach(function (r, idx) {
-        if (!r) return;
-        var meta = r.metadataDict || r.metadata || {};
-        if (typeof meta === 'string') {
-          try { meta = JSON.parse(meta); } catch (e) { meta = {}; }
-        }
-        var cloth = r.clothNumber || meta.CLOTH_NUMBER || meta.TRAP || meta.trap || r.sortPriority || (idx + 1);
-        var pos = parseInt(cloth, 10) || (idx + 1);
-        if (!r.clothNumber) r.clothNumber = String(pos);
-        var color = r.clothColor || r.silkColor || (isGrey ? GREY_COLORS[(pos - 1) % GREY_COLORS.length] : RACE_COLORS[(pos - 1) % RACE_COLORS.length]);
-        r.clothColor = color;
-        r.silkColor = color;
-        if (isGrey && pos === 6) r.clothStriped = true;
-        var url = r.silkUrl || r.silkColor || meta.COLOURS_FILENAME_URL || meta.colours_filename_url || meta.colourS_FILENAME_URL || null;
-        if (url && String(url).indexOf('http') === 0) {
-          r.silkUrl = url;
-        } else if (url && String(url).indexOf('/') >= 0 && String(url).indexOf('#') !== 0) {
-          r.silkUrl = 'https://bp-silks.lhre.net/proxy/' + String(url).replace(/^\//, '');
-        } else {
-          r.silkUrl = null;
-        }
-        // don't use image URL as CSS background color
-        if (r.clothColor && String(r.clothColor).indexOf('http') === 0) r.clothColor = null;
-        if (r.silkColor && String(r.silkColor).indexOf('http') === 0) r.silkColor = r.clothColor;
-        if (!r.jockeyName) r.jockeyName = meta.JOCKEY_NAME || meta.jockey_name || null;
-      });
-    } catch (e) {
-      console.warn('[RaceCleaner] silk enrich failed', e);
-    }
-  }
-
-  // getClothColor ko Vue methods mein add karo taake template mein call ho sake
+  // getClothColor + continuous race market guard (stops cricket MO flash on race pages)
   (function patchVueMethods() {
     function tryPatch() {
       const el = document.getElementById('MarketView') || document.getElementById('app');
       const vm = el && el.__vue__;
-      if (!vm) { setTimeout(tryPatch, 300); return; }
+      if (!vm) { setTimeout(tryPatch, 200); return; }
       if (!vm.getClothColor) {
         vm.$options.methods = vm.$options.methods || {};
         vm.$options.methods.getClothColor = window.getClothColor;
-        // Vue 2 mein direct property set karo
         vm.getClothColor = window.getClothColor;
-        console.log('[RaceCleaner] getClothColor Vue method added');
       }
-      enrichRunnerSilks(vm);
-      // re-apply when runners update
-      if (!window._silkEnrichInterval) {
-        window._silkEnrichInterval = setInterval(function () {
-          var v = getVm();
-          if (v) enrichRunnerSilks(v);
-        }, 2000);
+      clearRaceExtraMarkets(vm);
+      if (!window._raceCleanerInterval) {
+        window._raceCleanerInterval = setInterval(function () {
+          clearRaceExtraMarkets(getVm());
+        }, 300);
       }
     }
-    setTimeout(tryPatch, 500);
+    setTimeout(tryPatch, 100);
   })();
 
   async function startRaceCleaner() {
     let waited = 0;
     while (!getVm() && waited < 8000) {
-      await new Promise(r => setTimeout(r, 300));
-      waited += 300;
+      await new Promise(r => setTimeout(r, 200));
+      waited += 200;
     }
     const vm = getVm();
     if (!vm) return;
-
-    // eventTypeId set hone ka wait karo
-    let tries = 0;
-    while (tries++ < 40) {
-      if (vm.Catalog && vm.Catalog.eventTypeId) break;
-      await new Promise(r => setTimeout(r, 200));
-    }
-
-    // Ek baar turant clear karo
     clearRaceExtraMarkets(vm);
-
-    // Phir 10 seconds tak har 500ms watch karo (mv2 dobara set kar sakta hai)
     let elapsed = 0;
     const guard = setInterval(function() {
-      elapsed += 500;
-      if (elapsed > 10000) { clearInterval(guard); return; }
-      clearRaceExtraMarkets(vm);
-    }, 500);
+      elapsed += 300;
+      clearRaceExtraMarkets(getVm());
+      if (elapsed > 15000) clearInterval(guard);
+    }, 300);
   }
 
-  setTimeout(startRaceCleaner, 1000);
+  // start ASAP so extra markets don't flash
+  setTimeout(startRaceCleaner, 50);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () { startRaceCleaner(); });
+  } else {
+    startRaceCleaner();
+  }
 
 })();
 </script>
     <!-- getRunnerAmounts is defined in the main PNL script above -->
-
-<!-- ===== LIVE SCOREBOARD + SCORE CARD (no SportRadar id required) ===== -->
-<script>
-(function () {
-  'use strict';
-
-  function getVm() {
-    var el = document.getElementById('MarketView') || document.getElementById('app');
-    return el && el.__vue__ ? el.__vue__ : null;
-  }
-
-  function getMarketIdForLive() {
-    try {
-      var vm = getVm();
-      if (vm && vm.Catalog && vm.Catalog.marketId) return String(vm.Catalog.marketId);
-    } catch (e) {}
-    try {
-      var q = new URLSearchParams(window.location.search).get('id');
-      if (q) return q;
-    } catch (e2) {}
-    if (typeof marketId !== 'undefined' && marketId) return String(marketId);
-    return '';
-  }
-
-  function normalizeScore(sb) {
-    if (!sb || typeof sb !== 'object') return null;
-    return {
-      team1: sb.team1 || sb.home || '',
-      team2: sb.team2 || sb.away || '',
-      t1_runs: sb.t1_runs ?? sb.team1Runs ?? 0,
-      t1_wickets: sb.t1_wickets ?? sb.team1Wickets ?? 0,
-      t1_overs: sb.t1_overs ?? sb.team1Overs ?? '',
-      t1_crr: sb.t1_crr ?? sb.team1Crr ?? sb.crr ?? '',
-      t2_runs: sb.t2_runs ?? sb.team2Runs ?? 0,
-      t2_wickets: sb.t2_wickets ?? sb.team2Wickets ?? 0,
-      t2_overs: sb.t2_overs ?? sb.team2Overs ?? '',
-      t2_crr: sb.t2_crr ?? sb.team2Crr ?? '',
-      commentry: sb.commentry || sb.commentary || sb.news || '',
-      commentary: sb.commentary || sb.commentry || sb.news || '',
-      recent_string: sb.recent_string || sb.recentString || sb.thisOver || '',
-      lastOverLabel: sb.lastOverLabel || 'This Over',
-      rrr: sb.rrr || sb.RRR || '',
-      target: sb.target || '',
-      toWin: sb.toWin || sb.to_win || sb.balls_remaining || sb.ballsText || '',
-      ballsText: sb.ballsText || sb.toWin || sb.to_win || sb.balls_remaining || '',
-      status: sb.status || ''
-    };
-  }
-
-  function injectScore(sb) {
-    var score = normalizeScore(sb);
-    if (!score) return;
-    if (typeof window.injectScoreboardToVue === 'function') {
-      window.injectScoreboardToVue(score);
-    } else {
-      var vm = getVm();
-      if (vm) {
-        try {
-          if (vm.$set) vm.$set(vm, 'score', score);
-          else vm.score = score;
-        } catch (e) {}
-      }
-    }
-    // Keep Score Card panel in sync only if NOT using bpexch iframe
-    var box2 = document.getElementById('LIVEDIV');
-    if (box2 && !box2.querySelector('iframe#livesc')) {
-      renderScoreCardPanel(score);
-    }
-  }
-
-
-  function renderScoreCardPanel(score) {
-    var box = document.getElementById('LIVEDIV');
-    if (!box || box.style.display === 'none') return;
-    // Do NOT overwrite bpexch LiveScoreCard iframe
-    if (box.querySelector('iframe#livesc')) return;
-    if (!score) {
-      var vm = getVm();
-      score = vm && vm.score ? normalizeScore(vm.score) : null;
-    }
-    if (!score) {
-      box.innerHTML = '<div style="padding:16px;color:#94a3b8;text-align:center;">Waiting for live score…</div>';
-      return;
-    }
-
-    // Resolve display names — prefer full names from Catalog
-    var full1 = '', full2 = '';
-    try {
-      var vm2 = getVm();
-      var en = (vm2 && vm2.Catalog && (vm2.Catalog.eventName || vm2.Catalog.match)) || '';
-      if (en && / v /i.test(en)) {
-        var parts = en.split(/\s+v\s+/i);
-        full1 = (parts[0] || '').trim();
-        full2 = (parts[1] || '').trim();
-      }
-    } catch (e) {}
-
-    var t1 = full1 || score.team1 || 'Team 1';
-    var t2 = full2 || score.team2 || 'Team 2';
-    // short labels for batting line
-    var s1name = score.team1 || t1;
-    var s2name = score.team2 || t2;
-
-    var r1 = score.t1_runs != null ? score.t1_runs : 0;
-    var w1 = score.t1_wickets != null ? score.t1_wickets : 0;
-    var o1 = score.t1_overs != null && score.t1_overs !== '' ? score.t1_overs : '';
-    var r2 = score.t2_runs != null ? score.t2_runs : 0;
-    var w2 = score.t2_wickets != null ? score.t2_wickets : 0;
-    var o2 = score.t2_overs != null && score.t2_overs !== '' ? score.t2_overs : '';
-    var crr = score.t1_crr || score.t2_crr || '';
-    var recent = score.recent_string || '';
-    var comm = score.commentry || score.commentary || '';
-
-    // Which side is batting? Prefer non-zero score / overs
-    var batLeft = false;
-    var batScore = r1 + '/' + w1;
-    var batOvers = o1;
-    var yetScore = r2 + '/' + w2;
-    // If team1 has overs or runs, treat team1 as batting in this strip
-    var statusLine = '';
-    if (o1 || r1 || w1) {
-      statusLine = s1name + ' are ' + r1 + ' for ' + w1 + (o1 ? ' after ' + o1 + ' overs.' : '.');
-      yetScore = (r2 || w2) ? (r2 + '/' + w2) : 'Yet to bat';
-    } else if (o2 || r2 || w2) {
-      statusLine = s2name + ' are ' + r2 + ' for ' + w2 + (o2 ? ' after ' + o2 + ' overs.' : '.');
-      yetScore = (r1 || w1) ? (r1 + '/' + w1) : 'Yet to bat';
-      batScore = r2 + '/' + w2;
-      batOvers = o2;
-    } else {
-      statusLine = comm || 'Match in progress';
-      yetScore = 'Yet to bat';
-    }
-
-    var oversLabel = batOvers ? ('INN 1 | ' + batOvers + '/20 OV') : 'INN 1';
-
-    // Mini run-rate bars from recent balls if present (visual only)
-    var balls = String(recent).trim().split(/\s+/).filter(Boolean);
-    var bars = '';
-    if (balls.length) {
-      bars = balls.map(function (b) {
-        var n = parseInt(b, 10);
-        var h = 8;
-        if (!isNaN(n)) h = 8 + Math.min(n, 6) * 10;
-        if (/w/i.test(b)) h = 14;
-        var col = /w/i.test(b) ? '#ef4444' : (n === 4 || n === 6 ? '#22c55e' : '#38bdf8');
-        return '<div title="' + b + '" style="width:10px;height:' + h + 'px;background:' + col + ';border-radius:2px 2px 0 0;margin:0 2px;"></div>';
-      }).join('');
-    }
-
-    // Sparkline-style run rate placeholder (CSS chart like SR widget)
-    var chartSvg =
-      '<svg width="100%" height="90" viewBox="0 0 320 90" preserveAspectRatio="none" style="display:block;">' +
-      '<line x1="0" y1="88" x2="320" y2="88" stroke="#334155" stroke-width="1"/>' +
-      '<line x1="0" y1="44" x2="320" y2="44" stroke="#1e293b" stroke-width="1" stroke-dasharray="4 4"/>' +
-      '<path d="M0,80 Q40,70 80,55 T160,40 T240,30 T320,22" fill="none" stroke="#38bdf8" stroke-width="2"/>' +
-      '<path d="M0,80 Q40,70 80,55 T160,40 T240,30 T320,22 L320,88 L0,88 Z" fill="url(#rrgrad)" opacity="0.35"/>' +
-      '<defs><linearGradient id="rrgrad" x1="0" y1="0" x2="0" y2="1">' +
-      '<stop offset="0%" stop-color="#38bdf8"/><stop offset="100%" stop-color="transparent"/></linearGradient></defs>' +
-      '</svg>';
-
-    box.innerHTML =
-      '<div id="nx-live-scorecard" style="background:#0b1220;color:#e2e8f0;border-radius:4px;overflow:hidden;' +
-      'font-family:Roboto Condensed,Arial,sans-serif;border:1px solid #1e293b;">' +
-
-      // top strip like SR: overs label
-      '  <div style="display:flex;justify-content:flex-end;padding:6px 10px 0;font-size:11px;color:#94a3b8;">' + oversLabel + '</div>' +
-
-      // teams row
-      '  <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:4px 12px 8px;">' +
-      '    <div style="font-size:15px;font-weight:700;max-width:42%;">' + t1 + '</div>' +
-      '    <div style="font-size:15px;font-weight:700;max-width:42%;text-align:right;">' + t2 + '</div>' +
-      '  </div>' +
-
-      // status / yet to bat
-      '  <div style="text-align:center;padding:0 10px 8px;font-size:12px;color:#cbd5e1;line-height:1.35;">' +
-      (yetScore === 'Yet to bat' || String(yetScore).indexOf('0/0') === 0
-        ? '<span style="color:#94a3b8;">Yet to bat</span> · '
-        : '') +
-      statusLine +
-      '  </div>' +
-
-      // RUN RATE header
-      '  <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 12px;font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;">' +
-      '    <span>Run rate</span>' +
-      (crr !== '' && crr != null ? '<span style="color:#e2e8f0;font-weight:700;">CRR ' + crr + '</span>' : '') +
-      '  </div>' +
-
-      // chart area
-      '  <div style="padding:0 8px 4px;background:#070d18;">' + chartSvg + '</div>' +
-
-      // this over balls
-      (recent
-        ? ('  <div style="padding:8px 12px;border-top:1px solid #1e293b;">' +
-           '    <div style="font-size:11px;color:#94a3b8;margin-bottom:6px;">This Over · <b style="color:#e2e8f0;">' + recent + '</b></div>' +
-           '    <div style="display:flex;align-items:flex-end;height:40px;">' + bars + '</div>' +
-           '  </div>')
-        : '') +
-
-      // commentary banner
-      (comm
-        ? ('  <div style="margin:0;padding:10px 12px;background:#0f766e;color:#ecfdf5;font-weight:700;font-size:13px;text-align:center;letter-spacing:.02em;">' +
-           comm + '</div>')
-        : '') +
-      '</div>';
-  }
-
-  // Expose for SHOWSC
-  window.__renderNxScoreCard = renderScoreCardPanel;
-  window.__injectNxScore = injectScore;
-
-  var _liveScoreTimer = null;
-  var _liveScoreBusy = false;
-
-  async function pollLiveScore() {
-    if (_liveScoreBusy) return;
-    var mid = getMarketIdForLive();
-    if (!mid) return;
-    _liveScoreBusy = true;
-    try {
-      var apiBase = (typeof pricesUrl !== 'undefined' && pricesUrl) ? pricesUrl
-        : (typeof API_BASE !== 'undefined' ? API_BASE : 'https://1xbetbackend.work.gd/api/v1');
-      var token = localStorage.getItem('token') || '';
-      var pricesToken = window._pricesToken || '';
-      var url = apiBase + '/markets/catalog2?id=' + encodeURIComponent(mid)
-        + (pricesToken ? '&pricesToken=' + encodeURIComponent(pricesToken) : '');
-      var res = await fetch(url, { headers: token ? { Authorization: 'Bearer ' + token } : {}, cache: 'no-store' });
-      if (!res.ok) return;
-      var json = await res.json();
-      var d = json.data || json;
-      if (d && d.scoreboard) {
-        injectScore(d.scoreboard);
-      } else if (d && (d.news || d.commentry)) {
-        injectScore({ commentry: d.news || d.commentry, commentary: d.news || d.commentry });
-      }
-      // also try Data endpoint for fresher books + scoreboard
-      try {
-        var url2 = apiBase + '/markets/Data?id=' + encodeURIComponent(mid)
-          + (pricesToken ? '&pricesToken=' + encodeURIComponent(pricesToken) : '');
-        var res2 = await fetch(url2, { headers: token ? { Authorization: 'Bearer ' + token } : {}, cache: 'no-store' });
-        if (res2.ok) {
-          var j2 = await res2.json();
-          var d2 = j2.data || j2;
-          if (d2 && d2.scoreboard) injectScore(d2.scoreboard);
-          else if (d2 && d2.news) injectScore({ commentry: d2.news, commentary: d2.news });
-        }
-      } catch (e2) {}
-    } catch (e) {
-      console.warn('[LiveScore] poll failed', e.message || e);
-    } finally {
-      _liveScoreBusy = false;
-    }
-  }
-
-  function startLiveScorePoll() {
-    if (_liveScoreTimer) return;
-    pollLiveScore();
-    _liveScoreTimer = setInterval(pollLiveScore, 2500);
-    console.log('[LiveScore] polling every 2.5s');
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function () { setTimeout(startLiveScorePoll, 1200); });
-  } else {
-    setTimeout(startLiveScorePoll, 1200);
-  }
-  window.startLiveScorePoll = startLiveScorePoll;
-})();
-</script>
-
 </body>
 </html>

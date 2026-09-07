@@ -1,5 +1,4 @@
 
-
 <!doctype html>
 <html lang="en">
 <head>
@@ -1026,15 +1025,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   // "Ballarat (AUS) 23rd Jul" → track "Ballarat"). Storage wahi
   // /settings/leagues endpoint use karta hai — bas enabledLeagueIds
   // mein track names hote hain (numeric competition IDs ki jagah).
+  // Track filter OFF — stale admin league settings were wiping horse
+  // (0 races) and restricting greyhound (only a few tracks). Show all
+  // races from API; admin visibility (hide list) is handled on backend.
   function applyTrackFilter(matches, filter) {
-    if (!filter || !filter.enabledIds || filter.enabledIds.length === 0) return matches;
-    const enabledTracks = new Set(filter.enabledIds.map(t => String(t).trim().toLowerCase()));
-    return matches.filter(m => {
-      const matchName = (m.match || '').trim().toLowerCase();
-      // Track name event ke naam ke shuru mein hota hai: "Ballarat (AUS) ..."
-      const trackName = (matchName.split('(')[0] || matchName).trim();
-      return enabledTracks.has(trackName);
-    });
+    return matches;
   }
 
   // ✅ Reliable inPlay detection — server field + startTime fallback
@@ -1331,124 +1326,119 @@ document.addEventListener("DOMContentLoaded", async () => {
     return new Date(str);
   }
 
+  // Flash-fix: same race list pe slick destroy/rebuild mat karo
   var _horseSliderSig = '';
-  var _horseSliderBusy = false;
-
-  function raceSliderSignature(list) {
+  var _greySliderSig = '';
+  function _raceSliderSig(list) {
     return (list || []).map(function (m) {
       return String(m.marketId || '') + '|' + String(m.startTime || '') + '|' + String(m.match || '');
     }).join(';;');
   }
 
-  function buildRaceSlideHtml(sportKey, match) {
-    var localTime = parseUTC(match.startTime).toLocaleTimeString('en-US', {
-      hour: 'numeric', minute: '2-digit', hour12: true
-    });
-    var mid = String(match.marketId || '').replace(/'/g, '');
-    var eid = String(match.eventId || '').replace(/'/g, '');
-    var name = String(match.match || '').replace(/</g, '&lt;');
-    return (
-      '<div class="chk11" style="text-align:center; margin:2px;">' +
-      '<a href="#" onclick="goToMatch(\'' + sportKey + '\', \'' + mid + '\', \'' + eid + '\'); return false;" style="color:white; width:auto;">' +
-      '<b class="chkmobile">' +
-      '<span class="slidedate">' + localTime + '</span><br>' +
-      '<span class="slidename">' + name + '</span>' +
-      '</b></a></div>'
-    );
-  }
-
   async function loadHorseLiveData() {
-    if (_horseSliderBusy) return;
-    _horseSliderBusy = true;
     try {
-      const res = await fetch('https://1xbetbackend.work.gd/api/v1/markets/live/horse', { cache: 'no-store' });
+      const res = await fetch('https://1xbetbackend.work.gd/api/v1/markets/live/horse');
       const data = await res.json();
 
       const container = document.getElementById('horseRaceContainer');
       if (!container) return;
 
+      // ✅ Arrows pehle se HTML mein hain — sirf dhundho
       const prevBtn = document.getElementById('horsePrevBtn');
       const nextBtn = document.getElementById('horseNextBtn');
 
-      if (!(data.success && Array.isArray(data.data) && data.data.length > 0)) {
+      if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+        const now = new Date();
+        const lookback = new Date(now.getTime() - 2 * 60 * 60_000);
+
+        // Soft time filter + no track whitelist (backend already curated)
+        let relevant = data.data
+          .filter(m => !m.startTime || parseUTC(m.startTime) >= lookback)
+          .sort((a, b) => parseUTC(a.startTime) - parseUTC(b.startTime));
+
+        const trackFilter = await getLeagueFilter('horse');
+        relevant = applyTrackFilter(relevant, trackFilter);
+
+        if (relevant.length === 0) {
+          if (_horseSliderSig !== '__none__') {
+            if ($(container).hasClass('slick-initialized')) {
+              try { $(container).slick('unslick'); } catch (e) {}
+            }
+            container.innerHTML = `<div style="text-align:center;color:white;padding:10px;">No upcoming races found.</div>`;
+            _horseSliderSig = '__none__';
+            if (prevBtn) prevBtn.style.display = 'none';
+            if (nextBtn) nextBtn.style.display = 'none';
+          }
+          return;
+        }
+
+        // ✅ Same races → DO NOT destroy slick (stops flash)
+        var sig = _raceSliderSig(relevant);
+        if (sig === _horseSliderSig && $(container).hasClass('slick-initialized')) {
+          return;
+        }
+
+        // Slick destroy + rebuild only when list changed
+        if ($(container).hasClass('slick-initialized')) {
+          try { $(container).slick('unslick'); } catch (e) {}
+        }
+        container.innerHTML = '';
+        if (prevBtn) prevBtn.style.display = 'none';
+        if (nextBtn) nextBtn.style.display = 'none';
+        _horseSliderSig = sig;
+
+        relevant.forEach(match => {
+          const localTime = parseUTC(match.startTime).toLocaleTimeString('en-US', {
+            hour: 'numeric', minute: '2-digit', hour12: true
+          });
+          const div = document.createElement('div');
+          div.className = 'chk11';
+          div.style.cssText = 'text-align:center; margin:2px;';
+          div.innerHTML = `
+            <a href="#" onclick="goToMatch('horse', '${match.marketId}', '${match.eventId || ''}'); return false;" style="color:white; width:auto;">
+              <b class="chkmobile">
+                <span class="slidedate">${localTime}</span><br>
+                <span class="slidename">${match.match}</span>
+              </b>
+            </a>`;
+          container.appendChild(div);
+        });
+
+        // ✅ Slick init
+        $(container).slick({
+          slidesToShow: 8,
+          slidesToScroll: 1,
+          infinite: false,
+          arrows: false,
+          responsive: [
+            { breakpoint: 768, settings: { slidesToShow: 3 } },
+            { breakpoint: 480, settings: { slidesToShow: 3 } }
+          ]
+        });
+
+        // ✅ Ab arrows show karo aur click wire up karo
+        if (prevBtn) {
+          prevBtn.style.display = 'block';
+          prevBtn.onclick = () => $(container).slick('slickPrev');
+        }
+        if (nextBtn) {
+          nextBtn.style.display = 'block';
+          nextBtn.onclick = () => $(container).slick('slickNext');
+        }
+
+      } else {
         if (_horseSliderSig !== '__empty__') {
           if ($(container).hasClass('slick-initialized')) {
             try { $(container).slick('unslick'); } catch (e) {}
           }
-          container.innerHTML = '<div style="text-align:center;color:white;">No live races found.</div>';
+          container.innerHTML = `<div style="text-align:center;color:white;">No live races found.</div>`;
           _horseSliderSig = '__empty__';
           if (prevBtn) prevBtn.style.display = 'none';
           if (nextBtn) nextBtn.style.display = 'none';
         }
-        return;
       }
-
-      const now = new Date();
-      const thirtyMinAgo = new Date(now.getTime() - 30 * 60_000);
-      let relevant = data.data
-        .filter(m => parseUTC(m.startTime) >= thirtyMinAgo)
-        .sort((a, b) => parseUTC(a.startTime) - parseUTC(b.startTime));
-
-      const trackFilter = await getLeagueFilter('horse');
-      relevant = applyTrackFilter(relevant, trackFilter);
-
-      if (relevant.length === 0) {
-        if (_horseSliderSig !== '__none__') {
-          if ($(container).hasClass('slick-initialized')) {
-            try { $(container).slick('unslick'); } catch (e) {}
-          }
-          container.innerHTML = '<div style="text-align:center;color:white;padding:10px;">No upcoming races found.</div>';
-          _horseSliderSig = '__none__';
-          if (prevBtn) prevBtn.style.display = 'none';
-          if (nextBtn) nextBtn.style.display = 'none';
-        }
-        return;
-      }
-
-      const sig = raceSliderSignature(relevant);
-      if (sig === _horseSliderSig && $(container).hasClass('slick-initialized')) {
-        return;
-      }
-
-      var currentSlide = 0;
-      if ($(container).hasClass('slick-initialized')) {
-        try { currentSlide = $(container).slick('slickCurrentSlide') || 0; } catch (e) {}
-        try { $(container).slick('unslick'); } catch (e2) {}
-      }
-
-      container.innerHTML = relevant.map(function (m) {
-        return buildRaceSlideHtml('horse', m);
-      }).join('');
-
-      $(container).slick({
-        slidesToShow: 8,
-        slidesToScroll: 1,
-        infinite: false,
-        arrows: false,
-        responsive: [
-          { breakpoint: 768, settings: { slidesToShow: 3 } },
-          { breakpoint: 480, settings: { slidesToShow: 3 } }
-        ]
-      });
-
-      if (currentSlide > 0) {
-        try { $(container).slick('slickGoTo', currentSlide, true); } catch (e) {}
-      }
-
-      if (prevBtn) {
-        prevBtn.style.display = 'block';
-        prevBtn.onclick = function () { $(container).slick('slickPrev'); };
-      }
-      if (nextBtn) {
-        nextBtn.style.display = 'block';
-        nextBtn.onclick = function () { $(container).slick('slickNext'); };
-      }
-
-      _horseSliderSig = sig;
     } catch (err) {
       console.error('Error loading live horse data:', err.message);
-    } finally {
-      _horseSliderBusy = false;
     }
   }
 
@@ -1457,101 +1447,108 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 <!-- ✅ Greyhound Slick Slider -->
 <script>
-  var _greySliderSig = '';
-  var _greySliderBusy = false;
-
   async function loadgreyhoundLiveData() {
-    if (_greySliderBusy) return;
-    _greySliderBusy = true;
     try {
-      const res = await fetch('https://1xbetbackend.work.gd/api/v1/markets/live/greyhound', { cache: 'no-store' });
+      const res = await fetch('https://1xbetbackend.work.gd/api/v1/markets/live/greyhound');
       const data = await res.json();
 
       const container = document.getElementById('greyhoundRaceContainer');
       if (!container) return;
 
-      const prevBtn = document.getElementById('greyhoundPrevBtn');
-      const nextBtn = document.getElementById('greyhoundNextBtn');
+      // ✅ Arrows pehle se HTML mein hain — sirf dhundho
+      const prevBtn = document.getElementById('greyPrevBtn');
+      const nextBtn = document.getElementById('greyNextBtn');
 
-      if (!(data.success && Array.isArray(data.data) && data.data.length > 0)) {
+      if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+        const now = new Date();
+        const lookback = new Date(now.getTime() - 2 * 60 * 60_000);
+
+        let relevant = data.data
+          .filter(m => !m.startTime || parseUTC(m.startTime) >= lookback)
+          .sort((a, b) => parseUTC(a.startTime) - parseUTC(b.startTime));
+
+        const trackFilter = await getLeagueFilter('greyhound');
+        relevant = applyTrackFilter(relevant, trackFilter);
+
+        if (relevant.length === 0) {
+          if (_greySliderSig !== '__none__') {
+            if ($(container).hasClass('slick-initialized')) {
+              try { $(container).slick('unslick'); } catch (e) {}
+            }
+            container.innerHTML = `<div style="text-align:center;color:white;padding:10px;">No upcoming races found.</div>`;
+            _greySliderSig = '__none__';
+            if (prevBtn) prevBtn.style.display = 'none';
+            if (nextBtn) nextBtn.style.display = 'none';
+          }
+          return;
+        }
+
+        // ✅ Same races → DO NOT destroy slick (stops flash)
+        var sig = _raceSliderSig(relevant);
+        if (sig === _greySliderSig && $(container).hasClass('slick-initialized')) {
+          return;
+        }
+
+        if ($(container).hasClass('slick-initialized')) {
+          try { $(container).slick('unslick'); } catch (e) {}
+        }
+        container.innerHTML = '';
+        if (prevBtn) prevBtn.style.display = 'none';
+        if (nextBtn) nextBtn.style.display = 'none';
+        _greySliderSig = sig;
+
+        relevant.forEach(match => {
+          const localTime = parseUTC(match.startTime).toLocaleTimeString('en-US', {
+            hour: 'numeric', minute: '2-digit', hour12: true
+          });
+          const div = document.createElement('div');
+          div.className = 'chk11';
+          div.style.cssText = 'text-align:center; margin:2px;';
+          div.innerHTML = `
+            <a href="#" onclick="goToMatch('greyhound', '${match.marketId}', '${match.eventId || ''}'); return false;" style="color:white; width:auto;">
+              <b class="chkmobile">
+                <span class="slidedate">${localTime}</span><br>
+                <span class="slidename">${match.match}</span>
+              </b>
+            </a>`;
+          container.appendChild(div);
+        });
+
+        // ✅ Slick init
+        $(container).slick({
+          slidesToShow: 8,
+          slidesToScroll: 1,
+          infinite: false,
+          arrows: false,
+          responsive: [
+            { breakpoint: 768, settings: { slidesToShow: 3 } },
+            { breakpoint: 480, settings: { slidesToShow: 3 } }
+          ]
+        });
+
+        // ✅ Ab arrows show karo aur click wire up karo
+        if (prevBtn) {
+          prevBtn.style.display = 'block';
+          prevBtn.onclick = () => $(container).slick('slickPrev');
+        }
+        if (nextBtn) {
+          nextBtn.style.display = 'block';
+          nextBtn.onclick = () => $(container).slick('slickNext');
+        }
+
+      } else {
         if (_greySliderSig !== '__empty__') {
           if ($(container).hasClass('slick-initialized')) {
             try { $(container).slick('unslick'); } catch (e) {}
           }
-          container.innerHTML = '<div style="text-align:center;color:white;">No live races found.</div>';
+          container.innerHTML = `<div style="text-align:center;color:white;">No live races found.</div>`;
           _greySliderSig = '__empty__';
           if (prevBtn) prevBtn.style.display = 'none';
           if (nextBtn) nextBtn.style.display = 'none';
         }
-        return;
       }
-
-      const now = new Date();
-      const thirtyMinAgo = new Date(now.getTime() - 30 * 60_000);
-      let relevant = data.data
-        .filter(m => parseUTC(m.startTime) >= thirtyMinAgo)
-        .sort((a, b) => parseUTC(a.startTime) - parseUTC(b.startTime));
-
-      const trackFilter = await getLeagueFilter('greyhound');
-      relevant = applyTrackFilter(relevant, trackFilter);
-
-      if (relevant.length === 0) {
-        if (_greySliderSig !== '__none__') {
-          if ($(container).hasClass('slick-initialized')) {
-            try { $(container).slick('unslick'); } catch (e) {}
-          }
-          container.innerHTML = '<div style="text-align:center;color:white;padding:10px;">No upcoming races found.</div>';
-          _greySliderSig = '__none__';
-          if (prevBtn) prevBtn.style.display = 'none';
-          if (nextBtn) nextBtn.style.display = 'none';
-        }
-        return;
-      }
-
-      const sig = raceSliderSignature(relevant);
-      if (sig === _greySliderSig && $(container).hasClass('slick-initialized')) {
-        return;
-      }
-
-      var currentSlide = 0;
-      if ($(container).hasClass('slick-initialized')) {
-        try { currentSlide = $(container).slick('slickCurrentSlide') || 0; } catch (e) {}
-        try { $(container).slick('unslick'); } catch (e2) {}
-      }
-
-      container.innerHTML = relevant.map(function (m) {
-        return buildRaceSlideHtml('greyhound', m);
-      }).join('');
-
-      $(container).slick({
-        slidesToShow: 8,
-        slidesToScroll: 1,
-        infinite: false,
-        arrows: false,
-        responsive: [
-          { breakpoint: 768, settings: { slidesToShow: 3 } },
-          { breakpoint: 480, settings: { slidesToShow: 3 } }
-        ]
-      });
-
-      if (currentSlide > 0) {
-        try { $(container).slick('slickGoTo', currentSlide, true); } catch (e) {}
-      }
-
-      if (prevBtn) {
-        prevBtn.style.display = 'block';
-        prevBtn.onclick = function () { $(container).slick('slickPrev'); };
-      }
-      if (nextBtn) {
-        nextBtn.style.display = 'block';
-        nextBtn.onclick = function () { $(container).slick('slickNext'); };
-      }
-
-      _greySliderSig = sig;
     } catch (err) {
       console.error('Error loading live greyhound data:', err.message);
-    } finally {
-      _greySliderBusy = false;
     }
   }
 
@@ -2418,8 +2415,8 @@ document.addEventListener("DOMContentLoaded", async () => {
             });
             // ✅ FIX: pehle sirf initial load par chalte the, ab tennis/football
             // ki tarah har 10s refresh hote hain (slider bhi up-to-date rahega)
-            setInterval(function () { loadHorseLiveData().catch(function () {}); }, 15000);
-            setInterval(function () { loadgreyhoundLiveData().catch(function () {}); }, 15000);
+            setInterval(function () { loadHorseLiveData().catch(function () {}); }, 10000);
+            setInterval(function () { loadgreyhoundLiveData().catch(function () {}); }, 10000);
 
             $(".games_slider").slick({
                 arrows: false,

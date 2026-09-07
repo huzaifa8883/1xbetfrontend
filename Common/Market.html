@@ -1836,7 +1836,11 @@
                                         </span>
                                     </p>
                                     <p v-if="score.team1 != ''">{{ score.lastOverLabel }} : &nbsp; {{ score.recent_string }}</p>
-                                    <p v-if="score.target > 0 && score.team2 != ''">{{ score.toWin }} &nbsp;&nbsp;&nbsp;&nbsp; RRR: {{ score.rrr }}</p>
+                                    <p v-if="score.target > 0 || score.rrr">
+                                        <span v-if="score.toWin">{{ score.toWin }}</span>
+                                        <span v-else-if="score.ballsText">{{ score.ballsText }}</span>
+                                        <span v-if="score.rrr">&nbsp;&nbsp;&nbsp;&nbsp; RRR: {{ score.rrr }}</span>
+                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -1987,12 +1991,12 @@
                 {{ Catalog.status2 }}
             </div>
         </template>
-        <div v-else-if="Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED'">
+        <div v-else-if="(Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED') && !(runner.price1 || runner.lay1 || (runner.back && runner.back[0]))">
             <div class="runner-disabled">
                 {{ Catalog.status }}
             </div>
         </div>
-        <div v-else-if="IsRunnerDisabled(runner.status)">
+        <div v-else-if="IsRunnerDisabled(runner.status) && !(runner.price1 || runner.lay1)">
             <div class="runner-disabled">
                 {{ runner.status }}
             </div>
@@ -2125,12 +2129,12 @@
                 {{ Catalog.status2 }}
             </div>
         </template>
-        <div v-else-if="Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED'">
+        <div v-else-if="(Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED') && !(runner.price1 || runner.lay1 || (runner.back && runner.back[0]))">
             <div class="runner-disabled">
                 {{ Catalog.status }}
             </div>
         </div>
-        <div v-else-if="IsRunnerDisabled(runner.status)">
+        <div v-else-if="IsRunnerDisabled(runner.status) && !(runner.price1 || runner.lay1)">
             <div class="runner-disabled">
                 {{ runner.status }}
             </div>
@@ -2256,12 +2260,12 @@
                 {{ Catalog.status2 }}
             </div>
         </template>
-        <div v-else-if="Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED'">
+        <div v-else-if="(Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED') && !(runner.price1 || runner.lay1 || (runner.back && runner.back[0]))">
             <div class="runner-disabled">
                 {{ Catalog.status }}
             </div>
         </div>
-        <div v-else-if="IsRunnerDisabled(runner.status)">
+        <div v-else-if="IsRunnerDisabled(runner.status) && !(runner.price1 || runner.lay1)">
             <div class="runner-disabled">
                 {{ runner.status }}
             </div>
@@ -2386,12 +2390,12 @@
                 {{ Catalog.status2 }}
             </div>
         </template>
-        <div v-else-if="Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED'">
+        <div v-else-if="(Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED') && !(runner.price1 || runner.lay1 || (runner.back && runner.back[0]))">
             <div class="runner-disabled">
                 {{ Catalog.status }}
             </div>
         </div>
-        <div v-else-if="IsRunnerDisabled(runner.status)">
+        <div v-else-if="IsRunnerDisabled(runner.status) && !(runner.price1 || runner.lay1)">
             <div class="runner-disabled">
                 {{ runner.status }}
             </div>
@@ -2517,12 +2521,12 @@
                 {{ Catalog.status2 }}
             </div>
         </template>
-        <div v-else-if="Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED'">
+        <div v-else-if="(Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED') && !(runner.price1 || runner.lay1 || (runner.back && runner.back[0]))">
             <div class="runner-disabled">
                 {{ Catalog.status }}
             </div>
         </div>
-        <div v-else-if="IsRunnerDisabled(runner.status)">
+        <div v-else-if="IsRunnerDisabled(runner.status) && !(runner.price1 || runner.lay1)">
             <div class="runner-disabled">
                 {{ runner.status }}
             </div>
@@ -2647,12 +2651,12 @@
                 {{ Catalog.status2 }}
             </div>
         </template>
-        <div v-else-if="Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED'">
+        <div v-else-if="(Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED') && !(runner.price1 || runner.lay1 || (runner.back && runner.back[0]))">
             <div class="runner-disabled">
                 {{ Catalog.status }}
             </div>
         </div>
-        <div v-else-if="IsRunnerDisabled(runner.status)">
+        <div v-else-if="IsRunnerDisabled(runner.status) && !(runner.price1 || runner.lay1)">
             <div class="runner-disabled">
                 {{ runner.status }}
             </div>
@@ -2854,12 +2858,12 @@
                 {{ Catalog.status2 }}
             </div>
         </template>
-        <div v-else-if="Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED'">
+        <div v-else-if="(Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED') && !(runner.price1 || runner.lay1 || (runner.back && runner.back[0]))">
             <div class="runner-disabled">
                 {{ Catalog.status }}
             </div>
         </div>
-        <div v-else-if="IsRunnerDisabled(runner.status)">
+        <div v-else-if="IsRunnerDisabled(runner.status) && !(runner.price1 || runner.lay1)">
             <div class="runner-disabled">
                 {{ runner.status }}
             </div>
@@ -2992,12 +2996,12 @@
                 {{ Catalog.status2 }}
             </div>
         </template>
-        <div v-else-if="Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED'">
+        <div v-else-if="(Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED') && !(runner.price1 || runner.lay1 || (runner.back && runner.back[0]))">
             <div class="runner-disabled">
                 {{ Catalog.status }}
             </div>
         </div>
-        <div v-else-if="IsRunnerDisabled(runner.status)">
+        <div v-else-if="IsRunnerDisabled(runner.status) && !(runner.price1 || runner.lay1)">
             <div class="runner-disabled">
                 {{ runner.status }}
             </div>
@@ -3124,12 +3128,12 @@
                 {{ Catalog.status2 }}
             </div>
         </template>
-        <div v-else-if="Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED'">
+        <div v-else-if="(Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED') && !(runner.price1 || runner.lay1 || (runner.back && runner.back[0]))">
             <div class="runner-disabled">
                 {{ Catalog.status }}
             </div>
         </div>
-        <div v-else-if="IsRunnerDisabled(runner.status)">
+        <div v-else-if="IsRunnerDisabled(runner.status) && !(runner.price1 || runner.lay1)">
             <div class="runner-disabled">
                 {{ runner.status }}
             </div>
@@ -3255,12 +3259,12 @@
                 {{ Catalog.status2 }}
             </div>
         </template>
-        <div v-else-if="Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED'">
+        <div v-else-if="(Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED') && !(runner.price1 || runner.lay1 || (runner.back && runner.back[0]))">
             <div class="runner-disabled">
                 {{ Catalog.status }}
             </div>
         </div>
-        <div v-else-if="IsRunnerDisabled(runner.status)">
+        <div v-else-if="IsRunnerDisabled(runner.status) && !(runner.price1 || runner.lay1)">
             <div class="runner-disabled">
                 {{ runner.status }}
             </div>
@@ -3387,12 +3391,12 @@
                 {{ Catalog.status2 }}
             </div>
         </template>
-        <div v-else-if="Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED'">
+        <div v-else-if="(Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED') && !(runner.price1 || runner.lay1 || (runner.back && runner.back[0]))">
             <div class="runner-disabled">
                 {{ Catalog.status }}
             </div>
         </div>
-        <div v-else-if="IsRunnerDisabled(runner.status)">
+        <div v-else-if="IsRunnerDisabled(runner.status) && !(runner.price1 || runner.lay1)">
             <div class="runner-disabled">
                 {{ runner.status }}
             </div>
@@ -3519,12 +3523,12 @@
                 {{ Catalog.status2 }}
             </div>
         </template>
-        <div v-else-if="Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED'">
+        <div v-else-if="(Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED') && !(runner.price1 || runner.lay1 || (runner.back && runner.back[0]))">
             <div class="runner-disabled">
                 {{ Catalog.status }}
             </div>
         </div>
-        <div v-else-if="IsRunnerDisabled(runner.status)">
+        <div v-else-if="IsRunnerDisabled(runner.status) && !(runner.price1 || runner.lay1)">
             <div class="runner-disabled">
                 {{ runner.status }}
             </div>
@@ -3729,12 +3733,12 @@
                 {{ Catalog.status2 }}
             </div>
         </template>
-        <div v-else-if="Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED'">
+        <div v-else-if="(Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED') && !(runner.price1 || runner.lay1 || (runner.back && runner.back[0]))">
             <div class="runner-disabled">
                 {{ Catalog.status }}
             </div>
         </div>
-        <div v-else-if="IsRunnerDisabled(runner.status)">
+        <div v-else-if="IsRunnerDisabled(runner.status) && !(runner.price1 || runner.lay1)">
             <div class="runner-disabled">
                 {{ runner.status }}
             </div>
@@ -3865,12 +3869,12 @@
                 {{ Catalog.status2 }}
             </div>
         </template>
-        <div v-else-if="Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED'">
+        <div v-else-if="(Catalog.status == 'SUSPENDED' || Catalog.status == 'CLOSED') && !(runner.price1 || runner.lay1 || (runner.back && runner.back[0]))">
             <div class="runner-disabled">
                 {{ Catalog.status }}
             </div>
         </div>
-        <div v-else-if="IsRunnerDisabled(runner.status)">
+        <div v-else-if="IsRunnerDisabled(runner.status) && !(runner.price1 || runner.lay1)">
             <div class="runner-disabled">
                 {{ runner.status }}
             </div>
@@ -7059,8 +7063,10 @@ Vue.component('runner-aggregate', {
       commentary: sb.commentary || sb.commentry || sb.news || '',
       recent_string: sb.recent_string || sb.recentString || sb.thisOver || '',
       lastOverLabel: sb.lastOverLabel || 'This Over',
-      rrr: sb.rrr || '',
+      rrr: sb.rrr || sb.RRR || '',
       target: sb.target || '',
+      toWin: sb.toWin || sb.to_win || sb.balls_remaining || sb.ballsText || '',
+      ballsText: sb.ballsText || sb.toWin || sb.to_win || sb.balls_remaining || '',
       status: sb.status || ''
     };
   }

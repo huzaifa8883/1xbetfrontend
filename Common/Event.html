@@ -1,4 +1,6 @@
 
+
+Files
 <!doctype html>
 <html lang="en">
 <head>
@@ -6802,11 +6804,19 @@ Vue.component('runner-aggregate', {
       ifLose: r.ifLose || 0,
       jockeyName:   (r.jockeyName || null) ? (r.jockeyName).replace(/^\s*\(\d+\)\s*/, '').trim() || null : null,
       // Silk image — Betfair COLOURS_FILENAME_URL se aati hai (asal Betfair CDN image)
-      silkUrl:      (r.silkUrl && String(r.silkUrl).indexOf('http') === 0) ? r.silkUrl : null,
-      silkColor:    r.silkColor || r.clothColor || null,
+      // Silk: bpexch silkColor is often full image URL (https://bp-silks.lhre.net/...)
+      silkUrl: (function () {
+        var u = r.silkUrl || r.silkColor || null;
+        if (u && typeof u === 'string' && u.indexOf('http') === 0) return u;
+        if (r.silkUrl && String(r.silkUrl).indexOf('http') === 0) return r.silkUrl;
+        return null;
+      })(),
+      silkColor: (r.clothColor && String(r.clothColor).charAt(0) === '#') ? r.clothColor
+                 : (r.silkColor && String(r.silkColor).charAt(0) === '#') ? r.silkColor : null,
       clothNumber:  r.clothNumber || r.sortPriority || null,
       sortPriority: r.sortPriority || null,
-      clothColor:   r.clothColor || r.silkColor || null,
+      clothColor:   (r.clothColor && String(r.clothColor).charAt(0) === '#') ? r.clothColor
+                    : (r.silkColor && String(r.silkColor).charAt(0) === '#') ? r.silkColor : null,
       clothStriped: r.clothStriped || false,
       metadataDict: r.metadataDict || null,
       indB1: r.indB1 || '',
@@ -7171,9 +7181,17 @@ Vue.component('runner-aggregate', {
         r.clothColor = color;
         r.silkColor = color;
         if (isGrey && pos === 6) r.clothStriped = true;
-        var url = r.silkUrl || meta.COLOURS_FILENAME_URL || meta.colours_filename_url || null;
-        if (url && String(url).indexOf('http') === 0) r.silkUrl = url;
-        else r.silkUrl = null;
+        var url = r.silkUrl || r.silkColor || meta.COLOURS_FILENAME_URL || meta.colours_filename_url || meta.colourS_FILENAME_URL || null;
+        if (url && String(url).indexOf('http') === 0) {
+          r.silkUrl = url;
+        } else if (url && String(url).indexOf('/') >= 0 && String(url).indexOf('#') !== 0) {
+          r.silkUrl = 'https://bp-silks.lhre.net/proxy/' + String(url).replace(/^\//, '');
+        } else {
+          r.silkUrl = null;
+        }
+        // don't use image URL as CSS background color
+        if (r.clothColor && String(r.clothColor).indexOf('http') === 0) r.clothColor = null;
+        if (r.silkColor && String(r.silkColor).indexOf('http') === 0) r.silkColor = r.clothColor;
         if (!r.jockeyName) r.jockeyName = meta.JOCKEY_NAME || meta.jockey_name || null;
       });
     } catch (e) {

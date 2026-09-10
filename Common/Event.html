@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="en">
 <head>
@@ -56,20 +55,41 @@
             ) !important;
             border-color: rgba(0,0,0,0.4);
         }
-        /* Selector checkbox aur silk image bhi vertically center */
+        /* Runner row — checkbox + silk + name sab ek line, vertically center (bpexch-style) */
+        .runner-runner {
+            display: flex !important;
+            align-items: center !important;
+            flex-wrap: nowrap;
+        }
         .runner-runner .selector {
             align-self: center !important;
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+            flex-shrink: 0;
         }
-        .runner-runner > img.ml-2 {
+        .runner-runner > img.ml-2,
+        .runner-runner > .runner-silk-img,
+        .runner-runner > .runner-silk-fallback {
             align-self: center !important;
-            width: 24px !important;
-            height: 24px !important;
+            width: 22px !important;
+            height: 22px !important;
+            min-width: 22px !important;
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+            flex-shrink: 0;
             object-fit: contain;
+            vertical-align: middle;
         }
-        /* Runner name row — flex center */
         .runner-runner .runner-name {
             display: flex !important;
             align-items: center !important;
+            margin: 0 !important;
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+        }
+        .runner-runner .runner-name h4 {
+            margin: 0 !important;
+            line-height: 1.25 !important;
         }
 
         center a {
@@ -1724,6 +1744,54 @@
     return el;
   }
 
+
+  // Fix race title time (match device local like bpexch) + hide duplicate date line + Score Card
+  function fixRaceHeaderUI(vm, startTimeIso) {
+    try {
+      if (!vm || !vm.Catalog) return;
+      var eid = String(vm.Catalog.eventTypeId || '');
+      if (eid !== '7' && eid !== '4339') return;
+
+      // Hide "Sep 10, 2026 9:52 PM" duplicate under title
+      var dt = document.getElementById('header-current-datetime');
+      if (dt) {
+        dt.style.display = 'none';
+        var p = dt.closest('p');
+        // keep Keep Display On checkbox visible if present
+        if (p) {
+          var keep = p.querySelector('#DisplayOnBox');
+          // hide only the datetime text node area
+        }
+      }
+
+      // Hide Score Card for racing only; TV stays, full width if alone
+      var sc = document.getElementById('btn-scorecard');
+      var tv = document.getElementById('btn-tv');
+      if (sc) sc.style.display = 'none';
+      if (tv) { tv.style.width = '100%'; tv.style.borderRight = 'none'; }
+
+      // Rebuild eventName leading clock from marketStartTime in local TZ
+      if (startTimeIso) {
+        var ms = parseAsUtcMs(startTimeIso);
+        if (!isNaN(ms)) {
+          var d = new Date(ms);
+          var hours = d.getHours();
+          var ampm = hours >= 12 ? 'pm' : 'am';
+          var h12 = hours % 12 || 12;
+          var t = h12 + ':' + pad(d.getMinutes()) + ' ' + ampm;
+          var en = String(vm.Catalog.eventName || '');
+          var rest = en.replace(/^\s*\d{1,2}:\d{2}\s*(AM|PM|am|pm)?\s*/i, '').trim();
+          if (!rest) rest = en;
+          var fixed = t + ' ' + rest;
+          if (vm.Catalog.eventName !== fixed) {
+            if (vm.$set) vm.$set(vm.Catalog, 'eventName', fixed);
+            else vm.Catalog.eventName = fixed;
+          }
+        }
+      }
+    } catch (e) {}
+  }
+
   function startRaceTimer(startTimeIso) {
     if (_raceTimerInterval) clearInterval(_raceTimerInterval);
     _lastStartTime = startTimeIso;
@@ -1771,11 +1839,13 @@
           startRaceTimer(startTime);
           updateHeaderDateTime(startTime);
           watchHeaderDateTime(startTime);
+          fixRaceHeaderUI(vm, startTime);
         } else if (startTime) {
-          // Same race — header date/time ko bhi refresh rakho (Vue currentDateTime
-          // har render par system time se overwrite kar sakta hai)
           updateHeaderDateTime(startTime);
           watchHeaderDateTime(startTime);
+          fixRaceHeaderUI(vm, startTime);
+        } else {
+          fixRaceHeaderUI(vm, null);
         } else if (!startTime && _raceTimerInterval) {
           // startTime gayab ho gayi (race switch ho gaya, data abhi nahi aaya) — purana timer roko
           clearInterval(_raceTimerInterval);
@@ -2053,9 +2123,7 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        <span v-if="runner.clothNumber">{{ runner.clothNumber }}.</span>
-
-                        {{ runner.runnerName }}
+                        <span v-if="runner.clothNumber && !'0123456789'.includes(String(runner.runnerName||'').trim().charAt(0))">{{ runner.clothNumber }}.</span>{{ runner.runnerName }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -4045,9 +4113,8 @@
                 <div class="table-wrap">
                     <div class="table-box-body">
                         <div class="btn-group btn-group-xs" style="width:100%; height:30px; margin-bottom:2px;">
-                            <button class="btn btn-primary btn-xs" style="width:50%; border-right:solid" onclick="SHOWTV()">Tv</button>
-
-                                <button class="btn btn-primary btn-xs" style="width:50%" onclick="return false;">Score Card</button>
+                            <button class="btn btn-primary btn-xs" id="btn-tv" style="width:50%; border-right:solid" onclick="SHOWTV()">Tv</button>
+                                <button class="btn btn-primary btn-xs" id="btn-scorecard" style="width:50%" onclick="return false;">Score Card</button>
                         </div>
                         <div id="TVDIVIFRAME" style="display:none;">
                         </div>
@@ -7006,7 +7073,6 @@ Vue.component('runner-aggregate', {
   function clearRaceExtraMarkets(vm) {
     if (!vm) return;
     const eid = String(vm.Catalog && vm.Catalog.eventTypeId || '');
-    // composite race id also means horse/greyhound
     const mid = String((vm.Catalog && vm.Catalog.marketId) || '');
     const isRace = (eid === '7' || eid === '4339' || /^\d{6,}\.\d+$/.test(mid));
     if (!isRace) return;
@@ -7018,6 +7084,13 @@ Vue.component('runner-aggregate', {
         vm[prop].splice(0, vm[prop].length);
       }
     });
+    // Score Card hide (racing only); TV full width
+    var sc = document.getElementById('btn-scorecard');
+    var tv = document.getElementById('btn-tv');
+    if (sc) sc.style.display = 'none';
+    if (tv) { tv.style.width = '100%'; tv.style.borderRight = 'none'; }
+    var dt = document.getElementById('header-current-datetime');
+    if (dt) dt.style.display = 'none';
   }
 
   // getClothColor + continuous race market guard (stops cricket MO flash on race pages)

@@ -1,3 +1,8 @@
+
+
+Event.html
+
+Files
 <!doctype html>
 <html lang="en">
 <head>
@@ -1915,9 +1920,8 @@
                             <a class="tablink btn btn-primary" href="#"
                                v-bind:id="'race' + index + 'tab'"
                                v-for="(Catalog, index) in OtherRaceMarkets"
-                               v-if="Catalog.eventTypeId != 7 && Catalog.eventTypeId != 4339"
                                v-on:click="ShowTab('race', index)">
-                                {{ Catalog.marketName }}
+                                {{ Catalog.marketName || 'To Be Placed' }}
                             </a>
                         </div>
                     </div>
@@ -6805,20 +6809,34 @@ Vue.component('runner-aggregate', {
       }
     };
 
+    // Split PLACE / To Be Placed into OtherRaceMarkets (GB/IE horse)
+    const isPlace = (m) => {
+      const t = String(m.marketType || '').toUpperCase();
+      const n = String(m.marketName || '').toLowerCase();
+      return t === 'PLACE' || n.indexOf('to be placed') >= 0 || n === 'place';
+    };
+    const other = data.other || [];
+    const placeMkts = other.filter(isPlace).map(m => ({
+      ...m,
+      marketName: m.marketName || 'To Be Placed',
+      marketType: m.marketType || 'PLACE',
+    }));
+    const otherRest = other.filter(m => !isPlace(m));
+
+    inject('OtherRaceMarkets', placeMkts);
     inject('BookmakerMarkets', data.bookmaker  || []);
     inject('TossMarkets',      data.toss        || []);
     inject('FancyMarkets',     data.fancy       || []);
     inject('Fancy2Markets',    data.fancy2      || []);
     inject('FigureMarkets',    data.figure      || []);
     inject('OddFigureMarkets', data.oddFigure   || []);
-    inject('OtherMarkets',     data.other       || []);
+    inject('OtherMarkets',     otherRest);
   }
 
   /* ── Flat list ko categories mein baat do ── */
   function categorizeMkts(markets) {
     const out = { bookmaker:[], toss:[], fancy:[], fancy2:[], figure:[], oddFigure:[], other:[] };
     markets.forEach(m => {
-      // Agar backend ne already category set ki ho (catalog2 subMarkets)
       if (m.category && out[m.category]) { out[m.category].push(m); return; }
       const t = (m.marketType || '').toUpperCase();
       const n = (m.marketName || '').toLowerCase();
@@ -6832,7 +6850,8 @@ Vue.component('runner-aggregate', {
       else if (t === 'FIGURE'    || n.includes('figure'))                                       out.figure.push(m);
       else if (t === 'ODD_FIGURE'|| t === 'EVEN_ODD' || n.includes('even') ||
                n.includes('odd figure'))                                                         out.oddFigure.push(m);
-      else if (t !== 'MATCH_ODDS' && t !== 'WINNER')                                            out.other.push(m);
+      else if (t === 'PLACE' || n.includes('to be placed') || n === 'place')                   out.other.push({...m, marketName: m.marketName || 'To Be Placed', marketType: 'PLACE'});
+      else if (t !== 'MATCH_ODDS' && t !== 'WINNER' && t !== 'WIN')                            out.other.push(m);
     });
     return out;
   }
@@ -6852,20 +6871,35 @@ Vue.component('runner-aggregate', {
       elapsed += 300;
     }
 
-    // Horse Race (eventTypeId=7) aur Greyhound (eventTypeId=4339) ke liye
-    // sirf ek WIN market dikhana hai — koi additional markets inject nahi karne
+    // Greyhound: only WIN. Horse GB/IE: also load PLACE (To Be Placed). Other horse countries: WIN only.
     const vm = getVm();
+    let raceLoadPlaceOnly = false;
     if (vm && vm.Catalog) {
-      // Catalog mein eventTypeId set hone ka wait karo
       let tries = 0;
       while (!vm.Catalog.eventTypeId && tries++ < 20) {
         await new Promise(r => setTimeout(r, 200));
       }
       const eid = String(vm.Catalog.eventTypeId || '');
       const mid = String(vm.Catalog.marketId || MARKET_ID || '');
-      if (eid === '7' || eid === '4339' || /^\d{6,}\.\d+$/.test(mid)) {
-        console.log('[Markets] Horse/Greyhound — additional markets nahi load honge');
+      const isGrey = eid === '4339';
+      const isHorse = eid === '7' || /^\d{6,}\.\d+$/.test(mid);
+      if (isGrey) {
+        console.log('[Markets] Greyhound — only WIN, no extra markets');
         return;
+      }
+      if (isHorse) {
+        // detect GB/IE for PLACE markets
+        const en = String(vm.Catalog.eventName || '');
+        const cc = String(vm.Catalog.countryCode || '').toUpperCase();
+        const gbIe = ['GB','UK','GBR','IE','IRL'].indexOf(cc) >= 0 ||
+          /\(GB\)|\(UK\)|\(IE\)/i.test(en) ||
+          /\b(ASCOT|NEWMARKET|YORK|CHELTENHAM|LAYTOWN|CURRAGH|LEOPARDSTOWN|DUNDALK|LINGFIELD|SOUTHWELL|NEWCASTLE|DONCASTER|SANDOWN|KEMPTON|HAYDOCK|AYR|EPSOM|GOODWOOD|WINDSOR|PUNCHESTOWN|FAIRYHOUSE)\b/i.test(en);
+        if (!gbIe) {
+          console.log('[Markets] Horse non-GB/IE — only WIN');
+          return;
+        }
+        raceLoadPlaceOnly = true;
+        console.log('[Markets] Horse GB/IE — will load PLACE (To Be Placed)');
       }
     }
 
@@ -6896,13 +6930,26 @@ Vue.component('runner-aggregate', {
       const json = await res.json();
 
       if (json.success && json.data) {
-        const d = applyMatchMarketFilter(json.data, allowedMarketIds);
+        let d = applyMatchMarketFilter(json.data, allowedMarketIds);
+        // Horse GB/IE: keep only PLACE markets
+        if (raceLoadPlaceOnly) {
+          const isPlace = (m) => {
+            const t = String(m.marketType || '').toUpperCase();
+            const n = String(m.marketName || '').toLowerCase();
+            return t === 'PLACE' || n.indexOf('to be placed') >= 0 || n === 'place';
+          };
+          const all = [].concat(d.other || [], d.matchOdds || [], d.all || []);
+          const places = all.filter(isPlace).map(m => ({
+            ...m, marketName: m.marketName || 'To Be Placed', marketType: m.marketType || 'PLACE'
+          }));
+          d = { bookmaker:[], toss:[], fancy:[], fancy2:[], figure:[], oddFigure:[], other: places };
+          console.log(`[Markets] GB/IE PLACE markets: ${places.length}`);
+        }
         const total = (d.bookmaker?.length||0) + (d.toss?.length||0) + (d.fancy?.length||0)
                     + (d.fancy2?.length||0) + (d.figure?.length||0) + (d.oddFigure?.length||0)
                     + (d.other?.length||0);
-        console.log(`[Markets] event-markets → ${total} extra markets (bm:${d.bookmaker?.length} toss:${d.toss?.length} fancy:${d.fancy?.length})`);
+        console.log(`[Markets] event-markets → ${total} extra markets`);
         if (total > 0) { injectMarkets(d); return; }
-        // 0 extra — catalog2 subMarkets try karo
       }
       throw new Error(json.message || 'empty');
     } catch (err) {
@@ -7088,20 +7135,55 @@ Vue.component('runner-aggregate', {
     return el ? el.__vue__ : null;
   }
 
+  function isGbIeRace(vm) {
+    if (!vm || !vm.Catalog) return false;
+    var en = String(vm.Catalog.eventName || '');
+    var cc = String(vm.Catalog.countryCode || '').toUpperCase();
+    if (['GB','UK','GBR','IE','IRL'].indexOf(cc) >= 0) return true;
+    if (/\(GB\)|\(UK\)|\(IE\)|\(IRL\)/i.test(en)) return true;
+    if (/\b(ASCOT|NEWMARKET|YORK|CHELTENHAM|LAYTOWN|CURRAGH|LEOPARDSTOWN|DUNDALK|LINGFIELD|SOUTHWELL|NEWCASTLE|DONCASTER|SANDOWN|KEMPTON|HAYDOCK|AYR|EPSOM|GOODWOOD|WINDSOR|PUNCHESTOWN|FAIRYHOUSE|NAAS)\b/i.test(en)) return true;
+    return false;
+  }
+
+  function isPlaceMkt(m) {
+    if (!m) return false;
+    var t = String(m.marketType || '').toUpperCase();
+    var n = String(m.marketName || '').toLowerCase();
+    return t === 'PLACE' || n.indexOf('to be placed') >= 0 || n === 'place' || /\bplace\b/.test(n);
+  }
+
   function clearRaceExtraMarkets(vm) {
     if (!vm) return;
     const eid = String(vm.Catalog && vm.Catalog.eventTypeId || '');
     const mid = String((vm.Catalog && vm.Catalog.marketId) || '');
-    const isRace = (eid === '7' || eid === '4339' || /^\d{6,}\.\d+$/.test(mid));
+    const isHorse = (eid === '7');
+    const isGrey  = (eid === '4339');
+    const isRace = (isHorse || isGrey || /^\d{6,}\.\d+$/.test(mid));
     if (!isRace) return;
 
-    ['OtherMarkets', 'OtherRaceMarkets', 'BookmakerMarkets',
+    // Always clear non-race markets
+    ['OtherMarkets', 'BookmakerMarkets',
      'TossMarkets', 'FancyMarkets', 'Fancy2Markets',
      'FigureMarkets', 'OddFigureMarkets'].forEach(function(prop) {
       if (vm[prop] && vm[prop].length > 0) {
         vm[prop].splice(0, vm[prop].length);
       }
     });
+
+    // Horse GB/IE: keep only PLACE / To Be Placed in OtherRaceMarkets
+    // Greyhound + non-GB/IE horse: clear OtherRaceMarkets entirely
+    if (vm.OtherRaceMarkets && vm.OtherRaceMarkets.length) {
+      if (isHorse && isGbIeRace(vm)) {
+        for (var i = vm.OtherRaceMarkets.length - 1; i >= 0; i--) {
+          if (!isPlaceMkt(vm.OtherRaceMarkets[i])) {
+            vm.OtherRaceMarkets.splice(i, 1);
+          }
+        }
+      } else {
+        vm.OtherRaceMarkets.splice(0, vm.OtherRaceMarkets.length);
+      }
+    }
+
     // Score Card hide (racing only); TV full width
     var sc = document.getElementById('btn-scorecard');
     var tv = document.getElementById('btn-tv');
@@ -7160,5 +7242,148 @@ Vue.component('runner-aggregate', {
 })();
 </script>
     <!-- getRunnerAmounts is defined in the main PNL script above -->
+
+<script>
+/* ── Racing bet rules (frontend mirror of backend) ── */
+(function () {
+  'use strict';
+
+  function detectCountry(eventName, countryCode) {
+    var cc = String(countryCode || '').toUpperCase().trim();
+    if (['GB','UK','GBR'].indexOf(cc) >= 0) return 'GB';
+    if (['IE','IRL'].indexOf(cc) >= 0) return 'IE';
+    if (['US','USA'].indexOf(cc) >= 0) return 'US';
+    if (['AU','AUS'].indexOf(cc) >= 0) return 'AUS';
+    if (['ZA','RSA','SA'].indexOf(cc) >= 0) return 'RSA';
+    var n = String(eventName || '').toUpperCase();
+    if (/\(GB\)|\(UK\)/.test(n)) return 'GB';
+    if (/\(IE\)|\(IRL\)/.test(n)) return 'IE';
+    if (/\(US\)|\(USA\)/.test(n)) return 'US';
+    if (/\(AUS\)|\(AU\)/.test(n)) return 'AUS';
+    if (/\(RSA\)|\(ZA\)/.test(n)) return 'RSA';
+    if (/\b(ASCOT|NEWMARKET|YORK|CHELTENHAM|LAYTOWN|CURRAGH|LEOPARDSTOWN|DUNDALK|LINGFIELD|SOUTHWELL|NEWCASTLE|DONCASTER|SANDOWN|KEMPTON|HAYDOCK|AYR|EPSOM|GOODWOOD|WINDSOR|PUNCHESTOWN|FAIRYHOUSE)\b/i.test(eventName || '')) {
+      if (/\b(LAYTOWN|CURRAGH|LEOPARDSTOWN|DUNDALK|PUNCHESTOWN|FAIRYHOUSE|NAAS)\b/i.test(eventName || '')) return 'IE';
+      return 'GB';
+    }
+    if (/\b(BELMONT|SARATOGA|DELAWARE|BELTERRA|CHURCHILL|GULFSTREAM|AQUEDUCT|PARX)\b/i.test(eventName || '')) return 'US';
+    if (/\b(FLEMINGTON|RANDWICK|ROSEHILL|CAULFIELD|DOOMBEN)\b/i.test(eventName || '')) return 'AUS';
+    if (/\b(TURFFONTEIN|GREYVILLE|KENILWORTH)\b/i.test(eventName || '')) return 'RSA';
+    return 'OTHER';
+  }
+
+  function parseStartMs(iso) {
+    if (!iso) return NaN;
+    var s = String(iso).trim();
+    if (/^\d+$/.test(s)) return Number(s);
+    if (/[zZ]$/.test(s) || /[+-]\d{2}:?\d{2}$/.test(s)) return new Date(s).getTime();
+    s = s.replace(/(\.\d{3})\d+/, '$1').replace(' ', 'T');
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s) && !/[zZ]$/.test(s) && !/[+-]\d{2}/.test(s)) s += 'Z';
+    return new Date(s).getTime();
+  }
+
+  function isPlaceMarket(cat) {
+    if (!cat) return false;
+    var t = String(cat.marketType || '').toUpperCase();
+    var n = String(cat.marketName || '').toLowerCase();
+    return t === 'PLACE' || n.indexOf('to be placed') >= 0 || n === 'place';
+  }
+
+  /** Returns error string or null if allowed */
+  window.validateRacingBet = function (catalog) {
+    if (!catalog) return null;
+    var eid = String(catalog.eventTypeId || '');
+    var isHorse = eid === '7';
+    var isGrey  = eid === '4339';
+    if (!isHorse && !isGrey) return null;
+
+    var country = detectCountry(catalog.eventName, catalog.countryCode);
+    var startMs = parseStartMs(catalog.marketStartTime || catalog.marketStartTimeUtc || catalog.startTime);
+    var now = Date.now();
+    var minsToStart = isNaN(startMs) ? null : (startMs - now) / 60000;
+    var status = String(catalog.status || '').toUpperCase();
+    var inPlay = !!(catalog.inPlay || catalog.inplay) ||
+      status === 'INPLAY' || status === 'IN_PLAY' ||
+      (!isNaN(startMs) && now >= startMs);
+    var place = isPlaceMarket(catalog);
+
+    if (isGrey) {
+      if (inPlay) return 'Inplay bets are not allowed';
+      if (minsToStart != null && minsToStart > 5) {
+        var m = Math.ceil(minsToStart - 5);
+        return 'Betting starting in ' + m + ' minute' + (m === 1 ? '' : 's');
+      }
+      return null;
+    }
+
+    // Horse
+    var strict = (country === 'US' || country === 'AUS' || country === 'RSA' || country === 'OTHER');
+    var gbIe = (country === 'GB' || country === 'IE');
+
+    if (strict) {
+      if (inPlay) return 'Inplay bets are not allowed';
+      if (minsToStart != null && minsToStart > 2) {
+        var m2 = Math.ceil(minsToStart - 2);
+        return 'Betting starting in ' + m2 + ' minute' + (m2 === 1 ? '' : 's');
+      }
+      return null;
+    }
+
+    if (gbIe) {
+      if (inPlay && place) return 'Inplay bets are not allowed';
+      if (!inPlay && minsToStart != null && minsToStart > 10) {
+        var m3 = Math.ceil(minsToStart - 10);
+        return 'Betting starting in ' + m3 + ' minute' + (m3 === 1 ? '' : 's');
+      }
+      return null;
+    }
+    return null;
+  };
+
+  function toastRaceError(msg) {
+    if (!msg) return;
+    try {
+      if (window.toastr) { toastr.error(msg); return; }
+    } catch (e) {}
+    alert(msg);
+  }
+
+  // Patch ShowBetSlip when Vue is ready
+  function patchShowBetSlip() {
+    var el = document.getElementById('MarketView') || document.getElementById('app');
+    var vm = el && el.__vue__;
+    if (!vm || typeof vm.ShowBetSlip !== 'function') {
+      setTimeout(patchShowBetSlip, 300);
+      return;
+    }
+    if (vm._raceBetPatched) return;
+    vm._raceBetPatched = true;
+    var orig = vm.ShowBetSlip.bind(vm);
+    vm.ShowBetSlip = function (runner, side, marketId, depth) {
+      var cat = vm.Catalog || {};
+      // If opening slip for a market in OtherRaceMarkets, use that catalog
+      if (marketId && vm.OtherRaceMarkets && vm.OtherRaceMarkets.length) {
+        for (var i = 0; i < vm.OtherRaceMarkets.length; i++) {
+          if (String(vm.OtherRaceMarkets[i].marketId) === String(marketId)) {
+            cat = Object.assign({}, vm.Catalog, vm.OtherRaceMarkets[i]);
+            break;
+          }
+        }
+      }
+      var err = window.validateRacingBet(cat);
+      if (err) {
+        toastRaceError(err);
+        return;
+      }
+      return orig(runner, side, marketId, depth);
+    };
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    setTimeout(patchShowBetSlip, 600);
+  });
+  if (document.readyState !== 'loading') setTimeout(patchShowBetSlip, 600);
+})();
+</script>
+
 </body>
 </html>

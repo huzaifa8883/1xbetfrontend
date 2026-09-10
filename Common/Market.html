@@ -6461,19 +6461,34 @@ Vue.component('runner-aggregate', {
         }
     </script>  
     <script>
-        // Global filters (agar mv2.min.js mein nahi aa rahe)
+        // Global filters — sizes like bpexch (8.2M, 24.3K, 371)
+        function nxCompactSize(value) {
+            if (value === null || value === undefined || value === '' || value === '-') return '';
+            var n = Number(String(value).replace(/,/g, ''));
+            if (!isFinite(n) || n === 0) return '';
+            var sign = n < 0 ? '-' : '';
+            var abs = Math.abs(n);
+            if (abs >= 1000000) {
+                var m = abs / 1000000;
+                var ms = (m >= 100) ? String(Math.round(m)) : (Math.round(m * 10) / 10).toFixed(1).replace(/\.0$/, '');
+                return sign + ms + 'M';
+            }
+            if (abs >= 1000) {
+                var k = abs / 1000;
+                var ks = (k >= 100) ? String(Math.round(k)) : (Math.round(k * 10) / 10).toFixed(1).replace(/\.0$/, '');
+                return sign + ks + 'K';
+            }
+            if (Math.abs(abs - Math.round(abs)) < 0.05) return sign + String(Math.round(abs));
+            return sign + (Math.round(abs * 10) / 10).toString();
+        }
         Vue.filter('formatForiegn', function (value) {
-            // 0 ya falsy value = blank dikhao (1sec flash fix)
-            if (!value || Number(value) === 0) return '';
-            return Number(value).toLocaleString();
+            return nxCompactSize(value);
         });
         Vue.filter('formatForiegn2', function (value) {
-            if (!value || Number(value) === 0) return '';
-            return Number(value).toLocaleString();
+            return nxCompactSize(value);
         });
         Vue.filter('format', function (value) {
-            if (!value || Number(value) === 0) return '';
-            return Number(value).toLocaleString();
+            return nxCompactSize(value);
         });
 
         // Unreal component ko manually register karo (safety ke liye)
@@ -6489,6 +6504,12 @@ Vue.component('runner-aggregate', {
                 } else {
                     console.error("MarketFactory not found! Check mv2.min.js");
                 }
+                // Re-bind compact size filters after mv2 (override toLocaleString)
+                try {
+                  Vue.filter('formatForiegn', nxCompactSize);
+                  Vue.filter('formatForiegn2', nxCompactSize);
+                  Vue.filter('format', nxCompactSize);
+                } catch (e) {}
 
                 // ✅ Apna scorecard (#nx-scorecard) Vue se directly Catalog data se bind hai —
                 //    koi external iframe src set karne ki zaroorat nahi.

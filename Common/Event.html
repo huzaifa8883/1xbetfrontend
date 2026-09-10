@@ -60,27 +60,15 @@ Files
             ) !important;
             border-color: rgba(0,0,0,0.4);
         }
-        /* Silk / trap box alignment only — do not reflow entire runner row */
-        .runner-runner .selector {
-            vertical-align: middle !important;
-            display: inline-block;
-        }
-        .runner-runner .runner-silk-img,
-        .runner-runner .runner-silk-fallback,
-        .runner-runner > img.ml-2 {
-            width: 22px !important;
-            height: 22px !important;
-            min-width: 22px !important;
+        /* Minimal silk alignment — original layout intact */
+        .runner-silk-img,
+        .runner-silk-fallback {
+            width: 22px;
+            height: 22px;
+            min-width: 22px;
             object-fit: contain;
-            vertical-align: middle !important;
-            display: inline-block;
-            margin-top: 0 !important;
-            margin-bottom: 0 !important;
-        }
-        .runner-runner .runner-name h4 {
-            margin: 0 !important;
-            line-height: 1.3 !important;
             vertical-align: middle;
+            display: inline-block;
         }
 
         center a {
@@ -1904,10 +1892,10 @@ Files
                         </div>
 
                         <div class="scrollmenu">
-                            <a v-if="subMarkets.length > 0" class="tablink btn btn-primary"
+                            <a v-if="subMarkets.length > 0 || Catalog.eventTypeId == 7 || Catalog.eventTypeId == 4339 || (OtherRaceMarkets && OtherRaceMarkets.length > 0)" class="tablink btn btn-primary"
                                id="Alltab"
                                v-on:click="ShowTab('All', -1)">
-                                {{ FirstTabName }}
+                                {{ (Catalog.eventTypeId == 7 || Catalog.eventTypeId == 4339) ? 'WIN' : FirstTabName }}
                             </a>
                             <a class="tablink btn btn-primary" id="TOSStab" v-if="TossMarkets.length > 0" href="#" onclick="MarketTab('TOSS')">Toss</a>
                             <a class="tablink btn btn-primary" id="BMtab" v-if="BookmakerMarkets.length > 0" href="#" onclick="MarketTab('BM')">Bookmaker</a>
@@ -3993,7 +3981,6 @@ Files
 
                     <div class="tabcontent"
                          v-for="(Catalog, index) in OtherRaceMarkets"
-                         v-if="Catalog.eventTypeId != 7 && Catalog.eventTypeId != 4339"
                          v-bind:id="'race' + index">
                            
 <div class="market-titlebar">
@@ -7244,7 +7231,7 @@ Vue.component('runner-aggregate', {
     <!-- getRunnerAmounts is defined in the main PNL script above -->
 
 <script>
-/* ── Racing bet rules (frontend mirror of backend) ── */
+/* ── Racing bet rules: WIN/PLACE tabs + bet-slip banner (no alert) ── */
 (function () {
   'use strict';
 
@@ -7261,11 +7248,9 @@ Vue.component('runner-aggregate', {
     if (/\(US\)|\(USA\)/.test(n)) return 'US';
     if (/\(AUS\)|\(AU\)/.test(n)) return 'AUS';
     if (/\(RSA\)|\(ZA\)/.test(n)) return 'RSA';
-    if (/\b(ASCOT|NEWMARKET|YORK|CHELTENHAM|LAYTOWN|CURRAGH|LEOPARDSTOWN|DUNDALK|LINGFIELD|SOUTHWELL|NEWCASTLE|DONCASTER|SANDOWN|KEMPTON|HAYDOCK|AYR|EPSOM|GOODWOOD|WINDSOR|PUNCHESTOWN|FAIRYHOUSE)\b/i.test(eventName || '')) {
-      if (/\b(LAYTOWN|CURRAGH|LEOPARDSTOWN|DUNDALK|PUNCHESTOWN|FAIRYHOUSE|NAAS)\b/i.test(eventName || '')) return 'IE';
-      return 'GB';
-    }
-    if (/\b(BELMONT|SARATOGA|DELAWARE|BELTERRA|CHURCHILL|GULFSTREAM|AQUEDUCT|PARX)\b/i.test(eventName || '')) return 'US';
+    if (/\b(LAYTOWN|CURRAGH|LEOPARDSTOWN|DUNDALK|PUNCHESTOWN|FAIRYHOUSE|NAAS)\b/i.test(eventName || '')) return 'IE';
+    if (/\b(ASCOT|NEWMARKET|YORK|CHELTENHAM|LINGFIELD|SOUTHWELL|NEWCASTLE|DONCASTER|SANDOWN|KEMPTON|HAYDOCK|AYR|EPSOM|GOODWOOD|WINDSOR)\b/i.test(eventName || '')) return 'GB';
+    if (/\b(BELMONT|SARATOGA|DELAWARE|BELTERRA|CHURCHILL|GULFSTREAM|AQUEDUCT|PARX|HORSESHOE|INDIANAPOLIS)\b/i.test(eventName || '')) return 'US';
     if (/\b(FLEMINGTON|RANDWICK|ROSEHILL|CAULFIELD|DOOMBEN)\b/i.test(eventName || '')) return 'AUS';
     if (/\b(TURFFONTEIN|GREYVILLE|KENILWORTH)\b/i.test(eventName || '')) return 'RSA';
     return 'OTHER';
@@ -7288,7 +7273,6 @@ Vue.component('runner-aggregate', {
     return t === 'PLACE' || n.indexOf('to be placed') >= 0 || n === 'place';
   }
 
-  /** Returns error string or null if allowed */
   window.validateRacingBet = function (catalog) {
     if (!catalog) return null;
     var eid = String(catalog.eventTypeId || '');
@@ -7310,12 +7294,11 @@ Vue.component('runner-aggregate', {
       if (inPlay) return 'Inplay bets are not allowed';
       if (minsToStart != null && minsToStart > 5) {
         var m = Math.ceil(minsToStart - 5);
-        return 'Betting starting in ' + m + ' minute' + (m === 1 ? '' : 's');
+        return 'Betting will open in ' + m + ' minute' + (m === 1 ? '' : 's');
       }
       return null;
     }
 
-    // Horse
     var strict = (country === 'US' || country === 'AUS' || country === 'RSA' || country === 'OTHER');
     var gbIe = (country === 'GB' || country === 'IE');
 
@@ -7323,7 +7306,7 @@ Vue.component('runner-aggregate', {
       if (inPlay) return 'Inplay bets are not allowed';
       if (minsToStart != null && minsToStart > 2) {
         var m2 = Math.ceil(minsToStart - 2);
-        return 'Betting starting in ' + m2 + ' minute' + (m2 === 1 ? '' : 's');
+        return 'Betting will open in ' + m2 + ' minute' + (m2 === 1 ? '' : 's');
       }
       return null;
     }
@@ -7332,56 +7315,159 @@ Vue.component('runner-aggregate', {
       if (inPlay && place) return 'Inplay bets are not allowed';
       if (!inPlay && minsToStart != null && minsToStart > 10) {
         var m3 = Math.ceil(minsToStart - 10);
-        return 'Betting starting in ' + m3 + ' minute' + (m3 === 1 ? '' : 's');
+        return 'Betting will open in ' + m3 + ' minute' + (m3 === 1 ? '' : 's');
       }
       return null;
     }
     return null;
   };
 
-  function toastRaceError(msg) {
-    if (!msg) return;
-    try {
-      if (window.toastr) { toastr.error(msg); return; }
-    } catch (e) {}
-    alert(msg);
-  }
+  // Pink banner inside bet slip (bpexch style) — NO alert
+  function showBetSlipRaceBanner(msg) {
+    var roots = [
+      document.querySelector('.bet-slip'),
+      document.querySelector('#betSlip'),
+      document.querySelector('.bets-slip'),
+      document.querySelector('[class*="betslip" i]'),
+      document.querySelector('[class*="BetSlip"]'),
+      document.querySelector('.right-content .bets'),
+      document.querySelector('.right-nav')
+    ].filter(Boolean);
 
-  // Patch ShowBetSlip when Vue is ready
-  function patchShowBetSlip() {
-    var el = document.getElementById('MarketView') || document.getElementById('app');
-    var vm = el && el.__vue__;
-    if (!vm || typeof vm.ShowBetSlip !== 'function') {
-      setTimeout(patchShowBetSlip, 300);
-      return;
-    }
-    if (vm._raceBetPatched) return;
-    vm._raceBetPatched = true;
-    var orig = vm.ShowBetSlip.bind(vm);
-    vm.ShowBetSlip = function (runner, side, marketId, depth) {
-      var cat = vm.Catalog || {};
-      // If opening slip for a market in OtherRaceMarkets, use that catalog
-      if (marketId && vm.OtherRaceMarkets && vm.OtherRaceMarkets.length) {
-        for (var i = 0; i < vm.OtherRaceMarkets.length; i++) {
-          if (String(vm.OtherRaceMarkets[i].marketId) === String(marketId)) {
-            cat = Object.assign({}, vm.Catalog, vm.OtherRaceMarkets[i]);
-            break;
-          }
-        }
-      }
-      var err = window.validateRacingBet(cat);
-      if (err) {
-        toastRaceError(err);
+    // remove old banners
+    document.querySelectorAll('.nx-race-bet-banner').forEach(function (el) { el.remove(); });
+
+    if (!msg) return;
+
+    var banner = document.createElement('div');
+    banner.className = 'nx-race-bet-banner';
+    banner.style.cssText = 'background:#f8d7da;color:#721c24;padding:8px 12px;margin:6px 0;border-radius:3px;font-size:13px;font-weight:600;text-align:center;';
+    banner.textContent = msg;
+
+    // Prefer insert near Submit button
+    var submit = document.querySelector('button.btn-success, button[onclick*="Submit"], .btn-submit, button.btn-primary.btn-xs');
+    for (var i = 0; i < roots.length; i++) {
+      var r = roots[i];
+      if (r && r.offsetParent !== null) {
+        var btns = r.querySelector('.btn-group, .bet-actions, form, .card-body') || r;
+        btns.appendChild(banner);
         return;
       }
-      return orig(runner, side, marketId, depth);
-    };
+    }
+    // fallback: top of right panel
+    var right = document.querySelector('.right-content, .col-lg-4.right-nav');
+    if (right) right.insertBefore(banner, right.firstChild);
   }
 
-  document.addEventListener('DOMContentLoaded', function () {
-    setTimeout(patchShowBetSlip, 600);
-  });
-  if (document.readyState !== 'loading') setTimeout(patchShowBetSlip, 600);
+  function clearBetSlipRaceBanner() {
+    document.querySelectorAll('.nx-race-bet-banner').forEach(function (el) { el.remove(); });
+  }
+
+  function getCatalogForMarket(vm, marketId) {
+    var cat = Object.assign({}, vm.Catalog || {});
+    if (marketId && vm.OtherRaceMarkets && vm.OtherRaceMarkets.length) {
+      for (var i = 0; i < vm.OtherRaceMarkets.length; i++) {
+        if (String(vm.OtherRaceMarkets[i].marketId) === String(marketId)) {
+          return Object.assign({}, cat, vm.OtherRaceMarkets[i], {
+            eventName: cat.eventName,
+            eventTypeId: cat.eventTypeId || vm.OtherRaceMarkets[i].eventTypeId,
+            countryCode: cat.countryCode,
+            marketStartTime: vm.OtherRaceMarkets[i].marketStartTime || cat.marketStartTime
+          });
+        }
+      }
+    }
+    return cat;
+  }
+
+  function patchVue() {
+    var el = document.getElementById('MarketView') || document.getElementById('app');
+    var vm = el && el.__vue__;
+    if (!vm) { setTimeout(patchVue, 300); return; }
+
+    // Force FirstTabName = "WIN" for horse/greyhound
+    try {
+      var eid = String(vm.Catalog && vm.Catalog.eventTypeId || '');
+      if (eid === '7' || eid === '4339') {
+        if (vm.FirstTabName !== 'WIN') {
+          if (vm.$set) vm.$set(vm, 'FirstTabName', 'WIN');
+          else vm.FirstTabName = 'WIN';
+        }
+      }
+    } catch (e) {}
+
+    // Rename PLACE markets display name
+    if (vm.OtherRaceMarkets && vm.OtherRaceMarkets.length) {
+      vm.OtherRaceMarkets.forEach(function (m) {
+        if (!m) return;
+        var n = String(m.marketName || '').toLowerCase();
+        var t = String(m.marketType || '').toUpperCase();
+        if (t === 'PLACE' || n.indexOf('place') >= 0) {
+          if (m.marketName !== 'To Be Placed') {
+            if (vm.$set) vm.$set(m, 'marketName', 'To Be Placed');
+            else m.marketName = 'To Be Placed';
+          }
+        }
+      });
+    }
+
+    if (!vm._raceBetPatched && typeof vm.ShowBetSlip === 'function') {
+      vm._raceBetPatched = true;
+      var origShow = vm.ShowBetSlip.bind(vm);
+      vm.ShowBetSlip = function (runner, side, marketId, depth) {
+        var cat = getCatalogForMarket(vm, marketId);
+        var err = window.validateRacingBet(cat);
+        // Always open slip (bpexch style) — show banner if blocked
+        var ret = origShow(runner, side, marketId, depth);
+        setTimeout(function () {
+          if (err) showBetSlipRaceBanner(err);
+          else clearBetSlipRaceBanner();
+        }, 50);
+        return ret;
+      };
+    }
+
+    // Block place-bet submit when rules fail
+    if (!window._raceSubmitPatched) {
+      window._raceSubmitPatched = true;
+      document.addEventListener('click', function (ev) {
+        var t = ev.target;
+        if (!t) return;
+        var txt = (t.textContent || '').trim().toLowerCase();
+        var isSubmit = (t.tagName === 'BUTTON' || t.tagName === 'A' || t.tagName === 'INPUT') &&
+          (txt === 'submit' || (t.className && String(t.className).toLowerCase().indexOf('submit') >= 0));
+        if (!isSubmit) return;
+        var el2 = document.getElementById('MarketView') || document.getElementById('app');
+        var vm2 = el2 && el2.__vue__;
+        if (!vm2 || !vm2.Catalog) return;
+        var eid2 = String(vm2.Catalog.eventTypeId || '');
+        if (eid2 !== '7' && eid2 !== '4339') return;
+        var cat2 = vm2.Catalog;
+        // active race tab market?
+        var active = document.querySelector('.tabcontent[style*="block"], .tabcontent.active');
+        if (active && active.id && active.id.indexOf('race') === 0 && vm2.OtherRaceMarkets) {
+          var ix = parseInt(active.id.replace('race', ''), 10);
+          if (!isNaN(ix) && vm2.OtherRaceMarkets[ix]) {
+            cat2 = getCatalogForMarket(vm2, vm2.OtherRaceMarkets[ix].marketId);
+          }
+        }
+        var err2 = window.validateRacingBet(cat2);
+        if (err2) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          showBetSlipRaceBanner(err2);
+          return false;
+        }
+      }, true);
+    }
+  }
+
+  function loop() {
+    patchVue();
+    setTimeout(loop, 1000);
+  }
+  document.addEventListener('DOMContentLoaded', function () { setTimeout(loop, 400); });
+  if (document.readyState !== 'loading') setTimeout(loop, 400);
 })();
 </script>
 

@@ -1077,7 +1077,7 @@
   document.addEventListener('DOMContentLoaded', initMarketPage);
 
   // Related Events loader
-  async function loadRelatedEventsBySport(sport) {
+  window.loadRelatedEventsBySport = async function loadRelatedEventsBySport(sport) {
     if (!sport) return;
     try {
       const res    = await fetch(`${API_BASE}/markets/live/${sport.toLowerCase()}`);
@@ -2082,7 +2082,7 @@
                         <div class="tab-content" id="nav-tabContent">
                             <div class="tab-pane fade show active" id="nav-1" role="tabpanel" aria-labelledby="nav-home-tab">
                                 <div class="table-box-body">
-                                    <div class="tb-content" v-if="RunnersAggregate.length >= 2">
+                                    <div class="tb-content nx-combined-block" v-if="RunnersAggregate.length >= 2">
                                            
 <div class="market-titlebar">
     <p class="market-name">
@@ -2090,9 +2090,9 @@
             <i class="market-name-icon">
                 <img style="filter: invert(100%);margin-top:-8px;margin-left:-1px;" src="/img/time.png" />
             </i>
-                <span>Combined </span>
+                <span>COMBINED </span>
                 <span style="text-transform:initial;">
-                    (MaxBet: {{ fancySize | formatForiegn2 }})
+                    (MaxBet: {{ (fancySize || 2000000) | formatForiegn2 }})
                 </span>
         </span>
         <span class="rules-badge" v-on:click.prevent="ShowRules(Catalog.marketId, 'Combined')">
@@ -2103,11 +2103,14 @@
     <div v-if="Catalog.marketType !='FIGURE'" class="market-overarround"><span></span><strong>Back</strong></div>
     <div v-if="Catalog.marketType !='FIGURE'" class="market-overarround market-overarround-lay"><strong>Lay</strong></div>
 </div>
-                                        <runner-aggregate v-bind:marketid="aggregateRun.marketId"
-                                                          v-bind:name="aggregateRun.runnerName"
-                                                          v-bind:back="aggregateRun.back"
-                                                          v-bind:lay="aggregateRun.lay"
-                                                          v-on:betslip="ShowBetSlipForAggregate($event)">
+                                        <runner-aggregate
+                                          v-for="(aggregateRun, aggIdx) in RunnersAggregate"
+                                          :key="'agg-'+aggIdx"
+                                          v-bind:marketid="aggregateRun.marketId || Catalog.marketId"
+                                          v-bind:name="aggregateRun.runnerName || aggregateRun.name"
+                                          v-bind:back="aggregateRun.back"
+                                          v-bind:lay="aggregateRun.lay"
+                                          v-on:betslip="ShowBetSlipForAggregate($event)">
                                         </runner-aggregate>
 
                                     </div>
@@ -7535,28 +7538,31 @@ Vue.component('runner-aggregate', {
 
 
 <script>
-/* ── Horse/Greyhound UX: MaxBet, alignment, greyhound no checkbox, combined max 3 ── */
+/* ── Horse/Greyhound UX v2: alignment, stable MaxBet, greyhound no boxes, related events, combined ── */
 (function () {
   'use strict';
 
-  var HORSE_MAX = 200000;   // 200K
-  var GREY_MAX  = 50000;    // 50K
+  var HORSE_MAX = 200000;    // 200K
+  var GREY_MAX  = 50000;     // 50K
+  var COMBINED_MAX = 2000000; // 2M
+  var _maxBetApplied = false;
+  var _relatedLoaded = false;
 
   function getVm() {
     var el = document.getElementById('MarketView') || document.getElementById('app');
     return el && el.__vue__ ? el.__vue__ : null;
   }
 
-  function applyRaceMaxBet(vm) {
-    if (!vm || !vm.Catalog) return;
+  function raceEid(vm) {
+    if (!vm || !vm.Catalog) return '';
     var eid = String(vm.Catalog.eventTypeId || '');
-    if (eid !== '7' && eid !== '4339') return;
-    var def = eid === '4339' ? GREY_MAX : HORSE_MAX;
-    var cur = Number(vm.Catalog.maxBetSize || 0);
-    if (!cur || cur <= 0) {
-      if (vm.$set) vm.$set(vm.Catalog, 'maxBetSize', def);
-      else vm.Catalog.maxBetSize = def;
+    if (eid === '7' || eid === '4339') return eid;
+    var mid = String(vm.Catalog.marketId || '');
+    if (/^\d{6,}\.\d+$/.test(mid)) {
+      // heuristic: greyhound market names often OR/A0 etc — leave to eventTypeId
+      return eid || '7';
     }
+    return eid;
   }
 
   function applyAlignmentCss() {
@@ -7564,23 +7570,84 @@ Vue.component('runner-aggregate', {
     var st = document.createElement('style');
     st.id = 'nx-race-align-css';
     st.textContent = [
-      /* silk + checkbox vertical align like bpexch */
-      '.runner-runner .selector{display:inline-block;vertical-align:middle;width:16px;height:16px;margin:0 4px 0 0 !important;position:relative;top:0;}',
-      '.runner-runner .runner-silk-img,.runner-runner .runner-silk-fallback{display:inline-block;vertical-align:middle;width:20px;height:20px;min-width:20px;margin:0 6px 0 0 !important;}',
-      '.runner-runner .runner-name{display:inline-block;vertical-align:middle;}',
-      '.runner-runner .runner-name h4{margin:0;line-height:1.25;vertical-align:middle;}',
-      /* Greyhound: hide empty multi-select checkboxes */
-      'body.nx-greyhound .runner-runner .selector{display:none !important;}',
-      /* Selected runner highlight */
-      '.runner-runner .selector.selected{background:#28a745;border-color:#28a745;}'
+      /* Runner left cluster: checkbox + silk + name on one baseline */
+      '.runner-runner{align-items:center !important;}',
+      '.runner-runner > .selector,',
+      '.runner-runner > .runner-silk-img,',
+      '.runner-runner > .runner-silk-fallback,',
+      '.runner-runner > img.ml-2,',
+      '.runner-runner > .runner-name{vertical-align:middle !important;}',
+      '.runner-runner .selector{',
+      '  display:inline-block !important;',
+      '  width:14px;height:14px;min-width:14px;',
+      '  margin:0 6px 0 2px !important;padding:0 !important;',
+      '  position:relative;top:0 !important;transform:none !important;',
+      '  vertical-align:middle !important;flex-shrink:0;',
+      '}',
+      '.runner-runner .runner-silk-img,.runner-runner .runner-silk-fallback,.runner-runner > img.ml-2{',
+      '  display:inline-block !important;',
+      '  width:18px !important;height:18px !important;min-width:18px !important;',
+      '  margin:0 6px 0 0 !important;padding:0 !important;',
+      '  vertical-align:middle !important;position:relative;top:0 !important;',
+      '  object-fit:contain;flex-shrink:0;border-radius:2px;',
+      '}',
+      '.runner-runner .runner-name{',
+      '  display:inline-block !important;vertical-align:middle !important;',
+      '  margin:0 !important;padding:0 !important;line-height:1.2 !important;',
+      '}',
+      '.runner-runner .runner-name h4{margin:0 !important;line-height:1.25 !important;padding:0 !important;}',
+      /* Greyhound: NO multi-select checkboxes — only silk/trap colors */
+      'body.nx-greyhound .runner-runner .selector{display:none !important;width:0 !important;margin:0 !important;padding:0 !important;border:none !important;}',
+      /* Combined block spacing like bpexch */
+      '.nx-combined-block{margin-bottom:6px;}',
+      '.nx-combined-block .market-titlebar{margin-bottom:2px;}',
+      /* Stable maxbet label — avoid empty flash */
+      '.nx-maxbet-stable{font-weight:600;}'
     ].join('\\n');
     document.head.appendChild(st);
   }
 
   function setGreyhoundClass(vm) {
-    var eid = vm && vm.Catalog && String(vm.Catalog.eventTypeId || '');
+    var eid = raceEid(vm);
     if (eid === '4339') document.body.classList.add('nx-greyhound');
     else document.body.classList.remove('nx-greyhound');
+  }
+
+  // MaxBet: set once per marketId, also force fancySize for Combined
+  function applyStableMaxBet(vm) {
+    if (!vm || !vm.Catalog) return;
+    var eid = raceEid(vm);
+    if (eid !== '7' && eid !== '4339') return;
+    var mid = String(vm.Catalog.marketId || '');
+    var def = eid === '4339' ? GREY_MAX : HORSE_MAX;
+
+    if (vm.fancySize == null || Number(vm.fancySize) === 0) {
+      if (vm.$set) vm.$set(vm, 'fancySize', COMBINED_MAX);
+      else vm.fancySize = COMBINED_MAX;
+    }
+
+    var cur = Number(vm.Catalog.maxBetSize || 0);
+    if (!cur || cur <= 0) {
+      if (vm.$set) vm.$set(vm.Catalog, 'maxBetSize', def);
+      else vm.Catalog.maxBetSize = def;
+    }
+
+    // DOM stabilise: if any MaxBet shows empty ")", fill from def (no flicker loop of random values)
+    try {
+      document.querySelectorAll('.market-name-badge').forEach(function (badge) {
+        var txt = badge.textContent || '';
+        if (/MaxBet:\s*\)/i.test(txt) || /MaxBet:\s*$/i.test(txt.trim())) {
+          var isCombined = /COMBINED|Combined/i.test(txt);
+          var val = isCombined ? COMBINED_MAX : def;
+          var label = val >= 1000000 ? (val / 1000000) + 'M' : (val / 1000) + 'K';
+          badge.querySelectorAll('span').forEach(function (sp) {
+            if (/MaxBet/i.test(sp.textContent || '')) {
+              sp.textContent = '(MaxBet: ' + label + ')';
+            }
+          });
+        }
+      });
+    } catch (e) {}
   }
 
   function patchToggleRunner(vm) {
@@ -7589,16 +7656,13 @@ Vue.component('runner-aggregate', {
     vm._nxTogglePatched = true;
     var orig = vm.toggleRunner.bind(vm);
     vm.toggleRunner = function (runner) {
-      var eid = String(vm.Catalog && vm.Catalog.eventTypeId || '');
-      // Greyhound: no multi-select
-      if (eid === '4339') return;
-      // Horse: max 3 selected
+      var eid = raceEid(vm);
+      if (eid === '4339') return; // greyhound: no multi-select
       if (eid === '7') {
         var selected = (vm.Catalog.runners || []).filter(function (r) { return r.selected; });
         var already = !!(runner && runner.selected);
         if (!already && selected.length >= 3) {
-          // show banner like bpexch
-          showMaxRunnersBanner();
+          showBanner('Max no. of runners allowed is 3');
           return;
         }
       }
@@ -7606,23 +7670,46 @@ Vue.component('runner-aggregate', {
     };
   }
 
-  function showMaxRunnersBanner() {
+  function showBanner(msg) {
     document.querySelectorAll('.nx-race-bet-banner').forEach(function (el) { el.remove(); });
     var banner = document.createElement('div');
     banner.className = 'nx-race-bet-banner';
     banner.style.cssText = 'background:#f8d7da;color:#721c24;padding:8px 12px;margin:6px 0;border-radius:3px;font-size:13px;font-weight:600;text-align:center;';
-    banner.textContent = 'Max no. of runners allowed is 3';
-    var slip = document.querySelector('.bet-slip, #betSlip, .bets-slip, .right-content .bets, .right-nav');
-    if (slip) {
-      var host = slip.querySelector('.btn-group, form, .card-body') || slip;
-      host.appendChild(banner);
-    } else {
-      alert('Max no. of runners allowed is 3');
-    }
-    setTimeout(function () { banner.remove(); }, 4000);
+    banner.textContent = msg;
+    var host = document.querySelector('.bet-slip, #betSlip, .right-content .bets, .right-nav, .nx-combined-block');
+    if (host) host.appendChild(banner);
+    setTimeout(function () { try { banner.remove(); } catch (e) {} }, 4000);
   }
 
-  // Expose for combined bet validation on submit
+  // Related Events for horse (and retry greyhound)
+  function ensureRelatedEvents(vm) {
+    var tbody = document.getElementById('relatedEventsBody');
+    if (!tbody) return;
+    if (tbody.children.length > 0 && !/No .+ matches found/i.test(tbody.textContent || '')) {
+      _relatedLoaded = true;
+      return;
+    }
+    var eid = raceEid(vm);
+    var sport = null;
+    if (eid === '7') sport = 'horse';
+    else if (eid === '4339') sport = 'greyhound';
+    else {
+      var mid = String((vm && vm.Catalog && vm.Catalog.marketId) || window.marketId || '');
+      if (/^\d{6,}\.\d+$/.test(mid)) sport = 'horse'; // default race composite → try horse
+    }
+    if (!sport) return;
+    if (typeof window.loadRelatedEventsBySport === 'function') {
+      window.loadRelatedEventsBySport(sport);
+      // also try the other if still empty after delay
+      setTimeout(function () {
+        var tb = document.getElementById('relatedEventsBody');
+        if (tb && tb.children.length === 0 && sport === 'horse') {
+          // stay horse
+        }
+      }, 1500);
+    }
+  }
+
   window._nxCountSelectedRunners = function () {
     var vm = getVm();
     if (!vm || !vm.Catalog || !vm.Catalog.runners) return 0;
@@ -7633,17 +7720,18 @@ Vue.component('runner-aggregate', {
     applyAlignmentCss();
     var vm = getVm();
     if (vm) {
-      applyRaceMaxBet(vm);
       setGreyhoundClass(vm);
+      applyStableMaxBet(vm);
       patchToggleRunner(vm);
+      ensureRelatedEvents(vm);
     }
-    setTimeout(tick, 800);
+    setTimeout(tick, 1200);
   }
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function () { setTimeout(tick, 400); });
+    document.addEventListener('DOMContentLoaded', function () { setTimeout(tick, 500); });
   } else {
-    setTimeout(tick, 400);
+    setTimeout(tick, 500);
   }
 })();
 </script>

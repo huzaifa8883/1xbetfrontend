@@ -2109,35 +2109,23 @@
     <div v-if="Catalog.marketType !='FIGURE'" class="market-overarround market-overarround-lay"><strong>Lay</strong></div>
 </div>
                                         <!-- Combined selection row (bpexch-style) -->
-                                        <div class="runner-runner nx-combined-row" style="display:flex;align-items:center;min-height:40px;padding:4px 8px;">
-                                          <span class="selector selected" style="width:14px;height:14px;margin-right:8px;flex-shrink:0;"></span>
-                                          <h3 class="runner-name" style="flex:1;margin:0;line-height:1.3;">
-                                            <span style="font-weight:700;font-size:14px;">{{ (aggregateRun && aggregateRun.runnerName) ? aggregateRun.runnerName : combinedSelectionLabel }}</span>
+                                        <div class="runner-runner nx-combined-row">
+                                          <span class="selector selected" style="width:14px;height:14px;margin:0 8px 0 2px;flex-shrink:0;"></span>
+                                          <h3 class="runner-name" style="margin:0;flex:1;">
+                                            <span style="font-weight:700;">{{ (aggregateRun && aggregateRun.runnerName) || combinedSelectionLabel || '' }}</span>
                                           </h3>
-                                          <template v-if="aggregateRun && aggregateRun.back && aggregateRun.back.length">
-                                            <div class="back-1" style="min-width:50px;text-align:center;background:#a7d8f0;padding:6px 4px;cursor:pointer;"
-                                                 v-on:click="ShowBetSlipForAggregate({side:'back', price: aggregateRun.back[0].price, size: aggregateRun.back[0].size})">
-                                              <b>{{ aggregateRun.back[0].price }}</b>
+                                          <div class="nx-comb-odds">
+                                            <div class="nx-comb-back"
+                                                 v-on:click="ShowBetSlipForAggregate && ShowBetSlipForAggregate({ side: 'back', price: combinedBackPrice, runner: aggregateRun })">
+                                              <b>{{ combinedBackPrice }}</b>
                                             </div>
-                                          </template>
-                                          <template v-else-if="aggregateRun && aggregateRun.price1">
-                                            <div class="back-1" style="min-width:50px;text-align:center;background:#a7d8f0;padding:6px 4px;">
-                                              <b>{{ aggregateRun.price1 }}</b>
+                                            <div class="nx-comb-lay"
+                                                 v-on:click="ShowBetSlipForAggregate && ShowBetSlipForAggregate({ side: 'lay', price: combinedLayPrice, runner: aggregateRun })">
+                                              <b>{{ combinedLayPrice }}</b>
                                             </div>
-                                          </template>
-                                          <template v-if="aggregateRun && aggregateRun.lay && aggregateRun.lay.length">
-                                            <div class="lay-1" style="min-width:50px;text-align:center;background:#f9c0c0;padding:6px 4px;cursor:pointer;"
-                                                 v-on:click="ShowBetSlipForAggregate({side:'lay', price: aggregateRun.lay[0].price, size: aggregateRun.lay[0].size})">
-                                              <b>{{ aggregateRun.lay[0].price }}</b>
-                                            </div>
-                                          </template>
-                                          <template v-else-if="aggregateRun && aggregateRun.lay1">
-                                            <div class="lay-1" style="min-width:50px;text-align:center;background:#f9c0c0;padding:6px 4px;">
-                                              <b>{{ aggregateRun.lay1 }}</b>
-                                            </div>
-                                          </template>
+                                          </div>
                                         </div>
-                                        <!-- keep original component as secondary if present -->
+                                        <!-- original component disabled — inline row above matches bpexch -->
                                         <runner-aggregate v-if="false"
                                                           v-bind:marketid="aggregateRun && aggregateRun.marketId"
                                                           v-bind:name="aggregateRun && aggregateRun.runnerName"
@@ -2199,7 +2187,7 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        {{ displayRaceRunnerName(runner) }}
+                        <span v-if="runner.clothNumber || runner.sortPriority">{{ runner.clothNumber || runner.sortPriority }}.</span> {{ runner.runnerName || runner.name || '' }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -2361,7 +2349,7 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        {{ displayRaceRunnerName(runner) }}
+                        <span v-if="runner.clothNumber || runner.sortPriority">{{ runner.clothNumber || runner.sortPriority }}.</span> {{ runner.runnerName || runner.name || '' }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -2492,7 +2480,7 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        {{ displayRaceRunnerName(runner) }}
+                        <span v-if="runner.clothNumber || runner.sortPriority">{{ runner.clothNumber || runner.sortPriority }}.</span> {{ runner.runnerName || runner.name || '' }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -2622,7 +2610,7 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        {{ displayRaceRunnerName(runner) }}
+                        <span v-if="runner.clothNumber || runner.sortPriority">{{ runner.clothNumber || runner.sortPriority }}.</span> {{ runner.runnerName || runner.name || '' }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -2753,7 +2741,7 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        {{ displayRaceRunnerName(runner) }}
+                        <span v-if="runner.clothNumber || runner.sortPriority">{{ runner.clothNumber || runner.sortPriority }}.</span> {{ runner.runnerName || runner.name || '' }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -2883,7 +2871,7 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        {{ displayRaceRunnerName(runner) }}
+                        <span v-if="runner.clothNumber || runner.sortPriority">{{ runner.clothNumber || runner.sortPriority }}.</span> {{ runner.runnerName || runner.name || '' }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -3090,7 +3078,7 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        {{ displayRaceRunnerName(runner) }}
+                        <span v-if="runner.clothNumber || runner.sortPriority">{{ runner.clothNumber || runner.sortPriority }}.</span> {{ runner.runnerName || runner.name || '' }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -3228,7 +3216,7 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        {{ displayRaceRunnerName(runner) }}
+                        <span v-if="runner.clothNumber || runner.sortPriority">{{ runner.clothNumber || runner.sortPriority }}.</span> {{ runner.runnerName || runner.name || '' }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -3360,7 +3348,7 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        {{ displayRaceRunnerName(runner) }}
+                        <span v-if="runner.clothNumber || runner.sortPriority">{{ runner.clothNumber || runner.sortPriority }}.</span> {{ runner.runnerName || runner.name || '' }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -3491,7 +3479,7 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        {{ displayRaceRunnerName(runner) }}
+                        <span v-if="runner.clothNumber || runner.sortPriority">{{ runner.clothNumber || runner.sortPriority }}.</span> {{ runner.runnerName || runner.name || '' }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -3623,7 +3611,7 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        {{ displayRaceRunnerName(runner) }}
+                        <span v-if="runner.clothNumber || runner.sortPriority">{{ runner.clothNumber || runner.sortPriority }}.</span> {{ runner.runnerName || runner.name || '' }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -3755,7 +3743,7 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        {{ displayRaceRunnerName(runner) }}
+                        <span v-if="runner.clothNumber || runner.sortPriority">{{ runner.clothNumber || runner.sortPriority }}.</span> {{ runner.runnerName || runner.name || '' }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -3965,7 +3953,7 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        {{ displayRaceRunnerName(runner) }}
+                        <span v-if="runner.clothNumber || runner.sortPriority">{{ runner.clothNumber || runner.sortPriority }}.</span> {{ runner.runnerName || runner.name || '' }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -4100,7 +4088,7 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        {{ displayRaceRunnerName(runner) }}
+                        <span v-if="runner.clothNumber || runner.sortPriority">{{ runner.clothNumber || runner.sortPriority }}.</span> {{ runner.runnerName || runner.name || '' }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -7557,7 +7545,7 @@ export default {
 
 
   function enrichRaceRunners(vm) {
-    // SAFE: only fill missing clothNumber — NEVER modify runnerName / jockeyName
+    // SAFE: fill clothNumber if missing; strip "1. " from runnerName only when it would double
     if (!vm || !vm.Catalog) return;
     var eid = String(vm.Catalog.eventTypeId || '');
     if (eid !== '7' && eid !== '4339') return;
@@ -7565,11 +7553,26 @@ export default {
     for (var i = 0; i < runners.length; i++) {
       var rn = runners[i];
       if (!rn) continue;
-      if (!rn.clothNumber && rn.sortPriority) {
+      if (!rn.clothNumber && rn.sortPriority != null && rn.sortPriority !== '') {
         try {
           if (vm.$set) vm.$set(rn, 'clothNumber', String(rn.sortPriority));
           else rn.clothNumber = String(rn.sortPriority);
         } catch (e) {}
+      }
+      // Fix double number display: "1." + "1. Horse" → keep name as "Horse"
+      if (rn.clothNumber && rn.runnerName) {
+        var cn = String(rn.clothNumber).trim();
+        var nm = String(rn.runnerName).trim();
+        var re = new RegExp('^' + cn.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\.\\s*');
+        if (re.test(nm)) {
+          var bare = nm.replace(re, '').trim();
+          if (bare) {
+            try {
+              if (vm.$set) vm.$set(rn, 'runnerName', bare);
+              else rn.runnerName = bare;
+            } catch (e) {}
+          }
+        }
       }
     }
   }
@@ -7592,37 +7595,25 @@ export default {
     var st = document.createElement('style');
     st.id = 'nx-race-align-css';
     st.textContent = [
-      /* bpexch-like runner row alignment */
-      '.runner-runner{display:flex !important;align-items:center !important;flex-wrap:nowrap;}',
-      '.runner-runner .selector{',
-      '  flex:0 0 14px;width:14px;height:14px;min-width:14px;',
-      '  margin:0 6px 0 2px !important;align-self:center !important;',
-      '  position:relative;top:0 !important;',
+      /* Match bpexch sizes — do NOT shrink */
+      '.runner-runner .selector{align-self:center !important;vertical-align:middle;}',
+      '.runner-runner > img.ml-2,.runner-runner .runner-silk-img,.runner-runner .runner-silk-fallback{',
+      '  align-self:center !important;vertical-align:middle;',
+      '  width:24px !important;height:24px !important;min-width:24px !important;',
+      '  object-fit:contain;margin-right:6px;',
       '}',
-      '.runner-runner .runner-silk-img,.runner-runner .runner-silk-fallback,.runner-runner > img.ml-2{',
-      '  flex:0 0 20px;width:20px !important;height:20px !important;min-width:20px !important;',
-      '  margin:0 8px 0 0 !important;align-self:center !important;',
-      '  object-fit:contain;border-radius:2px;',
-      '}',
-      '.runner-runner .runner-name{',
-      '  flex:1 1 auto;display:flex !important;flex-direction:column !important;',
-      '  justify-content:center !important;align-items:flex-start !important;',
-      '  margin:0 !important;padding:0 !important;line-height:1.2 !important;',
-      '}',
-      '.runner-runner .runner-name .runner-info{margin:0;padding:0;}',
-      '.runner-runner .runner-name h4{',
-      '  margin:0 !important;padding:0 !important;line-height:1.25 !important;',
-      '  font-size:13px !important;font-weight:600 !important;',
-      '}',
-      '.runner-runner .runner-position{',
-      '  margin:0 !important;padding:0 !important;line-height:1.2 !important;',
-      '  font-size:11px !important;font-weight:400 !important;opacity:0.9;',
-      '}',
-      /* Greyhound: no multi-select boxes */
+      '.runner-runner .runner-name{display:flex !important;align-items:center !important;flex-wrap:wrap;}',
+      '.runner-runner .runner-name h4{margin:0 !important;line-height:1.3 !important;font-size:inherit !important;font-weight:inherit !important;}',
+      '.runner-runner .runner-position{font-size:inherit !important;line-height:1.3 !important;}',
       'body.nx-greyhound .runner-runner .selector{display:none !important;}',
-      /* Combined block clear separation */
-      '.tb-content .market-titlebar + .runner-runner,',
-      '.nx-combined-row{min-height:36px;}'
+      /* Combined row like bpexch */
+      '.nx-combined-row{display:flex !important;align-items:center !important;min-height:42px;padding:4px 6px;}',
+      '.nx-combined-row .nx-comb-odds{display:flex;align-items:center;margin-left:auto;}',
+      '.nx-combined-row .nx-comb-back,.nx-combined-row .nx-comb-lay{',
+      '  min-width:56px;text-align:center;padding:8px 6px;font-weight:700;font-size:14px;cursor:pointer;',
+      '}',
+      '.nx-combined-row .nx-comb-back{background:#a7d8f0;}',
+      '.nx-combined-row .nx-comb-lay{background:#f9c0c0;}'
     ].join('\n');
     document.head.appendChild(st);
   }
@@ -7745,7 +7736,7 @@ export default {
       enrichRaceRunners(vm);
       applyStableMaxBet(vm);
       patchToggleRunner(vm);
-      // Combined "1 + 2 + 3" label
+      // Combined "1 + 2 + 3" label + odds (bpexch style)
       try {
         var sels = (vm.Catalog && vm.Catalog.runners || []).filter(function(r){ return r && r.selected; });
         var label = sels.map(function(r){
@@ -7754,11 +7745,48 @@ export default {
         if (!label && sels.length) label = sels.map(function(_,i){ return String(i+1); }).join(' + ');
         if (vm.$set) vm.$set(vm, 'combinedSelectionLabel', label || '');
         else vm.combinedSelectionLabel = label || '';
-        if (vm.aggregateRun && label) {
-          if (!vm.aggregateRun.runnerName || vm.aggregateRun.runnerName !== label) {
-            if (vm.$set) vm.$set(vm.aggregateRun, 'runnerName', label);
-            else vm.aggregateRun.runnerName = label;
+
+        var ar = vm.aggregateRun || (Array.isArray(vm.RunnersAggregate) && vm.RunnersAggregate[0]) || null;
+        if (ar && label) {
+          if (!ar.runnerName || ar.runnerName !== label) {
+            if (vm.$set) vm.$set(ar, 'runnerName', label);
+            else ar.runnerName = label;
           }
+        }
+        // Extract back/lay price from whatever shape aggregateRun has
+        function pickPrice(obj, keys) {
+          if (!obj) return '';
+          for (var k = 0; k < keys.length; k++) {
+            var key = keys[k];
+            var v = obj[key];
+            if (v == null) continue;
+            if (Array.isArray(v) && v.length) {
+              var p = v[0].price != null ? v[0].price : v[0];
+              if (p != null && p !== '' && !isNaN(Number(p))) return Number(p);
+            } else if (typeof v === 'object' && v.price != null) {
+              return Number(v.price);
+            } else if (!isNaN(Number(v)) && Number(v) > 0) {
+              return Number(v);
+            }
+          }
+          return '';
+        }
+        var bp = pickPrice(ar, ['back', 'price1', 'Back', 'availableToBack']);
+        var lp = pickPrice(ar, ['lay', 'lay1', 'Lay', 'availableToLay']);
+        // also check RunnersAggregate items
+        if ((bp === '' || lp === '') && Array.isArray(vm.RunnersAggregate)) {
+          for (var ri = 0; ri < vm.RunnersAggregate.length; ri++) {
+            var item = vm.RunnersAggregate[ri];
+            if (bp === '') bp = pickPrice(item, ['back', 'price1', 'Back']);
+            if (lp === '') lp = pickPrice(item, ['lay', 'lay1', 'Lay']);
+          }
+        }
+        if (vm.$set) {
+          vm.$set(vm, 'combinedBackPrice', bp !== '' ? bp : '');
+          vm.$set(vm, 'combinedLayPrice', lp !== '' ? lp : '');
+        } else {
+          vm.combinedBackPrice = bp !== '' ? bp : '';
+          vm.combinedLayPrice = lp !== '' ? lp : '';
         }
       } catch (e) {}
       ensureRelatedEvents(vm);

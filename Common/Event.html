@@ -1,4 +1,8 @@
 
+
+Event.html
+
+Files
 <!doctype html>
 <html lang="en">
 <head>
@@ -1090,31 +1094,39 @@
         const today  = new Date();
 
         events.forEach(event => {
-          const startTime = new Date(event.marketStartTime || event.startTime);
-          const localTime = startTime.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+          const rawStart = event.marketStartTime || event.startTime;
+          let startTime = new Date(rawStart);
+          // force UTC parse if no zone (race times)
+          if (rawStart && typeof rawStart === 'string' && !/[zZ]|[+-]\d{2}/.test(rawStart)) {
+            const s = rawStart.replace(' ', 'T').replace(/(\.\d{3})\d+/, '$1');
+            startTime = new Date(/T/.test(s) ? s + (s.endsWith('Z') ? '' : 'Z') : s);
+          }
+          const localTime = startTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 
           let dayLabel = 'Upcoming';
-          if (startTime.toDateString() === today.toDateString()) {
-            dayLabel = 'Today';
-          } else {
-            const tomorrow = new Date();
-            tomorrow.setDate(today.getDate() + 1);
-            if (startTime.toDateString() === tomorrow.toDateString()) dayLabel = 'Tomorrow';
+          if (!isNaN(startTime.getTime())) {
+            if (startTime.toDateString() === today.toDateString()) dayLabel = 'Today';
+            else {
+              const tomorrow = new Date();
+              tomorrow.setDate(today.getDate() + 1);
+              if (startTime.toDateString() === tomorrow.toDateString()) dayLabel = 'Tomorrow';
+            }
           }
 
+          const name = event.match || event.eventName || event.marketName || 'Unknown Match';
           const tr = document.createElement('tr');
           tr.className   = 'relatedtr';
           tr.style.cursor = 'pointer';
           tr.onclick = () => { goToMatch(sport, event); };
           tr.innerHTML = `
-            <td class="sport-date" style="font-size:14px; padding:0 20px;">
+            <td class="sport-date" style="font-size:14px; padding:0 12px;">
               <div>
                 <span class="day">${dayLabel}</span>
-                <span class="market-time">${localTime}</span>
-                <span class="d-none utctime" data-format="H:mm">${event.marketStartTime || event.startTime}</span>
+                <span class="market-time">${isNaN(startTime.getTime()) ? '' : localTime}</span>
+                <span class="d-none utctime" data-format="H:mm">${rawStart || ''}</span>
               </div>
             </td>
-            <td><div>${event.marketName || event.match || 'Unknown Match'}</div></td>
+            <td><div>${localTime && !isNaN(startTime.getTime()) ? localTime + ' ' : ''}${name}</div></td>
           `;
           tbody.appendChild(tr);
         });
@@ -1127,11 +1139,37 @@
     }
   }
 
+  function mapSportToLiveKey(sport, eventTypeId) {
+    var s = String(sport || '').toLowerCase();
+    var eid = String(eventTypeId || '');
+    if (eid === '7' || s.indexOf('horse') >= 0) return 'horse';
+    if (eid === '4339' || s.indexOf('grey') >= 0) return 'greyhound';
+    if (s.indexOf('soccer') >= 0 || s.indexOf('football') >= 0) return 'football';
+    if (s.indexOf('tennis') >= 0) return 'tennis';
+    if (s.indexOf('cricket') >= 0) return 'cricket';
+    if (s === 'horse' || s === 'greyhound' || s === 'football' || s === 'tennis' || s === 'cricket') return s;
+    return s || null;
+  }
+
   async function initRelatedEvents() {
     if (!marketId) return;
-    const sport = await getSportByMarketId(marketId);
-    console.log("Sport name:", sport);
-    loadRelatedEventsBySport(sport);
+    var sport = await getSportByMarketId(marketId);
+    var key = mapSportToLiveKey(sport, null);
+    // Race composite ids / late Vue Catalog
+    if (!key || key === 'unknown') {
+      setTimeout(function () {
+        try {
+          var el = document.getElementById('MarketView') || document.getElementById('app');
+          var vm = el && el.__vue__;
+          var eid = vm && vm.Catalog && vm.Catalog.eventTypeId;
+          var et = vm && vm.Catalog && (vm.Catalog.eventType || vm.Catalog.sport && vm.Catalog.sport.name);
+          key = mapSportToLiveKey(et || sport, eid);
+          if (key) loadRelatedEventsBySport(key);
+        } catch (e) {}
+      }, 1200);
+    }
+    console.log("Sport name:", sport, "live key:", key);
+    if (key) loadRelatedEventsBySport(key);
   }
 
   initRelatedEvents();
@@ -4676,7 +4714,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       // Update username in navbar
       const userBtn = document.getElementById("navbar-user");
       if (userBtn)
-        userBtn.innerHTML = `${user.username} (${user.role}) <i class="fas fa-caret-down"></i>`;
+        userBtn.innerHTML = `${user.username} <i class="fas fa-caret-down"></i>`;
 
       // Update wallet balance
       const walletBalance = document.querySelector(".wallet-balance");
@@ -4719,7 +4757,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       // Username ko button me update karo
       const userBtn = document.getElementById("navbar-user");
-      if (userBtn) userBtn.innerHTML = `${user.username} (${user.role}) <i class="fas fa-caret-down"></i>`;
+      if (userBtn) userBtn.innerHTML = `${user.username} <i class="fas fa-caret-down"></i>`;
 
       // Wallet balance update
       const walletBalance = document.querySelector(".wallet-balance");
@@ -5100,7 +5138,7 @@ async function updateUserWallet() {
 
         const userBtn = document.getElementById("navbar-user");
         if (userBtn && user.username)
-            userBtn.innerHTML = `${user.username}${user.role ? ' (' + user.role + ')' : ''} <i class="fas fa-caret-down"></i>`;
+            userBtn.innerHTML = `${user.username} <i class="fas fa-caret-down"></i>`;
 
         const walletBalance = document.querySelector(".wallet-balance");
         if (walletBalance) walletBalance.textContent = `B: ${bal.toLocaleString()}`;
@@ -6594,7 +6632,11 @@ Vue.component('runner-aggregate', {
             return nxCompactSize(value);
         });
         Vue.filter('format', function (value) {
-            return nxCompactSize(value);
+            // Runner PnL under names — full amount (10000 not 10K)
+            if (value === null || value === undefined || value === '' || Number(value) === 0) return '';
+            var n = Number(String(value).replace(/,/g, ''));
+            if (!isFinite(n) || n === 0) return '';
+            return Math.round(n).toLocaleString('en-US');
         });
 
         // Unreal component ko manually register karo (safety ke liye)
@@ -6614,7 +6656,7 @@ Vue.component('runner-aggregate', {
                 try {
                   Vue.filter('formatForiegn', nxCompactSize);
                   Vue.filter('formatForiegn2', nxCompactSize);
-                  Vue.filter('format', nxCompactSize);
+                  /* format stays full numbers for runner PnL */
                 } catch (e) {}
 
                 // ✅ Apna scorecard (#nx-scorecard) Vue se directly Catalog data se bind hai —
@@ -7308,7 +7350,7 @@ Vue.component('runner-aggregate', {
     var place = isPlaceMarket(catalog);
 
     if (isGrey) {
-      if (inPlay) return 'Inplay bets are not allowed';
+      if (inPlay) return 'Inplay bet is not allowed in this race';
       if (minsToStart != null && minsToStart > 5) {
         var m = Math.ceil(minsToStart - 5);
         return 'Betting will open in ' + m + ' minute' + (m === 1 ? '' : 's');
@@ -7320,7 +7362,7 @@ Vue.component('runner-aggregate', {
     var gbIe = (country === 'GB' || country === 'IE');
 
     if (strict) {
-      if (inPlay) return 'Inplay bets are not allowed';
+      if (inPlay) return 'Inplay bet is not allowed in this race';
       if (minsToStart != null && minsToStart > 2) {
         var m2 = Math.ceil(minsToStart - 2);
         return 'Betting will open in ' + m2 + ' minute' + (m2 === 1 ? '' : 's');
@@ -7329,7 +7371,7 @@ Vue.component('runner-aggregate', {
     }
 
     if (gbIe) {
-      if (inPlay && place) return 'Inplay bets are not allowed';
+      if (inPlay && place) return 'Inplay bet is not allowed in this race';
       if (!inPlay && minsToStart != null && minsToStart > 10) {
         var m3 = Math.ceil(minsToStart - 10);
         return 'Betting will open in ' + m3 + ' minute' + (m3 === 1 ? '' : 's');
@@ -7463,6 +7505,9 @@ Vue.component('runner-aggregate', {
           }
         }
         var err2 = window.validateRacingBet(cat2);
+        if (!err2 && window._nxCountSelectedRunners && window._nxCountSelectedRunners() > 3) {
+          err2 = 'Max no. of runners allowed is 3';
+        }
         if (err2) {
           ev.preventDefault();
           ev.stopPropagation();
@@ -7489,6 +7534,121 @@ Vue.component('runner-aggregate', {
   }
   document.addEventListener('DOMContentLoaded', function () { setTimeout(loop, 400); });
   if (document.readyState !== 'loading') setTimeout(loop, 400);
+})();
+</script>
+
+
+<script>
+/* ── Horse/Greyhound UX: MaxBet, alignment, greyhound no checkbox, combined max 3 ── */
+(function () {
+  'use strict';
+
+  var HORSE_MAX = 200000;   // 200K
+  var GREY_MAX  = 50000;    // 50K
+
+  function getVm() {
+    var el = document.getElementById('MarketView') || document.getElementById('app');
+    return el && el.__vue__ ? el.__vue__ : null;
+  }
+
+  function applyRaceMaxBet(vm) {
+    if (!vm || !vm.Catalog) return;
+    var eid = String(vm.Catalog.eventTypeId || '');
+    if (eid !== '7' && eid !== '4339') return;
+    var def = eid === '4339' ? GREY_MAX : HORSE_MAX;
+    var cur = Number(vm.Catalog.maxBetSize || 0);
+    if (!cur || cur <= 0) {
+      if (vm.$set) vm.$set(vm.Catalog, 'maxBetSize', def);
+      else vm.Catalog.maxBetSize = def;
+    }
+  }
+
+  function applyAlignmentCss() {
+    if (document.getElementById('nx-race-align-css')) return;
+    var st = document.createElement('style');
+    st.id = 'nx-race-align-css';
+    st.textContent = [
+      /* silk + checkbox vertical align like bpexch */
+      '.runner-runner .selector{display:inline-block;vertical-align:middle;width:16px;height:16px;margin:0 4px 0 0 !important;position:relative;top:0;}',
+      '.runner-runner .runner-silk-img,.runner-runner .runner-silk-fallback{display:inline-block;vertical-align:middle;width:20px;height:20px;min-width:20px;margin:0 6px 0 0 !important;}',
+      '.runner-runner .runner-name{display:inline-block;vertical-align:middle;}',
+      '.runner-runner .runner-name h4{margin:0;line-height:1.25;vertical-align:middle;}',
+      /* Greyhound: hide empty multi-select checkboxes */
+      'body.nx-greyhound .runner-runner .selector{display:none !important;}',
+      /* Selected runner highlight */
+      '.runner-runner .selector.selected{background:#28a745;border-color:#28a745;}'
+    ].join('\\n');
+    document.head.appendChild(st);
+  }
+
+  function setGreyhoundClass(vm) {
+    var eid = vm && vm.Catalog && String(vm.Catalog.eventTypeId || '');
+    if (eid === '4339') document.body.classList.add('nx-greyhound');
+    else document.body.classList.remove('nx-greyhound');
+  }
+
+  function patchToggleRunner(vm) {
+    if (!vm || vm._nxTogglePatched) return;
+    if (typeof vm.toggleRunner !== 'function') return;
+    vm._nxTogglePatched = true;
+    var orig = vm.toggleRunner.bind(vm);
+    vm.toggleRunner = function (runner) {
+      var eid = String(vm.Catalog && vm.Catalog.eventTypeId || '');
+      // Greyhound: no multi-select
+      if (eid === '4339') return;
+      // Horse: max 3 selected
+      if (eid === '7') {
+        var selected = (vm.Catalog.runners || []).filter(function (r) { return r.selected; });
+        var already = !!(runner && runner.selected);
+        if (!already && selected.length >= 3) {
+          // show banner like bpexch
+          showMaxRunnersBanner();
+          return;
+        }
+      }
+      return orig(runner);
+    };
+  }
+
+  function showMaxRunnersBanner() {
+    document.querySelectorAll('.nx-race-bet-banner').forEach(function (el) { el.remove(); });
+    var banner = document.createElement('div');
+    banner.className = 'nx-race-bet-banner';
+    banner.style.cssText = 'background:#f8d7da;color:#721c24;padding:8px 12px;margin:6px 0;border-radius:3px;font-size:13px;font-weight:600;text-align:center;';
+    banner.textContent = 'Max no. of runners allowed is 3';
+    var slip = document.querySelector('.bet-slip, #betSlip, .bets-slip, .right-content .bets, .right-nav');
+    if (slip) {
+      var host = slip.querySelector('.btn-group, form, .card-body') || slip;
+      host.appendChild(banner);
+    } else {
+      alert('Max no. of runners allowed is 3');
+    }
+    setTimeout(function () { banner.remove(); }, 4000);
+  }
+
+  // Expose for combined bet validation on submit
+  window._nxCountSelectedRunners = function () {
+    var vm = getVm();
+    if (!vm || !vm.Catalog || !vm.Catalog.runners) return 0;
+    return vm.Catalog.runners.filter(function (r) { return r.selected; }).length;
+  };
+
+  function tick() {
+    applyAlignmentCss();
+    var vm = getVm();
+    if (vm) {
+      applyRaceMaxBet(vm);
+      setGreyhoundClass(vm);
+      patchToggleRunner(vm);
+    }
+    setTimeout(tick, 800);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () { setTimeout(tick, 400); });
+  } else {
+    setTimeout(tick, 400);
+  }
 })();
 </script>
 

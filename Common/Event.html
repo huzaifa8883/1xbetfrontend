@@ -1,8 +1,4 @@
 
-
-Event.html
-
-Files
 <!doctype html>
 <html lang="en">
 <head>
@@ -1820,53 +1816,19 @@ Files
         }
       }
 
-      // Enrich racing runners: clothNumber + clean horse name + jockey from metadata
-      var runners = vm.Catalog.runners || [];
-      for (var i = 0; i < runners.length; i++) {
-        var rn = runners[i];
-        if (!rn) continue;
-        // parse metadata JSON if present
-        var meta = null;
-        try {
-          if (rn.metadata && typeof rn.metadata === 'string') meta = JSON.parse(rn.metadata);
-          else if (rn.metadata && typeof rn.metadata === 'object') meta = rn.metadata;
-        } catch (e) { meta = null; }
-        // cloth number
-        var cloth = rn.clothNumber || (meta && (meta.clotH_NUMBER || meta.CLOTH_NUMBER || meta.clothNumber)) || rn.sortPriority;
-        if (cloth != null && cloth !== '' && !rn.clothNumber) {
-          if (vm.$set) vm.$set(rn, 'clothNumber', String(cloth));
-          else rn.clothNumber = String(cloth);
-        }
-        // runner / horse name — never leave empty
-        var nm = rn.runnerName || rn.name || '';
-        if (meta) {
-          if (!nm && (meta.runnerName || meta.name)) nm = meta.runnerName || meta.name;
-        }
-        // strip leading "12. " only once if clothNumber will be shown separately
-        if (nm && rn.clothNumber) {
-          var stripped = String(nm).replace(/^\s*\d+\.\s+/, '').trim();
-          if (stripped) nm = stripped;
-        }
-        if (nm && nm !== rn.runnerName) {
-          if (vm.$set) vm.$set(rn, 'runnerName', nm);
-          else rn.runnerName = nm;
-        }
-        // jockey
-        if (!rn.jockeyName && meta) {
-          var jk = meta.jockeY_NAME || meta.JOCKEY_NAME || meta.jockeyName || '';
-          if (jk) {
-            if (vm.$set) vm.$set(rn, 'jockeyName', jk);
-            else rn.jockeyName = jk;
+      // SAFE: only fill missing clothNumber — do NOT touch runnerName/jockeyName
+      try {
+        var runners = vm.Catalog.runners || [];
+        for (var i = 0; i < runners.length; i++) {
+          var rn = runners[i];
+          if (!rn) continue;
+          if (!rn.clothNumber && rn.sortPriority != null && rn.sortPriority !== '') {
+            if (vm.$set) vm.$set(rn, 'clothNumber', String(rn.sortPriority));
+            else rn.clothNumber = String(rn.sortPriority);
           }
         }
-        // silk / colours filename if available
-        if (!rn.silkUrl && meta && (meta.colourS_FILENAME_URL || meta.colourS_FILENAME)) {
-          var fn = meta.colourS_FILENAME_URL || meta.colourS_FILENAME;
-          var url = fn.indexOf('http') === 0 ? fn : ('https://content-cache.betfair.com/racing/' + fn);
-          if (vm.$set) vm.$set(rn, 'silkUrl', url);
-          else rn.silkUrl = url;
-        }
-      }
+      } catch (e2) {}
+
     } catch (e) {}
   }
 
@@ -2117,7 +2079,7 @@ Files
                         <div class="tab-content" id="nav-tabContent">
                             <div class="tab-pane fade show active" id="nav-1" role="tabpanel" aria-labelledby="nav-home-tab">
                                 <div class="table-box-body">
-                                    <div class="tb-content nx-combined-block" v-if="RunnersAggregate.length >= 2">
+                                    <div class="tb-content" v-if="RunnersAggregate.length >= 2">
                                            
 <div class="market-titlebar">
     <p class="market-name">
@@ -2138,10 +2100,10 @@ Files
     <div v-if="Catalog.marketType !='FIGURE'" class="market-overarround"><span></span><strong>Back</strong></div>
     <div v-if="Catalog.marketType !='FIGURE'" class="market-overarround market-overarround-lay"><strong>Lay</strong></div>
 </div>
-                                        <runner-aggregate v-bind:marketid="(aggregateRun && aggregateRun.marketId) || Catalog.marketId"
-                                                          v-bind:name="(aggregateRun && (aggregateRun.runnerName || aggregateRun.name)) || ''"
-                                                          v-bind:back="aggregateRun && aggregateRun.back"
-                                                          v-bind:lay="aggregateRun && aggregateRun.lay"
+                                        <runner-aggregate v-bind:marketid="aggregateRun.marketId"
+                                                          v-bind:name="aggregateRun.runnerName"
+                                                          v-bind:back="aggregateRun.back"
+                                                          v-bind:lay="aggregateRun.lay"
                                                           v-on:betslip="ShowBetSlipForAggregate($event)">
                                         </runner-aggregate>
 
@@ -2176,7 +2138,7 @@ Files
          v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
-              v-show="Number(Catalog.eventTypeId)==7"
+              v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
@@ -2198,7 +2160,7 @@ Files
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        <span v-if="runner.clothNumber || runner.sortPriority">{{ runner.clothNumber || runner.sortPriority }}.</span> {{ runner.runnerName || runner.name || '' }}
+                        <span v-if="runner.clothNumber">{{ runner.clothNumber }}.</span> {{ runner.runnerName }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -2338,7 +2300,7 @@ Files
          v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
-              v-show="Number(Catalog.eventTypeId)==7"
+              v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
@@ -2360,7 +2322,7 @@ Files
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        <span v-if="runner.clothNumber || runner.sortPriority">{{ runner.clothNumber || runner.sortPriority }}.</span> {{ runner.runnerName || runner.name || '' }}
+                        <span v-if="runner.clothNumber">{{ runner.clothNumber }}.</span> {{ runner.runnerName }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -2469,7 +2431,7 @@ Files
          v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
-              v-show="Number(Catalog.eventTypeId)==7"
+              v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
@@ -2491,7 +2453,7 @@ Files
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        <span v-if="runner.clothNumber || runner.sortPriority">{{ runner.clothNumber || runner.sortPriority }}.</span> {{ runner.runnerName || runner.name || '' }}
+                        <span v-if="runner.clothNumber">{{ runner.clothNumber }}.</span> {{ runner.runnerName }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -2599,7 +2561,7 @@ Files
          v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
-              v-show="Number(Catalog.eventTypeId)==7"
+              v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
@@ -2621,7 +2583,7 @@ Files
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        <span v-if="runner.clothNumber || runner.sortPriority">{{ runner.clothNumber || runner.sortPriority }}.</span> {{ runner.runnerName || runner.name || '' }}
+                        <span v-if="runner.clothNumber">{{ runner.clothNumber }}.</span> {{ runner.runnerName }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -2730,7 +2692,7 @@ Files
          v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
-              v-show="Number(Catalog.eventTypeId)==7"
+              v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
@@ -2752,7 +2714,7 @@ Files
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        <span v-if="runner.clothNumber || runner.sortPriority">{{ runner.clothNumber || runner.sortPriority }}.</span> {{ runner.runnerName || runner.name || '' }}
+                        <span v-if="runner.clothNumber">{{ runner.clothNumber }}.</span> {{ runner.runnerName }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -2860,7 +2822,7 @@ Files
          v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
-              v-show="Number(Catalog.eventTypeId)==7"
+              v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
@@ -2882,7 +2844,7 @@ Files
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        <span v-if="runner.clothNumber || runner.sortPriority">{{ runner.clothNumber || runner.sortPriority }}.</span> {{ runner.runnerName || runner.name || '' }}
+                        <span v-if="runner.clothNumber">{{ runner.clothNumber }}.</span> {{ runner.runnerName }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -3067,7 +3029,7 @@ Files
          v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
-              v-show="Number(Catalog.eventTypeId)==7"
+              v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
@@ -3089,7 +3051,7 @@ Files
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        <span v-if="runner.clothNumber || runner.sortPriority">{{ runner.clothNumber || runner.sortPriority }}.</span> {{ runner.runnerName || runner.name || '' }}
+                        <span v-if="runner.clothNumber">{{ runner.clothNumber }}.</span> {{ runner.runnerName }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -3205,7 +3167,7 @@ Files
          v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
-              v-show="Number(Catalog.eventTypeId)==7"
+              v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
@@ -3227,7 +3189,7 @@ Files
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        <span v-if="runner.clothNumber || runner.sortPriority">{{ runner.clothNumber || runner.sortPriority }}.</span> {{ runner.runnerName || runner.name || '' }}
+                        <span v-if="runner.clothNumber">{{ runner.clothNumber }}.</span> {{ runner.runnerName }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -3337,7 +3299,7 @@ Files
          v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
-              v-show="Number(Catalog.eventTypeId)==7"
+              v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
@@ -3359,7 +3321,7 @@ Files
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        <span v-if="runner.clothNumber || runner.sortPriority">{{ runner.clothNumber || runner.sortPriority }}.</span> {{ runner.runnerName || runner.name || '' }}
+                        <span v-if="runner.clothNumber">{{ runner.clothNumber }}.</span> {{ runner.runnerName }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -3468,7 +3430,7 @@ Files
          v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
-              v-show="Number(Catalog.eventTypeId)==7"
+              v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
@@ -3490,7 +3452,7 @@ Files
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        <span v-if="runner.clothNumber || runner.sortPriority">{{ runner.clothNumber || runner.sortPriority }}.</span> {{ runner.runnerName || runner.name || '' }}
+                        <span v-if="runner.clothNumber">{{ runner.clothNumber }}.</span> {{ runner.runnerName }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -3600,7 +3562,7 @@ Files
          v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
-              v-show="Number(Catalog.eventTypeId)==7"
+              v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
@@ -3622,7 +3584,7 @@ Files
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        <span v-if="runner.clothNumber || runner.sortPriority">{{ runner.clothNumber || runner.sortPriority }}.</span> {{ runner.runnerName || runner.name || '' }}
+                        <span v-if="runner.clothNumber">{{ runner.clothNumber }}.</span> {{ runner.runnerName }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -3732,7 +3694,7 @@ Files
          v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
-              v-show="Number(Catalog.eventTypeId)==7"
+              v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
@@ -3754,7 +3716,7 @@ Files
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        <span v-if="runner.clothNumber || runner.sortPriority">{{ runner.clothNumber || runner.sortPriority }}.</span> {{ runner.runnerName || runner.name || '' }}
+                        <span v-if="runner.clothNumber">{{ runner.clothNumber }}.</span> {{ runner.runnerName }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -3942,7 +3904,7 @@ Files
          v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
-              v-show="Number(Catalog.eventTypeId)==7"
+              v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
@@ -3964,7 +3926,7 @@ Files
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        <span v-if="runner.clothNumber || runner.sortPriority">{{ runner.clothNumber || runner.sortPriority }}.</span> {{ runner.runnerName || runner.name || '' }}
+                        <span v-if="runner.clothNumber">{{ runner.clothNumber }}.</span> {{ runner.runnerName }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -4077,7 +4039,7 @@ Files
          v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
-              v-show="Number(Catalog.eventTypeId)==7"
+              v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
@@ -4099,7 +4061,7 @@ Files
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        <span v-if="runner.clothNumber || runner.sortPriority">{{ runner.clothNumber || runner.sortPriority }}.</span> {{ runner.runnerName || runner.name || '' }}
+                        <span v-if="runner.clothNumber">{{ runner.clothNumber }}.</span> {{ runner.runnerName }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -7586,62 +7548,21 @@ Vue.component('runner-aggregate', {
   }
 
 
-  var _runnerCache = {}; // selectionId -> {name, cloth, jockey, silkUrl}
   function enrichRaceRunners(vm) {
+    // SAFE: only fill missing clothNumber — NEVER modify runnerName / jockeyName
     if (!vm || !vm.Catalog) return;
-    var eid = raceEid(vm);
+    var eid = String(vm.Catalog.eventTypeId || '');
     if (eid !== '7' && eid !== '4339') return;
     var runners = vm.Catalog.runners || [];
     for (var i = 0; i < runners.length; i++) {
       var rn = runners[i];
       if (!rn) continue;
-      var sid = String(rn.selectionId || rn.id || i);
-      var meta = null;
-      try {
-        if (typeof rn.metadata === 'string') meta = JSON.parse(rn.metadata);
-        else if (rn.metadata && typeof rn.metadata === 'object') meta = rn.metadata;
-      } catch (e) {}
-      var cached = _runnerCache[sid] || {};
-      // cloth
-      var cloth = rn.clothNumber || (meta && (meta.clotH_NUMBER || meta.CLOTH_NUMBER || meta.clothNumber)) || cached.cloth || rn.sortPriority;
-      if (cloth != null && String(cloth) !== '') {
-        if (String(rn.clothNumber || '') !== String(cloth)) {
-          if (vm.$set) vm.$set(rn, 'clothNumber', String(cloth)); else rn.clothNumber = String(cloth);
-        }
-        cached.cloth = String(cloth);
+      if (!rn.clothNumber && rn.sortPriority) {
+        try {
+          if (vm.$set) vm.$set(rn, 'clothNumber', String(rn.sortPriority));
+          else rn.clothNumber = String(rn.sortPriority);
+        } catch (e) {}
       }
-      // name — restore from cache if wiped by price poll
-      var nm = rn.runnerName || rn.name || '';
-      if (!nm && meta && (meta.runnerName || meta.name)) nm = meta.runnerName || meta.name;
-      if (!nm && cached.name) nm = cached.name;
-      if (nm) {
-        var st = String(nm).replace(/^\s*\d+\.\s+/, '').trim();
-        if (st) nm = st;
-        // don't use jockey as horse name
-        if (rn.jockeyName && nm === rn.jockeyName) nm = cached.name || nm;
-        if (nm && String(rn.runnerName || '') !== String(nm)) {
-          if (vm.$set) vm.$set(rn, 'runnerName', nm); else rn.runnerName = nm;
-        }
-        if (nm && (!rn.jockeyName || nm !== rn.jockeyName)) cached.name = nm;
-      }
-      // jockey
-      var jk = rn.jockeyName || (meta && (meta.jockeY_NAME || meta.JOCKEY_NAME || meta.jockeyName)) || cached.jockey || '';
-      if (jk) {
-        if (String(rn.jockeyName || '') !== String(jk)) {
-          if (vm.$set) vm.$set(rn, 'jockeyName', jk); else rn.jockeyName = jk;
-        }
-        cached.jockey = jk;
-      }
-      // silk
-      if (!rn.silkUrl && meta && (meta.colourS_FILENAME_URL || meta.colourS_FILENAME)) {
-        var fn = meta.colourS_FILENAME_URL || meta.colourS_FILENAME;
-        var url = String(fn).indexOf('http') === 0 ? fn : ('https://content-cache.betfair.com/racing/' + fn);
-        if (vm.$set) vm.$set(rn, 'silkUrl', url); else rn.silkUrl = url;
-        cached.silkUrl = url;
-      } else if (!rn.silkUrl && cached.silkUrl) {
-        if (vm.$set) vm.$set(rn, 'silkUrl', cached.silkUrl); else rn.silkUrl = cached.silkUrl;
-      }
-      _runnerCache[sid] = cached;
     }
   }
   function raceEid(vm) {
@@ -7663,58 +7584,25 @@ Vue.component('runner-aggregate', {
     var st = document.createElement('style');
     st.id = 'nx-race-align-css';
     st.textContent = [
-      /* Runner left cluster: checkbox + silk + name on one baseline */
-      '.runner-runner{align-items:center !important;}',
-      '.runner-runner > .selector,',
-      '.runner-runner > .runner-silk-img,',
-      '.runner-runner > .runner-silk-fallback,',
-      '.runner-runner > img.ml-2,',
-      '.runner-runner > .runner-name{vertical-align:middle !important;}',
-      '.runner-runner .selector{',
-      '  display:inline-block !important;',
-      '  width:14px;height:14px;min-width:14px;',
-      '  margin:0 6px 0 2px !important;padding:0 !important;',
-      '  position:relative;top:0 !important;transform:none !important;',
-      '  vertical-align:middle !important;flex-shrink:0;',
+      /* soft alignment only */
+      '.runner-runner .selector{align-self:center !important;vertical-align:middle;}',
+      '.runner-runner > img.ml-2,.runner-runner .runner-silk-img,.runner-runner .runner-silk-fallback{',
+      '  align-self:center !important;vertical-align:middle;',
+      '  width:22px !important;height:22px !important;object-fit:contain;margin-right:6px;',
       '}',
-      '.runner-runner .runner-silk-img,.runner-runner .runner-silk-fallback,.runner-runner > img.ml-2{',
-      '  display:inline-block !important;',
-      '  width:18px !important;height:18px !important;min-width:18px !important;',
-      '  margin:0 6px 0 0 !important;padding:0 !important;',
-      '  vertical-align:middle !important;position:relative;top:0 !important;',
-      '  object-fit:contain;flex-shrink:0;border-radius:2px;',
-      '}',
-      '.runner-runner .runner-name{',
-      '  display:inline-block !important;vertical-align:middle !important;',
-      '  margin:0 !important;padding:0 !important;line-height:1.2 !important;',
-      '}',
-      '.runner-runner .runner-name h4{margin:0 !important;line-height:1.25 !important;padding:0 !important;}',
-      /* Greyhound: NO multi-select checkboxes — only silk/trap colors */
-      'body.nx-greyhound .runner-runner .selector{display:none !important;width:0 !important;margin:0 !important;padding:0 !important;border:none !important;}',
-      /* Combined block spacing like bpexch */
-      '.nx-combined-block{margin-bottom:6px;}',
-      '.nx-combined-block .market-titlebar{margin-bottom:2px;}',
-      /* Stable maxbet label — avoid empty flash */
-      '.nx-maxbet-stable{font-weight:600;}'
-    ].join('\\n');
+      '.runner-runner .runner-name{display:flex !important;align-items:center !important;}',
+      /* Greyhound: hide multi-select checkboxes only */
+      'body.nx-greyhound .runner-runner .selector{display:none !important;}',
+      '.nx-combined-block{margin-bottom:4px;}'
+    ].join('\n');
     document.head.appendChild(st);
   }
 
   function setGreyhoundClass(vm) {
-    var eid = raceEid(vm);
-    var isGrey = (eid === '4339');
-    if (!isGrey && vm && vm.Catalog) {
-      var mt = String(vm.Catalog.marketName || '') + ' ' + String(vm.Catalog.eventName || '');
-      if (/\bOR\b|greyhound|trap/i.test(mt) && eid !== '7') isGrey = true;
-    }
-    if (isGrey) document.body.classList.add('nx-greyhound');
+    var eid = '';
+    try { eid = String((vm && vm.Catalog && vm.Catalog.eventTypeId) || ''); } catch (e) {}
+    if (eid === '4339') document.body.classList.add('nx-greyhound');
     else document.body.classList.remove('nx-greyhound');
-    // also hide selectors directly for greyhound as backup
-    if (isGrey) {
-      document.querySelectorAll('.runner-runner .selector').forEach(function(el) {
-        el.style.display = 'none';
-      });
-    }
   }
 
   // MaxBet: set once per marketId, also force fancySize for Combined

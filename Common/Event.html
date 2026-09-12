@@ -2087,7 +2087,7 @@
                         <div class="tab-content" id="nav-tabContent">
                             <div class="tab-pane fade show active" id="nav-1" role="tabpanel" aria-labelledby="nav-home-tab">
                                 <div class="table-box-body">
-                                    <div class="tb-content" v-if="RunnersAggregate.length >= 2">
+                                    <div class="tb-content" v-if="(RunnersAggregate && RunnersAggregate.length >= 2) || (combinedSelectionLabel && combinedSelectionLabel.indexOf('+') >= 0)">
                                            
 <div class="market-titlebar">
     <p class="market-name">
@@ -2108,33 +2108,33 @@
     <div v-if="Catalog.marketType !='FIGURE'" class="market-overarround"><span></span><strong>Back</strong></div>
     <div v-if="Catalog.marketType !='FIGURE'" class="market-overarround market-overarround-lay"><strong>Lay</strong></div>
 </div>
-                                        <!-- Combined selection row (bpexch-style) -->
-                                        <div class="runner-runner nx-combined-row">
-                                          <span class="selector selected" style="width:14px;height:14px;margin:0 8px 0 2px;flex-shrink:0;"></span>
-                                          <h3 class="runner-name" style="margin:0;flex:1;">
-                                            <span style="font-weight:700;">{{ (aggregateRun && aggregateRun.runnerName) || combinedSelectionLabel || '' }}</span>
-                                          </h3>
-                                          <div class="nx-comb-odds">
-                                            <div class="nx-comb-back"
-                                                 v-on:click="ShowBetSlipForAggregate && ShowBetSlipForAggregate({ side: 'back', price: combinedBackPrice, runner: aggregateRun })">
-                                              <b>{{ combinedBackPrice }}</b>
-                                            </div>
-                                            <div class="nx-comb-lay"
-                                                 v-on:click="ShowBetSlipForAggregate && ShowBetSlipForAggregate({ side: 'lay', price: combinedLayPrice, runner: aggregateRun })">
-                                              <b>{{ combinedLayPrice }}</b>
-                                            </div>
-                                          </div>
-                                        </div>
-                                        <!-- original component disabled — inline row above matches bpexch -->
-                                        <runner-aggregate v-if="false"
-                                                          v-bind:marketid="aggregateRun && aggregateRun.marketId"
-                                                          v-bind:name="aggregateRun && aggregateRun.runnerName"
+                                        <!-- Combined selection — original runner-aggregate (odds + click work) -->
+                                        <div class="market-titlebar">
+    <p class="market-name">
+        <span class="market-name-badge">
+            <i class="market-name-icon">
+                <img style="filter: invert(100%);margin-top:-8px;margin-left:-1px;" src="/img/time.png" />
+            </i>
+                <span>Combined </span>
+                <span style="text-transform:initial;">
+                    (MaxBet: {{ (fancySize || 2000000) | formatForiegn2 }})
+                </span>
+        </span>
+        <span class="rules-badge" v-on:click.prevent="ShowRules(Catalog.marketId, 'Combined')">
+            <i class="fa fa-info-circle"></i>
+        </span>
+    </p>
+    <div v-if="Catalog.marketType !='FIGURE'" class="market-overarround"><span></span><strong>Back</strong></div>
+    <div v-if="Catalog.marketType !='FIGURE'" class="market-overarround market-overarround-lay"><strong>Lay</strong></div>
+</div>
+                                        <runner-aggregate
+                                                          v-bind:marketid="(aggregateRun && aggregateRun.marketId) || (Catalog && Catalog.marketId)"
+                                                          v-bind:name="(aggregateRun && aggregateRun.runnerName) || combinedSelectionLabel"
                                                           v-bind:back="aggregateRun && aggregateRun.back"
                                                           v-bind:lay="aggregateRun && aggregateRun.lay"
                                                           v-on:betslip="ShowBetSlipForAggregate($event)">
                                         </runner-aggregate>
-
-                                    </div>
+</div>
 
                                     <div class="tb-content" v-if="isRenderTopMarket">
                                            
@@ -2217,9 +2217,9 @@
       <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose | format }}</strong>
     </span>
   </span>
-  <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
+  <span class="ml-1" v-if="runner.jockeyName || runner.trainerName" style="font-weight: normal;">
 
-    {{ runner.jockeyName }}
+    {{ runner.jockeyName || runner.trainerName }}
   </span>
   <span v-if="Catalog.bettingType === 'LINE'">
     &nbsp;&nbsp;<a href="#" v-on:click.prevent="ShowFancyPosition(Catalog.marketId)">Book</a>
@@ -2231,8 +2231,8 @@
       <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin | format }}</strong>
     </span>
   </span>
-  <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
-    {{ runner.jockeyName }}
+  <span class="ml-1" v-if="runner.jockeyName || runner.trainerName" style="font-weight: normal;">
+    {{ runner.jockeyName || runner.trainerName }}
   </span>
   <span v-if="Catalog.bettingType === 'LINE'">
     &nbsp;&nbsp;<a href="#" v-on:click.prevent="ShowFancyPosition(Catalog.marketId)">Book</a>
@@ -2368,9 +2368,9 @@
                     <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
-                <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
+                <span class="ml-1" v-if="runner.jockeyName || runner.trainerName" style="font-weight: normal;">
 
-                    {{ runner.jockeyName }}
+                    {{ runner.jockeyName || runner.trainerName }}
                 </span>
                 <span v-if="Catalog.bettingType === 'LINE'">
                     &nbsp;&nbsp;<a href="#" v-on:click.prevent="ShowFancyPosition(Catalog.marketId)">Book</a>
@@ -2499,9 +2499,9 @@
                     <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
-                <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
+                <span class="ml-1" v-if="runner.jockeyName || runner.trainerName" style="font-weight: normal;">
 
-                    {{ runner.jockeyName }}
+                    {{ runner.jockeyName || runner.trainerName }}
                 </span>
                 <span v-if="Catalog.bettingType === 'LINE'">
                     &nbsp;&nbsp;<a href="#" v-on:click.prevent="ShowFancyPosition(Catalog.marketId)">Book</a>
@@ -2629,9 +2629,9 @@
                     <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
-                <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
+                <span class="ml-1" v-if="runner.jockeyName || runner.trainerName" style="font-weight: normal;">
 
-                    {{ runner.jockeyName }}
+                    {{ runner.jockeyName || runner.trainerName }}
                 </span>
                 <span v-if="Catalog.bettingType === 'LINE'">
                     &nbsp;&nbsp;<a href="#" v-on:click.prevent="ShowFancyPosition(Catalog.marketId)">Book</a>
@@ -2760,9 +2760,9 @@
                     <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
-                <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
+                <span class="ml-1" v-if="runner.jockeyName || runner.trainerName" style="font-weight: normal;">
 
-                    {{ runner.jockeyName }}
+                    {{ runner.jockeyName || runner.trainerName }}
                 </span>
                 <span v-if="Catalog.bettingType === 'LINE'">
                     &nbsp;&nbsp;<a href="#" v-on:click.prevent="ShowFancyPosition(Catalog.marketId)">Book</a>
@@ -2890,9 +2890,9 @@
                     <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
-                <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
+                <span class="ml-1" v-if="runner.jockeyName || runner.trainerName" style="font-weight: normal;">
 
-                    {{ runner.jockeyName }}
+                    {{ runner.jockeyName || runner.trainerName }}
                 </span>
                 <span v-if="Catalog.bettingType === 'LINE'">
                     &nbsp;&nbsp;<a href="#" v-on:click.prevent="ShowFancyPosition(Catalog.marketId)">Book</a>
@@ -3097,9 +3097,9 @@
                     <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
-                <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
+                <span class="ml-1" v-if="runner.jockeyName || runner.trainerName" style="font-weight: normal;">
 
-                    {{ runner.jockeyName }}
+                    {{ runner.jockeyName || runner.trainerName }}
                 </span>
                 <span v-if="Catalog.bettingType === 'LINE'">
                     &nbsp;&nbsp;<a href="#" v-on:click.prevent="ShowFancyPosition(Catalog.marketId)">Book</a>
@@ -3235,9 +3235,9 @@
                     <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
-                <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
+                <span class="ml-1" v-if="runner.jockeyName || runner.trainerName" style="font-weight: normal;">
 
-                    {{ runner.jockeyName }}
+                    {{ runner.jockeyName || runner.trainerName }}
                 </span>
                 <span v-if="Catalog.bettingType === 'LINE'">
                     &nbsp;&nbsp;<a href="#" v-on:click.prevent="ShowFancyPosition(Catalog.marketId)">Book</a>
@@ -3367,9 +3367,9 @@
                     <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
-                <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
+                <span class="ml-1" v-if="runner.jockeyName || runner.trainerName" style="font-weight: normal;">
 
-                    {{ runner.jockeyName }}
+                    {{ runner.jockeyName || runner.trainerName }}
                 </span>
                 <span v-if="Catalog.bettingType === 'LINE'">
                     &nbsp;&nbsp;<a href="#" v-on:click.prevent="ShowFancyPosition(Catalog.marketId)">Book</a>
@@ -3498,9 +3498,9 @@
                     <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
-                <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
+                <span class="ml-1" v-if="runner.jockeyName || runner.trainerName" style="font-weight: normal;">
 
-                    {{ runner.jockeyName }}
+                    {{ runner.jockeyName || runner.trainerName }}
                 </span>
                 <span v-if="Catalog.bettingType === 'LINE'">
                     &nbsp;&nbsp;<a href="#" v-on:click.prevent="ShowFancyPosition(Catalog.marketId)">Book</a>
@@ -3630,9 +3630,9 @@
                     <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
-                <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
+                <span class="ml-1" v-if="runner.jockeyName || runner.trainerName" style="font-weight: normal;">
 
-                    {{ runner.jockeyName }}
+                    {{ runner.jockeyName || runner.trainerName }}
                 </span>
                 <span v-if="Catalog.bettingType === 'LINE'">
                     &nbsp;&nbsp;<a href="#" v-on:click.prevent="ShowFancyPosition(Catalog.marketId)">Book</a>
@@ -3762,9 +3762,9 @@
                     <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
-                <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
+                <span class="ml-1" v-if="runner.jockeyName || runner.trainerName" style="font-weight: normal;">
 
-                    {{ runner.jockeyName }}
+                    {{ runner.jockeyName || runner.trainerName }}
                 </span>
                 <span v-if="Catalog.bettingType === 'LINE'">
                     &nbsp;&nbsp;<a href="#" v-on:click.prevent="ShowFancyPosition(Catalog.marketId)">Book</a>
@@ -3972,9 +3972,9 @@
                     <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
-                <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
+                <span class="ml-1" v-if="runner.jockeyName || runner.trainerName" style="font-weight: normal;">
 
-                    {{ runner.jockeyName }}
+                    {{ runner.jockeyName || runner.trainerName }}
                 </span>
                 <span v-if="Catalog.bettingType === 'LINE'">
                     &nbsp;&nbsp;<a href="#" v-on:click.prevent="ShowFancyPosition(Catalog.marketId)">Book</a>
@@ -4107,9 +4107,9 @@
                     <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
-                <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
+                <span class="ml-1" v-if="runner.jockeyName || runner.trainerName" style="font-weight: normal;">
 
-                    {{ runner.jockeyName }}
+                    {{ runner.jockeyName || runner.trainerName }}
                 </span>
                 <span v-if="Catalog.bettingType === 'LINE'">
                     &nbsp;&nbsp;<a href="#" v-on:click.prevent="ShowFancyPosition(Catalog.marketId)">Book</a>
@@ -7545,34 +7545,57 @@ export default {
 
 
   function enrichRaceRunners(vm) {
-    // SAFE: fill clothNumber if missing; strip "1. " from runnerName only when it would double
+    // SAFE: clothNumber + ALWAYS strip leading "N. " from runnerName (stops "2. 3. Stheno")
     if (!vm || !vm.Catalog) return;
     var eid = String(vm.Catalog.eventTypeId || '');
-    if (eid !== '7' && eid !== '4339') return;
+    if (eid !== '7' && eid !== '4339') {
+      try { eid = String(raceEid(vm) || ''); } catch (e) {}
+      if (eid !== '7' && eid !== '4339') return;
+    }
     var runners = vm.Catalog.runners || [];
     for (var i = 0; i < runners.length; i++) {
       var rn = runners[i];
       if (!rn) continue;
-      if (!rn.clothNumber && rn.sortPriority != null && rn.sortPriority !== '') {
+      // If runnerName starts with "N. ", prefer that N as clothNumber (trap/silk number)
+      if (rn.runnerName) {
+        var nm0 = String(rn.runnerName).trim();
+        var mNum = nm0.match(/^(\d+)\.\s*(.*)$/);
+        if (mNum) {
+          var numFromName = mNum[1];
+          var bareName = (mNum[2] || '').trim();
+          try {
+            if (vm.$set) {
+              vm.$set(rn, 'clothNumber', numFromName);
+              if (bareName) vm.$set(rn, 'runnerName', bareName);
+            } else {
+              rn.clothNumber = numFromName;
+              if (bareName) rn.runnerName = bareName;
+            }
+          } catch (e) {}
+        } else {
+          // still strip any residual leading number just in case
+          var bare2 = nm0.replace(/^\d+\.\s*/, '').trim();
+          if (bare2 && bare2 !== nm0) {
+            try {
+              if (vm.$set) vm.$set(rn, 'runnerName', bare2);
+              else rn.runnerName = bare2;
+            } catch (e) {}
+          }
+        }
+      }
+      // fallback cloth from sortPriority only if still missing
+      if ((rn.clothNumber == null || rn.clothNumber === '') && rn.sortPriority != null && rn.sortPriority !== '') {
         try {
           if (vm.$set) vm.$set(rn, 'clothNumber', String(rn.sortPriority));
           else rn.clothNumber = String(rn.sortPriority);
         } catch (e) {}
       }
-      // Fix double number display: "1." + "1. Horse" → keep name as "Horse"
-      if (rn.clothNumber && rn.runnerName) {
-        var cn = String(rn.clothNumber).trim();
-        var nm = String(rn.runnerName).trim();
-        var re = new RegExp('^' + cn.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\.\\s*');
-        if (re.test(nm)) {
-          var bare = nm.replace(re, '').trim();
-          if (bare) {
-            try {
-              if (vm.$set) vm.$set(rn, 'runnerName', bare);
-              else rn.runnerName = bare;
-            } catch (e) {}
-          }
-        }
+      // jockey fallback to trainer
+      if (!rn.jockeyName && rn.trainerName) {
+        try {
+          if (vm.$set) vm.$set(rn, 'jockeyName', String(rn.trainerName));
+          else rn.jockeyName = String(rn.trainerName);
+        } catch (e) {}
       }
     }
   }
@@ -7668,17 +7691,65 @@ export default {
     vm._nxTogglePatched = true;
     var orig = vm.toggleRunner.bind(vm);
     vm.toggleRunner = function (runner) {
-      var eid = raceEid(vm);
-      if (eid === '4339') return; // greyhound: no multi-select
-      if (eid === '7') {
-        var selected = (vm.Catalog.runners || []).filter(function (r) { return r.selected; });
-        var already = !!(runner && runner.selected);
-        if (!already && selected.length >= 3) {
-          showBanner('Max no. of runners allowed is 3');
-          return;
+      try {
+        var eid = raceEid(vm);
+        // greyhound: allow select for UI but combined only for horse
+        if (eid === '7') {
+          var selected = (vm.Catalog.runners || []).filter(function (r) { return r.selected; });
+          var already = !!(runner && runner.selected);
+          if (!already && selected.length >= 3) {
+            showBanner('Max no. of runners allowed is 3');
+            return;
+          }
         }
+        var ret = orig(runner);
+        // force label update after toggle
+        try {
+          var sels = (vm.Catalog.runners || []).filter(function (r) { return r && r.selected; });
+          var label = sels.map(function (r) {
+            return String(r.clothNumber || r.sortPriority || '').trim();
+          }).filter(Boolean).join(' + ');
+          if (vm.$set) vm.$set(vm, 'combinedSelectionLabel', label || '');
+          else vm.combinedSelectionLabel = label || '';
+
+        // ensure fancySize for Combined MaxBet
+        try {
+          if (!vm.fancySize) {
+            if (vm.$set) vm.$set(vm, 'fancySize', 2000000);
+            else vm.fancySize = 2000000;
+          }
+        } catch (e) {}
+          // if RunnersAggregate empty but 2+ selected, seed a minimal aggregateRun so section shows
+          if (sels.length >= 2) {
+            if (!vm.RunnersAggregate || !vm.RunnersAggregate.length) {
+              var seed = [{
+                marketId: vm.Catalog.marketId,
+                runnerName: label,
+                back: (vm.aggregateRun && vm.aggregateRun.back) || [],
+                lay: (vm.aggregateRun && vm.aggregateRun.lay) || []
+              }];
+              if (vm.$set) vm.$set(vm, 'RunnersAggregate', seed);
+              else vm.RunnersAggregate = seed;
+            }
+            if (!vm.aggregateRun) {
+              var ar = {
+                marketId: vm.Catalog.marketId,
+                runnerName: label,
+                back: [],
+                lay: []
+              };
+              if (vm.$set) vm.$set(vm, 'aggregateRun', ar);
+              else vm.aggregateRun = ar;
+            } else if (label) {
+              if (vm.$set) vm.$set(vm.aggregateRun, 'runnerName', label);
+              else vm.aggregateRun.runnerName = label;
+            }
+          }
+        } catch (e2) {}
+        return ret;
+      } catch (e) {
+        return orig(runner);
       }
-      return orig(runner);
     };
   }
 

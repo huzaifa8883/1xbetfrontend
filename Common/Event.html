@@ -2087,7 +2087,7 @@
                         <div class="tab-content" id="nav-tabContent">
                             <div class="tab-pane fade show active" id="nav-1" role="tabpanel" aria-labelledby="nav-home-tab">
                                 <div class="table-box-body">
-                                    <div class="tb-content" v-if="(RunnersAggregate && RunnersAggregate.length >= 2) || (combinedSelectionLabel && combinedSelectionLabel.indexOf('+') >= 0)">
+                                    <div class="tb-content" v-if="RunnersAggregate && RunnersAggregate.length >= 2">
                                            
 <div class="market-titlebar">
     <p class="market-name">
@@ -2095,9 +2095,9 @@
             <i class="market-name-icon">
                 <img style="filter: invert(100%);margin-top:-8px;margin-left:-1px;" src="/img/time.png" />
             </i>
-                <span>COMBINED </span>
+                <span>Combined </span>
                 <span style="text-transform:initial;">
-                    (MaxBet: {{ (fancySize || 2000000) | formatForiegn2 }})
+                    (MaxBet: {{ fancySize | formatForiegn2 }})
                 </span>
         </span>
         <span class="rules-badge" v-on:click.prevent="ShowRules(Catalog.marketId, 'Combined')">
@@ -2108,33 +2108,15 @@
     <div v-if="Catalog.marketType !='FIGURE'" class="market-overarround"><span></span><strong>Back</strong></div>
     <div v-if="Catalog.marketType !='FIGURE'" class="market-overarround market-overarround-lay"><strong>Lay</strong></div>
 </div>
-                                        <!-- Combined selection — original runner-aggregate (odds + click work) -->
-                                        <div class="market-titlebar">
-    <p class="market-name">
-        <span class="market-name-badge">
-            <i class="market-name-icon">
-                <img style="filter: invert(100%);margin-top:-8px;margin-left:-1px;" src="/img/time.png" />
-            </i>
-                <span>Combined </span>
-                <span style="text-transform:initial;">
-                    (MaxBet: {{ (fancySize || 2000000) | formatForiegn2 }})
-                </span>
-        </span>
-        <span class="rules-badge" v-on:click.prevent="ShowRules(Catalog.marketId, 'Combined')">
-            <i class="fa fa-info-circle"></i>
-        </span>
-    </p>
-    <div v-if="Catalog.marketType !='FIGURE'" class="market-overarround"><span></span><strong>Back</strong></div>
-    <div v-if="Catalog.marketType !='FIGURE'" class="market-overarround market-overarround-lay"><strong>Lay</strong></div>
-</div>
-                                        <runner-aggregate
-                                                          v-bind:marketid="(aggregateRun && aggregateRun.marketId) || (Catalog && Catalog.marketId)"
-                                                          v-bind:name="(aggregateRun && aggregateRun.runnerName) || combinedSelectionLabel"
-                                                          v-bind:back="aggregateRun && aggregateRun.back"
-                                                          v-bind:lay="aggregateRun && aggregateRun.lay"
+                                        <runner-aggregate v-if="aggregateRun"
+                                                          v-bind:marketid="aggregateRun.marketId"
+                                                          v-bind:name="aggregateRun.runnerName"
+                                                          v-bind:back="aggregateRun.back"
+                                                          v-bind:lay="aggregateRun.lay"
                                                           v-on:betslip="ShowBetSlipForAggregate($event)">
                                         </runner-aggregate>
-</div>
+
+                                    </div>
 
                                     <div class="tb-content" v-if="isRenderTopMarket">
                                            
@@ -2187,7 +2169,8 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        <span v-if="runner.clothNumber || runner.sortPriority">{{ runner.clothNumber || runner.sortPriority }}.</span> {{ runner.runnerName || runner.name || '' }}
+                        <span v-if="runner.clothNumber">{{ runner.clothNumber }}.</span>
+                        {{ runner.runnerName }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -2349,7 +2332,8 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        <span v-if="runner.clothNumber || runner.sortPriority">{{ runner.clothNumber || runner.sortPriority }}.</span> {{ runner.runnerName || runner.name || '' }}
+                        <span v-if="runner.clothNumber">{{ runner.clothNumber }}.</span>
+                        {{ runner.runnerName }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -2480,7 +2464,8 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        <span v-if="runner.clothNumber || runner.sortPriority">{{ runner.clothNumber || runner.sortPriority }}.</span> {{ runner.runnerName || runner.name || '' }}
+                        <span v-if="runner.clothNumber">{{ runner.clothNumber }}.</span>
+                        {{ runner.runnerName }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -2610,7 +2595,8 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        <span v-if="runner.clothNumber || runner.sortPriority">{{ runner.clothNumber || runner.sortPriority }}.</span> {{ runner.runnerName || runner.name || '' }}
+                        <span v-if="runner.clothNumber">{{ runner.clothNumber }}.</span>
+                        {{ runner.runnerName }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -2741,7 +2727,8 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        <span v-if="runner.clothNumber || runner.sortPriority">{{ runner.clothNumber || runner.sortPriority }}.</span> {{ runner.runnerName || runner.name || '' }}
+                        <span v-if="runner.clothNumber">{{ runner.clothNumber }}.</span>
+                        {{ runner.runnerName }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -2871,7 +2858,8 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        <span v-if="runner.clothNumber || runner.sortPriority">{{ runner.clothNumber || runner.sortPriority }}.</span> {{ runner.runnerName || runner.name || '' }}
+                        <span v-if="runner.clothNumber">{{ runner.clothNumber }}.</span>
+                        {{ runner.runnerName }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -3078,7 +3066,8 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        <span v-if="runner.clothNumber || runner.sortPriority">{{ runner.clothNumber || runner.sortPriority }}.</span> {{ runner.runnerName || runner.name || '' }}
+                        <span v-if="runner.clothNumber">{{ runner.clothNumber }}.</span>
+                        {{ runner.runnerName }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -3216,7 +3205,8 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        <span v-if="runner.clothNumber || runner.sortPriority">{{ runner.clothNumber || runner.sortPriority }}.</span> {{ runner.runnerName || runner.name || '' }}
+                        <span v-if="runner.clothNumber">{{ runner.clothNumber }}.</span>
+                        {{ runner.runnerName }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -3348,7 +3338,8 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        <span v-if="runner.clothNumber || runner.sortPriority">{{ runner.clothNumber || runner.sortPriority }}.</span> {{ runner.runnerName || runner.name || '' }}
+                        <span v-if="runner.clothNumber">{{ runner.clothNumber }}.</span>
+                        {{ runner.runnerName }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -3479,7 +3470,8 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        <span v-if="runner.clothNumber || runner.sortPriority">{{ runner.clothNumber || runner.sortPriority }}.</span> {{ runner.runnerName || runner.name || '' }}
+                        <span v-if="runner.clothNumber">{{ runner.clothNumber }}.</span>
+                        {{ runner.runnerName }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -3611,7 +3603,8 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        <span v-if="runner.clothNumber || runner.sortPriority">{{ runner.clothNumber || runner.sortPriority }}.</span> {{ runner.runnerName || runner.name || '' }}
+                        <span v-if="runner.clothNumber">{{ runner.clothNumber }}.</span>
+                        {{ runner.runnerName }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -3743,7 +3736,8 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        <span v-if="runner.clothNumber || runner.sortPriority">{{ runner.clothNumber || runner.sortPriority }}.</span> {{ runner.runnerName || runner.name || '' }}
+                        <span v-if="runner.clothNumber">{{ runner.clothNumber }}.</span>
+                        {{ runner.runnerName }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -3953,7 +3947,8 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        <span v-if="runner.clothNumber || runner.sortPriority">{{ runner.clothNumber || runner.sortPriority }}.</span> {{ runner.runnerName || runner.name || '' }}
+                        <span v-if="runner.clothNumber">{{ runner.clothNumber }}.</span>
+                        {{ runner.runnerName }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -4088,7 +4083,8 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        <span v-if="runner.clothNumber || runner.sortPriority">{{ runner.clothNumber || runner.sortPriority }}.</span> {{ runner.runnerName || runner.name || '' }}
+                        <span v-if="runner.clothNumber">{{ runner.clothNumber }}.</span>
+                        {{ runner.runnerName }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"

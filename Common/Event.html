@@ -1,4 +1,8 @@
 
+
+Event.html
+
+Files
 <!doctype html>
 <html lang="en">
 <head>
@@ -131,6 +135,14 @@
 <script>
 (function () {
   // Horse/Greyhound: show cloth number once + horse name without leading "1. "
+  window.displayRaceRunnerName = function (runner) {
+    if (!runner) return '';
+    var name = String(runner.runnerName || runner.name || '').trim();
+    var cloth = (runner.clothNumber != null && String(runner.clothNumber) !== '') ? String(runner.clothNumber).trim() : '';
+    var bare = name.replace(/^\d+\.?\s+/, '').trim() || name;
+    if (cloth) return cloth + '. ' + bare;
+    return name;
+  };
   window.raceHorseName = function (runner) {
     if (!runner) return '';
     var name = String(runner.runnerName || '').trim();
@@ -2100,10 +2112,41 @@
     <div v-if="Catalog.marketType !='FIGURE'" class="market-overarround"><span></span><strong>Back</strong></div>
     <div v-if="Catalog.marketType !='FIGURE'" class="market-overarround market-overarround-lay"><strong>Lay</strong></div>
 </div>
-                                        <runner-aggregate v-bind:marketid="aggregateRun.marketId"
-                                                          v-bind:name="aggregateRun.runnerName"
-                                                          v-bind:back="aggregateRun.back"
-                                                          v-bind:lay="aggregateRun.lay"
+                                        <!-- Combined selection row (bpexch-style) -->
+                                        <div class="runner-runner nx-combined-row" style="display:flex;align-items:center;min-height:40px;padding:4px 8px;">
+                                          <span class="selector selected" style="width:14px;height:14px;margin-right:8px;flex-shrink:0;"></span>
+                                          <h3 class="runner-name" style="flex:1;margin:0;line-height:1.3;">
+                                            <span style="font-weight:700;font-size:14px;">{{ (aggregateRun && aggregateRun.runnerName) ? aggregateRun.runnerName : combinedSelectionLabel }}</span>
+                                          </h3>
+                                          <template v-if="aggregateRun && aggregateRun.back && aggregateRun.back.length">
+                                            <div class="back-1" style="min-width:50px;text-align:center;background:#a7d8f0;padding:6px 4px;cursor:pointer;"
+                                                 v-on:click="ShowBetSlipForAggregate({side:'back', price: aggregateRun.back[0].price, size: aggregateRun.back[0].size})">
+                                              <b>{{ aggregateRun.back[0].price }}</b>
+                                            </div>
+                                          </template>
+                                          <template v-else-if="aggregateRun && aggregateRun.price1">
+                                            <div class="back-1" style="min-width:50px;text-align:center;background:#a7d8f0;padding:6px 4px;">
+                                              <b>{{ aggregateRun.price1 }}</b>
+                                            </div>
+                                          </template>
+                                          <template v-if="aggregateRun && aggregateRun.lay && aggregateRun.lay.length">
+                                            <div class="lay-1" style="min-width:50px;text-align:center;background:#f9c0c0;padding:6px 4px;cursor:pointer;"
+                                                 v-on:click="ShowBetSlipForAggregate({side:'lay', price: aggregateRun.lay[0].price, size: aggregateRun.lay[0].size})">
+                                              <b>{{ aggregateRun.lay[0].price }}</b>
+                                            </div>
+                                          </template>
+                                          <template v-else-if="aggregateRun && aggregateRun.lay1">
+                                            <div class="lay-1" style="min-width:50px;text-align:center;background:#f9c0c0;padding:6px 4px;">
+                                              <b>{{ aggregateRun.lay1 }}</b>
+                                            </div>
+                                          </template>
+                                        </div>
+                                        <!-- keep original component as secondary if present -->
+                                        <runner-aggregate v-if="false"
+                                                          v-bind:marketid="aggregateRun && aggregateRun.marketId"
+                                                          v-bind:name="aggregateRun && aggregateRun.runnerName"
+                                                          v-bind:back="aggregateRun && aggregateRun.back"
+                                                          v-bind:lay="aggregateRun && aggregateRun.lay"
                                                           v-on:betslip="ShowBetSlipForAggregate($event)">
                                         </runner-aggregate>
 
@@ -2160,7 +2203,7 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        <span v-if="runner.clothNumber">{{ runner.clothNumber }}.</span> {{ runner.runnerName }}
+                        {{ displayRaceRunnerName(runner) }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -2322,7 +2365,7 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        <span v-if="runner.clothNumber">{{ runner.clothNumber }}.</span> {{ runner.runnerName }}
+                        {{ displayRaceRunnerName(runner) }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -2453,7 +2496,7 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        <span v-if="runner.clothNumber">{{ runner.clothNumber }}.</span> {{ runner.runnerName }}
+                        {{ displayRaceRunnerName(runner) }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -2583,7 +2626,7 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        <span v-if="runner.clothNumber">{{ runner.clothNumber }}.</span> {{ runner.runnerName }}
+                        {{ displayRaceRunnerName(runner) }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -2714,7 +2757,7 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        <span v-if="runner.clothNumber">{{ runner.clothNumber }}.</span> {{ runner.runnerName }}
+                        {{ displayRaceRunnerName(runner) }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -2844,7 +2887,7 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        <span v-if="runner.clothNumber">{{ runner.clothNumber }}.</span> {{ runner.runnerName }}
+                        {{ displayRaceRunnerName(runner) }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -3051,7 +3094,7 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        <span v-if="runner.clothNumber">{{ runner.clothNumber }}.</span> {{ runner.runnerName }}
+                        {{ displayRaceRunnerName(runner) }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -3189,7 +3232,7 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        <span v-if="runner.clothNumber">{{ runner.clothNumber }}.</span> {{ runner.runnerName }}
+                        {{ displayRaceRunnerName(runner) }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -3321,7 +3364,7 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        <span v-if="runner.clothNumber">{{ runner.clothNumber }}.</span> {{ runner.runnerName }}
+                        {{ displayRaceRunnerName(runner) }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -3452,7 +3495,7 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        <span v-if="runner.clothNumber">{{ runner.clothNumber }}.</span> {{ runner.runnerName }}
+                        {{ displayRaceRunnerName(runner) }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -3584,7 +3627,7 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        <span v-if="runner.clothNumber">{{ runner.clothNumber }}.</span> {{ runner.runnerName }}
+                        {{ displayRaceRunnerName(runner) }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -3716,7 +3759,7 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        <span v-if="runner.clothNumber">{{ runner.clothNumber }}.</span> {{ runner.runnerName }}
+                        {{ displayRaceRunnerName(runner) }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -3926,7 +3969,7 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        <span v-if="runner.clothNumber">{{ runner.clothNumber }}.</span> {{ runner.runnerName }}
+                        {{ displayRaceRunnerName(runner) }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -4061,7 +4104,7 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        <span v-if="runner.clothNumber">{{ runner.clothNumber }}.</span> {{ runner.runnerName }}
+                        {{ displayRaceRunnerName(runner) }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -6249,56 +6292,25 @@ export default {
 </script> -->
 
     
+<!-- runner-aggregate: use mv2.min.js original (do not override) -->
 <script>
-Vue.component('runner-aggregate', {
-    template: '#runner-aggregate-template',
-    props: ['runner', 'Catalog'],
-    data() {
-        return {
-            displayPrices: {
-                price1: parseFloat(this.runner.price1),
-                price2: parseFloat(this.runner.price2),
-                price3: parseFloat(this.runner.price3),
-                lay1: parseFloat(this.runner.lay1),
-                lay2: parseFloat(this.runner.lay2),
-                lay3: parseFloat(this.runner.lay3)
-            },
-            timers: {}
-        };
-    },
-    watch: {
-        'runner.price1'(newVal) { this.smoothUpdate('price1', newVal); },
-        'runner.price2'(newVal) { this.smoothUpdate('price2', newVal); },
-        'runner.price3'(newVal) { this.smoothUpdate('price3', newVal); },
-        'runner.lay1'(newVal) { this.smoothUpdate('lay1', newVal); },
-        'runner.lay2'(newVal) { this.smoothUpdate('lay2', newVal); },
-        'runner.lay3'(newVal) { this.smoothUpdate('lay3', newVal); }
-    },
-    methods: {
-        smoothUpdate(key, newValue) {
-            const target = parseFloat(newValue);
-            if (isNaN(target)) return;
-
-            if (this.timers[key]) cancelAnimationFrame(this.timers[key]);
-
-            const step = () => {
-                const current = this.displayPrices[key];
-                const diff = target - current;
-                if (Math.abs(diff) < 0.01) {
-                    this.displayPrices[key] = target;
-                    return;
-                }
-                this.displayPrices[key] = current + diff * 0.2;
-                this.timers[key] = requestAnimationFrame(step);
-            };
-            this.timers[key] = requestAnimationFrame(step);
-        },
-        ShowBetSlip(runner, type, marketId, level) {
-            this.$emit('betslip', { runner, type, marketId, level });
-        }
+(function(){
+  function bindDisplay() {
+    if (window.Vue && !Vue.prototype.displayRaceRunnerName) {
+      Vue.prototype.displayRaceRunnerName = window.displayRaceRunnerName || function(r){
+        if(!r) return '';
+        var name = String(r.runnerName||r.name||'').trim();
+        var cloth = (r.clothNumber!=null && String(r.clothNumber)!=='') ? String(r.clothNumber).trim() : '';
+        var bare = name.replace(/^\d+\.?\s+/, '').trim() || name;
+        return cloth ? (cloth + '. ' + bare) : name;
+      };
     }
-});
+  }
+  bindDisplay();
+  document.addEventListener('DOMContentLoaded', bindDisplay);
+})();
 </script>
+
 <script>
         var show_tv_tab = false;
         var LastTab = "";
@@ -7584,16 +7596,37 @@ Vue.component('runner-aggregate', {
     var st = document.createElement('style');
     st.id = 'nx-race-align-css';
     st.textContent = [
-      /* soft alignment only */
-      '.runner-runner .selector{align-self:center !important;vertical-align:middle;}',
-      '.runner-runner > img.ml-2,.runner-runner .runner-silk-img,.runner-runner .runner-silk-fallback{',
-      '  align-self:center !important;vertical-align:middle;',
-      '  width:22px !important;height:22px !important;object-fit:contain;margin-right:6px;',
+      /* bpexch-like runner row alignment */
+      '.runner-runner{display:flex !important;align-items:center !important;flex-wrap:nowrap;}',
+      '.runner-runner .selector{',
+      '  flex:0 0 14px;width:14px;height:14px;min-width:14px;',
+      '  margin:0 6px 0 2px !important;align-self:center !important;',
+      '  position:relative;top:0 !important;',
       '}',
-      '.runner-runner .runner-name{display:flex !important;align-items:center !important;}',
-      /* Greyhound: hide multi-select checkboxes only */
+      '.runner-runner .runner-silk-img,.runner-runner .runner-silk-fallback,.runner-runner > img.ml-2{',
+      '  flex:0 0 20px;width:20px !important;height:20px !important;min-width:20px !important;',
+      '  margin:0 8px 0 0 !important;align-self:center !important;',
+      '  object-fit:contain;border-radius:2px;',
+      '}',
+      '.runner-runner .runner-name{',
+      '  flex:1 1 auto;display:flex !important;flex-direction:column !important;',
+      '  justify-content:center !important;align-items:flex-start !important;',
+      '  margin:0 !important;padding:0 !important;line-height:1.2 !important;',
+      '}',
+      '.runner-runner .runner-name .runner-info{margin:0;padding:0;}',
+      '.runner-runner .runner-name h4{',
+      '  margin:0 !important;padding:0 !important;line-height:1.25 !important;',
+      '  font-size:13px !important;font-weight:600 !important;',
+      '}',
+      '.runner-runner .runner-position{',
+      '  margin:0 !important;padding:0 !important;line-height:1.2 !important;',
+      '  font-size:11px !important;font-weight:400 !important;opacity:0.9;',
+      '}',
+      /* Greyhound: no multi-select boxes */
       'body.nx-greyhound .runner-runner .selector{display:none !important;}',
-      '.nx-combined-block{margin-bottom:4px;}'
+      /* Combined block clear separation */
+      '.tb-content .market-titlebar + .runner-runner,',
+      '.nx-combined-row{min-height:36px;}'
     ].join('\n');
     document.head.appendChild(st);
   }
@@ -7716,6 +7749,22 @@ Vue.component('runner-aggregate', {
       enrichRaceRunners(vm);
       applyStableMaxBet(vm);
       patchToggleRunner(vm);
+      // Combined "1 + 2 + 3" label
+      try {
+        var sels = (vm.Catalog && vm.Catalog.runners || []).filter(function(r){ return r && r.selected; });
+        var label = sels.map(function(r){
+          return String(r.clothNumber || r.sortPriority || '').trim();
+        }).filter(Boolean).join(' + ');
+        if (!label && sels.length) label = sels.map(function(_,i){ return String(i+1); }).join(' + ');
+        if (vm.$set) vm.$set(vm, 'combinedSelectionLabel', label || '');
+        else vm.combinedSelectionLabel = label || '';
+        if (vm.aggregateRun && label) {
+          if (!vm.aggregateRun.runnerName || vm.aggregateRun.runnerName !== label) {
+            if (vm.$set) vm.$set(vm.aggregateRun, 'runnerName', label);
+            else vm.aggregateRun.runnerName = label;
+          }
+        }
+      } catch (e) {}
       ensureRelatedEvents(vm);
     }
     setTimeout(tick, 1200);

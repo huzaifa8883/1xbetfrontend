@@ -23,21 +23,19 @@
             min-height: 91.7vh;
         }
 
-        /* ── Horse / Greyhound — pixel-match bpexch screenshots ── */
+        /*
+         * Horse + Greyhound runner row — match bpexch screenshots
+         * Horse: checkbox + 20px silk + 13px bold name + 11px jockey
+         * Greyhound: 14px color square + 13px bold name (no checkbox)
+         */
         .runner-runner {
-            min-height: 36px !important;
-            padding-top: 2px !important;
-            padding-bottom: 2px !important;
+            min-height: 34px;
         }
-        /* left cluster: checkbox + silk/box + name on one baseline */
         .runner-runner > .selector {
-            display: inline-block !important;
             vertical-align: middle !important;
-            margin: 0 4px 0 6px !important;
-            position: relative;
-            top: 0;
+            margin: 0 4px 0 8px !important;
         }
-        /* Horse silk jacket image — bpexch ~20px */
+        /* Horse jacket / silk image */
         .runner-runner > img.ml-2,
         .runner-runner .runner-silk-img {
             display: inline-block !important;
@@ -49,10 +47,8 @@
             vertical-align: middle !important;
             margin: 0 6px 0 2px !important;
             border-radius: 1px;
-            position: relative;
-            top: 0;
         }
-        /* Greyhound trap color — bpexch ~14px solid square */
+        /* Greyhound trap color square */
         .runner-runner .runner-silk-fallback {
             display: inline-block !important;
             width: 14px !important;
@@ -60,11 +56,9 @@
             min-width: 14px !important;
             max-width: 14px !important;
             border-radius: 1px !important;
-            border: 1px solid rgba(0,0,0,0.25) !important;
+            border: 1px solid rgba(0,0,0,0.22) !important;
             vertical-align: middle !important;
-            margin: 0 8px 0 4px !important;
-            position: relative;
-            top: 0;
+            margin: 0 8px 0 6px !important;
             box-sizing: border-box !important;
         }
         .runner-silk-fallback.striped {
@@ -75,59 +69,36 @@
             ) !important;
             border-color: #333 !important;
         }
-        /* Name block sits inline with silk */
-        .runner-runner > .runner-name,
+        /* Name */
         .runner-runner .runner-name {
-            display: inline-block !important;
             vertical-align: middle !important;
             margin: 0 !important;
-            padding: 0 0 0 2px !important;
-            line-height: 1.15 !important;
-        }
-        .runner-runner .runner-info {
-            display: block !important;
-            line-height: 1.15 !important;
+            padding: 0 !important;
+            line-height: 1.2 !important;
         }
         .runner-runner .runner-name h4,
-        .runner-runner .runner-name .clippable-spacer,
-        .runner-runner .runner-display-name h4 {
-            display: inline !important;
+        .runner-runner .clippable-spacer {
             margin: 0 !important;
             padding: 0 !important;
-            line-height: 1.15 !important;
+            line-height: 1.2 !important;
             font-size: 13px !important;
             font-weight: 700 !important;
             font-family: "Roboto Condensed", Roboto, Arial, sans-serif !important;
-            color: #222 !important;
         }
-        /* cloth number + name same weight */
-        .runner-runner .runner-name h4 > span {
-            font-weight: 700 !important;
-            font-size: 13px !important;
-        }
-        /* Jockey under horse name — bpexch 11-12px */
+        /* Jockey under name */
         .runner-runner .runner-position {
-            display: block !important;
             line-height: 1.15 !important;
             font-size: 11px !important;
             font-weight: 400 !important;
             color: #444 !important;
-            margin: 0 !important;
-            padding: 0 !important;
         }
         .runner-runner .runner-position .ml-1 {
-            font-weight: 400 !important;
             font-size: 11px !important;
-            color: #444 !important;
+            font-weight: 400 !important;
         }
-        /* Greyhound: never show select boxes */
-        body.nx-greyhound .runner-runner .selector,
-        .runner-runner .selector[style*="display: none"] {
+        /* Greyhound: no select boxes (bpexch) */
+        body.nx-greyhound .runner-runner .selector {
             display: none !important;
-        }
-        /* slight row density like bpexch */
-        .market-runners .runner-runner {
-            border-bottom: 1px solid rgba(0,0,0,0.04);
         }
 
         center a {
@@ -7677,7 +7648,7 @@ export default {
     var st = document.createElement('style');
     st.id = 'nx-race-align-css';
     st.textContent = [
-      /* defer to head CSS — only ensure greyhound hides selector */
+      /* head CSS owns sizes — only force greyhound no-checkbox */
       'body.nx-greyhound .runner-runner .selector{display:none !important;}'
     ].join('\n');
     document.head.appendChild(st);

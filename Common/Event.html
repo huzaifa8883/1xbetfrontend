@@ -1,6 +1,5 @@
 
 
-
 <!doctype html>
 <html lang="en">
 <head>
@@ -6904,11 +6903,13 @@ export default {
       return t === 'PLACE' || n.indexOf('to be placed') >= 0 || n === 'place';
     };
     const other = data.other || [];
-    const placeMkts = other.filter(isPlace).map(m => ({
+    const _winCat = (getVm() && getVm().Catalog) ? getVm().Catalog : null;
+    const placeMkts = other.filter(isPlace).map(m => enrichPlaceWithSilks({
       ...m,
       marketName: m.marketName || 'To Be Placed',
       marketType: m.marketType || 'PLACE',
-    }));
+      eventTypeId: m.eventTypeId || 7,
+    }, _winCat));
     const otherRest = other.filter(m => !isPlace(m));
 
     inject('OtherRaceMarkets', placeMkts);
@@ -6920,6 +6921,42 @@ export default {
     inject('OddFigureMarkets', data.oddFigure   || []);
     inject('OtherMarkets',     otherRest);
   }
+
+
+  function enrichPlaceWithSilks(placeMkt, winCat) {
+    if (!placeMkt) return placeMkt;
+    try {
+      if (winCat) {
+        placeMkt.eventTypeId = placeMkt.eventTypeId || winCat.eventTypeId || 7;
+        placeMkt.countryCode = placeMkt.countryCode || winCat.countryCode;
+        placeMkt.eventName = placeMkt.eventName || winCat.eventName;
+        placeMkt.eventId = placeMkt.eventId || winCat.eventId;
+      } else {
+        placeMkt.eventTypeId = placeMkt.eventTypeId || 7;
+      }
+      var bySel = {};
+      if (winCat && Array.isArray(winCat.runners)) {
+        winCat.runners.forEach(function (r) {
+          if (r && r.selectionId != null) bySel[String(r.selectionId)] = r;
+        });
+      }
+      (placeMkt.runners || []).forEach(function (r) {
+        if (!r) return;
+        var src = bySel[String(r.selectionId)];
+        if (!src) return;
+        if (!r.silkUrl && src.silkUrl) r.silkUrl = src.silkUrl;
+        if (!r.silkColor && (src.silkColor || src.clothColor)) r.silkColor = src.silkColor || src.clothColor;
+        if (!r.clothColor && (src.clothColor || src.silkColor)) r.clothColor = src.clothColor || src.silkColor;
+        if ((r.clothNumber == null || r.clothNumber === '') && src.clothNumber != null) r.clothNumber = src.clothNumber;
+        if (!r.jockeyName && src.jockeyName) r.jockeyName = src.jockeyName;
+        if (!r.trainerName && src.trainerName) r.trainerName = src.trainerName;
+        if (!r.clothStriped && src.clothStriped) r.clothStriped = src.clothStriped;
+        if (!r.metadata && src.metadata) r.metadata = src.metadata;
+      });
+    } catch (e) {}
+    return placeMkt;
+  }
+  window.enrichPlaceWithSilks = enrichPlaceWithSilks;
 
   /* ── Flat list ko categories mein baat do ── */
   function categorizeMkts(markets) {
@@ -6981,7 +7018,7 @@ export default {
         const cc = String(vm.Catalog.countryCode || '').toUpperCase();
         const gbIe = ['GB','UK','GBR','IE','IRL'].indexOf(cc) >= 0 ||
           /\(GB\)|\(UK\)|\(IE\)/i.test(en) ||
-          /\b(ASCOT|NEWMARKET|YORK|CHELTENHAM|LAYTOWN|CURRAGH|LEOPARDSTOWN|DUNDALK|LINGFIELD|SOUTHWELL|NEWCASTLE|DONCASTER|SANDOWN|KEMPTON|HAYDOCK|AYR|EPSOM|GOODWOOD|WINDSOR|PUNCHESTOWN|FAIRYHOUSE)\b/i.test(en);
+          /\b(ASCOT|NEWMARKET|YORK|CHELTENHAM|LAYTOWN|CURRAGH|LEOPARDSTOWN|DUNDALK|LINGFIELD|SOUTHWELL|NEWCASTLE|DONCASTER|SANDOWN|KEMPTON|HAYDOCK|AYR|EPSOM|GOODWOOD|WINDSOR|PUNCHESTOWN|FAIRYHOUSE|NAAS|BEVERLEY|KELSO|CARLISLE|CATTERICK|CHEPSTOW|CHESTER|EXETER|FFOS LAS|FONTWELL|HEREFORD|HEXHAM|HUNTINGDON|KELSO|LEICESTER|LUDLOW|MARKET RASEN|MUSSELBURGH|NEWTON ABBOT|NOTTINGHAM|PERTH|PLUMPTON|PONTEFRACT|REDCAR|RIPON|SALISBURY|SEDGEFIELD|STRATFORD|TAUNTON|THIRSK|UTTOXETER|WETHERBY|WINCANTON|WOLVERHAMPTON|WORCESTER|YARMOUTH|BATH|BRIGHTON|CLONMEL|CORK|DOWNPATRICK|DOWN ROYAL|GALWAY|GOWRAN|KILBEGGAN|KILLARNEY|LIMERICK|LISTOWEL|ROSCOMMON|SLIGO|TIPPERARY|TRAMORE|WEXFORD|BALLINROBE|BELLEWSTOWN|THURLES)\b/i.test(en);
         if (!gbIe) {
           console.log('[Markets] Horse non-GB/IE — only WIN');
           return;
@@ -7027,9 +7064,11 @@ export default {
             return t === 'PLACE' || n.indexOf('to be placed') >= 0 || n === 'place';
           };
           const all = [].concat(d.other || [], d.matchOdds || [], d.all || []);
-          const places = all.filter(isPlace).map(m => ({
-            ...m, marketName: m.marketName || 'To Be Placed', marketType: m.marketType || 'PLACE'
-          }));
+          const _wc = (getVm() && getVm().Catalog) ? getVm().Catalog : null;
+          const places = all.filter(isPlace).map(m => enrichPlaceWithSilks({
+            ...m, marketName: m.marketName || 'To Be Placed', marketType: m.marketType || 'PLACE',
+            eventTypeId: m.eventTypeId || 7
+          }, _wc));
           d = { bookmaker:[], toss:[], fancy:[], fancy2:[], figure:[], oddFigure:[], other: places };
           console.log(`[Markets] GB/IE PLACE markets: ${places.length}`);
         }
@@ -7229,7 +7268,14 @@ export default {
     var cc = String(vm.Catalog.countryCode || '').toUpperCase();
     if (['GB','UK','GBR','IE','IRL'].indexOf(cc) >= 0) return true;
     if (/\(GB\)|\(UK\)|\(IE\)|\(IRL\)/i.test(en)) return true;
-    if (/\b(ASCOT|NEWMARKET|YORK|CHELTENHAM|LAYTOWN|CURRAGH|LEOPARDSTOWN|DUNDALK|LINGFIELD|SOUTHWELL|NEWCASTLE|DONCASTER|SANDOWN|KEMPTON|HAYDOCK|AYR|EPSOM|GOODWOOD|WINDSOR|PUNCHESTOWN|FAIRYHOUSE|NAAS)\b/i.test(en)) return true;
+    // broad UK/IE course name match
+    if (/\b(ASCOT|NEWMARKET|YORK|CHELTENHAM|LAYTOWN|CURRAGH|LEOPARDSTOWN|DUNDALK|LINGFIELD|SOUTHWELL|NEWCASTLE|DONCASTER|SANDOWN|KEMPTON|HAYDOCK|AYR|EPSOM|GOODWOOD|WINDSOR|PUNCHESTOWN|FAIRYHOUSE|NAAS|BEVERLEY|KELSO|CARLISLE|CATTERICK|CHEPSTOW|CHESTER|EXETER|FONTWELL|HEREFORD|HEXHAM|HUNTINGDON|LEICESTER|LUDLOW|MARKET RASEN|MUSSELBURGH|NEWTON ABBOT|NOTTINGHAM|PERTH|PLUMPTON|PONTEFRACT|REDCAR|RIPON|SALISBURY|SEDGEFIELD|STRATFORD|TAUNTON|THIRSK|UTTOXETER|WETHERBY|WINCANTON|WOLVERHAMPTON|WORCESTER|YARMOUTH|BATH|BRIGHTON|CLONMEL|CORK|DOWNPATRICK|DOWN ROYAL|GALWAY|GOWRAN|KILBEGGAN|KILLARNEY|LIMERICK|LISTOWEL|ROSCOMMON|SLIGO|TIPPERARY|TRAMORE|WEXFORD|BALLINROBE|BELLEWSTOWN|THURLES|FFOS LAS)\b/i.test(en)) return true;
+    // related events sidebar often shows "(GB)" / "(IE)"
+    try {
+      var tb = document.getElementById('relatedEventsBody');
+      var txt = tb ? (tb.textContent || '') : '';
+      if (/\(GB\)|\(UK\)|\(IE\)|\(IRL\)/i.test(txt) && !/\(US\)|\(USA\)|\(AUS\)|\(ZA\)|\(RSA\)/i.test(en)) return true;
+    } catch (e) {}
     return false;
   }
 
@@ -7244,9 +7290,10 @@ export default {
     if (!vm) return;
     const eid = String(vm.Catalog && vm.Catalog.eventTypeId || '');
     const mid = String((vm.Catalog && vm.Catalog.marketId) || '');
-    const isHorse = (eid === '7');
     const isGrey  = (eid === '4339');
-    const isRace = (isHorse || isGrey || /^\d{6,}\.\d+$/.test(mid));
+    // treat composite race ids as horse when eventTypeId not yet set
+    const isHorse = (eid === '7') || (!isGrey && /^\d{6,}\.\d+$/.test(mid));
+    const isRace = (isHorse || isGrey);
     if (!isRace) return;
 
     // Always clear non-race markets
@@ -7319,6 +7366,29 @@ export default {
     }, 300);
   }
 
+
+  // Keep PLACE (To Be Placed) runners in sync with WIN silks/jackets
+  (function syncPlaceSilks() {
+    function tick() {
+      try {
+        var el = document.getElementById('MarketView') || document.getElementById('app');
+        var vm = el && el.__vue__;
+        if (vm && vm.Catalog && Array.isArray(vm.OtherRaceMarkets) && vm.OtherRaceMarkets.length) {
+          vm.OtherRaceMarkets.forEach(function (m) {
+            if (!m) return;
+            if (!m.eventTypeId) {
+              if (vm.$set) vm.$set(m, 'eventTypeId', vm.Catalog.eventTypeId || 7);
+              else m.eventTypeId = vm.Catalog.eventTypeId || 7;
+            }
+            if (typeof window.enrichPlaceWithSilks === "function") window.enrichPlaceWithSilks(m, vm.Catalog);
+          });
+        }
+      } catch (e) {}
+      setTimeout(tick, 2000);
+    }
+    setTimeout(tick, 800);
+  })();
+
   // start ASAP so extra markets don't flash
   setTimeout(startRaceCleaner, 50);
   if (document.readyState === 'loading') {
@@ -7350,7 +7420,7 @@ export default {
     if (/\(AUS\)|\(AU\)/.test(n)) return 'AUS';
     if (/\(RSA\)|\(ZA\)/.test(n)) return 'RSA';
     if (/\b(LAYTOWN|CURRAGH|LEOPARDSTOWN|DUNDALK|PUNCHESTOWN|FAIRYHOUSE|NAAS)\b/i.test(eventName || '')) return 'IE';
-    if (/\b(ASCOT|NEWMARKET|YORK|CHELTENHAM|LINGFIELD|SOUTHWELL|NEWCASTLE|DONCASTER|SANDOWN|KEMPTON|HAYDOCK|AYR|EPSOM|GOODWOOD|WINDSOR)\b/i.test(eventName || '')) return 'GB';
+    if (/\b(ASCOT|NEWMARKET|YORK|CHELTENHAM|LAYTOWN|CURRAGH|LEOPARDSTOWN|DUNDALK|LINGFIELD|SOUTHWELL|NEWCASTLE|DONCASTER|SANDOWN|KEMPTON|HAYDOCK|AYR|EPSOM|GOODWOOD|WINDSOR|PUNCHESTOWN|FAIRYHOUSE|NAAS|BEVERLEY|KELSO|CARLISLE|CATTERICK|CHEPSTOW|CHESTER|EXETER|FFOS LAS|FONTWELL|HEREFORD|HEXHAM|HUNTINGDON|KELSO|LEICESTER|LUDLOW|MARKET RASEN|MUSSELBURGH|NEWTON ABBOT|NOTTINGHAM|PERTH|PLUMPTON|PONTEFRACT|REDCAR|RIPON|SALISBURY|SEDGEFIELD|STRATFORD|TAUNTON|THIRSK|UTTOXETER|WETHERBY|WINCANTON|WOLVERHAMPTON|WORCESTER|YARMOUTH|BATH|BRIGHTON|CLONMEL|CORK|DOWNPATRICK|DOWN ROYAL|GALWAY|GOWRAN|KILBEGGAN|KILLARNEY|LIMERICK|LISTOWEL|ROSCOMMON|SLIGO|TIPPERARY|TRAMORE|WEXFORD|BALLINROBE|BELLEWSTOWN|THURLES)\b/i.test(eventName || '')) return 'GB';
     if (/\b(BELMONT|SARATOGA|DELAWARE|BELTERRA|CHURCHILL|GULFSTREAM|AQUEDUCT|PARX|HORSESHOE|INDIANAPOLIS)\b/i.test(eventName || '')) return 'US';
     if (/\b(FLEMINGTON|RANDWICK|ROSEHILL|CAULFIELD|DOOMBEN)\b/i.test(eventName || '')) return 'AUS';
     if (/\b(TURFFONTEIN|GREYVILLE|KENILWORTH)\b/i.test(eventName || '')) return 'RSA';

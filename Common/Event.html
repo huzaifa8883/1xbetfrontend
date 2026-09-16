@@ -1,3 +1,11 @@
+
+
+Event.html
+
+
+
+Files
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -22,136 +30,74 @@
             min-height: 91.7vh;
         }
 
-        /* ================================================================
-           HORSE RACING / GREYHOUND — bpexch-matching runner row styles
-           Scoped to .racing-runner (added via v-bind:class on the
-           runner-runner div when Catalog.eventTypeId is 7 or 4339), so
-           cricket / tennis / soccer rows are completely untouched.
-           ================================================================ */
-
-        /* Row: silk + selector ko RUNNER NAME line ke saath align karo
-           (bpexch inhe pehli line se align karta hai, name+jockey block ke
-           beech se nahi — yehi vertical offset main visual mismatch tha). */
-        /* NOTE: container ka align-items deliberately NOT touch kiya —
-           default stretch hi rehne do, warna BACK/LAY ke price boxes
-           poori row height fill karna chhod dete hain. Alignment sirf
-           silk / selector / name pe align-self se set ki gayi hai. */
-        .racing-runner {
-            background-color: #e6f2fc;
-            min-height: 44px;
+        /* ── Horse/Greyhound alignment — match bpexch (no layout break) ── */
+        .runner-runner {
+            min-height: 40px;
         }
-
-        /* Horse racing selection checkbox — bpexch only renders it for
-           horse racing (eventTypeId 7); greyhound rows have no checkbox. */
-        .racing-runner .selector {
-            flex: 0 0 auto;
-            align-self: flex-start;
-            margin-top: 7px !important;
-            margin-right: 2px;
+        /* checkbox + silk + name vertically centered like bpexch */
+        .runner-runner > .selector,
+        .runner-runner > img.ml-2,
+        .runner-runner .runner-silk-img,
+        .runner-runner .runner-silk-fallback {
+            vertical-align: middle !important;
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
         }
-
-        /* Silk image (horse jockey silks) */
-        .racing-horse .runner-silk-img {
+        /* Silk / jacket — bpexch size */
+        .runner-silk-img,
+        .runner-runner > img.ml-2 {
             display: inline-block;
-            width: 34px;
-            height: 34px;
-            min-width: 34px;
+            width: 22px !important;
+            height: 22px !important;
+            min-width: 22px !important;
             object-fit: contain;
-            flex: 0 0 auto;
-            align-self: flex-start;
-            margin-top: 0;
+            vertical-align: middle !important;
             border-radius: 2px;
         }
-
-        /* Greyhound trap colour box — small square, aligned to the name line */
-        .racing-grey .runner-silk-img,
-        .racing-grey .runner-silk-fallback {
+        /* Greyhound trap color box — bpexch size */
+        .runner-silk-fallback {
             display: inline-block;
-            width: 20px;
-            height: 20px;
-            min-width: 20px;
-            object-fit: contain;
-            flex: 0 0 auto;
-            align-self: flex-start;
-            margin-top: 5px;
+            width: 16px !important;
+            height: 16px !important;
+            min-width: 16px !important;
             border-radius: 2px;
-            border: 1px solid rgba(0,0,0,0.35);
+            border: 1px solid rgba(0,0,0,0.2);
+            vertical-align: middle !important;
         }
-
-        /* Horse fallback box (silk image missing) */
-        .racing-horse .runner-silk-fallback {
-            display: inline-block;
-            width: 28px;
-            height: 28px;
-            min-width: 28px;
-            flex: 0 0 auto;
-            align-self: flex-start;
-            margin-top: 3px;
-            border-radius: 3px;
-            border: 1px solid rgba(0,0,0,0.3);
-        }
-
-        /* Greyhound trap 6 — horizontal black/white bands (bpexch style) */
-        .racing-runner .runner-silk-fallback.striped {
+        .runner-silk-fallback.striped {
             background-image: repeating-linear-gradient(
-                180deg,
-                #111111 0px, #111111 4px,
-                #FFFFFF 4px, #FFFFFF 8px
+                45deg,
+                #111111 0px, #111111 5px,
+                #FFFFFF 5px, #FFFFFF 10px
             ) !important;
-            border-color: rgba(0,0,0,0.45);
+            border-color: rgba(0,0,0,0.35);
         }
-
-        /* Name block — sits immediately after the silk, no dead gap */
-        .racing-runner .runner-name {
-            flex: 1 1 auto;
-            min-width: 0;
+        /* Name font — bpexch style */
+        .runner-runner .runner-name {
+            vertical-align: middle;
             margin: 0 !important;
-            padding-left: 10px;
-            padding-top: 5px;
-            align-self: flex-start;
+            padding-left: 2px;
         }
-
-        .racing-runner .runner-info {
-            margin: 0;
-            line-height: 1.2;
-        }
-
-        /* Runner name typography — bpexch: ~15px, bold, dark slate */
-        .racing-runner .runner-display-name .clippable-spacer {
-            display: inline;
+        .runner-runner .runner-name h4,
+        .runner-runner .runner-name .clippable-spacer {
             margin: 0 !important;
-            padding: 0 !important;
-            font-size: 15px;
-            font-weight: 700;
-            line-height: 1.25;
-            color: #1c2b39;
-            letter-spacing: 0;
+            line-height: 1.3 !important;
+            font-size: 14px !important;
+            font-weight: 600 !important;
         }
-
-        /* Jockey / trainer name line — lighter, smaller, sits under the name */
-        .racing-runner .runner-position {
-            margin: 1px 0 0 0 !important;
-            padding: 0 !important;
-            line-height: 1.2;
+        /* Jockey under name */
+        .runner-runner .runner-position {
+            line-height: 1.2 !important;
+            font-size: 12px !important;
+            font-weight: normal !important;
         }
-
-        .racing-runner .runner-position > span.ml-1 {
-            font-size: 13px;
-            font-weight: 400 !important;
-            color: #3f5060;
-            margin-left: 0 !important;
+        .runner-runner .runner-position .ml-1 {
+            font-weight: normal !important;
+            font-size: 12px !important;
         }
-
-        /* Greyhound rows are single-line (no jockey) — keep them compact */
-        .racing-grey {
-            min-height: 38px;
-        }
-
-        /* Removed / suspended runner label — bpexch shows it centered in red */
-        .racing-runner .runner-disabled {
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        /* Greyhound: no multi-select boxes (bpexch) */
+        body.nx-greyhound .runner-runner .selector {
+            display: none !important;
         }
 
         center a {
@@ -2231,7 +2177,7 @@
 <div class="market-runners">
     <div class="runner-runner"
          :id="'runner-' + runner.selectionId"
-         v-bind:class="{ 'winner': runner.status == 'WINNER', 'racing-runner': Catalog.eventTypeId==7 || Catalog.eventTypeId==4339, 'racing-horse': Catalog.eventTypeId==7, 'racing-grey': Catalog.eventTypeId==4339 }"
+         v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
               v-show="Catalog.eventTypeId==7"
@@ -2394,7 +2340,7 @@
 <div class="market-runners">
     <div class="runner-runner"
          :id="'runner-' + runner.selectionId"
-         v-bind:class="{ 'winner': runner.status == 'WINNER', 'racing-runner': Catalog.eventTypeId==7 || Catalog.eventTypeId==4339, 'racing-horse': Catalog.eventTypeId==7, 'racing-grey': Catalog.eventTypeId==4339 }"
+         v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
               v-show="Catalog.eventTypeId==7"
@@ -2526,7 +2472,7 @@
 <div class="market-runners">
     <div class="runner-runner"
          :id="'runner-' + runner.selectionId"
-         v-bind:class="{ 'winner': runner.status == 'WINNER', 'racing-runner': Catalog.eventTypeId==7 || Catalog.eventTypeId==4339, 'racing-horse': Catalog.eventTypeId==7, 'racing-grey': Catalog.eventTypeId==4339 }"
+         v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
               v-show="Catalog.eventTypeId==7"
@@ -2657,7 +2603,7 @@
 <div class="market-runners">
     <div class="runner-runner"
          :id="'runner-' + runner.selectionId"
-         v-bind:class="{ 'winner': runner.status == 'WINNER', 'racing-runner': Catalog.eventTypeId==7 || Catalog.eventTypeId==4339, 'racing-horse': Catalog.eventTypeId==7, 'racing-grey': Catalog.eventTypeId==4339 }"
+         v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
               v-show="Catalog.eventTypeId==7"
@@ -2789,7 +2735,7 @@
 <div class="market-runners">
     <div class="runner-runner"
          :id="'runner-' + runner.selectionId"
-         v-bind:class="{ 'winner': runner.status == 'WINNER', 'racing-runner': Catalog.eventTypeId==7 || Catalog.eventTypeId==4339, 'racing-horse': Catalog.eventTypeId==7, 'racing-grey': Catalog.eventTypeId==4339 }"
+         v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
               v-show="Catalog.eventTypeId==7"
@@ -2920,7 +2866,7 @@
 <div class="market-runners">
     <div class="runner-runner"
          :id="'runner-' + runner.selectionId"
-         v-bind:class="{ 'winner': runner.status == 'WINNER', 'racing-runner': Catalog.eventTypeId==7 || Catalog.eventTypeId==4339, 'racing-horse': Catalog.eventTypeId==7, 'racing-grey': Catalog.eventTypeId==4339 }"
+         v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
               v-show="Catalog.eventTypeId==7"
@@ -3128,7 +3074,7 @@
 <div class="market-runners">
     <div class="runner-runner"
          :id="'runner-' + runner.selectionId"
-         v-bind:class="{ 'winner': runner.status == 'WINNER', 'racing-runner': Catalog.eventTypeId==7 || Catalog.eventTypeId==4339, 'racing-horse': Catalog.eventTypeId==7, 'racing-grey': Catalog.eventTypeId==4339 }"
+         v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
               v-show="Catalog.eventTypeId==7"
@@ -3267,7 +3213,7 @@
 <div class="market-runners">
     <div class="runner-runner"
          :id="'runner-' + runner.selectionId"
-         v-bind:class="{ 'winner': runner.status == 'WINNER', 'racing-runner': Catalog.eventTypeId==7 || Catalog.eventTypeId==4339, 'racing-horse': Catalog.eventTypeId==7, 'racing-grey': Catalog.eventTypeId==4339 }"
+         v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
               v-show="Catalog.eventTypeId==7"
@@ -3400,7 +3346,7 @@
 <div class="market-runners">
     <div class="runner-runner"
          :id="'runner-' + runner.selectionId"
-         v-bind:class="{ 'winner': runner.status == 'WINNER', 'racing-runner': Catalog.eventTypeId==7 || Catalog.eventTypeId==4339, 'racing-horse': Catalog.eventTypeId==7, 'racing-grey': Catalog.eventTypeId==4339 }"
+         v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
               v-show="Catalog.eventTypeId==7"
@@ -3532,7 +3478,7 @@
 <div class="market-runners">
     <div class="runner-runner"
          :id="'runner-' + runner.selectionId"
-         v-bind:class="{ 'winner': runner.status == 'WINNER', 'racing-runner': Catalog.eventTypeId==7 || Catalog.eventTypeId==4339, 'racing-horse': Catalog.eventTypeId==7, 'racing-grey': Catalog.eventTypeId==4339 }"
+         v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
               v-show="Catalog.eventTypeId==7"
@@ -3665,7 +3611,7 @@
 <div class="market-runners">
     <div class="runner-runner"
          :id="'runner-' + runner.selectionId"
-         v-bind:class="{ 'winner': runner.status == 'WINNER', 'racing-runner': Catalog.eventTypeId==7 || Catalog.eventTypeId==4339, 'racing-horse': Catalog.eventTypeId==7, 'racing-grey': Catalog.eventTypeId==4339 }"
+         v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
               v-show="Catalog.eventTypeId==7"
@@ -3798,7 +3744,7 @@
 <div class="market-runners">
     <div class="runner-runner"
          :id="'runner-' + runner.selectionId"
-         v-bind:class="{ 'winner': runner.status == 'WINNER', 'racing-runner': Catalog.eventTypeId==7 || Catalog.eventTypeId==4339, 'racing-horse': Catalog.eventTypeId==7, 'racing-grey': Catalog.eventTypeId==4339 }"
+         v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
               v-show="Catalog.eventTypeId==7"
@@ -4009,7 +3955,7 @@
 <div class="market-runners">
     <div class="runner-runner"
          :id="'runner-' + runner.selectionId"
-         v-bind:class="{ 'winner': runner.status == 'WINNER', 'racing-runner': Catalog.eventTypeId==7 || Catalog.eventTypeId==4339, 'racing-horse': Catalog.eventTypeId==7, 'racing-grey': Catalog.eventTypeId==4339 }"
+         v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
               v-show="Catalog.eventTypeId==7"
@@ -4145,7 +4091,7 @@
 <div class="market-runners">
     <div class="runner-runner"
          :id="'runner-' + runner.selectionId"
-         v-bind:class="{ 'winner': runner.status == 'WINNER', 'racing-runner': Catalog.eventTypeId==7 || Catalog.eventTypeId==4339, 'racing-horse': Catalog.eventTypeId==7, 'racing-grey': Catalog.eventTypeId==4339 }"
+         v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
               v-show="Catalog.eventTypeId==7"
@@ -7701,25 +7647,8 @@ export default {
     var st = document.createElement('style');
     st.id = 'nx-race-align-css';
     st.textContent = [
-      /* Match bpexch sizes — do NOT shrink */
-      '.runner-runner .selector{align-self:center !important;vertical-align:middle;}',
-      '.runner-runner > img.ml-2,.runner-runner .runner-silk-img,.runner-runner .runner-silk-fallback{',
-      '  align-self:center !important;vertical-align:middle;',
-      '  width:24px !important;height:24px !important;min-width:24px !important;',
-      '  object-fit:contain;margin-right:6px;',
-      '}',
-      '.runner-runner .runner-name{display:flex !important;align-items:center !important;flex-wrap:wrap;}',
-      '.runner-runner .runner-name h4{margin:0 !important;line-height:1.3 !important;font-size:inherit !important;font-weight:inherit !important;}',
-      '.runner-runner .runner-position{font-size:inherit !important;line-height:1.3 !important;}',
-      'body.nx-greyhound .runner-runner .selector{display:none !important;}',
-      /* Combined row like bpexch */
-      '.nx-combined-row{display:flex !important;align-items:center !important;min-height:42px;padding:4px 6px;}',
-      '.nx-combined-row .nx-comb-odds{display:flex;align-items:center;margin-left:auto;}',
-      '.nx-combined-row .nx-comb-back,.nx-combined-row .nx-comb-lay{',
-      '  min-width:56px;text-align:center;padding:8px 6px;font-weight:700;font-size:14px;cursor:pointer;',
-      '}',
-      '.nx-combined-row .nx-comb-back{background:#a7d8f0;}',
-      '.nx-combined-row .nx-comb-lay{background:#f9c0c0;}'
+      /* defer to head CSS — only ensure greyhound hides selector */
+      'body.nx-greyhound .runner-runner .selector{display:none !important;}'
     ].join('\n');
     document.head.appendChild(st);
   }

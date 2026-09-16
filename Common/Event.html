@@ -1,4 +1,11 @@
 
+
+Event.html
+
+
+
+Files
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -24,81 +31,102 @@
         }
 
         /*
-         * Horse + Greyhound runner row — match bpexch screenshots
-         * Horse: checkbox + 20px silk + 13px bold name + 11px jockey
-         * Greyhound: 14px color square + 13px bold name (no checkbox)
+         * Horse + Greyhound — match bpexch size/font (screenshots)
+         * Horse: checkbox + 26px jacket + 14px bold name + 12px jockey
+         * Greyhound: 18px color box + 14px bold name (no checkbox)
+         * NO flex on .runner-runner — odds layout stays original
          */
         .runner-runner {
-            min-height: 34px;
+            min-height: 40px !important;
         }
         .runner-runner > .selector {
+            display: inline-block !important;
             vertical-align: middle !important;
-            margin: 0 4px 0 8px !important;
+            margin: 0 6px 0 10px !important;
         }
-        /* Horse jacket / silk image */
+        /* Horse jacket — bpexch size */
         .runner-runner > img.ml-2,
         .runner-runner .runner-silk-img {
             display: inline-block !important;
-            width: 20px !important;
-            height: 20px !important;
-            min-width: 20px !important;
-            max-width: 20px !important;
+            width: 26px !important;
+            height: 26px !important;
+            min-width: 26px !important;
+            max-width: 26px !important;
             object-fit: contain !important;
             vertical-align: middle !important;
-            margin: 0 6px 0 2px !important;
-            border-radius: 1px;
+            margin: 0 8px 0 2px !important;
+            border-radius: 2px !important;
         }
-        /* Greyhound trap color square */
+        /* Greyhound color box — bpexch size */
         .runner-runner .runner-silk-fallback {
             display: inline-block !important;
-            width: 14px !important;
-            height: 14px !important;
-            min-width: 14px !important;
-            max-width: 14px !important;
-            border-radius: 1px !important;
-            border: 1px solid rgba(0,0,0,0.22) !important;
+            width: 18px !important;
+            height: 18px !important;
+            min-width: 18px !important;
+            max-width: 18px !important;
+            border-radius: 2px !important;
+            border: 1px solid rgba(0,0,0,0.25) !important;
             vertical-align: middle !important;
-            margin: 0 8px 0 6px !important;
+            margin: 0 10px 0 8px !important;
             box-sizing: border-box !important;
         }
         .runner-silk-fallback.striped {
             background-image: repeating-linear-gradient(
                 45deg,
-                #111 0px, #111 4px,
-                #fff 4px, #fff 8px
+                #111 0px, #111 5px,
+                #fff 5px, #fff 10px
             ) !important;
             border-color: #333 !important;
         }
-        /* Name */
-        .runner-runner .runner-name {
+        /* Name — larger bold like bpexch */
+        .runner-runner > .runner-name,
+        .runner-runner h3.runner-name {
+            display: inline-block !important;
             vertical-align: middle !important;
             margin: 0 !important;
             padding: 0 !important;
-            line-height: 1.2 !important;
+            line-height: 1.25 !important;
         }
-        .runner-runner .runner-name h4,
-        .runner-runner .clippable-spacer {
+        .runner-runner .runner-info {
+            display: block !important;
             margin: 0 !important;
             padding: 0 !important;
-            line-height: 1.2 !important;
-            font-size: 13px !important;
+        }
+        .runner-runner .runner-name h4,
+        .runner-runner .clippable-spacer,
+        .runner-runner .runner-display-name h4,
+        .runner-runner .clippable h4 {
+            margin: 0 !important;
+            padding: 0 !important;
+            line-height: 1.25 !important;
+            font-size: 14px !important;
             font-weight: 700 !important;
             font-family: "Roboto Condensed", Roboto, Arial, sans-serif !important;
+            color: #1a1a1a !important;
         }
         /* Jockey under name */
         .runner-runner .runner-position {
-            line-height: 1.15 !important;
-            font-size: 11px !important;
+            display: block !important;
+            margin: 1px 0 0 0 !important;
+            padding: 0 !important;
+            line-height: 1.2 !important;
+            font-size: 12px !important;
             font-weight: 400 !important;
-            color: #444 !important;
+            color: #555 !important;
+            font-family: "Roboto Condensed", Roboto, Arial, sans-serif !important;
         }
-        .runner-runner .runner-position .ml-1 {
-            font-size: 11px !important;
+        .runner-runner .runner-position .ml-1,
+        .runner-runner .runner-position span {
+            font-size: 12px !important;
             font-weight: 400 !important;
+            color: #555 !important;
         }
-        /* Greyhound: no select boxes (bpexch) */
+        /* Greyhound: no checkboxes */
         body.nx-greyhound .runner-runner .selector {
             display: none !important;
+            width: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
         }
 
         center a {

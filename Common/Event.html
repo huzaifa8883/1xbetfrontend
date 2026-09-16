@@ -1,5 +1,4 @@
 
-
 <!doctype html>
 <html lang="en">
 <head>
@@ -24,74 +23,111 @@
             min-height: 91.7vh;
         }
 
-        /* ── Horse/Greyhound alignment — match bpexch (no layout break) ── */
+        /* ── Horse / Greyhound — pixel-match bpexch screenshots ── */
         .runner-runner {
-            min-height: 40px;
+            min-height: 36px !important;
+            padding-top: 2px !important;
+            padding-bottom: 2px !important;
         }
-        /* checkbox + silk + name vertically centered like bpexch */
-        .runner-runner > .selector,
+        /* left cluster: checkbox + silk/box + name on one baseline */
+        .runner-runner > .selector {
+            display: inline-block !important;
+            vertical-align: middle !important;
+            margin: 0 4px 0 6px !important;
+            position: relative;
+            top: 0;
+        }
+        /* Horse silk jacket image — bpexch ~20px */
         .runner-runner > img.ml-2,
-        .runner-runner .runner-silk-img,
+        .runner-runner .runner-silk-img {
+            display: inline-block !important;
+            width: 20px !important;
+            height: 20px !important;
+            min-width: 20px !important;
+            max-width: 20px !important;
+            object-fit: contain !important;
+            vertical-align: middle !important;
+            margin: 0 6px 0 2px !important;
+            border-radius: 1px;
+            position: relative;
+            top: 0;
+        }
+        /* Greyhound trap color — bpexch ~14px solid square */
         .runner-runner .runner-silk-fallback {
+            display: inline-block !important;
+            width: 14px !important;
+            height: 14px !important;
+            min-width: 14px !important;
+            max-width: 14px !important;
+            border-radius: 1px !important;
+            border: 1px solid rgba(0,0,0,0.25) !important;
             vertical-align: middle !important;
-            margin-top: 0 !important;
-            margin-bottom: 0 !important;
-        }
-        /* Silk / jacket — bpexch size */
-        .runner-silk-img,
-        .runner-runner > img.ml-2 {
-            display: inline-block;
-            width: 22px !important;
-            height: 22px !important;
-            min-width: 22px !important;
-            object-fit: contain;
-            vertical-align: middle !important;
-            border-radius: 2px;
-        }
-        /* Greyhound trap color box — bpexch size */
-        .runner-silk-fallback {
-            display: inline-block;
-            width: 16px !important;
-            height: 16px !important;
-            min-width: 16px !important;
-            border-radius: 2px;
-            border: 1px solid rgba(0,0,0,0.2);
-            vertical-align: middle !important;
+            margin: 0 8px 0 4px !important;
+            position: relative;
+            top: 0;
+            box-sizing: border-box !important;
         }
         .runner-silk-fallback.striped {
             background-image: repeating-linear-gradient(
                 45deg,
-                #111111 0px, #111111 5px,
-                #FFFFFF 5px, #FFFFFF 10px
+                #111 0px, #111 4px,
+                #fff 4px, #fff 8px
             ) !important;
-            border-color: rgba(0,0,0,0.35);
+            border-color: #333 !important;
         }
-        /* Name font — bpexch style */
+        /* Name block sits inline with silk */
+        .runner-runner > .runner-name,
         .runner-runner .runner-name {
-            vertical-align: middle;
+            display: inline-block !important;
+            vertical-align: middle !important;
             margin: 0 !important;
-            padding-left: 2px;
+            padding: 0 0 0 2px !important;
+            line-height: 1.15 !important;
+        }
+        .runner-runner .runner-info {
+            display: block !important;
+            line-height: 1.15 !important;
         }
         .runner-runner .runner-name h4,
-        .runner-runner .runner-name .clippable-spacer {
+        .runner-runner .runner-name .clippable-spacer,
+        .runner-runner .runner-display-name h4 {
+            display: inline !important;
             margin: 0 !important;
-            line-height: 1.3 !important;
-            font-size: 14px !important;
-            font-weight: 600 !important;
+            padding: 0 !important;
+            line-height: 1.15 !important;
+            font-size: 13px !important;
+            font-weight: 700 !important;
+            font-family: "Roboto Condensed", Roboto, Arial, sans-serif !important;
+            color: #222 !important;
         }
-        /* Jockey under name */
+        /* cloth number + name same weight */
+        .runner-runner .runner-name h4 > span {
+            font-weight: 700 !important;
+            font-size: 13px !important;
+        }
+        /* Jockey under horse name — bpexch 11-12px */
         .runner-runner .runner-position {
-            line-height: 1.2 !important;
-            font-size: 12px !important;
-            font-weight: normal !important;
+            display: block !important;
+            line-height: 1.15 !important;
+            font-size: 11px !important;
+            font-weight: 400 !important;
+            color: #444 !important;
+            margin: 0 !important;
+            padding: 0 !important;
         }
         .runner-runner .runner-position .ml-1 {
-            font-weight: normal !important;
-            font-size: 12px !important;
+            font-weight: 400 !important;
+            font-size: 11px !important;
+            color: #444 !important;
         }
-        /* Greyhound: no multi-select boxes (bpexch) */
-        body.nx-greyhound .runner-runner .selector {
+        /* Greyhound: never show select boxes */
+        body.nx-greyhound .runner-runner .selector,
+        .runner-runner .selector[style*="display: none"] {
             display: none !important;
+        }
+        /* slight row density like bpexch */
+        .market-runners .runner-runner {
+            border-bottom: 1px solid rgba(0,0,0,0.04);
         }
 
         center a {

@@ -1,5 +1,3 @@
-
-
 <!doctype html>
 <html lang="en">
 <head>
@@ -25,44 +23,73 @@
         }
 
         /*
-         * Horse + Greyhound — match bpexch size/font (screenshots)
-         * Horse: checkbox + 26px jacket + 14px bold name + 12px jockey
-         * Greyhound: 18px color box + 14px bold name (no checkbox)
+         * Horse + Greyhound — match bpexch size/font/alignment (screenshots)
+         * Horse: green checkbox + 34px jersey-shaped silk + 15px bold name + 13px jockey
+         * Greyhound: 22px color box + 15px bold name (no checkbox, no jockey line)
          * NO flex on .runner-runner — odds layout stays original
          */
         .runner-runner {
-            min-height: 40px !important;
+            min-height: 48px !important;
+            padding: 9px 0 !important;
+            box-sizing: border-box !important;
         }
         .runner-runner > .selector {
             display: inline-block !important;
             vertical-align: middle !important;
-            margin: 0 6px 0 10px !important;
-        }
-        /* Horse jacket — bpexch size */
-        .runner-runner > img.ml-2,
-        .runner-runner .runner-silk-img {
-            display: inline-block !important;
-            width: 26px !important;
-            height: 26px !important;
-            min-width: 26px !important;
-            max-width: 26px !important;
-            object-fit: contain !important;
-            vertical-align: middle !important;
-            margin: 0 8px 0 2px !important;
-            border-radius: 2px !important;
-        }
-        /* Greyhound color box — bpexch size */
-        .runner-runner .runner-silk-fallback {
-            display: inline-block !important;
             width: 18px !important;
             height: 18px !important;
             min-width: 18px !important;
-            max-width: 18px !important;
-            border-radius: 2px !important;
-            border: 1px solid rgba(0,0,0,0.25) !important;
-            vertical-align: middle !important;
-            margin: 0 10px 0 8px !important;
+            margin: 0 8px 0 10px !important;
+            border: 2px solid #28a745 !important;
+            border-radius: 3px !important;
+            background: transparent !important;
             box-sizing: border-box !important;
+        }
+        .runner-runner > .selector.selected {
+            background: #28a745 !important;
+        }
+        /* Horse jacket — bpexch size, jersey-shaped so a flat colour still reads as a "silk" */
+        .runner-runner > img.ml-2,
+        .runner-runner .runner-silk-img {
+            display: inline-block !important;
+            width: 34px !important;
+            height: 34px !important;
+            min-width: 34px !important;
+            max-width: 34px !important;
+            object-fit: contain !important;
+            vertical-align: middle !important;
+            margin: 0 10px 0 2px !important;
+            border-radius: 3px !important;
+        }
+        .runner-runner .runner-silk-fallback {
+            display: inline-block !important;
+            width: 34px !important;
+            height: 34px !important;
+            min-width: 34px !important;
+            max-width: 34px !important;
+            vertical-align: middle !important;
+            margin: 0 10px 0 2px !important;
+            box-sizing: border-box !important;
+            -webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M8 2.2 L4 4.4 L5.6 8.4 L7.2 7.4 L7.2 21 Q7.2 21.8 8 21.8 L16 21.8 Q16.8 21.8 16.8 21 L16.8 7.4 L18.4 8.4 L20 4.4 L16 2.2 Q14.4 4.2 12 4.2 Q9.6 4.2 8 2.2 Z'/></svg>") !important;
+            mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M8 2.2 L4 4.4 L5.6 8.4 L7.2 7.4 L7.2 21 Q7.2 21.8 8 21.8 L16 21.8 Q16.8 21.8 16.8 21 L16.8 7.4 L18.4 8.4 L20 4.4 L16 2.2 Q14.4 4.2 12 4.2 Q9.6 4.2 8 2.2 Z'/></svg>") !important;
+            -webkit-mask-repeat: no-repeat !important;
+            mask-repeat: no-repeat !important;
+            -webkit-mask-size: contain !important;
+            mask-size: contain !important;
+            -webkit-mask-position: center !important;
+            mask-position: center !important;
+        }
+        /* Greyhound: plain colour square (no jersey mask), matches trap-colour screenshot */
+        body.nx-greyhound .runner-runner .runner-silk-fallback {
+            width: 22px !important;
+            height: 22px !important;
+            min-width: 22px !important;
+            max-width: 22px !important;
+            border-radius: 3px !important;
+            border: 1px solid rgba(0,0,0,0.25) !important;
+            -webkit-mask-image: none !important;
+            mask-image: none !important;
+            margin: 0 10px 0 8px !important;
         }
         .runner-silk-fallback.striped {
             background-image: repeating-linear-gradient(
@@ -79,7 +106,7 @@
             vertical-align: middle !important;
             margin: 0 !important;
             padding: 0 !important;
-            line-height: 1.25 !important;
+            line-height: 1.3 !important;
         }
         .runner-runner .runner-info {
             display: block !important;
@@ -92,8 +119,8 @@
         .runner-runner .clippable h4 {
             margin: 0 !important;
             padding: 0 !important;
-            line-height: 1.25 !important;
-            font-size: 14px !important;
+            line-height: 1.3 !important;
+            font-size: 15px !important;
             font-weight: 700 !important;
             font-family: "Roboto Condensed", Roboto, Arial, sans-serif !important;
             color: #1a1a1a !important;
@@ -101,26 +128,29 @@
         /* Jockey under name */
         .runner-runner .runner-position {
             display: block !important;
-            margin: 1px 0 0 0 !important;
+            margin: 2px 0 0 0 !important;
             padding: 0 !important;
             line-height: 1.2 !important;
-            font-size: 12px !important;
+            font-size: 13px !important;
             font-weight: 400 !important;
-            color: #555 !important;
+            color: #6c757d !important;
             font-family: "Roboto Condensed", Roboto, Arial, sans-serif !important;
         }
         .runner-runner .runner-position .ml-1,
         .runner-runner .runner-position span {
-            font-size: 12px !important;
+            font-size: 13px !important;
             font-weight: 400 !important;
-            color: #555 !important;
+            color: #6c757d !important;
         }
-        /* Greyhound: no checkboxes */
+        /* Greyhound: no checkboxes, no jockey line (greyhounds don't have jockeys) */
         body.nx-greyhound .runner-runner .selector {
             display: none !important;
             width: 0 !important;
             margin: 0 !important;
             padding: 0 !important;
+        }
+        body.nx-greyhound .runner-runner .runner-position {
+            display: none !important;
         }
 
         center a {

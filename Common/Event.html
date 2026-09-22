@@ -1,4 +1,5 @@
-<!doctype html>
+
+  <!doctype html>
 <html lang="en">
 <head>
     <meta charset="utf-8">
@@ -17,67 +18,160 @@
     <link href="/css/BetPro-style.css" rel="stylesheet" />
 
     <!-- <title>England v India | BetPro</title> -->
-    <style>
-        .body {
-            min-height: 91.7vh;
+    <style id="nx-bpexch-runner-css">
+        .body { min-height: 91.7vh; }
+
+        /* ========== BPEXCH PIXEL MATCH (horse + greyhound) ========== */
+        .market-runners .runner-runner,
+        #MarketView .runner-runner,
+        .runner-runner {
+            min-height: 48px !important;
+            height: auto !important;
+            padding: 6px 0 6px 0 !important;
+            margin: 0 !important;
+            box-sizing: border-box !important;
+            line-height: normal !important;
+        }
+        /* checkbox */
+        .market-runners .runner-runner > .selector,
+        #MarketView .runner-runner > .selector,
+        .runner-runner > .selector {
+            display: inline-block !important;
+            vertical-align: middle !important;
+            width: 15px !important;
+            height: 15px !important;
+            min-width: 15px !important;
+            max-width: 15px !important;
+            margin: 0 7px 0 8px !important;
+            padding: 0 !important;
+            border: 2px solid #28a745 !important;
+            border-radius: 2px !important;
+            background: transparent !important;
+            box-sizing: border-box !important;
+            float: none !important;
+        }
+        .runner-runner > .selector.selected { background: #28a745 !important; }
+
+        /* HORSE silk image — bpexch size ~40px */
+        .market-runners .runner-runner > img.ml-2,
+        .market-runners .runner-runner img.runner-silk-img,
+        #MarketView .runner-runner > img.ml-2,
+        #MarketView .runner-runner img.runner-silk-img,
+        .runner-runner > img.ml-2,
+        .runner-runner .runner-silk-img,
+        .runner-runner img.ml-2 {
+            display: inline-block !important;
+            width: 40px !important;
+            height: 40px !important;
+            min-width: 40px !important;
+            max-width: 40px !important;
+            min-height: 40px !important;
+            max-height: 40px !important;
+            object-fit: contain !important;
+            object-position: center !important;
+            vertical-align: middle !important;
+            margin: 0 10px 0 0 !important;
+            padding: 0 !important;
+            border: 0 !important;
+            border-radius: 0 !important;
+            background: transparent !important;
+            float: none !important;
         }
 
-        /* Horse/Greyhound — Betfair silk image */
-        .runner-silk-img {
-            display: inline-block;
-            width: 28px;
-            height: 28px;
-            min-width: 28px;
-            object-fit: contain;
-            vertical-align: middle;
-            flex-shrink: 0;
-            align-self: center;
-            border-radius: 2px;
+        /* solid colour fallback */
+        .market-runners .runner-runner .runner-silk-fallback,
+        #MarketView .runner-runner .runner-silk-fallback,
+        .runner-runner .runner-silk-fallback {
+            display: inline-block !important;
+            width: 16px !important;
+            height: 16px !important;
+            min-width: 16px !important;
+            max-width: 16px !important;
+            border-radius: 2px !important;
+            border: 1px solid rgba(0,0,0,0.3) !important;
+            vertical-align: middle !important;
+            margin: 0 8px 0 0 !important;
+            padding: 0 !important;
+            box-sizing: border-box !important;
+            float: none !important;
         }
-        /* Fallback color box (jab silk image na ho) */
-        .runner-silk-fallback {
-            display: inline-block;
-            width: 28px;
-            height: 28px;
-            min-width: 28px;
-            border-radius: 3px;
-            border: 1px solid rgba(255,255,255,0.25);
-            vertical-align: middle;
-            flex-shrink: 0;
-            align-self: center;
+        body.nx-greyhound .runner-runner .runner-silk-fallback {
+            width: 16px !important;
+            height: 16px !important;
+            min-width: 16px !important;
+            max-width: 16px !important;
+            margin: 0 8px 0 4px !important;
         }
-        /* Greyhound trap 6 — black & white diagonal stripes (standard trap color) */
         .runner-silk-fallback.striped {
-            background-image: repeating-linear-gradient(
-                45deg,
-                #111111 0px, #111111 6px,
-                #FFFFFF 6px, #FFFFFF 12px
-            ) !important;
-            border-color: rgba(0,0,0,0.4);
-        }
-        /* Selector checkbox aur silk image bhi vertically center */
-        .runner-runner .selector {
-            align-self: center !important;
-        }
-        .runner-runner > img.ml-2 {
-            align-self: center !important;
-            width: 24px !important;
-            height: 24px !important;
-            object-fit: contain;
-        }
-        /* Runner name row — flex center */
-        .runner-runner .runner-name {
-            display: flex !important;
-            align-items: center !important;
+            background-image: repeating-linear-gradient(45deg,#111 0,#111 4px,#fff 4px,#fff 8px) !important;
+            border-color: #222 !important;
         }
 
-        center a {
-            color: white;
+        /* name block */
+        .market-runners .runner-runner > .runner-name,
+        .market-runners .runner-runner h3.runner-name,
+        #MarketView .runner-runner h3.runner-name,
+        .runner-runner > .runner-name,
+        .runner-runner h3.runner-name {
+            display: inline-block !important;
+            vertical-align: middle !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            line-height: 1.2 !important;
+            float: none !important;
+        }
+        .runner-runner .runner-info {
+            display: block !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        .market-runners .runner-runner .runner-name h4,
+        .market-runners .runner-runner .clippable-spacer,
+        #MarketView .runner-runner .runner-name h4,
+        .runner-runner .runner-name h4,
+        .runner-runner .clippable-spacer,
+        .runner-runner .runner-display-name h4,
+        .runner-runner .clippable h4 {
+            margin: 0 !important;
+            padding: 0 !important;
+            line-height: 1.2 !important;
+            font-size: 14px !important;
+            font-weight: 700 !important;
+            font-family: "Roboto Condensed", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+            color: #212529 !important;
+            letter-spacing: 0 !important;
+        }
+        /* jockey */
+        .market-runners .runner-runner .runner-position,
+        #MarketView .runner-runner .runner-position,
+        .runner-runner .runner-position {
+            display: block !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            line-height: 1.15 !important;
+            font-size: 12px !important;
+            font-weight: 400 !important;
+            color: #6c757d !important;
+            font-family: "Roboto Condensed", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+        }
+        .runner-runner .runner-position .ml-1,
+        .runner-runner .runner-position span {
+            font-size: 12px !important;
+            font-weight: 400 !important;
+            color: #6c757d !important;
+        }
+        body.nx-greyhound .runner-runner .selector {
+            display: none !important; width: 0 !important; margin: 0 !important; padding: 0 !important;
+        }
+        body.nx-greyhound .runner-runner .runner-position {
+            display: none !important;
+        }
+        body.nx-greyhound .runner-runner {
+            min-height: 32px !important;
+            padding: 3px 0 !important;
         }
 
-        center a {
-            font-size: 13px;
-        }
+        center a { color: white; font-size: 13px; }
     </style>
 
     <script>
@@ -97,29 +191,34 @@
         // clothNum = runner.clothNumber (may be null for some tracks)
         // sortPriority = runner.sortPriority (always present from Betfair — 1,2,3...)
         window.getClothColor = function(clothNum, sortPriority) {
+            // Official GB greyhound trap colours (also fine for horse fallback)
             var colors = [
-                '#E63946',  // 1 Red
-                '#FFFFFF',  // 2 White
-                '#1D3557',  // 3 Dark Blue
-                '#F4A261',  // 4 Yellow/Orange
-                '#2A9D8F',  // 5 Green
-                '#111111',  // 6 Black
-                '#F72585',  // 7 Hot Pink
-                '#F77F00',  // 8 Orange
+                '#E30613',  // 1 Red
+                '#0057B8',  // 2 Blue
+                '#FFFFFF',  // 3 White
+                '#111111',  // 4 Black
+                '#FF8C00',  // 5 Orange
+                '#111111',  // 6 Black (striped overlay applied separately)
+                '#C4D600',  // 7 Green/Yellow
+                '#E91E8C',  // 8 Pink
                 '#8338EC',  // 9 Purple
                 '#0077B6',  // 10 Blue
                 '#06D6A0',  // 11 Mint
                 '#FFB703',  // 12 Gold
                 '#E9C46A',  // 13 Light Yellow
                 '#E76F51',  // 14 Coral
-                '#118AB2',  // 15 Teal Blue
+                '#118AB2',  // 15 Teal
                 '#073B4C',  // 16 Dark Teal
             ];
-            // clothNumber pehle try karo, warna sortPriority use karo
             var n = parseInt(clothNum);
             if (isNaN(n) || n < 1) n = parseInt(sortPriority);
             if (isNaN(n) || n < 1) n = 1;
             return colors[(n - 1) % colors.length];
+        };
+        window.isTrapStriped = function(clothNum, sortPriority) {
+            var n = parseInt(clothNum);
+            if (isNaN(n) || n < 1) n = parseInt(sortPriority);
+            return n === 6; // official trap 6 = black/white stripes
         };
         // mv2.min.js svc_prefix use karta hai catalog2 / orders calls ke liye
         const SsocketUrl = "https://1xbetbackend.work.gd/signalr";
@@ -131,6 +230,33 @@
         // const casinoUrl = "https://casino-ws.bfexch.com/signalr";
         // var SsocketEnable = 0;
     </script>
+
+<script>
+(function () {
+  // Horse/Greyhound: show cloth number once + horse name without leading "1. "
+  window.displayRaceRunnerName = function (runner) {
+    if (!runner) return '';
+    var name = String(runner.runnerName || runner.name || '').trim();
+    // always strip leading "12." / "12 " so no double numbers
+    var bare = name.replace(/^\d+\.\s*/, '').replace(/^\d+\s+/, '').trim() || name;
+    var cloth = (runner.clothNumber != null && String(runner.clothNumber) !== '') ? String(runner.clothNumber).trim() : '';
+    if (!cloth) {
+      var m0 = name.match(/^(\d+)\.?\s+/);
+      if (m0) cloth = m0[1];
+    }
+    if (cloth) return cloth + '. ' + bare;
+    return bare || name;
+  };
+  window.raceHorseName = function (runner) {
+    if (!runner) return '';
+    var name = String(runner.runnerName || '').trim();
+    // strip leading "12." or "12 "
+    name = name.replace(/^\d+\.?\s+/, '');
+    return name;
+  };
+})();
+</script>
+
 </head>
 <body class="bg-gray d-flex flex-column">
 <div class="main-page" id="app">   <!-- ← id="app" important for Vue -->
@@ -1067,7 +1193,7 @@
   document.addEventListener('DOMContentLoaded', initMarketPage);
 
   // Related Events loader
-  async function loadRelatedEventsBySport(sport) {
+  window.loadRelatedEventsBySport = async function loadRelatedEventsBySport(sport) {
     if (!sport) return;
     try {
       const res    = await fetch(`${API_BASE}/markets/live/${sport.toLowerCase()}`);
@@ -1080,31 +1206,39 @@
         const today  = new Date();
 
         events.forEach(event => {
-          const startTime = new Date(event.marketStartTime || event.startTime);
-          const localTime = startTime.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+          const rawStart = event.marketStartTime || event.startTime;
+          let startTime = new Date(rawStart);
+          // force UTC parse if no zone (race times)
+          if (rawStart && typeof rawStart === 'string' && !/[zZ]|[+-]\d{2}/.test(rawStart)) {
+            const s = rawStart.replace(' ', 'T').replace(/(\.\d{3})\d+/, '$1');
+            startTime = new Date(/T/.test(s) ? s + (s.endsWith('Z') ? '' : 'Z') : s);
+          }
+          const localTime = startTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 
           let dayLabel = 'Upcoming';
-          if (startTime.toDateString() === today.toDateString()) {
-            dayLabel = 'Today';
-          } else {
-            const tomorrow = new Date();
-            tomorrow.setDate(today.getDate() + 1);
-            if (startTime.toDateString() === tomorrow.toDateString()) dayLabel = 'Tomorrow';
+          if (!isNaN(startTime.getTime())) {
+            if (startTime.toDateString() === today.toDateString()) dayLabel = 'Today';
+            else {
+              const tomorrow = new Date();
+              tomorrow.setDate(today.getDate() + 1);
+              if (startTime.toDateString() === tomorrow.toDateString()) dayLabel = 'Tomorrow';
+            }
           }
 
+          const name = event.match || event.eventName || event.marketName || 'Unknown Match';
           const tr = document.createElement('tr');
           tr.className   = 'relatedtr';
           tr.style.cursor = 'pointer';
           tr.onclick = () => { goToMatch(sport, event); };
           tr.innerHTML = `
-            <td class="sport-date" style="font-size:14px; padding:0 20px;">
+            <td class="sport-date" style="font-size:14px; padding:0 12px;">
               <div>
                 <span class="day">${dayLabel}</span>
-                <span class="market-time">${localTime}</span>
-                <span class="d-none utctime" data-format="H:mm">${event.marketStartTime || event.startTime}</span>
+                <span class="market-time">${isNaN(startTime.getTime()) ? '' : localTime}</span>
+                <span class="d-none utctime" data-format="H:mm">${rawStart || ''}</span>
               </div>
             </td>
-            <td><div>${event.marketName || event.match || 'Unknown Match'}</div></td>
+            <td><div>${localTime && !isNaN(startTime.getTime()) ? localTime + ' ' : ''}${name}</div></td>
           `;
           tbody.appendChild(tr);
         });
@@ -1117,11 +1251,37 @@
     }
   }
 
+  function mapSportToLiveKey(sport, eventTypeId) {
+    var s = String(sport || '').toLowerCase();
+    var eid = String(eventTypeId || '');
+    if (eid === '7' || s.indexOf('horse') >= 0) return 'horse';
+    if (eid === '4339' || s.indexOf('grey') >= 0) return 'greyhound';
+    if (s.indexOf('soccer') >= 0 || s.indexOf('football') >= 0) return 'football';
+    if (s.indexOf('tennis') >= 0) return 'tennis';
+    if (s.indexOf('cricket') >= 0) return 'cricket';
+    if (s === 'horse' || s === 'greyhound' || s === 'football' || s === 'tennis' || s === 'cricket') return s;
+    return s || null;
+  }
+
   async function initRelatedEvents() {
     if (!marketId) return;
-    const sport = await getSportByMarketId(marketId);
-    console.log("Sport name:", sport);
-    loadRelatedEventsBySport(sport);
+    var sport = await getSportByMarketId(marketId);
+    var key = mapSportToLiveKey(sport, null);
+    // Race composite ids / late Vue Catalog
+    if (!key || key === 'unknown') {
+      setTimeout(function () {
+        try {
+          var el = document.getElementById('MarketView') || document.getElementById('app');
+          var vm = el && el.__vue__;
+          var eid = vm && vm.Catalog && vm.Catalog.eventTypeId;
+          var et = vm && vm.Catalog && (vm.Catalog.eventType || vm.Catalog.sport && vm.Catalog.sport.name);
+          key = mapSportToLiveKey(et || sport, eid);
+          if (key) loadRelatedEventsBySport(key);
+        } catch (e) {}
+      }, 1200);
+    }
+    console.log("Sport name:", sport, "live key:", key);
+    if (key) loadRelatedEventsBySport(key);
   }
 
   initRelatedEvents();
@@ -1710,17 +1870,82 @@
   }
 
   function ensureTimerEl() {
-    // Vue re-render kar sakta hai is liye har tick par element exist karna check karo,
-    // agar Vue ne hata diya ho to dobara create/insert karo.
     var el = document.getElementById('race-timer-display');
     if (el && document.body.contains(el)) return el;
 
     el = document.createElement('p');
     el.id = 'race-timer-display';
-    el.style.cssText = 'font-size:14px; font-weight:bold; margin:2px 0;';
+    el.style.cssText = 'font-size:13px; font-weight:600; margin:2px 0 0 0; color:#4dbd74;';
     var tbTop = document.querySelector('.tb-top-text');
-    if (tbTop) tbTop.appendChild(el);
+    if (tbTop) {
+      // insert right after the event-title h4 so it sits under the race name (bpexch)
+      var title = tbTop.querySelector('h4.event-title');
+      if (title && title.nextSibling) tbTop.insertBefore(el, title.nextSibling);
+      else tbTop.appendChild(el);
+    }
     return el;
+  }
+
+
+  // Fix race title time (match device local like bpexch) + hide duplicate date line + Score Card
+  function fixRaceHeaderUI(vm, startTimeIso) {
+    try {
+      if (!vm || !vm.Catalog) return;
+      var eid = String(vm.Catalog.eventTypeId || '');
+      if (eid !== '7' && eid !== '4339') return;
+
+      // Hide "Sep 10, 2026 9:52 PM" duplicate under title
+      var dt = document.getElementById('header-current-datetime');
+      if (dt) {
+        dt.style.display = 'none';
+        var p = dt.closest('p');
+        // keep Keep Display On checkbox visible if present
+        if (p) {
+          var keep = p.querySelector('#DisplayOnBox');
+          // hide only the datetime text node area
+        }
+      }
+
+      // Hide Score Card for racing only; TV stays, full width if alone
+      var sc = document.getElementById('btn-scorecard');
+      var tv = document.getElementById('btn-tv');
+      if (sc) sc.style.display = 'none';
+      if (tv) { tv.style.width = '100%'; tv.style.borderRight = 'none'; }
+
+      // Rebuild eventName leading clock from marketStartTime in local TZ
+      if (startTimeIso) {
+        var ms = parseAsUtcMs(startTimeIso);
+        if (!isNaN(ms)) {
+          var d = new Date(ms);
+          var hours = d.getHours();
+          var ampm = hours >= 12 ? 'pm' : 'am';
+          var h12 = hours % 12 || 12;
+          var t = h12 + ':' + pad(d.getMinutes()) + ' ' + ampm;
+          var en = String(vm.Catalog.eventName || '');
+          var rest = en.replace(/^\s*\d{1,2}:\d{2}\s*(AM|PM|am|pm)?\s*/i, '').trim();
+          if (!rest) rest = en;
+          var fixed = t + ' ' + rest;
+          if (vm.Catalog.eventName !== fixed) {
+            if (vm.$set) vm.$set(vm.Catalog, 'eventName', fixed);
+            else vm.Catalog.eventName = fixed;
+          }
+        }
+      }
+
+      // SAFE: only fill missing clothNumber — do NOT touch runnerName/jockeyName
+      try {
+        var runners = vm.Catalog.runners || [];
+        for (var i = 0; i < runners.length; i++) {
+          var rn = runners[i];
+          if (!rn) continue;
+          if (!rn.clothNumber && rn.sortPriority != null && rn.sortPriority !== '') {
+            if (vm.$set) vm.$set(rn, 'clothNumber', String(rn.sortPriority));
+            else rn.clothNumber = String(rn.sortPriority);
+          }
+        }
+      } catch (e2) {}
+
+    } catch (e) {}
   }
 
   function startRaceTimer(startTimeIso) {
@@ -1770,19 +1995,19 @@
           startRaceTimer(startTime);
           updateHeaderDateTime(startTime);
           watchHeaderDateTime(startTime);
+          fixRaceHeaderUI(vm, startTime);
         } else if (startTime) {
-          // Same race — header date/time ko bhi refresh rakho (Vue currentDateTime
-          // har render par system time se overwrite kar sakta hai)
           updateHeaderDateTime(startTime);
           watchHeaderDateTime(startTime);
+          fixRaceHeaderUI(vm, startTime);
         } else if (!startTime && _raceTimerInterval) {
-          // startTime gayab ho gayi (race switch ho gaya, data abhi nahi aaya) — purana timer roko
           clearInterval(_raceTimerInterval);
           _raceTimerInterval = null;
           _lastStartTime = null;
           var existingEl = document.getElementById('race-timer-display');
           if (existingEl) existingEl.textContent = '';
         }
+        if (isRaceSport) fixRaceHeaderUI(vm, startTime || null);
       } else if (_raceTimerInterval) {
         // Cricket/tennis market par switch ho gaya — racing timer band karo
         clearInterval(_raceTimerInterval);
@@ -1810,10 +2035,10 @@
                         </div>
 
                         <div class="scrollmenu">
-                            <a v-if="subMarkets.length > 0" class="tablink btn btn-primary"
+                            <a v-if="subMarkets.length > 0 || Catalog.eventTypeId == 7 || Catalog.eventTypeId == 4339 || (OtherRaceMarkets && OtherRaceMarkets.length > 0)" class="tablink btn btn-primary"
                                id="Alltab"
                                v-on:click="ShowTab('All', -1)">
-                                {{ FirstTabName }}
+                                {{ (Catalog.eventTypeId == 7 || Catalog.eventTypeId == 4339) ? 'WIN' : FirstTabName }}
                             </a>
                             <a class="tablink btn btn-primary" id="TOSStab" v-if="TossMarkets.length > 0" href="#" onclick="MarketTab('TOSS')">Toss</a>
                             <a class="tablink btn btn-primary" id="BMtab" v-if="BookmakerMarkets.length > 0" href="#" onclick="MarketTab('BM')">Bookmaker</a>
@@ -1826,9 +2051,8 @@
                             <a class="tablink btn btn-primary" href="#"
                                v-bind:id="'race' + index + 'tab'"
                                v-for="(Catalog, index) in OtherRaceMarkets"
-                               v-if="Catalog.eventTypeId != 7 && Catalog.eventTypeId != 4339"
                                v-on:click="ShowTab('race', index)">
-                                {{ Catalog.marketName }}
+                                {{ Catalog.marketName || 'To Be Placed' }}
                             </a>
                         </div>
                     </div>
@@ -1971,7 +2195,7 @@
                         <div class="tab-content" id="nav-tabContent">
                             <div class="tab-pane fade show active" id="nav-1" role="tabpanel" aria-labelledby="nav-home-tab">
                                 <div class="table-box-body">
-                                    <div class="tb-content" v-if="RunnersAggregate.length >= 2">
+                                    <div class="tb-content" v-if="RunnersAggregate && RunnersAggregate.length >= 2">
                                            
 <div class="market-titlebar">
     <p class="market-name">
@@ -1992,7 +2216,8 @@
     <div v-if="Catalog.marketType !='FIGURE'" class="market-overarround"><span></span><strong>Back</strong></div>
     <div v-if="Catalog.marketType !='FIGURE'" class="market-overarround market-overarround-lay"><strong>Lay</strong></div>
 </div>
-                                        <runner-aggregate v-bind:marketid="aggregateRun.marketId"
+                                        <runner-aggregate v-if="aggregateRun"
+                                                          v-bind:marketid="aggregateRun.marketId"
                                                           v-bind:name="aggregateRun.runnerName"
                                                           v-bind:back="aggregateRun.back"
                                                           v-bind:lay="aggregateRun.lay"
@@ -2030,7 +2255,7 @@
          v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
-              v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
+              v-show="Catalog.eventTypeId==7"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
@@ -2052,9 +2277,7 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        <span v-if="runner.clothNumber">{{ runner.clothNumber }}.</span>
-
-                        {{ runner.runnerName }}
+                        {{ displayRaceRunnerName(runner) }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -2084,9 +2307,9 @@
       <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose | format }}</strong>
     </span>
   </span>
-  <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
+  <span class="ml-1" v-if="runner.jockeyName || runner.trainerName" style="font-weight: normal;">
 
-    {{ runner.jockeyName }}
+    {{ runner.jockeyName || runner.trainerName }}
   </span>
   <span v-if="Catalog.bettingType === 'LINE'">
     &nbsp;&nbsp;<a href="#" v-on:click.prevent="ShowFancyPosition(Catalog.marketId)">Book</a>
@@ -2098,8 +2321,8 @@
       <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin | format }}</strong>
     </span>
   </span>
-  <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
-    {{ runner.jockeyName }}
+  <span class="ml-1" v-if="runner.jockeyName || runner.trainerName" style="font-weight: normal;">
+    {{ runner.jockeyName || runner.trainerName }}
   </span>
   <span v-if="Catalog.bettingType === 'LINE'">
     &nbsp;&nbsp;<a href="#" v-on:click.prevent="ShowFancyPosition(Catalog.marketId)">Book</a>
@@ -2194,7 +2417,7 @@
          v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
-              v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
+              v-show="Catalog.eventTypeId==7"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
@@ -2216,7 +2439,7 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        {{ runner.runnerName }}
+                        {{ displayRaceRunnerName(runner) }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -2235,9 +2458,9 @@
                     <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
-                <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
+                <span class="ml-1" v-if="runner.jockeyName || runner.trainerName" style="font-weight: normal;">
 
-                    {{ runner.jockeyName }}
+                    {{ runner.jockeyName || runner.trainerName }}
                 </span>
                 <span v-if="Catalog.bettingType === 'LINE'">
                     &nbsp;&nbsp;<a href="#" v-on:click.prevent="ShowFancyPosition(Catalog.marketId)">Book</a>
@@ -2325,7 +2548,7 @@
          v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
-              v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
+              v-show="Catalog.eventTypeId==7"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
@@ -2347,7 +2570,7 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        {{ runner.runnerName }}
+                        {{ displayRaceRunnerName(runner) }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -2366,9 +2589,9 @@
                     <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
-                <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
+                <span class="ml-1" v-if="runner.jockeyName || runner.trainerName" style="font-weight: normal;">
 
-                    {{ runner.jockeyName }}
+                    {{ runner.jockeyName || runner.trainerName }}
                 </span>
                 <span v-if="Catalog.bettingType === 'LINE'">
                     &nbsp;&nbsp;<a href="#" v-on:click.prevent="ShowFancyPosition(Catalog.marketId)">Book</a>
@@ -2455,7 +2678,7 @@
          v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
-              v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
+              v-show="Catalog.eventTypeId==7"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
@@ -2477,7 +2700,7 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        {{ runner.runnerName }}
+                        {{ displayRaceRunnerName(runner) }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -2496,9 +2719,9 @@
                     <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
-                <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
+                <span class="ml-1" v-if="runner.jockeyName || runner.trainerName" style="font-weight: normal;">
 
-                    {{ runner.jockeyName }}
+                    {{ runner.jockeyName || runner.trainerName }}
                 </span>
                 <span v-if="Catalog.bettingType === 'LINE'">
                     &nbsp;&nbsp;<a href="#" v-on:click.prevent="ShowFancyPosition(Catalog.marketId)">Book</a>
@@ -2586,7 +2809,7 @@
          v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
-              v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
+              v-show="Catalog.eventTypeId==7"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
@@ -2608,7 +2831,7 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        {{ runner.runnerName }}
+                        {{ displayRaceRunnerName(runner) }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -2627,9 +2850,9 @@
                     <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
-                <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
+                <span class="ml-1" v-if="runner.jockeyName || runner.trainerName" style="font-weight: normal;">
 
-                    {{ runner.jockeyName }}
+                    {{ runner.jockeyName || runner.trainerName }}
                 </span>
                 <span v-if="Catalog.bettingType === 'LINE'">
                     &nbsp;&nbsp;<a href="#" v-on:click.prevent="ShowFancyPosition(Catalog.marketId)">Book</a>
@@ -2716,7 +2939,7 @@
          v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
-              v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
+              v-show="Catalog.eventTypeId==7"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
@@ -2738,7 +2961,7 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        {{ runner.runnerName }}
+                        {{ displayRaceRunnerName(runner) }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -2757,9 +2980,9 @@
                     <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
-                <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
+                <span class="ml-1" v-if="runner.jockeyName || runner.trainerName" style="font-weight: normal;">
 
-                    {{ runner.jockeyName }}
+                    {{ runner.jockeyName || runner.trainerName }}
                 </span>
                 <span v-if="Catalog.bettingType === 'LINE'">
                     &nbsp;&nbsp;<a href="#" v-on:click.prevent="ShowFancyPosition(Catalog.marketId)">Book</a>
@@ -2923,7 +3146,7 @@
          v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
-              v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
+              v-show="Catalog.eventTypeId==7"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
@@ -2945,7 +3168,7 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        {{ runner.runnerName }}
+                        {{ displayRaceRunnerName(runner) }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -2964,9 +3187,9 @@
                     <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
-                <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
+                <span class="ml-1" v-if="runner.jockeyName || runner.trainerName" style="font-weight: normal;">
 
-                    {{ runner.jockeyName }}
+                    {{ runner.jockeyName || runner.trainerName }}
                 </span>
                 <span v-if="Catalog.bettingType === 'LINE'">
                     &nbsp;&nbsp;<a href="#" v-on:click.prevent="ShowFancyPosition(Catalog.marketId)">Book</a>
@@ -3061,7 +3284,7 @@
          v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
-              v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
+              v-show="Catalog.eventTypeId==7"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
@@ -3083,7 +3306,7 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        {{ runner.runnerName }}
+                        {{ displayRaceRunnerName(runner) }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -3102,9 +3325,9 @@
                     <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
-                <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
+                <span class="ml-1" v-if="runner.jockeyName || runner.trainerName" style="font-weight: normal;">
 
-                    {{ runner.jockeyName }}
+                    {{ runner.jockeyName || runner.trainerName }}
                 </span>
                 <span v-if="Catalog.bettingType === 'LINE'">
                     &nbsp;&nbsp;<a href="#" v-on:click.prevent="ShowFancyPosition(Catalog.marketId)">Book</a>
@@ -3193,7 +3416,7 @@
          v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
-              v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
+              v-show="Catalog.eventTypeId==7"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
@@ -3215,7 +3438,7 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        {{ runner.runnerName }}
+                        {{ displayRaceRunnerName(runner) }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -3234,9 +3457,9 @@
                     <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
-                <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
+                <span class="ml-1" v-if="runner.jockeyName || runner.trainerName" style="font-weight: normal;">
 
-                    {{ runner.jockeyName }}
+                    {{ runner.jockeyName || runner.trainerName }}
                 </span>
                 <span v-if="Catalog.bettingType === 'LINE'">
                     &nbsp;&nbsp;<a href="#" v-on:click.prevent="ShowFancyPosition(Catalog.marketId)">Book</a>
@@ -3324,7 +3547,7 @@
          v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
-              v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
+              v-show="Catalog.eventTypeId==7"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
@@ -3346,7 +3569,7 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        {{ runner.runnerName }}
+                        {{ displayRaceRunnerName(runner) }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -3365,9 +3588,9 @@
                     <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
-                <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
+                <span class="ml-1" v-if="runner.jockeyName || runner.trainerName" style="font-weight: normal;">
 
-                    {{ runner.jockeyName }}
+                    {{ runner.jockeyName || runner.trainerName }}
                 </span>
                 <span v-if="Catalog.bettingType === 'LINE'">
                     &nbsp;&nbsp;<a href="#" v-on:click.prevent="ShowFancyPosition(Catalog.marketId)">Book</a>
@@ -3456,7 +3679,7 @@
          v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
-              v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
+              v-show="Catalog.eventTypeId==7"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
@@ -3478,7 +3701,7 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        {{ runner.runnerName }}
+                        {{ displayRaceRunnerName(runner) }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -3497,9 +3720,9 @@
                     <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
-                <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
+                <span class="ml-1" v-if="runner.jockeyName || runner.trainerName" style="font-weight: normal;">
 
-                    {{ runner.jockeyName }}
+                    {{ runner.jockeyName || runner.trainerName }}
                 </span>
                 <span v-if="Catalog.bettingType === 'LINE'">
                     &nbsp;&nbsp;<a href="#" v-on:click.prevent="ShowFancyPosition(Catalog.marketId)">Book</a>
@@ -3588,7 +3811,7 @@
          v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
-              v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
+              v-show="Catalog.eventTypeId==7"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
@@ -3610,7 +3833,7 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        {{ runner.runnerName }}
+                        {{ displayRaceRunnerName(runner) }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -3629,9 +3852,9 @@
                     <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
-                <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
+                <span class="ml-1" v-if="runner.jockeyName || runner.trainerName" style="font-weight: normal;">
 
-                    {{ runner.jockeyName }}
+                    {{ runner.jockeyName || runner.trainerName }}
                 </span>
                 <span v-if="Catalog.bettingType === 'LINE'">
                     &nbsp;&nbsp;<a href="#" v-on:click.prevent="ShowFancyPosition(Catalog.marketId)">Book</a>
@@ -3798,7 +4021,7 @@
          v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
-              v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
+              v-show="Catalog.eventTypeId==7"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
@@ -3820,7 +4043,7 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        {{ runner.runnerName }}
+                        {{ displayRaceRunnerName(runner) }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -3839,9 +4062,9 @@
                     <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
-                <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
+                <span class="ml-1" v-if="runner.jockeyName || runner.trainerName" style="font-weight: normal;">
 
-                    {{ runner.jockeyName }}
+                    {{ runner.jockeyName || runner.trainerName }}
                 </span>
                 <span v-if="Catalog.bettingType === 'LINE'">
                     &nbsp;&nbsp;<a href="#" v-on:click.prevent="ShowFancyPosition(Catalog.marketId)">Book</a>
@@ -3902,7 +4125,6 @@
 
                     <div class="tabcontent"
                          v-for="(Catalog, index) in OtherRaceMarkets"
-                         v-if="Catalog.eventTypeId != 7 && Catalog.eventTypeId != 4339"
                          v-bind:id="'race' + index">
                            
 <div class="market-titlebar">
@@ -3934,7 +4156,7 @@
          v-bind:class="{ 'winner': runner.status == 'WINNER' }"
          v-for="runner in Catalog.runners">
         <span class="selector ml-2"
-              v-show="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339"
+              v-show="Catalog.eventTypeId==7"
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
@@ -3956,7 +4178,7 @@
                         data-placement="top"
                         data-html="true"
                         :title="MetadataHtml(runner)">
-                        {{ runner.runnerName }}
+                        {{ displayRaceRunnerName(runner) }}
                     </h4>
                     <h4 v-else class="clippable-spacer"
                         data-toggle="tooltip"
@@ -3975,9 +4197,9 @@
                     <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
-                <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
+                <span class="ml-1" v-if="runner.jockeyName || runner.trainerName" style="font-weight: normal;">
 
-                    {{ runner.jockeyName }}
+                    {{ runner.jockeyName || runner.trainerName }}
                 </span>
                 <span v-if="Catalog.bettingType === 'LINE'">
                     &nbsp;&nbsp;<a href="#" v-on:click.prevent="ShowFancyPosition(Catalog.marketId)">Book</a>
@@ -4044,9 +4266,8 @@
                 <div class="table-wrap">
                     <div class="table-box-body">
                         <div class="btn-group btn-group-xs" style="width:100%; height:30px; margin-bottom:2px;">
-                            <button class="btn btn-primary btn-xs" style="width:50%; border-right:solid" onclick="SHOWTV()">Tv</button>
-
-                                <button class="btn btn-primary btn-xs" style="width:50%" onclick="return false;">Score Card</button>
+                            <button class="btn btn-primary btn-xs" id="btn-tv" style="width:50%; border-right:solid" onclick="SHOWTV()">Tv</button>
+                                <button class="btn btn-primary btn-xs" id="btn-scorecard" style="width:50%" onclick="return false;">Score Card</button>
                         </div>
                         <div id="TVDIVIFRAME" style="display:none;">
                         </div>
@@ -4603,7 +4824,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       // Update username in navbar
       const userBtn = document.getElementById("navbar-user");
       if (userBtn)
-        userBtn.innerHTML = `${user.username} (${user.role}) <i class="fas fa-caret-down"></i>`;
+        userBtn.innerHTML = `${user.username} <i class="fas fa-caret-down"></i>`;
 
       // Update wallet balance
       const walletBalance = document.querySelector(".wallet-balance");
@@ -4646,7 +4867,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       // Username ko button me update karo
       const userBtn = document.getElementById("navbar-user");
-      if (userBtn) userBtn.innerHTML = `${user.username} (${user.role}) <i class="fas fa-caret-down"></i>`;
+      if (userBtn) userBtn.innerHTML = `${user.username} <i class="fas fa-caret-down"></i>`;
 
       // Wallet balance update
       const walletBalance = document.querySelector(".wallet-balance");
@@ -5027,7 +5248,7 @@ async function updateUserWallet() {
 
         const userBtn = document.getElementById("navbar-user");
         if (userBtn && user.username)
-            userBtn.innerHTML = `${user.username}${user.role ? ' (' + user.role + ')' : ''} <i class="fas fa-caret-down"></i>`;
+            userBtn.innerHTML = `${user.username} <i class="fas fa-caret-down"></i>`;
 
         const walletBalance = document.querySelector(".wallet-balance");
         if (walletBalance) walletBalance.textContent = `B: ${bal.toLocaleString()}`;
@@ -6145,56 +6366,25 @@ export default {
 </script> -->
 
     
+<!-- runner-aggregate: use mv2.min.js original (do not override) -->
 <script>
-Vue.component('runner-aggregate', {
-    template: '#runner-aggregate-template',
-    props: ['runner', 'Catalog'],
-    data() {
-        return {
-            displayPrices: {
-                price1: parseFloat(this.runner.price1),
-                price2: parseFloat(this.runner.price2),
-                price3: parseFloat(this.runner.price3),
-                lay1: parseFloat(this.runner.lay1),
-                lay2: parseFloat(this.runner.lay2),
-                lay3: parseFloat(this.runner.lay3)
-            },
-            timers: {}
-        };
-    },
-    watch: {
-        'runner.price1'(newVal) { this.smoothUpdate('price1', newVal); },
-        'runner.price2'(newVal) { this.smoothUpdate('price2', newVal); },
-        'runner.price3'(newVal) { this.smoothUpdate('price3', newVal); },
-        'runner.lay1'(newVal) { this.smoothUpdate('lay1', newVal); },
-        'runner.lay2'(newVal) { this.smoothUpdate('lay2', newVal); },
-        'runner.lay3'(newVal) { this.smoothUpdate('lay3', newVal); }
-    },
-    methods: {
-        smoothUpdate(key, newValue) {
-            const target = parseFloat(newValue);
-            if (isNaN(target)) return;
-
-            if (this.timers[key]) cancelAnimationFrame(this.timers[key]);
-
-            const step = () => {
-                const current = this.displayPrices[key];
-                const diff = target - current;
-                if (Math.abs(diff) < 0.01) {
-                    this.displayPrices[key] = target;
-                    return;
-                }
-                this.displayPrices[key] = current + diff * 0.2;
-                this.timers[key] = requestAnimationFrame(step);
-            };
-            this.timers[key] = requestAnimationFrame(step);
-        },
-        ShowBetSlip(runner, type, marketId, level) {
-            this.$emit('betslip', { runner, type, marketId, level });
-        }
+(function(){
+  function bindDisplay() {
+    if (window.Vue && !Vue.prototype.displayRaceRunnerName) {
+      Vue.prototype.displayRaceRunnerName = window.displayRaceRunnerName || function(r){
+        if(!r) return '';
+        var name = String(r.runnerName||r.name||'').trim();
+        var cloth = (r.clothNumber!=null && String(r.clothNumber)!=='') ? String(r.clothNumber).trim() : '';
+        var bare = name.replace(/^\d+\.?\s+/, '').trim() || name;
+        return cloth ? (cloth + '. ' + bare) : name;
+      };
     }
-});
+  }
+  bindDisplay();
+  document.addEventListener('DOMContentLoaded', bindDisplay);
+})();
 </script>
+
 <script>
         var show_tv_tab = false;
         var LastTab = "";
@@ -6494,19 +6684,38 @@ Vue.component('runner-aggregate', {
         }
     </script>  
     <script>
-        // Global filters (agar mv2.min.js mein nahi aa rahe)
+        // Global filters — sizes like bpexch (8.2M, 24.3K, 371)
+        function nxCompactSize(value) {
+            if (value === null || value === undefined || value === '' || value === '-') return '';
+            var n = Number(String(value).replace(/,/g, ''));
+            if (!isFinite(n) || n === 0) return '';
+            var sign = n < 0 ? '-' : '';
+            var abs = Math.abs(n);
+            if (abs >= 1000000) {
+                var m = abs / 1000000;
+                var ms = (m >= 100) ? String(Math.round(m)) : (Math.round(m * 10) / 10).toFixed(1).replace(/\.0$/, '');
+                return sign + ms + 'M';
+            }
+            if (abs >= 1000) {
+                var k = abs / 1000;
+                var ks = (k >= 100) ? String(Math.round(k)) : (Math.round(k * 10) / 10).toFixed(1).replace(/\.0$/, '');
+                return sign + ks + 'K';
+            }
+            if (Math.abs(abs - Math.round(abs)) < 0.05) return sign + String(Math.round(abs));
+            return sign + (Math.round(abs * 10) / 10).toString();
+        }
         Vue.filter('formatForiegn', function (value) {
-            // 0 ya falsy value = blank dikhao (1sec flash fix)
-            if (!value || Number(value) === 0) return '';
-            return Number(value).toLocaleString();
+            return nxCompactSize(value);
         });
         Vue.filter('formatForiegn2', function (value) {
-            if (!value || Number(value) === 0) return '';
-            return Number(value).toLocaleString();
+            return nxCompactSize(value);
         });
         Vue.filter('format', function (value) {
-            if (!value || Number(value) === 0) return '';
-            return Number(value).toLocaleString();
+            // Runner PnL under names — full amount (10000 not 10K)
+            if (value === null || value === undefined || value === '' || Number(value) === 0) return '';
+            var n = Number(String(value).replace(/,/g, ''));
+            if (!isFinite(n) || n === 0) return '';
+            return Math.round(n).toLocaleString('en-US');
         });
 
         // Unreal component ko manually register karo (safety ke liye)
@@ -6522,6 +6731,12 @@ Vue.component('runner-aggregate', {
                 } else {
                     console.error("MarketFactory not found! Check mv2.min.js");
                 }
+                // Re-bind compact size filters after mv2 (override toLocaleString)
+                try {
+                  Vue.filter('formatForiegn', nxCompactSize);
+                  Vue.filter('formatForiegn2', nxCompactSize);
+                  /* format stays full numbers for runner PnL */
+                } catch (e) {}
 
                 // ✅ Apna scorecard (#nx-scorecard) Vue se directly Catalog data se bind hai —
                 //    koi external iframe src set karne ki zaroorat nahi.
@@ -6646,7 +6861,7 @@ Vue.component('runner-aggregate', {
     if (!Array.isArray(runners)) return [];
     return runners.map(r => ({
       selectionId:  r.selectionId  || r.id    || Math.random(),
-      runnerName:   r.runnerName   || r.name  || 'Runner',
+      runnerName:   String(r.runnerName || r.name || 'Runner').replace(/^\s*\d+\.?\s+/, '').trim() || (r.runnerName || r.name || 'Runner'),
       status:       r.status       || 'ACTIVE',
       price1: r.back?.[0]?.price ?? r.price1 ?? '-',
       price2: r.back?.[1]?.price ?? r.price2 ?? '-',
@@ -6663,13 +6878,19 @@ Vue.component('runner-aggregate', {
       ifWin:  r.ifWin  || 0,
       ifLose: r.ifLose || 0,
       jockeyName:   (r.jockeyName || null) ? (r.jockeyName).replace(/^\s*\(\d+\)\s*/, '').trim() || null : null,
-      // Silk image — Betfair COLOURS_FILENAME_URL se aati hai (asal Betfair CDN image)
-      silkUrl:      r.silkUrl || null,                 // sirf actual image URL — kabhi hex color nahi
-      silkColor:    r.clothColor || null,               // hex fallback color (jab silk image na ho)
+      // Silk: bpexch silkColor is often full image URL (https://bp-silks.lhre.net/...)
+      silkUrl: (function () {
+        var u = r.silkUrl || r.silkColor || null;
+        if (u && typeof u === 'string' && u.indexOf('http') === 0) return u;
+        return (r.silkUrl && String(r.silkUrl).indexOf('http') === 0) ? r.silkUrl : null;
+      })(),
+      silkColor: (r.clothColor && String(r.clothColor).charAt(0) === '#') ? r.clothColor
+                 : (r.silkColor && String(r.silkColor).charAt(0) === '#') ? r.silkColor : null,
       clothNumber:  r.clothNumber || null,
       sortPriority: r.sortPriority || null,
-      clothColor:   r.clothColor  || null,   // position-based fallback color
-      clothStriped: r.clothStriped || false, // greyhound trap 6 — black/white stripe pattern
+      clothColor:   (r.clothColor && String(r.clothColor).charAt(0) === '#') ? r.clothColor
+                    : (r.silkColor && String(r.silkColor).charAt(0) === '#') ? r.silkColor : (r.clothColor || null),
+      clothStriped: r.clothStriped || false,
       metadataDict: r.metadataDict || null,
       indB1: r.indB1 || '',
       indL1: r.indL1 || '',
@@ -6713,20 +6934,82 @@ Vue.component('runner-aggregate', {
       }
     };
 
+    // Split PLACE / To Be Placed into OtherRaceMarkets (GB/IE horse)
+    const isPlace = (m) => {
+      const t = String(m.marketType || '').toUpperCase();
+      const n = String(m.marketName || '').toLowerCase();
+      return t === 'PLACE' || n.indexOf('to be placed') >= 0 || n === 'place';
+    };
+    const other = data.other || [];
+    const _winCat = (getVm() && getVm().Catalog) ? getVm().Catalog : null;
+    const placeMkts = other.filter(isPlace).map(m => enrichPlaceWithSilks({
+      ...m,
+      marketName: m.marketName || 'To Be Placed',
+      marketType: m.marketType || 'PLACE',
+      eventTypeId: m.eventTypeId || 7,
+    }, _winCat));
+    const otherRest = other.filter(m => !isPlace(m));
+
+    inject('OtherRaceMarkets', placeMkts);
     inject('BookmakerMarkets', data.bookmaker  || []);
     inject('TossMarkets',      data.toss        || []);
     inject('FancyMarkets',     data.fancy       || []);
     inject('Fancy2Markets',    data.fancy2      || []);
     inject('FigureMarkets',    data.figure      || []);
     inject('OddFigureMarkets', data.oddFigure   || []);
-    inject('OtherMarkets',     data.other       || []);
+    inject('OtherMarkets',     otherRest);
   }
+
+
+  function enrichPlaceWithSilks(placeMkt, winCat) {
+    if (!placeMkt) return placeMkt;
+    try {
+      if (winCat) {
+        placeMkt.eventTypeId = placeMkt.eventTypeId || winCat.eventTypeId || 7;
+        placeMkt.countryCode = placeMkt.countryCode || winCat.countryCode;
+        placeMkt.eventName = placeMkt.eventName || winCat.eventName;
+        placeMkt.eventId = placeMkt.eventId || winCat.eventId;
+      } else {
+        placeMkt.eventTypeId = placeMkt.eventTypeId || 7;
+      }
+      var bySel = {};
+      if (winCat && Array.isArray(winCat.runners)) {
+        winCat.runners.forEach(function (r) {
+          if (r && r.selectionId != null) bySel[String(r.selectionId)] = r;
+        });
+      }
+      (placeMkt.runners || []).forEach(function (r) {
+        if (!r) return;
+        var src = bySel[String(r.selectionId)];
+        if (src) {
+          if (!r.silkUrl && src.silkUrl) r.silkUrl = src.silkUrl;
+          if (!r.silkColor && (src.silkColor || src.clothColor)) r.silkColor = src.silkColor || src.clothColor;
+          if (!r.clothColor && (src.clothColor || src.silkColor)) r.clothColor = src.clothColor || src.silkColor;
+          if ((r.clothNumber == null || r.clothNumber === '') && src.clothNumber != null) r.clothNumber = src.clothNumber;
+          if (!r.jockeyName && src.jockeyName) r.jockeyName = src.jockeyName;
+          if (!r.trainerName && src.trainerName) r.trainerName = src.trainerName;
+          if (!r.clothStriped && src.clothStriped) r.clothStriped = src.clothStriped;
+          if (!r.metadata && src.metadata) r.metadata = src.metadata;
+        }
+        // strip leading "12. " from name so template never shows "12. 12. Name"
+        if (r.runnerName) {
+          var nm = String(r.runnerName).trim();
+          var m = nm.match(/^(\d+)\.\s*(.*)$/);
+          if (m) {
+            if (r.clothNumber == null || r.clothNumber === '') r.clothNumber = m[1];
+            r.runnerName = (m[2] || '').trim() || nm;
+          }
+        }
+      });
+    } catch (e) {}
+    return placeMkt;
+  }
+  window.enrichPlaceWithSilks = enrichPlaceWithSilks;
 
   /* ── Flat list ko categories mein baat do ── */
   function categorizeMkts(markets) {
     const out = { bookmaker:[], toss:[], fancy:[], fancy2:[], figure:[], oddFigure:[], other:[] };
     markets.forEach(m => {
-      // Agar backend ne already category set ki ho (catalog2 subMarkets)
       if (m.category && out[m.category]) { out[m.category].push(m); return; }
       const t = (m.marketType || '').toUpperCase();
       const n = (m.marketName || '').toLowerCase();
@@ -6740,7 +7023,8 @@ Vue.component('runner-aggregate', {
       else if (t === 'FIGURE'    || n.includes('figure'))                                       out.figure.push(m);
       else if (t === 'ODD_FIGURE'|| t === 'EVEN_ODD' || n.includes('even') ||
                n.includes('odd figure'))                                                         out.oddFigure.push(m);
-      else if (t !== 'MATCH_ODDS' && t !== 'WINNER')                                            out.other.push(m);
+      else if (t === 'PLACE' || n.includes('to be placed') || n === 'place')                   out.other.push({...m, marketName: m.marketName || 'To Be Placed', marketType: 'PLACE'});
+      else if (t !== 'MATCH_ODDS' && t !== 'WINNER' && t !== 'WIN')                            out.other.push(m);
     });
     return out;
   }
@@ -6760,19 +7044,35 @@ Vue.component('runner-aggregate', {
       elapsed += 300;
     }
 
-    // Horse Race (eventTypeId=7) aur Greyhound (eventTypeId=4339) ke liye
-    // sirf ek WIN market dikhana hai — koi additional markets inject nahi karne
+    // Greyhound: only WIN. Horse GB/IE: also load PLACE (To Be Placed). Other horse countries: WIN only.
     const vm = getVm();
+    let raceLoadPlaceOnly = false;
     if (vm && vm.Catalog) {
-      // Catalog mein eventTypeId set hone ka wait karo
       let tries = 0;
       while (!vm.Catalog.eventTypeId && tries++ < 20) {
         await new Promise(r => setTimeout(r, 200));
       }
       const eid = String(vm.Catalog.eventTypeId || '');
-      if (eid === '7' || eid === '4339') {
-        console.log('[Markets] Horse/Greyhound — additional markets nahi load honge');
+      const mid = String(vm.Catalog.marketId || MARKET_ID || '');
+      const isGrey = eid === '4339';
+      const isHorse = eid === '7' || /^\d{6,}\.\d+$/.test(mid);
+      if (isGrey) {
+        console.log('[Markets] Greyhound — only WIN, no extra markets');
         return;
+      }
+      if (isHorse) {
+        // detect GB/IE for PLACE markets
+        const en = String(vm.Catalog.eventName || '');
+        const cc = String(vm.Catalog.countryCode || '').toUpperCase();
+        const gbIe = ['GB','UK','GBR','IE','IRL'].indexOf(cc) >= 0 ||
+          /\(GB\)|\(UK\)|\(IE\)/i.test(en) ||
+          /\b(ASCOT|NEWMARKET|YORK|CHELTENHAM|LAYTOWN|CURRAGH|LEOPARDSTOWN|DUNDALK|LINGFIELD|SOUTHWELL|NEWCASTLE|DONCASTER|SANDOWN|KEMPTON|HAYDOCK|AYR|EPSOM|GOODWOOD|WINDSOR|PUNCHESTOWN|FAIRYHOUSE|NAAS|BEVERLEY|KELSO|CARLISLE|CATTERICK|CHEPSTOW|CHESTER|EXETER|FFOS LAS|FONTWELL|HEREFORD|HEXHAM|HUNTINGDON|KELSO|LEICESTER|LUDLOW|MARKET RASEN|MUSSELBURGH|NEWTON ABBOT|NOTTINGHAM|PERTH|PLUMPTON|PONTEFRACT|REDCAR|RIPON|SALISBURY|SEDGEFIELD|STRATFORD|TAUNTON|THIRSK|UTTOXETER|WETHERBY|WINCANTON|WOLVERHAMPTON|WORCESTER|YARMOUTH|BATH|BRIGHTON|CLONMEL|CORK|DOWNPATRICK|DOWN ROYAL|GALWAY|GOWRAN|KILBEGGAN|KILLARNEY|LIMERICK|LISTOWEL|ROSCOMMON|SLIGO|TIPPERARY|TRAMORE|WEXFORD|BALLINROBE|BELLEWSTOWN|THURLES)\b/i.test(en);
+        if (!gbIe) {
+          console.log('[Markets] Horse non-GB/IE — only WIN');
+          return;
+        }
+        raceLoadPlaceOnly = true;
+        console.log('[Markets] Horse GB/IE — will load PLACE (To Be Placed)');
       }
     }
 
@@ -6803,13 +7103,28 @@ Vue.component('runner-aggregate', {
       const json = await res.json();
 
       if (json.success && json.data) {
-        const d = applyMatchMarketFilter(json.data, allowedMarketIds);
+        let d = applyMatchMarketFilter(json.data, allowedMarketIds);
+        // Horse GB/IE: keep only PLACE markets
+        if (raceLoadPlaceOnly) {
+          const isPlace = (m) => {
+            const t = String(m.marketType || '').toUpperCase();
+            const n = String(m.marketName || '').toLowerCase();
+            return t === 'PLACE' || n.indexOf('to be placed') >= 0 || n === 'place';
+          };
+          const all = [].concat(d.other || [], d.matchOdds || [], d.all || []);
+          const _wc = (getVm() && getVm().Catalog) ? getVm().Catalog : null;
+          const places = all.filter(isPlace).map(m => enrichPlaceWithSilks({
+            ...m, marketName: m.marketName || 'To Be Placed', marketType: m.marketType || 'PLACE',
+            eventTypeId: m.eventTypeId || 7
+          }, _wc));
+          d = { bookmaker:[], toss:[], fancy:[], fancy2:[], figure:[], oddFigure:[], other: places };
+          console.log(`[Markets] GB/IE PLACE markets: ${places.length}`);
+        }
         const total = (d.bookmaker?.length||0) + (d.toss?.length||0) + (d.fancy?.length||0)
                     + (d.fancy2?.length||0) + (d.figure?.length||0) + (d.oddFigure?.length||0)
                     + (d.other?.length||0);
-        console.log(`[Markets] event-markets → ${total} extra markets (bm:${d.bookmaker?.length} toss:${d.toss?.length} fancy:${d.fancy?.length})`);
+        console.log(`[Markets] event-markets → ${total} extra markets`);
         if (total > 0) { injectMarkets(d); return; }
-        // 0 extra — catalog2 subMarkets try karo
       }
       throw new Error(json.message || 'empty');
     } catch (err) {
@@ -6995,69 +7310,783 @@ Vue.component('runner-aggregate', {
     return el ? el.__vue__ : null;
   }
 
-  function clearRaceExtraMarkets(vm) {
-    const eid = String(vm.Catalog && vm.Catalog.eventTypeId || '');
-    if (eid !== '7' && eid !== '4339') return; // sirf horse/greyhound ke liye
+  function isGbIeRace(vm) {
+    if (!vm || !vm.Catalog) return false;
+    var en = String(vm.Catalog.eventName || '');
+    var cc = String(vm.Catalog.countryCode || '').toUpperCase();
+    if (['GB','UK','GBR','IE','IRL'].indexOf(cc) >= 0) return true;
+    if (/\(GB\)|\(UK\)|\(IE\)|\(IRL\)/i.test(en)) return true;
+    // broad UK/IE course name match
+    if (/\b(ASCOT|NEWMARKET|YORK|CHELTENHAM|LAYTOWN|CURRAGH|LEOPARDSTOWN|DUNDALK|LINGFIELD|SOUTHWELL|NEWCASTLE|DONCASTER|SANDOWN|KEMPTON|HAYDOCK|AYR|EPSOM|GOODWOOD|WINDSOR|PUNCHESTOWN|FAIRYHOUSE|NAAS|BEVERLEY|KELSO|CARLISLE|CATTERICK|CHEPSTOW|CHESTER|EXETER|FONTWELL|HEREFORD|HEXHAM|HUNTINGDON|LEICESTER|LUDLOW|MARKET RASEN|MUSSELBURGH|NEWTON ABBOT|NOTTINGHAM|PERTH|PLUMPTON|PONTEFRACT|REDCAR|RIPON|SALISBURY|SEDGEFIELD|STRATFORD|TAUNTON|THIRSK|UTTOXETER|WETHERBY|WINCANTON|WOLVERHAMPTON|WORCESTER|YARMOUTH|BATH|BRIGHTON|CLONMEL|CORK|DOWNPATRICK|DOWN ROYAL|GALWAY|GOWRAN|KILBEGGAN|KILLARNEY|LIMERICK|LISTOWEL|ROSCOMMON|SLIGO|TIPPERARY|TRAMORE|WEXFORD|BALLINROBE|BELLEWSTOWN|THURLES|FFOS LAS)\b/i.test(en)) return true;
+    // related events sidebar often shows "(GB)" / "(IE)"
+    try {
+      var tb = document.getElementById('relatedEventsBody');
+      var txt = tb ? (tb.textContent || '') : '';
+      if (/\(GB\)|\(UK\)|\(IE\)|\(IRL\)/i.test(txt) && !/\(US\)|\(USA\)|\(AUS\)|\(ZA\)|\(RSA\)/i.test(en)) return true;
+    } catch (e) {}
+    return false;
+  }
 
-    ['OtherMarkets', 'OtherRaceMarkets', 'BookmakerMarkets',
+  function isPlaceMkt(m) {
+    if (!m) return false;
+    var t = String(m.marketType || '').toUpperCase();
+    var n = String(m.marketName || '').toLowerCase();
+    return t === 'PLACE' || n.indexOf('to be placed') >= 0 || n === 'place' || /\bplace\b/.test(n);
+  }
+
+  function clearRaceExtraMarkets(vm) {
+    if (!vm) return;
+    const eid = String(vm.Catalog && vm.Catalog.eventTypeId || '');
+    const mid = String((vm.Catalog && vm.Catalog.marketId) || '');
+    const isGrey  = (eid === '4339');
+    // treat composite race ids as horse when eventTypeId not yet set
+    const isHorse = (eid === '7') || (!isGrey && /^\d{6,}\.\d+$/.test(mid));
+    const isRace = (isHorse || isGrey);
+    if (!isRace) return;
+
+    // Always clear non-race markets
+    ['OtherMarkets', 'BookmakerMarkets',
      'TossMarkets', 'FancyMarkets', 'Fancy2Markets',
      'FigureMarkets', 'OddFigureMarkets'].forEach(function(prop) {
       if (vm[prop] && vm[prop].length > 0) {
         vm[prop].splice(0, vm[prop].length);
-        console.log('[RaceCleaner] Cleared:', prop);
       }
     });
+
+    // Horse GB/IE: keep only PLACE / To Be Placed in OtherRaceMarkets
+    // Greyhound + non-GB/IE horse: clear OtherRaceMarkets entirely
+    if (vm.OtherRaceMarkets && vm.OtherRaceMarkets.length) {
+      if (isHorse && isGbIeRace(vm)) {
+        for (var i = vm.OtherRaceMarkets.length - 1; i >= 0; i--) {
+          if (!isPlaceMkt(vm.OtherRaceMarkets[i])) {
+            vm.OtherRaceMarkets.splice(i, 1);
+          }
+        }
+      } else {
+        vm.OtherRaceMarkets.splice(0, vm.OtherRaceMarkets.length);
+      }
+    }
+
+    // Score Card hide (racing only); TV full width
+    var sc = document.getElementById('btn-scorecard');
+    var tv = document.getElementById('btn-tv');
+    if (sc) sc.style.display = 'none';
+    if (tv) { tv.style.width = '100%'; tv.style.borderRight = 'none'; }
+    var dt = document.getElementById('header-current-datetime');
+    if (dt) dt.style.display = 'none';
   }
 
-  // getClothColor ko Vue methods mein add karo taake template mein call ho sake
+  // getClothColor + continuous race market guard (stops cricket MO flash on race pages)
   (function patchVueMethods() {
     function tryPatch() {
       const el = document.getElementById('MarketView') || document.getElementById('app');
       const vm = el && el.__vue__;
-      if (!vm) { setTimeout(tryPatch, 300); return; }
+      if (!vm) { setTimeout(tryPatch, 200); return; }
       if (!vm.getClothColor) {
         vm.$options.methods = vm.$options.methods || {};
         vm.$options.methods.getClothColor = window.getClothColor;
-        // Vue 2 mein direct property set karo
         vm.getClothColor = window.getClothColor;
-        console.log('[RaceCleaner] getClothColor Vue method added');
+      }
+      clearRaceExtraMarkets(vm);
+      if (!window._raceCleanerInterval) {
+        window._raceCleanerInterval = setInterval(function () {
+          clearRaceExtraMarkets(getVm());
+        }, 300);
       }
     }
-    setTimeout(tryPatch, 500);
+    setTimeout(tryPatch, 100);
   })();
 
   async function startRaceCleaner() {
     let waited = 0;
     while (!getVm() && waited < 8000) {
-      await new Promise(r => setTimeout(r, 300));
-      waited += 300;
+      await new Promise(r => setTimeout(r, 200));
+      waited += 200;
     }
     const vm = getVm();
     if (!vm) return;
-
-    // eventTypeId set hone ka wait karo
-    let tries = 0;
-    while (tries++ < 40) {
-      if (vm.Catalog && vm.Catalog.eventTypeId) break;
-      await new Promise(r => setTimeout(r, 200));
-    }
-
-    // Ek baar turant clear karo
     clearRaceExtraMarkets(vm);
-
-    // Phir 10 seconds tak har 500ms watch karo (mv2 dobara set kar sakta hai)
     let elapsed = 0;
     const guard = setInterval(function() {
-      elapsed += 500;
-      if (elapsed > 10000) { clearInterval(guard); return; }
-      clearRaceExtraMarkets(vm);
-    }, 500);
+      elapsed += 300;
+      clearRaceExtraMarkets(getVm());
+      if (elapsed > 15000) clearInterval(guard);
+    }, 300);
   }
 
-  setTimeout(startRaceCleaner, 1000);
+
+  // Keep PLACE (To Be Placed) runners in sync with WIN silks/jackets
+  (function syncPlaceSilks() {
+    function tick() {
+      try {
+        var el = document.getElementById('MarketView') || document.getElementById('app');
+        var vm = el && el.__vue__;
+        if (vm && vm.Catalog && Array.isArray(vm.OtherRaceMarkets) && vm.OtherRaceMarkets.length) {
+          vm.OtherRaceMarkets.forEach(function (m) {
+            if (!m) return;
+            if (!m.eventTypeId) {
+              if (vm.$set) vm.$set(m, 'eventTypeId', vm.Catalog.eventTypeId || 7);
+              else m.eventTypeId = vm.Catalog.eventTypeId || 7;
+            }
+            if (typeof window.enrichPlaceWithSilks === "function") window.enrichPlaceWithSilks(m, vm.Catalog);
+          });
+        }
+      } catch (e) {}
+      setTimeout(tick, 2000);
+    }
+    setTimeout(tick, 800);
+  })();
+
+  // start ASAP so extra markets don't flash
+  setTimeout(startRaceCleaner, 50);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () { startRaceCleaner(); });
+  } else {
+    startRaceCleaner();
+  }
 
 })();
 </script>
     <!-- getRunnerAmounts is defined in the main PNL script above -->
+
+<script>
+/* ── Racing bet rules: WIN/PLACE tabs + bet-slip banner (no alert) ── */
+(function () {
+  'use strict';
+
+  function detectCountry(eventName, countryCode) {
+    var cc = String(countryCode || '').toUpperCase().trim();
+    if (['GB','UK','GBR'].indexOf(cc) >= 0) return 'GB';
+    if (['IE','IRL'].indexOf(cc) >= 0) return 'IE';
+    if (['US','USA'].indexOf(cc) >= 0) return 'US';
+    if (['AU','AUS'].indexOf(cc) >= 0) return 'AUS';
+    if (['ZA','RSA','SA'].indexOf(cc) >= 0) return 'RSA';
+    var n = String(eventName || '').toUpperCase();
+    if (/\(GB\)|\(UK\)/.test(n)) return 'GB';
+    if (/\(IE\)|\(IRL\)/.test(n)) return 'IE';
+    if (/\(US\)|\(USA\)/.test(n)) return 'US';
+    if (/\(AUS\)|\(AU\)/.test(n)) return 'AUS';
+    if (/\(RSA\)|\(ZA\)/.test(n)) return 'RSA';
+    if (/\b(LAYTOWN|CURRAGH|LEOPARDSTOWN|DUNDALK|PUNCHESTOWN|FAIRYHOUSE|NAAS)\b/i.test(eventName || '')) return 'IE';
+    if (/\b(ASCOT|NEWMARKET|YORK|CHELTENHAM|LAYTOWN|CURRAGH|LEOPARDSTOWN|DUNDALK|LINGFIELD|SOUTHWELL|NEWCASTLE|DONCASTER|SANDOWN|KEMPTON|HAYDOCK|AYR|EPSOM|GOODWOOD|WINDSOR|PUNCHESTOWN|FAIRYHOUSE|NAAS|BEVERLEY|KELSO|CARLISLE|CATTERICK|CHEPSTOW|CHESTER|EXETER|FFOS LAS|FONTWELL|HEREFORD|HEXHAM|HUNTINGDON|KELSO|LEICESTER|LUDLOW|MARKET RASEN|MUSSELBURGH|NEWTON ABBOT|NOTTINGHAM|PERTH|PLUMPTON|PONTEFRACT|REDCAR|RIPON|SALISBURY|SEDGEFIELD|STRATFORD|TAUNTON|THIRSK|UTTOXETER|WETHERBY|WINCANTON|WOLVERHAMPTON|WORCESTER|YARMOUTH|BATH|BRIGHTON|CLONMEL|CORK|DOWNPATRICK|DOWN ROYAL|GALWAY|GOWRAN|KILBEGGAN|KILLARNEY|LIMERICK|LISTOWEL|ROSCOMMON|SLIGO|TIPPERARY|TRAMORE|WEXFORD|BALLINROBE|BELLEWSTOWN|THURLES)\b/i.test(eventName || '')) return 'GB';
+    if (/\b(BELMONT|SARATOGA|DELAWARE|BELTERRA|CHURCHILL|GULFSTREAM|AQUEDUCT|PARX|HORSESHOE|INDIANAPOLIS)\b/i.test(eventName || '')) return 'US';
+    if (/\b(FLEMINGTON|RANDWICK|ROSEHILL|CAULFIELD|DOOMBEN)\b/i.test(eventName || '')) return 'AUS';
+    if (/\b(TURFFONTEIN|GREYVILLE|KENILWORTH)\b/i.test(eventName || '')) return 'RSA';
+    return 'OTHER';
+  }
+
+  function parseStartMs(iso) {
+    if (!iso) return NaN;
+    var s = String(iso).trim();
+    if (/^\d+$/.test(s)) return Number(s);
+    if (/[zZ]$/.test(s) || /[+-]\d{2}:?\d{2}$/.test(s)) return new Date(s).getTime();
+    s = s.replace(/(\.\d{3})\d+/, '$1').replace(' ', 'T');
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s) && !/[zZ]$/.test(s) && !/[+-]\d{2}/.test(s)) s += 'Z';
+    return new Date(s).getTime();
+  }
+
+  function isPlaceMarket(cat) {
+    if (!cat) return false;
+    var t = String(cat.marketType || '').toUpperCase();
+    var n = String(cat.marketName || '').toLowerCase();
+    return t === 'PLACE' || n.indexOf('to be placed') >= 0 || n === 'place';
+  }
+
+  window.validateRacingBet = function (catalog) {
+    if (!catalog) return null;
+    var eid = String(catalog.eventTypeId || '');
+    var isHorse = eid === '7';
+    var isGrey  = eid === '4339';
+    if (!isHorse && !isGrey) return null;
+
+    var country = detectCountry(catalog.eventName, catalog.countryCode);
+    var startMs = parseStartMs(catalog.marketStartTime || catalog.marketStartTimeUtc || catalog.startTime);
+    var now = Date.now();
+    var minsToStart = isNaN(startMs) ? null : (startMs - now) / 60000;
+    var status = String(catalog.status || '').toUpperCase();
+    var inPlay = !!(catalog.inPlay || catalog.inplay) ||
+      status === 'INPLAY' || status === 'IN_PLAY' ||
+      (!isNaN(startMs) && now >= startMs);
+    var place = isPlaceMarket(catalog);
+
+    if (isGrey) {
+      if (inPlay) return 'Inplay bet is not allowed in this race';
+      if (minsToStart != null && minsToStart > 5) {
+        var m = Math.ceil(minsToStart - 5);
+        return 'Betting will open in ' + m + ' minute' + (m === 1 ? '' : 's');
+      }
+      return null;
+    }
+
+    var strict = (country === 'US' || country === 'AUS' || country === 'RSA' || country === 'OTHER');
+    var gbIe = (country === 'GB' || country === 'IE');
+
+    if (strict) {
+      if (inPlay) return 'Inplay bet is not allowed in this race';
+      if (minsToStart != null && minsToStart > 2) {
+        var m2 = Math.ceil(minsToStart - 2);
+        return 'Betting will open in ' + m2 + ' minute' + (m2 === 1 ? '' : 's');
+      }
+      return null;
+    }
+
+    if (gbIe) {
+      if (inPlay && place) return 'Inplay bet is not allowed in this race';
+      if (!inPlay && minsToStart != null && minsToStart > 10) {
+        var m3 = Math.ceil(minsToStart - 10);
+        return 'Betting will open in ' + m3 + ' minute' + (m3 === 1 ? '' : 's');
+      }
+      return null;
+    }
+    return null;
+  };
+
+  // Pink banner inside bet slip (bpexch style) — NO alert
+  function showBetSlipRaceBanner(msg) {
+    var roots = [
+      document.querySelector('.bet-slip'),
+      document.querySelector('#betSlip'),
+      document.querySelector('.bets-slip'),
+      document.querySelector('[class*="betslip" i]'),
+      document.querySelector('[class*="BetSlip"]'),
+      document.querySelector('.right-content .bets'),
+      document.querySelector('.right-nav')
+    ].filter(Boolean);
+
+    // remove old banners
+    document.querySelectorAll('.nx-race-bet-banner').forEach(function (el) { el.remove(); });
+
+    if (!msg) return;
+
+    var banner = document.createElement('div');
+    banner.className = 'nx-race-bet-banner';
+    banner.style.cssText = 'background:#f8d7da;color:#721c24;padding:8px 12px;margin:6px 0;border-radius:3px;font-size:13px;font-weight:600;text-align:center;';
+    banner.textContent = msg;
+
+    // Prefer insert near Submit button
+    var submit = document.querySelector('button.btn-success, button[onclick*="Submit"], .btn-submit, button.btn-primary.btn-xs');
+    for (var i = 0; i < roots.length; i++) {
+      var r = roots[i];
+      if (r && r.offsetParent !== null) {
+        var btns = r.querySelector('.btn-group, .bet-actions, form, .card-body') || r;
+        btns.appendChild(banner);
+        return;
+      }
+    }
+    // fallback: top of right panel
+    var right = document.querySelector('.right-content, .col-lg-4.right-nav');
+    if (right) right.insertBefore(banner, right.firstChild);
+  }
+
+  function clearBetSlipRaceBanner() {
+    document.querySelectorAll('.nx-race-bet-banner').forEach(function (el) { el.remove(); });
+  }
+
+  function getCatalogForMarket(vm, marketId) {
+    var cat = Object.assign({}, vm.Catalog || {});
+    if (marketId && vm.OtherRaceMarkets && vm.OtherRaceMarkets.length) {
+      for (var i = 0; i < vm.OtherRaceMarkets.length; i++) {
+        if (String(vm.OtherRaceMarkets[i].marketId) === String(marketId)) {
+          return Object.assign({}, cat, vm.OtherRaceMarkets[i], {
+            eventName: cat.eventName,
+            eventTypeId: cat.eventTypeId || vm.OtherRaceMarkets[i].eventTypeId,
+            countryCode: cat.countryCode,
+            marketStartTime: vm.OtherRaceMarkets[i].marketStartTime || cat.marketStartTime
+          });
+        }
+      }
+    }
+    return cat;
+  }
+
+  function patchVue() {
+    var el = document.getElementById('MarketView') || document.getElementById('app');
+    var vm = el && el.__vue__;
+    if (!vm) { setTimeout(patchVue, 300); return; }
+
+    // Force FirstTabName = "WIN" for horse/greyhound
+    try {
+      var eid = String(vm.Catalog && vm.Catalog.eventTypeId || '');
+      if (eid === '7' || eid === '4339') {
+        if (vm.FirstTabName !== 'WIN') {
+          if (vm.$set) vm.$set(vm, 'FirstTabName', 'WIN');
+          else vm.FirstTabName = 'WIN';
+        }
+      }
+    } catch (e) {}
+
+    // Rename PLACE markets display name
+    if (vm.OtherRaceMarkets && vm.OtherRaceMarkets.length) {
+      vm.OtherRaceMarkets.forEach(function (m) {
+        if (!m) return;
+        var n = String(m.marketName || '').toLowerCase();
+        var t = String(m.marketType || '').toUpperCase();
+        if (t === 'PLACE' || n.indexOf('place') >= 0) {
+          if (m.marketName !== 'To Be Placed') {
+            if (vm.$set) vm.$set(m, 'marketName', 'To Be Placed');
+            else m.marketName = 'To Be Placed';
+          }
+        }
+      });
+    }
+
+    if (!vm._raceBetPatched && typeof vm.ShowBetSlip === 'function') {
+      vm._raceBetPatched = true;
+      var origShow = vm.ShowBetSlip.bind(vm);
+      vm.ShowBetSlip = function (runner, side, marketId, depth) {
+        // Open slip normally — error banner ONLY on Submit (not here)
+        clearBetSlipRaceBanner();
+        return origShow(runner, side, marketId, depth);
+      };
+    }
+
+    // Block place-bet submit when rules fail
+    if (!window._raceSubmitPatched) {
+      window._raceSubmitPatched = true;
+      document.addEventListener('click', function (ev) {
+        var t = ev.target;
+        if (!t) return;
+        var txt = (t.textContent || '').trim().toLowerCase();
+        var isSubmit = (t.tagName === 'BUTTON' || t.tagName === 'A' || t.tagName === 'INPUT') &&
+          (txt === 'submit' || (t.className && String(t.className).toLowerCase().indexOf('submit') >= 0));
+        if (!isSubmit) return;
+        var el2 = document.getElementById('MarketView') || document.getElementById('app');
+        var vm2 = el2 && el2.__vue__;
+        if (!vm2 || !vm2.Catalog) return;
+        var eid2 = String(vm2.Catalog.eventTypeId || '');
+        if (eid2 !== '7' && eid2 !== '4339') return;
+        var cat2 = vm2.Catalog;
+        // active race tab market?
+        var active = document.querySelector('.tabcontent[style*="block"], .tabcontent.active');
+        if (active && active.id && active.id.indexOf('race') === 0 && vm2.OtherRaceMarkets) {
+          var ix = parseInt(active.id.replace('race', ''), 10);
+          if (!isNaN(ix) && vm2.OtherRaceMarkets[ix]) {
+            cat2 = getCatalogForMarket(vm2, vm2.OtherRaceMarkets[ix].marketId);
+          }
+        }
+        var err2 = window.validateRacingBet(cat2);
+        if (!err2 && window._nxCountSelectedRunners && window._nxCountSelectedRunners() > 3) {
+          err2 = 'Max no. of runners allowed is 3';
+        }
+        if (err2) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          clearBetSlipRaceBanner();
+          showBetSlipRaceBanner(err2);
+          return false;
+        }
+        clearBetSlipRaceBanner();
+      }, true);
+
+      // Clear banner when Close / Clear clicked
+      document.addEventListener('click', function (ev) {
+        var t = ev.target;
+        if (!t) return;
+        var txt = (t.textContent || '').trim().toLowerCase();
+        if (txt === 'close' || txt === 'clear') clearBetSlipRaceBanner();
+      }, true);
+    }
+  }
+
+  function loop() {
+    patchVue();
+    setTimeout(loop, 1500);
+  }
+  document.addEventListener('DOMContentLoaded', function () { setTimeout(loop, 400); });
+  if (document.readyState !== 'loading') setTimeout(loop, 400);
+})();
+</script>
+
+
+<script>
+/* ── Horse/Greyhound UX v2: alignment, stable MaxBet, greyhound no boxes, related events, combined ── */
+(function () {
+  'use strict';
+
+  var HORSE_MAX = 200000;    // 200K
+  var GREY_MAX  = 50000;     // 50K
+  var COMBINED_MAX = 2000000; // 2M
+  var _maxBetApplied = false;
+  var _relatedLoaded = false;
+
+  function getVm() {
+    var el = document.getElementById('MarketView') || document.getElementById('app');
+    return el && el.__vue__ ? el.__vue__ : null;
+  }
+
+
+  function enrichRaceRunners(vm) {
+    // SAFE: clothNumber + ALWAYS strip leading "N. " from runnerName (stops "2. 3. Stheno")
+    if (!vm || !vm.Catalog) return;
+    var eid = String(vm.Catalog.eventTypeId || '');
+    if (eid !== '7' && eid !== '4339') {
+      try { eid = String(raceEid(vm) || ''); } catch (e) {}
+      if (eid !== '7' && eid !== '4339') return;
+    }
+    var runners = vm.Catalog.runners || [];
+    for (var i = 0; i < runners.length; i++) {
+      var rn = runners[i];
+      if (!rn) continue;
+      // If runnerName starts with "N. ", prefer that N as clothNumber (trap/silk number)
+      if (rn.runnerName) {
+        var nm0 = String(rn.runnerName).trim();
+        var mNum = nm0.match(/^(\d+)\.\s*(.*)$/);
+        if (mNum) {
+          var numFromName = mNum[1];
+          var bareName = (mNum[2] || '').trim();
+          try {
+            if (vm.$set) {
+              vm.$set(rn, 'clothNumber', numFromName);
+              if (bareName) vm.$set(rn, 'runnerName', bareName);
+            } else {
+              rn.clothNumber = numFromName;
+              if (bareName) rn.runnerName = bareName;
+            }
+          } catch (e) {}
+        } else {
+          // still strip any residual leading number just in case
+          var bare2 = nm0.replace(/^\d+\.\s*/, '').trim();
+          if (bare2 && bare2 !== nm0) {
+            try {
+              if (vm.$set) vm.$set(rn, 'runnerName', bare2);
+              else rn.runnerName = bare2;
+            } catch (e) {}
+          }
+        }
+      }
+      // fallback cloth from sortPriority only if still missing
+      if ((rn.clothNumber == null || rn.clothNumber === '') && rn.sortPriority != null && rn.sortPriority !== '') {
+        try {
+          if (vm.$set) vm.$set(rn, 'clothNumber', String(rn.sortPriority));
+          else rn.clothNumber = String(rn.sortPriority);
+        } catch (e) {}
+      }
+      // jockey fallback to trainer
+      if (!rn.jockeyName && rn.trainerName) {
+        try {
+          if (vm.$set) vm.$set(rn, 'jockeyName', String(rn.trainerName));
+          else rn.jockeyName = String(rn.trainerName);
+        } catch (e) {}
+      }
+      // trap colour + stripe for greyhound (and horse fallback)
+      try {
+        var cn = rn.clothNumber != null ? rn.clothNumber : rn.sortPriority;
+        var col = (typeof window.getClothColor === 'function') ? window.getClothColor(cn, rn.sortPriority) : null;
+        var striped = (typeof window.isTrapStriped === 'function') ? window.isTrapStriped(cn, rn.sortPriority) : (parseInt(cn) === 6);
+        if (col && !rn.silkUrl) {
+          if (vm.$set) {
+            if (!rn.clothColor) vm.$set(rn, 'clothColor', col);
+            if (!rn.silkColor || String(rn.silkColor).indexOf('http') !== 0) vm.$set(rn, 'silkColor', col);
+            vm.$set(rn, 'clothStriped', !!striped);
+          } else {
+            if (!rn.clothColor) rn.clothColor = col;
+            if (!rn.silkColor || String(rn.silkColor).indexOf('http') !== 0) rn.silkColor = col;
+            rn.clothStriped = !!striped;
+          }
+        }
+      } catch (e3) {}
+    }
+  }
+  function raceEid(vm) {
+    if (!vm || !vm.Catalog) return '';
+    var eid = String(vm.Catalog.eventTypeId || '');
+    if (eid === '7' || eid === '4339') return eid;
+    var et = String(vm.Catalog.eventType || vm.Catalog.eventTypeName || '').toLowerCase();
+    if (et.indexOf('greyhound') >= 0) return '4339';
+    if (et.indexOf('horse') >= 0) return '7';
+    var mid = String(vm.Catalog.marketId || '');
+    var mname = String(vm.Catalog.marketName || '');
+    if (/\bOR\s*\d|A0\d|trap/i.test(mname)) return '4339';
+    if (/^\d{6,}\.\d+$/.test(mid)) return eid || '7';
+    return eid;
+  }
+
+  function applyAlignmentCss() {
+    if (document.getElementById('nx-race-align-css')) return;
+    var st = document.createElement('style');
+    st.id = 'nx-race-align-css';
+    st.textContent = [
+      /* head CSS owns sizes — only force greyhound no-checkbox */
+      'body.nx-greyhound .runner-runner .selector{display:none !important;}'
+    ].join('\n');
+    document.head.appendChild(st);
+  }
+
+  function setGreyhoundClass(vm) {
+    var eid = '';
+    try { eid = String((vm && vm.Catalog && vm.Catalog.eventTypeId) || ''); } catch (e) {}
+    if (eid === '4339') document.body.classList.add('nx-greyhound');
+    else document.body.classList.remove('nx-greyhound');
+  }
+
+  // MaxBet: set once per marketId, also force fancySize for Combined
+  function applyStableMaxBet(vm) {
+    if (!vm || !vm.Catalog) return;
+    var eid = raceEid(vm);
+    if (eid !== '7' && eid !== '4339') return;
+    var mid = String(vm.Catalog.marketId || '');
+    var def = eid === '4339' ? GREY_MAX : HORSE_MAX;
+
+    if (vm.fancySize == null || Number(vm.fancySize) === 0) {
+      if (vm.$set) vm.$set(vm, 'fancySize', COMBINED_MAX);
+      else vm.fancySize = COMBINED_MAX;
+    }
+
+    var cur = Number(vm.Catalog.maxBetSize || 0);
+    if (!cur || cur <= 0) {
+      if (vm.$set) vm.$set(vm.Catalog, 'maxBetSize', def);
+      else vm.Catalog.maxBetSize = def;
+    }
+
+    // DOM stabilise: if any MaxBet shows empty ")", fill from def (no flicker loop of random values)
+    try {
+      document.querySelectorAll('.market-name-badge').forEach(function (badge) {
+        var txt = badge.textContent || '';
+        if (/MaxBet:\s*\)/i.test(txt) || /MaxBet:\s*$/i.test(txt.trim())) {
+          var isCombined = /COMBINED|Combined/i.test(txt);
+          var val = isCombined ? COMBINED_MAX : def;
+          var label = val >= 1000000 ? (val / 1000000) + 'M' : (val / 1000) + 'K';
+          badge.querySelectorAll('span').forEach(function (sp) {
+            if (/MaxBet/i.test(sp.textContent || '')) {
+              sp.textContent = '(MaxBet: ' + label + ')';
+            }
+          });
+        }
+      });
+    } catch (e) {}
+  }
+
+  function patchToggleRunner(vm) {
+    if (!vm || vm._nxTogglePatched) return;
+    if (typeof vm.toggleRunner !== 'function') return;
+    vm._nxTogglePatched = true;
+    var orig = vm.toggleRunner.bind(vm);
+    vm.toggleRunner = function (runner) {
+      try {
+        var eid = raceEid(vm);
+        // greyhound: allow select for UI but combined only for horse
+        if (eid === '7') {
+          var selected = (vm.Catalog.runners || []).filter(function (r) { return r.selected; });
+          var already = !!(runner && runner.selected);
+          if (!already && selected.length >= 3) {
+            showBanner('Max no. of runners allowed is 3');
+            return;
+          }
+        }
+        var ret = orig(runner);
+        // force label update after toggle
+        try {
+          var sels = (vm.Catalog.runners || []).filter(function (r) { return r && r.selected; });
+          var label = sels.map(function (r) {
+            return String(r.clothNumber || r.sortPriority || '').trim();
+          }).filter(Boolean).join(' + ');
+          if (vm.$set) vm.$set(vm, 'combinedSelectionLabel', label || '');
+          else vm.combinedSelectionLabel = label || '';
+
+        // ensure fancySize for Combined MaxBet
+        try {
+          if (!vm.fancySize) {
+            if (vm.$set) vm.$set(vm, 'fancySize', 2000000);
+            else vm.fancySize = 2000000;
+          }
+        } catch (e) {}
+          // if RunnersAggregate empty but 2+ selected, seed a minimal aggregateRun so section shows
+          if (sels.length >= 2) {
+            if (!vm.RunnersAggregate || !vm.RunnersAggregate.length) {
+              var seed = [{
+                marketId: vm.Catalog.marketId,
+                runnerName: label,
+                back: (vm.aggregateRun && vm.aggregateRun.back) || [],
+                lay: (vm.aggregateRun && vm.aggregateRun.lay) || []
+              }];
+              if (vm.$set) vm.$set(vm, 'RunnersAggregate', seed);
+              else vm.RunnersAggregate = seed;
+            }
+            if (!vm.aggregateRun) {
+              var ar = {
+                marketId: vm.Catalog.marketId,
+                runnerName: label,
+                back: [],
+                lay: []
+              };
+              if (vm.$set) vm.$set(vm, 'aggregateRun', ar);
+              else vm.aggregateRun = ar;
+            } else if (label) {
+              if (vm.$set) vm.$set(vm.aggregateRun, 'runnerName', label);
+              else vm.aggregateRun.runnerName = label;
+            }
+          }
+        } catch (e2) {}
+        return ret;
+      } catch (e) {
+        return orig(runner);
+      }
+    };
+  }
+
+  function showBanner(msg) {
+    document.querySelectorAll('.nx-race-bet-banner').forEach(function (el) { el.remove(); });
+    var banner = document.createElement('div');
+    banner.className = 'nx-race-bet-banner';
+    banner.style.cssText = 'background:#f8d7da;color:#721c24;padding:8px 12px;margin:6px 0;border-radius:3px;font-size:13px;font-weight:600;text-align:center;';
+    banner.textContent = msg;
+    var host = document.querySelector('.bet-slip, #betSlip, .right-content .bets, .right-nav, .nx-combined-block');
+    if (host) host.appendChild(banner);
+    setTimeout(function () { try { banner.remove(); } catch (e) {} }, 4000);
+  }
+
+  // Related Events for horse (and retry greyhound)
+  function ensureRelatedEvents(vm) {
+    var tbody = document.getElementById('relatedEventsBody');
+    if (!tbody) return;
+    if (tbody.children.length > 0 && !/No .+ matches found/i.test(tbody.textContent || '')) {
+      _relatedLoaded = true;
+      return;
+    }
+    var eid = raceEid(vm);
+    var sport = null;
+    if (eid === '7') sport = 'horse';
+    else if (eid === '4339') sport = 'greyhound';
+    else {
+      var mid = String((vm && vm.Catalog && vm.Catalog.marketId) || window.marketId || '');
+      if (/^\d{6,}\.\d+$/.test(mid)) sport = 'horse'; // default race composite → try horse
+    }
+    if (!sport) return;
+    if (typeof window.loadRelatedEventsBySport === 'function') {
+      window.loadRelatedEventsBySport(sport);
+      // also try the other if still empty after delay
+      setTimeout(function () {
+        var tb = document.getElementById('relatedEventsBody');
+        if (tb && tb.children.length === 0 && sport === 'horse') {
+          // stay horse
+        }
+      }, 1500);
+    }
+  }
+
+  window._nxCountSelectedRunners = function () {
+    var vm = getVm();
+    if (!vm || !vm.Catalog || !vm.Catalog.runners) return 0;
+    return vm.Catalog.runners.filter(function (r) { return r.selected; }).length;
+  };
+
+  function tick() {
+    applyAlignmentCss();
+    var vm = getVm();
+    if (vm) {
+      setGreyhoundClass(vm);
+      enrichRaceRunners(vm);
+      applyStableMaxBet(vm);
+      patchToggleRunner(vm);
+      // Combined "1 + 2 + 3" label + odds (bpexch style)
+      try {
+        var sels = (vm.Catalog && vm.Catalog.runners || []).filter(function(r){ return r && r.selected; });
+        var label = sels.map(function(r){
+          return String(r.clothNumber || r.sortPriority || '').trim();
+        }).filter(Boolean).join(' + ');
+        if (!label && sels.length) label = sels.map(function(_,i){ return String(i+1); }).join(' + ');
+        if (vm.$set) vm.$set(vm, 'combinedSelectionLabel', label || '');
+        else vm.combinedSelectionLabel = label || '';
+
+        var ar = vm.aggregateRun || (Array.isArray(vm.RunnersAggregate) && vm.RunnersAggregate[0]) || null;
+        if (ar && label) {
+          if (!ar.runnerName || ar.runnerName !== label) {
+            if (vm.$set) vm.$set(ar, 'runnerName', label);
+            else ar.runnerName = label;
+          }
+        }
+        // Extract back/lay price from whatever shape aggregateRun has
+        function pickPrice(obj, keys) {
+          if (!obj) return '';
+          for (var k = 0; k < keys.length; k++) {
+            var key = keys[k];
+            var v = obj[key];
+            if (v == null) continue;
+            if (Array.isArray(v) && v.length) {
+              var p = v[0].price != null ? v[0].price : v[0];
+              if (p != null && p !== '' && !isNaN(Number(p))) return Number(p);
+            } else if (typeof v === 'object' && v.price != null) {
+              return Number(v.price);
+            } else if (!isNaN(Number(v)) && Number(v) > 0) {
+              return Number(v);
+            }
+          }
+          return '';
+        }
+        var bp = pickPrice(ar, ['back', 'price1', 'Back', 'availableToBack']);
+        var lp = pickPrice(ar, ['lay', 'lay1', 'Lay', 'availableToLay']);
+        // also check RunnersAggregate items
+        if ((bp === '' || lp === '') && Array.isArray(vm.RunnersAggregate)) {
+          for (var ri = 0; ri < vm.RunnersAggregate.length; ri++) {
+            var item = vm.RunnersAggregate[ri];
+            if (bp === '') bp = pickPrice(item, ['back', 'price1', 'Back']);
+            if (lp === '') lp = pickPrice(item, ['lay', 'lay1', 'Lay']);
+          }
+        }
+        if (vm.$set) {
+          vm.$set(vm, 'combinedBackPrice', bp !== '' ? bp : '');
+          vm.$set(vm, 'combinedLayPrice', lp !== '' ? lp : '');
+        } else {
+          vm.combinedBackPrice = bp !== '' ? bp : '';
+          vm.combinedLayPrice = lp !== '' ? lp : '';
+        }
+      } catch (e) {}
+      ensureRelatedEvents(vm);
+    }
+    setTimeout(tick, 1200);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () { setTimeout(tick, 500); });
+  } else {
+    setTimeout(tick, 500);
+  }
+})();
+</script>
+
+
+<script>
+/* Force bpexch runner styling after all CSS loads */
+(function () {
+  function inject() {
+    var id = 'nx-bpexch-force-css';
+    var old = document.getElementById(id);
+    if (old) old.remove();
+    var st = document.createElement('style');
+    st.id = id;
+    st.textContent = [
+      '.runner-runner{min-height:48px!important;padding:6px 0!important;}',
+      '.runner-runner>.selector{width:15px!important;height:15px!important;min-width:15px!important;margin:0 7px 0 8px!important;border:2px solid #28a745!important;border-radius:2px!important;vertical-align:middle!important;display:inline-block!important;}',
+      '.runner-runner>img.ml-2,.runner-runner img.runner-silk-img,.runner-runner img.ml-2{',
+      'width:40px!important;height:40px!important;min-width:40px!important;max-width:40px!important;',
+      'min-height:40px!important;max-height:40px!important;object-fit:contain!important;',
+      'vertical-align:middle!important;margin:0 10px 0 0!important;padding:0!important;border:0!important;',
+      'display:inline-block!important;}',
+      '.runner-runner .runner-silk-fallback{width:16px!important;height:16px!important;min-width:16px!important;',
+      'border-radius:2px!important;border:1px solid rgba(0,0,0,.3)!important;vertical-align:middle!important;',
+      'margin:0 8px 0 0!important;display:inline-block!important;box-sizing:border-box!important;}',
+      'body.nx-greyhound .runner-runner .runner-silk-fallback{width:16px!important;height:16px!important;margin:0 8px 0 4px!important;}',
+      'body.nx-greyhound .runner-runner .selector{display:none!important;}',
+      'body.nx-greyhound .runner-runner .runner-position{display:none!important;}',
+      'body.nx-greyhound .runner-runner{min-height:32px!important;padding:3px 0!important;}',
+      '.runner-runner h3.runner-name,.runner-runner .runner-name{vertical-align:middle!important;display:inline-block!important;margin:0!important;padding:0!important;}',
+      '.runner-runner .runner-name h4,.runner-runner .clippable-spacer{font-size:14px!important;font-weight:700!important;',
+      'line-height:1.2!important;margin:0!important;padding:0!important;color:#212529!important;',
+      'font-family:"Roboto Condensed",Roboto,Arial,sans-serif!important;}',
+      '.runner-runner .runner-position{font-size:12px!important;font-weight:400!important;color:#6c757d!important;',
+      'line-height:1.15!important;margin:0!important;padding:0!important;',
+      'font-family:"Roboto Condensed",Roboto,Arial,sans-serif!important;}',
+      '.runner-runner .runner-position .ml-1,.runner-runner .runner-position span{font-size:12px!important;color:#6c757d!important;}'
+    ].join('');
+    document.head.appendChild(st);
+  }
+  inject();
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', inject);
+  setTimeout(inject, 500);
+  setTimeout(inject, 1500);
+  setTimeout(inject, 3000);
+})();
+</script>
+
 </body>
 </html>

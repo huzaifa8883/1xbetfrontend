@@ -1,5 +1,5 @@
 
-  <!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
     <meta charset="utf-8">
@@ -18,160 +18,48 @@
     <link href="/css/BetPro-style.css" rel="stylesheet" />
 
     <!-- <title>England v India | BetPro</title> -->
-    <style id="nx-bpexch-runner-css">
-        .body { min-height: 91.7vh; }
-
-        /* ========== BPEXCH PIXEL MATCH (horse + greyhound) ========== */
-        .market-runners .runner-runner,
-        #MarketView .runner-runner,
-        .runner-runner {
-            min-height: 48px !important;
-            height: auto !important;
-            padding: 6px 0 6px 0 !important;
-            margin: 0 !important;
-            box-sizing: border-box !important;
-            line-height: normal !important;
+        <style>
+        /* bpexch Event page only has these two rules in <style> — runner sizes come from site.css */
+        .body {
+            min-height: 91.7vh;
         }
-        /* checkbox */
-        .market-runners .runner-runner > .selector,
-        #MarketView .runner-runner > .selector,
-        .runner-runner > .selector {
-            display: inline-block !important;
-            vertical-align: middle !important;
-            width: 15px !important;
-            height: 15px !important;
-            min-width: 15px !important;
-            max-width: 15px !important;
-            margin: 0 7px 0 8px !important;
-            padding: 0 !important;
-            border: 2px solid #28a745 !important;
-            border-radius: 2px !important;
-            background: transparent !important;
-            box-sizing: border-box !important;
-            float: none !important;
-        }
-        .runner-runner > .selector.selected { background: #28a745 !important; }
-
-        /* HORSE silk image — bpexch size ~40px */
-        .market-runners .runner-runner > img.ml-2,
-        .market-runners .runner-runner img.runner-silk-img,
-        #MarketView .runner-runner > img.ml-2,
-        #MarketView .runner-runner img.runner-silk-img,
-        .runner-runner > img.ml-2,
-        .runner-runner .runner-silk-img,
-        .runner-runner img.ml-2 {
-            display: inline-block !important;
-            width: 40px !important;
-            height: 40px !important;
-            min-width: 40px !important;
-            max-width: 40px !important;
-            min-height: 40px !important;
-            max-height: 40px !important;
-            object-fit: contain !important;
-            object-position: center !important;
-            vertical-align: middle !important;
-            margin: 0 10px 0 0 !important;
-            padding: 0 !important;
-            border: 0 !important;
-            border-radius: 0 !important;
-            background: transparent !important;
-            float: none !important;
+        center a {
+            color: white;
+            font-size: 13px;
         }
 
-        /* solid colour fallback */
-        .market-runners .runner-runner .runner-silk-fallback,
-        #MarketView .runner-runner .runner-silk-fallback,
-        .runner-runner .runner-silk-fallback {
-            display: inline-block !important;
-            width: 16px !important;
-            height: 16px !important;
-            min-width: 16px !important;
-            max-width: 16px !important;
-            border-radius: 2px !important;
-            border: 1px solid rgba(0,0,0,0.3) !important;
-            vertical-align: middle !important;
-            margin: 0 8px 0 0 !important;
-            padding: 0 !important;
-            box-sizing: border-box !important;
-            float: none !important;
-        }
-        body.nx-greyhound .runner-runner .runner-silk-fallback {
-            width: 16px !important;
-            height: 16px !important;
-            min-width: 16px !important;
-            max-width: 16px !important;
-            margin: 0 8px 0 4px !important;
-        }
-        .runner-silk-fallback.striped {
-            background-image: repeating-linear-gradient(45deg,#111 0,#111 4px,#fff 4px,#fff 8px) !important;
-            border-color: #222 !important;
-        }
-
-        /* name block */
-        .market-runners .runner-runner > .runner-name,
-        .market-runners .runner-runner h3.runner-name,
-        #MarketView .runner-runner h3.runner-name,
-        .runner-runner > .runner-name,
-        .runner-runner h3.runner-name {
-            display: inline-block !important;
-            vertical-align: middle !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            line-height: 1.2 !important;
-            float: none !important;
-        }
-        .runner-runner .runner-info {
-            display: block !important;
-            margin: 0 !important;
-            padding: 0 !important;
-        }
-        .market-runners .runner-runner .runner-name h4,
-        .market-runners .runner-runner .clippable-spacer,
-        #MarketView .runner-runner .runner-name h4,
-        .runner-runner .runner-name h4,
-        .runner-runner .clippable-spacer,
-        .runner-runner .runner-display-name h4,
-        .runner-runner .clippable h4 {
-            margin: 0 !important;
-            padding: 0 !important;
-            line-height: 1.2 !important;
-            font-size: 14px !important;
-            font-weight: 700 !important;
-            font-family: "Roboto Condensed", Roboto, "Helvetica Neue", Arial, sans-serif !important;
-            color: #212529 !important;
-            letter-spacing: 0 !important;
-        }
-        /* jockey */
-        .market-runners .runner-runner .runner-position,
-        #MarketView .runner-runner .runner-position,
-        .runner-runner .runner-position {
-            display: block !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            line-height: 1.15 !important;
-            font-size: 12px !important;
-            font-weight: 400 !important;
-            color: #6c757d !important;
-            font-family: "Roboto Condensed", Roboto, "Helvetica Neue", Arial, sans-serif !important;
-        }
-        .runner-runner .runner-position .ml-1,
-        .runner-runner .runner-position span {
-            font-size: 12px !important;
-            font-weight: 400 !important;
-            color: #6c757d !important;
-        }
-        body.nx-greyhound .runner-runner .selector {
-            display: none !important; width: 0 !important; margin: 0 !important; padding: 0 !important;
+        /*
+         * ONLY greyhound-specific extras (bpexch hides checkbox on greyhound via eventTypeId===7).
+         * Do NOT override silk width/height/font — site.css must control those like bpexch.
+         */
+        body.nx-greyhound .runner-runner > .selector {
+            display: none !important;
         }
         body.nx-greyhound .runner-runner .runner-position {
             display: none !important;
         }
-        body.nx-greyhound .runner-runner {
-            min-height: 32px !important;
-            padding: 3px 0 !important;
+        /* trap colour square when no silk image (greyhound / US solid) */
+        .runner-silk-fallback {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            min-width: 16px;
+            vertical-align: middle;
+            margin: 0 0.5rem; /* same as bootstrap ml-2 */
+            border: 1px solid rgba(0,0,0,0.25);
+            border-radius: 2px;
+            box-sizing: border-box;
         }
-
-        center a { color: white; font-size: 13px; }
+        .runner-silk-fallback.striped {
+            background-image: repeating-linear-gradient(
+                45deg, #111 0, #111 4px, #fff 4px, #fff 8px
+            );
+            border-color: #222;
+        }
+        /* real silk img: NO width/height — let site.css size it like bpexch */
+        .runner-silk-img {
+            vertical-align: middle;
+        }
     </style>
 
     <script>
@@ -2259,15 +2147,15 @@
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
-        <img v-if="runner.silkUrl"
-             :src="runner.silkUrl"
-             class="ml-2 runner-silk-img"
+        <img v-if="runner.silkUrl || (runner.silkColor && String(runner.silkColor).indexOf('http')===0) || (runner.silkColor && String(runner.silkColor).indexOf('/')===0)"
+             :src="runner.silkUrl || runner.silkColor"
+             class="ml-2"
              :alt="runner.clothNumber || runner.sortPriority"
-             @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
+             @error="$event.target.style.display='none'; $event.target.nextElementSibling && ($event.target.nextElementSibling.style.display='inline-block')">
         <span v-else
               class="ml-2 runner-silk-fallback"
               :class="{striped: runner.clothStriped}"
-              :style="runner.clothStriped ? {} : {background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
+              :style="runner.clothStriped ? {} : {background: (runner.silkColor && String(runner.silkColor).indexOf('http')!==0 && String(runner.silkColor).indexOf('/')!==0) ? (runner.silkColor || runner.clothColor || '#E63946') : (runner.clothColor || '#E63946')}"></span>
         </template>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -2421,15 +2309,15 @@
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
-        <img v-if="runner.silkUrl"
-             :src="runner.silkUrl"
-             class="ml-2 runner-silk-img"
+        <img v-if="runner.silkUrl || (runner.silkColor && String(runner.silkColor).indexOf('http')===0) || (runner.silkColor && String(runner.silkColor).indexOf('/')===0)"
+             :src="runner.silkUrl || runner.silkColor"
+             class="ml-2"
              :alt="runner.clothNumber || runner.sortPriority"
-             @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
+             @error="$event.target.style.display='none'; $event.target.nextElementSibling && ($event.target.nextElementSibling.style.display='inline-block')">
         <span v-else
               class="ml-2 runner-silk-fallback"
               :class="{striped: runner.clothStriped}"
-              :style="runner.clothStriped ? {} : {background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
+              :style="runner.clothStriped ? {} : {background: (runner.silkColor && String(runner.silkColor).indexOf('http')!==0 && String(runner.silkColor).indexOf('/')!==0) ? (runner.silkColor || runner.clothColor || '#E63946') : (runner.clothColor || '#E63946')}"></span>
         </template>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -2552,15 +2440,15 @@
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
-        <img v-if="runner.silkUrl"
-             :src="runner.silkUrl"
-             class="ml-2 runner-silk-img"
+        <img v-if="runner.silkUrl || (runner.silkColor && String(runner.silkColor).indexOf('http')===0) || (runner.silkColor && String(runner.silkColor).indexOf('/')===0)"
+             :src="runner.silkUrl || runner.silkColor"
+             class="ml-2"
              :alt="runner.clothNumber || runner.sortPriority"
-             @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
+             @error="$event.target.style.display='none'; $event.target.nextElementSibling && ($event.target.nextElementSibling.style.display='inline-block')">
         <span v-else
               class="ml-2 runner-silk-fallback"
               :class="{striped: runner.clothStriped}"
-              :style="runner.clothStriped ? {} : {background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
+              :style="runner.clothStriped ? {} : {background: (runner.silkColor && String(runner.silkColor).indexOf('http')!==0 && String(runner.silkColor).indexOf('/')!==0) ? (runner.silkColor || runner.clothColor || '#E63946') : (runner.clothColor || '#E63946')}"></span>
         </template>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -2682,15 +2570,15 @@
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
-        <img v-if="runner.silkUrl"
-             :src="runner.silkUrl"
-             class="ml-2 runner-silk-img"
+        <img v-if="runner.silkUrl || (runner.silkColor && String(runner.silkColor).indexOf('http')===0) || (runner.silkColor && String(runner.silkColor).indexOf('/')===0)"
+             :src="runner.silkUrl || runner.silkColor"
+             class="ml-2"
              :alt="runner.clothNumber || runner.sortPriority"
-             @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
+             @error="$event.target.style.display='none'; $event.target.nextElementSibling && ($event.target.nextElementSibling.style.display='inline-block')">
         <span v-else
               class="ml-2 runner-silk-fallback"
               :class="{striped: runner.clothStriped}"
-              :style="runner.clothStriped ? {} : {background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
+              :style="runner.clothStriped ? {} : {background: (runner.silkColor && String(runner.silkColor).indexOf('http')!==0 && String(runner.silkColor).indexOf('/')!==0) ? (runner.silkColor || runner.clothColor || '#E63946') : (runner.clothColor || '#E63946')}"></span>
         </template>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -2813,15 +2701,15 @@
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
-        <img v-if="runner.silkUrl"
-             :src="runner.silkUrl"
-             class="ml-2 runner-silk-img"
+        <img v-if="runner.silkUrl || (runner.silkColor && String(runner.silkColor).indexOf('http')===0) || (runner.silkColor && String(runner.silkColor).indexOf('/')===0)"
+             :src="runner.silkUrl || runner.silkColor"
+             class="ml-2"
              :alt="runner.clothNumber || runner.sortPriority"
-             @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
+             @error="$event.target.style.display='none'; $event.target.nextElementSibling && ($event.target.nextElementSibling.style.display='inline-block')">
         <span v-else
               class="ml-2 runner-silk-fallback"
               :class="{striped: runner.clothStriped}"
-              :style="runner.clothStriped ? {} : {background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
+              :style="runner.clothStriped ? {} : {background: (runner.silkColor && String(runner.silkColor).indexOf('http')!==0 && String(runner.silkColor).indexOf('/')!==0) ? (runner.silkColor || runner.clothColor || '#E63946') : (runner.clothColor || '#E63946')}"></span>
         </template>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -2943,15 +2831,15 @@
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
-        <img v-if="runner.silkUrl"
-             :src="runner.silkUrl"
-             class="ml-2 runner-silk-img"
+        <img v-if="runner.silkUrl || (runner.silkColor && String(runner.silkColor).indexOf('http')===0) || (runner.silkColor && String(runner.silkColor).indexOf('/')===0)"
+             :src="runner.silkUrl || runner.silkColor"
+             class="ml-2"
              :alt="runner.clothNumber || runner.sortPriority"
-             @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
+             @error="$event.target.style.display='none'; $event.target.nextElementSibling && ($event.target.nextElementSibling.style.display='inline-block')">
         <span v-else
               class="ml-2 runner-silk-fallback"
               :class="{striped: runner.clothStriped}"
-              :style="runner.clothStriped ? {} : {background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
+              :style="runner.clothStriped ? {} : {background: (runner.silkColor && String(runner.silkColor).indexOf('http')!==0 && String(runner.silkColor).indexOf('/')!==0) ? (runner.silkColor || runner.clothColor || '#E63946') : (runner.clothColor || '#E63946')}"></span>
         </template>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -3150,15 +3038,15 @@
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
-        <img v-if="runner.silkUrl"
-             :src="runner.silkUrl"
-             class="ml-2 runner-silk-img"
+        <img v-if="runner.silkUrl || (runner.silkColor && String(runner.silkColor).indexOf('http')===0) || (runner.silkColor && String(runner.silkColor).indexOf('/')===0)"
+             :src="runner.silkUrl || runner.silkColor"
+             class="ml-2"
              :alt="runner.clothNumber || runner.sortPriority"
-             @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
+             @error="$event.target.style.display='none'; $event.target.nextElementSibling && ($event.target.nextElementSibling.style.display='inline-block')">
         <span v-else
               class="ml-2 runner-silk-fallback"
               :class="{striped: runner.clothStriped}"
-              :style="runner.clothStriped ? {} : {background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
+              :style="runner.clothStriped ? {} : {background: (runner.silkColor && String(runner.silkColor).indexOf('http')!==0 && String(runner.silkColor).indexOf('/')!==0) ? (runner.silkColor || runner.clothColor || '#E63946') : (runner.clothColor || '#E63946')}"></span>
         </template>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -3288,15 +3176,15 @@
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
-        <img v-if="runner.silkUrl"
-             :src="runner.silkUrl"
-             class="ml-2 runner-silk-img"
+        <img v-if="runner.silkUrl || (runner.silkColor && String(runner.silkColor).indexOf('http')===0) || (runner.silkColor && String(runner.silkColor).indexOf('/')===0)"
+             :src="runner.silkUrl || runner.silkColor"
+             class="ml-2"
              :alt="runner.clothNumber || runner.sortPriority"
-             @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
+             @error="$event.target.style.display='none'; $event.target.nextElementSibling && ($event.target.nextElementSibling.style.display='inline-block')">
         <span v-else
               class="ml-2 runner-silk-fallback"
               :class="{striped: runner.clothStriped}"
-              :style="runner.clothStriped ? {} : {background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
+              :style="runner.clothStriped ? {} : {background: (runner.silkColor && String(runner.silkColor).indexOf('http')!==0 && String(runner.silkColor).indexOf('/')!==0) ? (runner.silkColor || runner.clothColor || '#E63946') : (runner.clothColor || '#E63946')}"></span>
         </template>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -3420,15 +3308,15 @@
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
-        <img v-if="runner.silkUrl"
-             :src="runner.silkUrl"
-             class="ml-2 runner-silk-img"
+        <img v-if="runner.silkUrl || (runner.silkColor && String(runner.silkColor).indexOf('http')===0) || (runner.silkColor && String(runner.silkColor).indexOf('/')===0)"
+             :src="runner.silkUrl || runner.silkColor"
+             class="ml-2"
              :alt="runner.clothNumber || runner.sortPriority"
-             @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
+             @error="$event.target.style.display='none'; $event.target.nextElementSibling && ($event.target.nextElementSibling.style.display='inline-block')">
         <span v-else
               class="ml-2 runner-silk-fallback"
               :class="{striped: runner.clothStriped}"
-              :style="runner.clothStriped ? {} : {background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
+              :style="runner.clothStriped ? {} : {background: (runner.silkColor && String(runner.silkColor).indexOf('http')!==0 && String(runner.silkColor).indexOf('/')!==0) ? (runner.silkColor || runner.clothColor || '#E63946') : (runner.clothColor || '#E63946')}"></span>
         </template>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -3551,15 +3439,15 @@
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
-        <img v-if="runner.silkUrl"
-             :src="runner.silkUrl"
-             class="ml-2 runner-silk-img"
+        <img v-if="runner.silkUrl || (runner.silkColor && String(runner.silkColor).indexOf('http')===0) || (runner.silkColor && String(runner.silkColor).indexOf('/')===0)"
+             :src="runner.silkUrl || runner.silkColor"
+             class="ml-2"
              :alt="runner.clothNumber || runner.sortPriority"
-             @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
+             @error="$event.target.style.display='none'; $event.target.nextElementSibling && ($event.target.nextElementSibling.style.display='inline-block')">
         <span v-else
               class="ml-2 runner-silk-fallback"
               :class="{striped: runner.clothStriped}"
-              :style="runner.clothStriped ? {} : {background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
+              :style="runner.clothStriped ? {} : {background: (runner.silkColor && String(runner.silkColor).indexOf('http')!==0 && String(runner.silkColor).indexOf('/')!==0) ? (runner.silkColor || runner.clothColor || '#E63946') : (runner.clothColor || '#E63946')}"></span>
         </template>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -3683,15 +3571,15 @@
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
-        <img v-if="runner.silkUrl"
-             :src="runner.silkUrl"
-             class="ml-2 runner-silk-img"
+        <img v-if="runner.silkUrl || (runner.silkColor && String(runner.silkColor).indexOf('http')===0) || (runner.silkColor && String(runner.silkColor).indexOf('/')===0)"
+             :src="runner.silkUrl || runner.silkColor"
+             class="ml-2"
              :alt="runner.clothNumber || runner.sortPriority"
-             @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
+             @error="$event.target.style.display='none'; $event.target.nextElementSibling && ($event.target.nextElementSibling.style.display='inline-block')">
         <span v-else
               class="ml-2 runner-silk-fallback"
               :class="{striped: runner.clothStriped}"
-              :style="runner.clothStriped ? {} : {background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
+              :style="runner.clothStriped ? {} : {background: (runner.silkColor && String(runner.silkColor).indexOf('http')!==0 && String(runner.silkColor).indexOf('/')!==0) ? (runner.silkColor || runner.clothColor || '#E63946') : (runner.clothColor || '#E63946')}"></span>
         </template>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -3815,15 +3703,15 @@
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
-        <img v-if="runner.silkUrl"
-             :src="runner.silkUrl"
-             class="ml-2 runner-silk-img"
+        <img v-if="runner.silkUrl || (runner.silkColor && String(runner.silkColor).indexOf('http')===0) || (runner.silkColor && String(runner.silkColor).indexOf('/')===0)"
+             :src="runner.silkUrl || runner.silkColor"
+             class="ml-2"
              :alt="runner.clothNumber || runner.sortPriority"
-             @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
+             @error="$event.target.style.display='none'; $event.target.nextElementSibling && ($event.target.nextElementSibling.style.display='inline-block')">
         <span v-else
               class="ml-2 runner-silk-fallback"
               :class="{striped: runner.clothStriped}"
-              :style="runner.clothStriped ? {} : {background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
+              :style="runner.clothStriped ? {} : {background: (runner.silkColor && String(runner.silkColor).indexOf('http')!==0 && String(runner.silkColor).indexOf('/')!==0) ? (runner.silkColor || runner.clothColor || '#E63946') : (runner.clothColor || '#E63946')}"></span>
         </template>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -4025,15 +3913,15 @@
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
-        <img v-if="runner.silkUrl"
-             :src="runner.silkUrl"
-             class="ml-2 runner-silk-img"
+        <img v-if="runner.silkUrl || (runner.silkColor && String(runner.silkColor).indexOf('http')===0) || (runner.silkColor && String(runner.silkColor).indexOf('/')===0)"
+             :src="runner.silkUrl || runner.silkColor"
+             class="ml-2"
              :alt="runner.clothNumber || runner.sortPriority"
-             @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
+             @error="$event.target.style.display='none'; $event.target.nextElementSibling && ($event.target.nextElementSibling.style.display='inline-block')">
         <span v-else
               class="ml-2 runner-silk-fallback"
               :class="{striped: runner.clothStriped}"
-              :style="runner.clothStriped ? {} : {background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
+              :style="runner.clothStriped ? {} : {background: (runner.silkColor && String(runner.silkColor).indexOf('http')!==0 && String(runner.silkColor).indexOf('/')!==0) ? (runner.silkColor || runner.clothColor || '#E63946') : (runner.clothColor || '#E63946')}"></span>
         </template>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -4160,15 +4048,15 @@
               v-bind:class="{ 'selected': runner.selected }"
               v-on:click="toggleRunner(runner)"></span>
         <template v-if="Catalog.eventTypeId==7 || Catalog.eventTypeId==4339">
-        <img v-if="runner.silkUrl"
-             :src="runner.silkUrl"
-             class="ml-2 runner-silk-img"
+        <img v-if="runner.silkUrl || (runner.silkColor && String(runner.silkColor).indexOf('http')===0) || (runner.silkColor && String(runner.silkColor).indexOf('/')===0)"
+             :src="runner.silkUrl || runner.silkColor"
+             class="ml-2"
              :alt="runner.clothNumber || runner.sortPriority"
-             @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='inline-block'">
+             @error="$event.target.style.display='none'; $event.target.nextElementSibling && ($event.target.nextElementSibling.style.display='inline-block')">
         <span v-else
               class="ml-2 runner-silk-fallback"
               :class="{striped: runner.clothStriped}"
-              :style="runner.clothStriped ? {} : {background: runner.silkColor || runner.clothColor || '#E63946'}"></span>
+              :style="runner.clothStriped ? {} : {background: (runner.silkColor && String(runner.silkColor).indexOf('http')!==0 && String(runner.silkColor).indexOf('/')!==0) ? (runner.silkColor || runner.clothColor || '#E63946') : (runner.clothColor || '#E63946')}"></span>
         </template>
         <h3 class="runner-name">
             <div class="runner-info">
@@ -8044,49 +7932,6 @@ export default {
 })();
 </script>
 
-
-<script>
-/* Force bpexch runner styling after all CSS loads */
-(function () {
-  function inject() {
-    var id = 'nx-bpexch-force-css';
-    var old = document.getElementById(id);
-    if (old) old.remove();
-    var st = document.createElement('style');
-    st.id = id;
-    st.textContent = [
-      '.runner-runner{min-height:48px!important;padding:6px 0!important;}',
-      '.runner-runner>.selector{width:15px!important;height:15px!important;min-width:15px!important;margin:0 7px 0 8px!important;border:2px solid #28a745!important;border-radius:2px!important;vertical-align:middle!important;display:inline-block!important;}',
-      '.runner-runner>img.ml-2,.runner-runner img.runner-silk-img,.runner-runner img.ml-2{',
-      'width:40px!important;height:40px!important;min-width:40px!important;max-width:40px!important;',
-      'min-height:40px!important;max-height:40px!important;object-fit:contain!important;',
-      'vertical-align:middle!important;margin:0 10px 0 0!important;padding:0!important;border:0!important;',
-      'display:inline-block!important;}',
-      '.runner-runner .runner-silk-fallback{width:16px!important;height:16px!important;min-width:16px!important;',
-      'border-radius:2px!important;border:1px solid rgba(0,0,0,.3)!important;vertical-align:middle!important;',
-      'margin:0 8px 0 0!important;display:inline-block!important;box-sizing:border-box!important;}',
-      'body.nx-greyhound .runner-runner .runner-silk-fallback{width:16px!important;height:16px!important;margin:0 8px 0 4px!important;}',
-      'body.nx-greyhound .runner-runner .selector{display:none!important;}',
-      'body.nx-greyhound .runner-runner .runner-position{display:none!important;}',
-      'body.nx-greyhound .runner-runner{min-height:32px!important;padding:3px 0!important;}',
-      '.runner-runner h3.runner-name,.runner-runner .runner-name{vertical-align:middle!important;display:inline-block!important;margin:0!important;padding:0!important;}',
-      '.runner-runner .runner-name h4,.runner-runner .clippable-spacer{font-size:14px!important;font-weight:700!important;',
-      'line-height:1.2!important;margin:0!important;padding:0!important;color:#212529!important;',
-      'font-family:"Roboto Condensed",Roboto,Arial,sans-serif!important;}',
-      '.runner-runner .runner-position{font-size:12px!important;font-weight:400!important;color:#6c757d!important;',
-      'line-height:1.15!important;margin:0!important;padding:0!important;',
-      'font-family:"Roboto Condensed",Roboto,Arial,sans-serif!important;}',
-      '.runner-runner .runner-position .ml-1,.runner-runner .runner-position span{font-size:12px!important;color:#6c757d!important;}'
-    ].join('');
-    document.head.appendChild(st);
-  }
-  inject();
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', inject);
-  setTimeout(inject, 500);
-  setTimeout(inject, 1500);
-  setTimeout(inject, 3000);
-})();
-</script>
 
 </body>
 </html>

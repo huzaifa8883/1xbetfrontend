@@ -1,3 +1,10 @@
+
+
+Event.html
+
+
+
+Files
 <!doctype html>
 <html lang="en">
 <head>
@@ -23,90 +30,85 @@
         }
 
         /*
-         * Horse + Greyhound — match bpexch size/font/alignment (screenshots)
-         * Horse: green checkbox + 34px jersey-shaped silk + 15px bold name + 13px jockey
-         * Greyhound: 22px color box + 15px bold name (no checkbox, no jockey line)
-         * NO flex on .runner-runner — odds layout stays original
+         * Match bpexch runner left-column (screenshots):
+         * Horse: green checkbox + ~28px silk image + bold name + grey jockey
+         * Greyhound: solid trap-colour square (no checkbox) + bold name
          */
         .runner-runner {
-            min-height: 48px !important;
-            padding: 9px 0 !important;
+            min-height: 42px !important;
+            padding: 6px 0 !important;
             box-sizing: border-box !important;
         }
+        /* Checkbox — simple green square like bpexch */
         .runner-runner > .selector {
             display: inline-block !important;
             vertical-align: middle !important;
-            width: 18px !important;
-            height: 18px !important;
-            min-width: 18px !important;
-            margin: 0 8px 0 10px !important;
+            width: 16px !important;
+            height: 16px !important;
+            min-width: 16px !important;
+            margin: 0 6px 0 8px !important;
             border: 2px solid #28a745 !important;
-            border-radius: 3px !important;
+            border-radius: 2px !important;
             background: transparent !important;
             box-sizing: border-box !important;
         }
         .runner-runner > .selector.selected {
             background: #28a745 !important;
         }
-        /* Horse jacket — bpexch size, jersey-shaped so a flat colour still reads as a "silk" */
+        /* Horse silk image — real jacket PNG from Betfair */
         .runner-runner > img.ml-2,
         .runner-runner .runner-silk-img {
             display: inline-block !important;
-            width: 34px !important;
-            height: 34px !important;
-            min-width: 34px !important;
-            max-width: 34px !important;
+            width: 28px !important;
+            height: 28px !important;
+            min-width: 28px !important;
+            max-width: 28px !important;
             object-fit: contain !important;
             vertical-align: middle !important;
-            margin: 0 10px 0 2px !important;
-            border-radius: 3px !important;
+            margin: 0 8px 0 2px !important;
+            border-radius: 2px !important;
+            background: transparent !important;
         }
+        /* Fallback when no silk image — plain rounded square (NO jersey mask) */
         .runner-runner .runner-silk-fallback {
             display: inline-block !important;
-            width: 34px !important;
-            height: 34px !important;
-            min-width: 34px !important;
-            max-width: 34px !important;
-            vertical-align: middle !important;
-            margin: 0 10px 0 2px !important;
-            box-sizing: border-box !important;
-            -webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M8 2.2 L4 4.4 L5.6 8.4 L7.2 7.4 L7.2 21 Q7.2 21.8 8 21.8 L16 21.8 Q16.8 21.8 16.8 21 L16.8 7.4 L18.4 8.4 L20 4.4 L16 2.2 Q14.4 4.2 12 4.2 Q9.6 4.2 8 2.2 Z'/></svg>") !important;
-            mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M8 2.2 L4 4.4 L5.6 8.4 L7.2 7.4 L7.2 21 Q7.2 21.8 8 21.8 L16 21.8 Q16.8 21.8 16.8 21 L16.8 7.4 L18.4 8.4 L20 4.4 L16 2.2 Q14.4 4.2 12 4.2 Q9.6 4.2 8 2.2 Z'/></svg>") !important;
-            -webkit-mask-repeat: no-repeat !important;
-            mask-repeat: no-repeat !important;
-            -webkit-mask-size: contain !important;
-            mask-size: contain !important;
-            -webkit-mask-position: center !important;
-            mask-position: center !important;
-        }
-        /* Greyhound: plain colour square (no jersey mask), matches trap-colour screenshot */
-        body.nx-greyhound .runner-runner .runner-silk-fallback {
             width: 22px !important;
             height: 22px !important;
             min-width: 22px !important;
             max-width: 22px !important;
-            border-radius: 3px !important;
-            border: 1px solid rgba(0,0,0,0.25) !important;
-            -webkit-mask-image: none !important;
-            mask-image: none !important;
-            margin: 0 10px 0 8px !important;
+            border-radius: 2px !important;
+            border: 1px solid rgba(0,0,0,0.2) !important;
+            vertical-align: middle !important;
+            margin: 0 8px 0 4px !important;
+            box-sizing: border-box !important;
         }
+        /* Greyhound trap colour squares */
+        body.nx-greyhound .runner-runner .runner-silk-fallback {
+            width: 18px !important;
+            height: 18px !important;
+            min-width: 18px !important;
+            max-width: 18px !important;
+            border-radius: 2px !important;
+            border: 1px solid rgba(0,0,0,0.28) !important;
+            margin: 0 8px 0 6px !important;
+        }
+        /* Trap 6 — black/white diagonal stripes (official) */
         .runner-silk-fallback.striped {
             background-image: repeating-linear-gradient(
                 45deg,
-                #111 0px, #111 5px,
-                #fff 5px, #fff 10px
+                #111 0px, #111 4px,
+                #fff 4px, #fff 8px
             ) !important;
             border-color: #333 !important;
         }
-        /* Name — larger bold like bpexch */
+        /* Name */
         .runner-runner > .runner-name,
         .runner-runner h3.runner-name {
             display: inline-block !important;
             vertical-align: middle !important;
             margin: 0 !important;
             padding: 0 !important;
-            line-height: 1.3 !important;
+            line-height: 1.25 !important;
         }
         .runner-runner .runner-info {
             display: block !important;
@@ -119,30 +121,30 @@
         .runner-runner .clippable h4 {
             margin: 0 !important;
             padding: 0 !important;
-            line-height: 1.3 !important;
-            font-size: 15px !important;
+            line-height: 1.25 !important;
+            font-size: 14px !important;
             font-weight: 700 !important;
             font-family: "Roboto Condensed", Roboto, Arial, sans-serif !important;
-            color: #1a1a1a !important;
+            color: #212529 !important;
         }
         /* Jockey under name */
         .runner-runner .runner-position {
             display: block !important;
-            margin: 2px 0 0 0 !important;
+            margin: 1px 0 0 0 !important;
             padding: 0 !important;
             line-height: 1.2 !important;
-            font-size: 13px !important;
+            font-size: 12px !important;
             font-weight: 400 !important;
             color: #6c757d !important;
             font-family: "Roboto Condensed", Roboto, Arial, sans-serif !important;
         }
         .runner-runner .runner-position .ml-1,
         .runner-runner .runner-position span {
-            font-size: 13px !important;
+            font-size: 12px !important;
             font-weight: 400 !important;
             color: #6c757d !important;
         }
-        /* Greyhound: no checkboxes, no jockey line (greyhounds don't have jockeys) */
+        /* Greyhound: no checkbox, no jockey */
         body.nx-greyhound .runner-runner .selector {
             display: none !important;
             width: 0 !important;
@@ -179,29 +181,34 @@
         // clothNum = runner.clothNumber (may be null for some tracks)
         // sortPriority = runner.sortPriority (always present from Betfair — 1,2,3...)
         window.getClothColor = function(clothNum, sortPriority) {
+            // Official GB greyhound trap colours (also fine for horse fallback)
             var colors = [
-                '#E63946',  // 1 Red
-                '#FFFFFF',  // 2 White
-                '#1D3557',  // 3 Dark Blue
-                '#F4A261',  // 4 Yellow/Orange
-                '#2A9D8F',  // 5 Green
-                '#111111',  // 6 Black
-                '#F72585',  // 7 Hot Pink
-                '#F77F00',  // 8 Orange
+                '#E30613',  // 1 Red
+                '#0057B8',  // 2 Blue
+                '#FFFFFF',  // 3 White
+                '#111111',  // 4 Black
+                '#FF8C00',  // 5 Orange
+                '#111111',  // 6 Black (striped overlay applied separately)
+                '#C4D600',  // 7 Green/Yellow
+                '#E91E8C',  // 8 Pink
                 '#8338EC',  // 9 Purple
                 '#0077B6',  // 10 Blue
                 '#06D6A0',  // 11 Mint
                 '#FFB703',  // 12 Gold
                 '#E9C46A',  // 13 Light Yellow
                 '#E76F51',  // 14 Coral
-                '#118AB2',  // 15 Teal Blue
+                '#118AB2',  // 15 Teal
                 '#073B4C',  // 16 Dark Teal
             ];
-            // clothNumber pehle try karo, warna sortPriority use karo
             var n = parseInt(clothNum);
             if (isNaN(n) || n < 1) n = parseInt(sortPriority);
             if (isNaN(n) || n < 1) n = 1;
             return colors[(n - 1) % colors.length];
+        };
+        window.isTrapStriped = function(clothNum, sortPriority) {
+            var n = parseInt(clothNum);
+            if (isNaN(n) || n < 1) n = parseInt(sortPriority);
+            return n === 6; // official trap 6 = black/white stripes
         };
         // mv2.min.js svc_prefix use karta hai catalog2 / orders calls ke liye
         const SsocketUrl = "https://1xbetbackend.work.gd/signalr";
@@ -7751,6 +7758,23 @@ export default {
           else rn.jockeyName = String(rn.trainerName);
         } catch (e) {}
       }
+      // trap colour + stripe for greyhound (and horse fallback)
+      try {
+        var cn = rn.clothNumber != null ? rn.clothNumber : rn.sortPriority;
+        var col = (typeof window.getClothColor === 'function') ? window.getClothColor(cn, rn.sortPriority) : null;
+        var striped = (typeof window.isTrapStriped === 'function') ? window.isTrapStriped(cn, rn.sortPriority) : (parseInt(cn) === 6);
+        if (col && !rn.silkUrl) {
+          if (vm.$set) {
+            if (!rn.clothColor) vm.$set(rn, 'clothColor', col);
+            if (!rn.silkColor || String(rn.silkColor).indexOf('http') !== 0) vm.$set(rn, 'silkColor', col);
+            vm.$set(rn, 'clothStriped', !!striped);
+          } else {
+            if (!rn.clothColor) rn.clothColor = col;
+            if (!rn.silkColor || String(rn.silkColor).indexOf('http') !== 0) rn.silkColor = col;
+            rn.clothStriped = !!striped;
+          }
+        }
+      } catch (e3) {}
     }
   }
   function raceEid(vm) {

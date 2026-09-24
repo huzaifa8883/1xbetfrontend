@@ -1,4 +1,10 @@
 
+
+Event.html
+
+
+
+Files
 <!doctype html>
 <html lang="en">
 <head>
@@ -7391,14 +7397,17 @@ export default {
     var startMs = parseStartMs(catalog.marketStartTime || catalog.marketStartTimeUtc || catalog.startTime);
     var now = Date.now();
     var minsToStart = isNaN(startMs) ? null : (startMs - now) / 60000;
-    var status = String(catalog.status || '').toUpperCase();
+    var status = String(catalog.status || catalog.marketStatus || '').toUpperCase();
+
+    /* CRITICAL: in-play ONLY from market status/flags — NOT from scheduled clock.
+       US/AUS races often start late; status stays OPEN after scheduled time. */
     var inPlay = !!(catalog.inPlay || catalog.inplay) ||
-      status === 'INPLAY' || status === 'IN_PLAY' ||
-      (!isNaN(startMs) && now >= startMs);
+      status === 'INPLAY' || status === 'IN_PLAY' || status === 'IN-PLAY';
     var place = isPlaceMarket(catalog);
 
     if (isGrey) {
       if (inPlay) return 'Inplay bet is not allowed in this race';
+      /* open window: only before off; if past scheduled time but still OPEN → allow */
       if (minsToStart != null && minsToStart > 5) {
         var m = Math.ceil(minsToStart - 5);
         return 'Betting will open in ' + m + ' minute' + (m === 1 ? '' : 's');
@@ -7411,6 +7420,7 @@ export default {
 
     if (strict) {
       if (inPlay) return 'Inplay bet is not allowed in this race';
+      /* 2 min before scheduled off; after scheduled time while status OPEN → still allow */
       if (minsToStart != null && minsToStart > 2) {
         var m2 = Math.ceil(minsToStart - 2);
         return 'Betting will open in ' + m2 + ' minute' + (m2 === 1 ? '' : 's');
@@ -7427,6 +7437,71 @@ export default {
       return null;
     }
     return null;
+  };
+
+  /* Max bet limit for horse (200K) / greyhound (50K) / catalog.maxBetSize */
+  window.validateRacingMaxBet = function (catalog, stake) {
+    if (!catalog) return null;
+    var eid = String(catalog.eventTypeId || '');
+    if (eid !== '7' && eid !== '4339') return null;
+    var size = Number(stake);
+    if (!isFinite(size) || size <= 0) return null;
+    var limit = Number(catalog.maxBetSize || catalog.maxBet || 0);
+    if (!limit || limit <= 0) {
+      limit = (eid === '4339') ? 50000 : 200000;
+    }
+    if (size > limit) {
+      var label = limit >= 1000 ? (Math.round(limit / 1000) + 'K') : String(limit);
+      return 'Max bet limited to ' + label;
+    }
+    return null;
+  };
+
+  window._nxReadBetSlipStake = function () {
+    var selectors = [
+      '.bet-slip input[type="text"]',
+      '.bet-slip input[type="number"]',
+      '#betSlip input',
+      '.bets-slip input',
+      '[class*="betslip" i] input',
+      '.right-content .bets input',
+      'input[placeholder*="Amount" i]',
+      'input[name*="amount" i]',
+      'input[name*="stake" i]',
+      'input[id*="amount" i]',
+      'input[id*="stake" i]'
+    ];
+    for (var i = 0; i < selectors.length; i++) {
+      var nodes = document.querySelectorAll(selectors[i]);
+      for (var j = 0; j < nodes.length; j++) {
+        var el = nodes[j];
+        if (!el || el.offsetParent === null) continue;
+        var v = String(el.value || '').replace(/,/g, '').trim();
+        var n = parseFloat(v);
+        if (isFinite(n) && n > 0) return n;
+      }
+    }
+    /* Vue data fallbacks */
+    try {
+      var root = document.getElementById('MarketView') || document.getElementById('app');
+      var vm = root && root.__vue__;
+      if (vm) {
+        var cand = [vm.Amount, vm.amount, vm.Stake, vm.stake, vm.BetAmount, vm.betAmount, vm.Size, vm.size];
+        for (var k = 0; k < cand.length; k++) {
+          var n2 = Number(cand[k]);
+          if (isFinite(n2) && n2 > 0) return n2;
+        }
+        if (vm.BetSlip && typeof vm.BetSlip === 'object') {
+          var b = vm.BetSlip;
+          var cand2 = [b.Amount, b.amount, b.Stake, b.stake, b.Size, b.size];
+          for (var k2 = 0; k2 < cand2.length; k2++) {
+            var n3 = Number(cand2[k2]);
+            if (isFinite(n3) && n3 > 0) return n3;
+          }
+        }
+      }
+    } catch (e) {}
+    return 0;
   };
 
   // Pink banner inside bet slip (bpexch style) — NO alert
@@ -7556,9 +7631,14 @@ export default {
         if (!err2 && window._nxCountSelectedRunners && window._nxCountSelectedRunners() > 3) {
           err2 = 'Max no. of runners allowed is 3';
         }
+        if (!err2 && window.validateRacingMaxBet) {
+          var stake = window._nxReadBetSlipStake ? window._nxReadBetSlipStake() : 0;
+          err2 = window.validateRacingMaxBet(cat2, stake);
+        }
         if (err2) {
           ev.preventDefault();
           ev.stopPropagation();
+          if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
           clearBetSlipRaceBanner();
           showBetSlipRaceBanner(err2);
           return false;

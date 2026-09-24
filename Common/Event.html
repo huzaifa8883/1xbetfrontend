@@ -1,4 +1,4 @@
-
+Files
 <!doctype html>
 <html lang="en">
 <head>
@@ -8066,6 +8066,154 @@ export default {
 })();
 </script>
 
+
+
+<script>
+/* NX-MAXBET-ENFORCE */
+(function () {
+  'use strict';
+  var HORSE_MAX = 200000;
+  var GREY_MAX = 50000;
+
+  function isGreyCat(cat) {
+    if (!cat) return document.body.classList.contains('nx-greyhound');
+    var eid = String(cat.eventTypeId || '');
+    if (eid === '4339') return true;
+    if (eid === '7') return false;
+    if (document.body.classList.contains('nx-greyhound')) return true;
+    var t = String(cat.eventName || '') + ' ' + String(cat.marketName || '');
+    if (/MaxBet:\s*50K/i.test(document.body.innerText || '')) return true;
+    return /greyhound/i.test(t);
+  }
+  function limitFor(cat) {
+    return isGreyCat(cat) ? GREY_MAX : HORSE_MAX;
+  }
+  function readStake() {
+    if (window._nxReadBetSlipStake) {
+      var s = window._nxReadBetSlipStake();
+      if (s > 0) return s;
+    }
+    var inputs = document.querySelectorAll('input');
+    for (var i = 0; i < inputs.length; i++) {
+      var el = inputs[i];
+      if (!el || el.offsetParent === null) continue;
+      var v = String(el.value || '').replace(/[,\s]/g, '');
+      var n = parseFloat(v);
+      if (isFinite(n) && n >= 50) return n;
+    }
+    return 0;
+  }
+  function showErr(msg) {
+    if (window.showBetSlipRaceBanner) {
+      try { window.showBetSlipRaceBanner(msg); return; } catch (e) {}
+    }
+    alert(msg);
+  }
+  function checkMax(cat, stake) {
+    if (!stake || stake <= 0) return null;
+    var lim = limitFor(cat);
+    if (cat && Number(cat.maxBetSize) > 0 && Number(cat.maxBetSize) < lim) lim = Number(cat.maxBetSize);
+    if (stake > lim) {
+      var label = lim >= 1000 ? (Math.round(lim / 1000) + 'K') : String(lim);
+      return 'Max bet limited to ' + label;
+    }
+    return null;
+  }
+  function getVm() {
+    var el = document.getElementById('MarketView') || document.getElementById('app');
+    return el && el.__vue__ ? el.__vue__ : null;
+  }
+
+  /* Patch Vue PlaceOrder */
+  function patchPlaceOrder() {
+    var vm = getVm();
+    if (!vm || typeof vm.PlaceOrder !== 'function' || vm._nxMaxBetPatched) return;
+    vm._nxMaxBetPatched = true;
+    var orig = vm.PlaceOrder.bind(vm);
+    vm.PlaceOrder = function () {
+      try {
+        var cat = vm.Catalog || {};
+        var eid = String(cat.eventTypeId || '');
+        var mid = String(cat.marketId || '');
+        var isRace = eid === '7' || eid === '4339' || /^\d{6,}\.\d+$/.test(mid) ||
+          document.body.classList.contains('nx-greyhound') ||
+          /MaxBet:\s*(50K|200K)/i.test(document.body.innerText || '');
+        if (isRace) {
+          if (window.validateRacingBet) {
+            var rerr = window.validateRacingBet(cat);
+            if (rerr) { showErr(rerr); return; }
+          }
+          var stake = readStake();
+          /* also try Vue amount fields */
+          if (!stake) {
+            var cands = [vm.Amount, vm.amount, vm.Stake, vm.stake, vm.BetSize, vm.size, vm.Size];
+            for (var i = 0; i < cands.length; i++) {
+              var n = Number(cands[i]);
+              if (isFinite(n) && n > 0) { stake = n; break; }
+            }
+          }
+          var merr = checkMax(cat, stake);
+          if (merr) { showErr(merr); return; }
+        }
+      } catch (e) { console.warn('[nx-maxbet]', e); }
+      return orig.apply(this, arguments);
+    };
+  }
+
+  /* Intercept fetch to /orders POST */
+  var _fetch = window.fetch;
+  if (_fetch && !window._nxFetchMaxBet) {
+    window._nxFetchMaxBet = true;
+    window.fetch = function (input, init) {
+      try {
+        var url = typeof input === 'string' ? input : (input && input.url) || '';
+        var method = ((init && init.method) || 'GET').toUpperCase();
+        if (method === 'POST' && /\/orders\/?(\?|$)/i.test(url) && !/cancel|settle|match/i.test(url)) {
+          var body = init && init.body;
+          var bets = null;
+          if (typeof body === 'string') {
+            try { bets = JSON.parse(body); } catch (e) {}
+          }
+          if (Array.isArray(bets) && bets.length) {
+            var vm = getVm();
+            var cat = (vm && vm.Catalog) || {};
+            var eid = String(cat.eventTypeId || '');
+            var mid = String(cat.marketId || '');
+            var isRace = eid === '7' || eid === '4339' || /^\d{6,}\.\d+$/.test(mid) ||
+              document.body.classList.contains('nx-greyhound') ||
+              /MaxBet:\s*(50K|200K)/i.test(document.body.innerText || '');
+            if (isRace) {
+              if (window.validateRacingBet) {
+                var rerr = window.validateRacingBet(cat);
+                if (rerr) {
+                  showErr(rerr);
+                  return Promise.resolve(new Response(JSON.stringify({ success: false, message: rerr }), { status: 400, headers: { 'Content-Type': 'application/json' } }));
+                }
+              }
+              for (var i = 0; i < bets.length; i++) {
+                var size = Number(bets[i].size || bets[i].Size || bets[i].stake || 0);
+                var merr = checkMax(cat, size);
+                if (merr) {
+                  showErr(merr);
+                  return Promise.resolve(new Response(JSON.stringify({ success: false, message: merr }), { status: 400, headers: { 'Content-Type': 'application/json' } }));
+                }
+              }
+            }
+          }
+        }
+      } catch (e) { console.warn('[nx-maxbet-fetch]', e); }
+      return _fetch.apply(this, arguments);
+    };
+  }
+
+  function loop() {
+    patchPlaceOrder();
+    setTimeout(loop, 800);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { setTimeout(loop, 300); });
+  else setTimeout(loop, 300);
+})();
+</script>
 
 </body>
 </html>

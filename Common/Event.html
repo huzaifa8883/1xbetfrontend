@@ -1,4 +1,10 @@
 
+
+Event.html
+
+
+
+Files
 <!doctype html>
 <html lang="en">
 <head>
@@ -7433,17 +7439,51 @@ export default {
     return null;
   };
 
-  /* Max bet limit for horse (200K) / greyhound (50K) / catalog.maxBetSize */
+  /* Detect horse vs greyhound even when eventTypeId missing (composite race ids) */
+  window._nxIsGreyhound = function (catalog) {
+    if (!catalog) return document.body.classList.contains('nx-greyhound');
+    var eid = String(catalog.eventTypeId || '');
+    if (eid === '4339') return true;
+    if (eid === '7') return false;
+    if (document.body.classList.contains('nx-greyhound')) return true;
+    var en = String(catalog.eventName || catalog.raceName || '');
+    var mt = String(catalog.marketType || catalog.marketName || '');
+    // greyhound venues often have trap-style markets; title often has no "Hcap" etc.
+    if (/greyhound|grey hound|trap/i.test(en + ' ' + mt)) return true;
+    return false;
+  };
+  window._nxIsHorseRace = function (catalog) {
+    if (!catalog) return false;
+    var eid = String(catalog.eventTypeId || '');
+    if (eid === '7') return true;
+    if (eid === '4339') return false;
+    var mid = String(catalog.marketId || '');
+    if (/^\d{6,}\.\d+$/.test(mid) && !window._nxIsGreyhound(catalog)) return true;
+    return false;
+  };
+
+  /* Max bet: Horse 200K, Greyhound 50K — always enforce on race pages */
   window.validateRacingMaxBet = function (catalog, stake) {
     if (!catalog) return null;
+    var isGrey = window._nxIsGreyhound(catalog);
+    var isHorse = window._nxIsHorseRace(catalog) || (!isGrey && (String(catalog.eventTypeId||'') === '7'));
     var eid = String(catalog.eventTypeId || '');
-    if (eid !== '7' && eid !== '4339') return null;
+    if (!isGrey && !isHorse && eid !== '7' && eid !== '4339') {
+      /* composite race page without eid yet — still enforce if MaxBet label shows */
+      var header = document.body.innerText || '';
+      if (/MaxBet:\s*50K/i.test(header)) isGrey = true;
+      else if (/MaxBet:\s*200K/i.test(header)) isHorse = true;
+      else return null;
+    }
     var size = Number(stake);
     if (!isFinite(size) || size <= 0) return null;
     var limit = Number(catalog.maxBetSize || catalog.maxBet || 0);
     if (!limit || limit <= 0) {
-      limit = (eid === '4339') ? 50000 : 200000;
+      limit = isGrey ? 50000 : 200000;
     }
+    /* hard caps — never allow above sport default even if catalog says higher */
+    var hard = isGrey ? 50000 : 200000;
+    if (limit > hard) limit = hard;
     if (size > limit) {
       var label = limit >= 1000 ? (Math.round(limit / 1000) + 'K') : String(limit);
       return 'Max bet limited to ' + label;
@@ -7495,6 +7535,20 @@ export default {
         }
       }
     } catch (e) {}
+    /* last resort: any visible input near Submit with numeric value */
+    try {
+      var allIn = document.querySelectorAll('input');
+      for (var a = 0; a < allIn.length; a++) {
+        var inp = allIn[a];
+        if (!inp || inp.offsetParent === null) continue;
+        var ty = (inp.type || '').toLowerCase();
+        if (ty && ty !== 'text' && ty !== 'number' && ty !== 'tel') continue;
+        var raw = String(inp.value || '').replace(/[,\s]/g, '').trim();
+        if (!raw) continue;
+        var nv = parseFloat(raw);
+        if (isFinite(nv) && nv >= 100) return nv; /* stakes are usually >= 100 */
+      }
+    } catch (e2) {}
     return 0;
   };
 
@@ -7610,9 +7664,14 @@ export default {
         var el2 = document.getElementById('MarketView') || document.getElementById('app');
         var vm2 = el2 && el2.__vue__;
         if (!vm2 || !vm2.Catalog) return;
-        var eid2 = String(vm2.Catalog.eventTypeId || '');
-        if (eid2 !== '7' && eid2 !== '4339') return;
         var cat2 = vm2.Catalog;
+        var eid2 = String(cat2.eventTypeId || '');
+        var mid2 = String(cat2.marketId || '');
+        var isRacePage = (eid2 === '7' || eid2 === '4339' ||
+          /^\d{6,}\.\d+$/.test(mid2) ||
+          document.body.classList.contains('nx-greyhound') ||
+          /MaxBet:\s*(50K|200K)/i.test(document.body.innerText || ''));
+        if (!isRacePage) return;
         // active race tab market?
         var active = document.querySelector('.tabcontent[style*="block"], .tabcontent.active');
         if (active && active.id && active.id.indexOf('race') === 0 && vm2.OtherRaceMarkets) {
@@ -7787,7 +7846,14 @@ export default {
     var eid = raceEid(vm);
     if (eid !== '7' && eid !== '4339') return;
     var mid = String(vm.Catalog.marketId || '');
-    var def = eid === '4339' ? GREY_MAX : HORSE_MAX;
+    var isG = (eid === '4339') || document.body.classList.contains('nx-greyhound') ||
+      (window._nxIsGreyhound && window._nxIsGreyhound(vm.Catalog));
+    var def = isG ? GREY_MAX : HORSE_MAX;
+    /* always hard-cap catalog value to sport limit */
+    if (Number(vm.Catalog.maxBetSize || 0) > def) {
+      if (vm.$set) vm.$set(vm.Catalog, 'maxBetSize', def);
+      else vm.Catalog.maxBetSize = def;
+    }
 
     if (vm.fancySize == null || Number(vm.fancySize) === 0) {
       if (vm.$set) vm.$set(vm, 'fancySize', COMBINED_MAX);

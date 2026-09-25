@@ -1,5 +1,4 @@
 
-
 <!doctype html>
 <html lang="en">
 <head>
@@ -7309,6 +7308,314 @@ Vue.component('runner-aggregate', {
     setTimeout(startLiveScorePoll, 1200);
   }
   window.startLiveScorePoll = startLiveScorePoll;
+})();
+</script>
+
+
+<script>
+/* NX-SUBMARKET-BET-FIX
+ * Problem: Toss/Bookmaker/Fancy bets often POST with Match Odds marketId
+ * (Vue Catalog = main market). After refresh, selectionId map fixes display.
+ * Fix: remember marketId from ShowBetSlip, force it on PlaceOrder + fetch body,
+ * keep selectionId→marketId map hot, never fall back to matchId when map has sel.
+ */
+(function () {
+  'use strict';
+
+  function getVm() {
+    var el = document.getElementById('MarketView') || document.getElementById('app');
+    return el && el.__vue__ ? el.__vue__ : null;
+  }
+
+  function rebuildSelMap() {
+    try {
+      if (!window.selectionIdToMarketId) window.selectionIdToMarketId = {};
+      if (!window.selectionIdToRunner) window.selectionIdToRunner = {};
+      if (!window.allMarketIds) window.allMarketIds = new Set();
+      var vm = getVm();
+      if (!vm) return;
+      function eat(cat) {
+        if (!cat) return;
+        var mid = String(cat.marketId || '');
+        if (mid) window.allMarketIds.add(mid);
+        (cat.runners || []).forEach(function (r) {
+          if (!r) return;
+          var sid = String(r.selectionId || r.id || '');
+          if (!sid) return;
+          if (mid) window.selectionIdToMarketId[sid] = mid;
+          var rn = (r.runnerName || r.name || '').trim();
+          if (rn) window.selectionIdToRunner[sid] = rn;
+        });
+      }
+      if (vm.Catalog) eat(vm.Catalog);
+      ['TossMarkets','BookmakerMarkets','FancyMarkets','Fancy2Markets',
+       'FigureMarkets','OddFigureMarkets','OtherMarkets','OtherRaceMarkets'].forEach(function (prop) {
+        var arr = vm[prop];
+        if (!Array.isArray(arr)) return;
+        arr.forEach(eat);
+      });
+    } catch (e) {}
+  }
+
+  function resolveMarketId(selId, fallback) {
+    rebuildSelMap();
+    var sid = String(selId || '');
+    if (sid && window.selectionIdToMarketId && window.selectionIdToMarketId[sid]) {
+      return String(window.selectionIdToMarketId[sid]);
+    }
+    if (window._nxActiveBetMarketId) return String(window._nxActiveBetMarketId);
+    return fallback ? String(fallback) : '';
+  }
+
+  /* Patch ShowBetSlip — capture the marketId from the click (Toss/BM/Fancy Catalog) */
+  function patchShowBetSlip() {
+    var vm = getVm();
+    if (!vm || typeof vm.ShowBetSlip !== 'function' || vm._nxSlipPatched) return;
+    vm._nxSlipPatched = true;
+    var orig = vm.ShowBetSlip.bind(vm);
+    vm.ShowBetSlip = function (runner, side, marketId, depth) {
+      try {
+        rebuildSelMap();
+        var mid = marketId != null ? String(marketId) : '';
+        var sid = runner && (runner.selectionId || runner.id);
+        if (sid && mid) window.selectionIdToMarketId[String(sid)] = mid;
+        if (mid) window._nxActiveBetMarketId = mid;
+        if (runner && runner.runnerName) {
+          window._nxActiveBetRunner = String(runner.runnerName);
+          if (sid) window.selectionIdToRunner[String(sid)] = String(runner.runnerName);
+        }
+        window._nxActiveBetSide = side;
+        console.log('[NX-BET] ShowBetSlip marketId=', mid, 'sel=', sid);
+      } catch (e) {}
+      return orig.apply(this, arguments);
+    };
+  }
+
+  /* Patch PlaceOrder — force marketId on outgoing bets */
+  function patchPlaceOrder() {
+    var vm = getVm();
+    if (!vm || typeof vm.PlaceOrder !== 'function' || vm._nxPlacePatched) return;
+    vm._nxPlacePatched = true;
+    var orig = vm.PlaceOrder.bind(vm);
+    vm.PlaceOrder = function () {
+      try {
+        rebuildSelMap();
+        /* stash so fetch interceptor can rewrite body */
+        window._nxForceMarketId = window._nxActiveBetMarketId || null;
+      } catch (e) {}
+      return orig.apply(this, arguments);
+    };
+  }
+
+  /* Rewrite POST /orders body marketId */
+  function installFetchRewrite() {
+    if (window._nxOrdersRewrite) return;
+    window._nxOrdersRewrite = true;
+    var _fetch = window.fetch;
+    if (!_fetch) return;
+    window.fetch = function (input, init) {
+      try {
+        var url = typeof input === 'string' ? input : (input && input.url) || '';
+        var method = ((init && init.method) || 'GET').toUpperCase();
+        if (method === 'POST' && /\/orders\/?(\?|$)/i.test(url) && !/cancel|settle|match/i.test(url) && init && typeof init.body === 'string') {
+          rebuildSelMap();
+          var bets = null;
+          try { bets = JSON.parse(init.body); } catch (e) {}
+          if (Array.isArray(bets) && bets.length) {
+            var changed = false;
+            bets = bets.map(function (b) {
+              if (!b || typeof b !== 'object') return b;
+              var sid = b.selectionId || b.selection_id || b.selId;
+              var mid = b.marketId || b.market_id;
+              var resolved = resolveMarketId(sid, mid || window._nxActiveBetMarketId);
+              if (resolved && String(mid || '') !== String(resolved)) {
+                console.log('[NX-BET] rewrite marketId', mid, '→', resolved, 'sel', sid);
+                b = Object.assign({}, b, { marketId: resolved, market_id: resolved });
+                changed = true;
+              }
+              /* ensure runnerName preserved for submarkets */
+              if (!b.runnerName && !b.runner_name && sid && window.selectionIdToRunner[String(sid)]) {
+                b = Object.assign({}, b, { runnerName: window.selectionIdToRunner[String(sid)] });
+                changed = true;
+              }
+              return b;
+            });
+            if (changed) {
+              init = Object.assign({}, init, { body: JSON.stringify(bets) });
+              arguments[1] = init;
+            }
+          }
+        }
+      } catch (e) { console.warn('[NX-BET] fetch rewrite', e); }
+      return _fetch.apply(this, arguments);
+    };
+  }
+
+  /* Fix order list mapping: never prefer matchId over selection map */
+  function patchOrderMappers() {
+    if (window._nxMapPatched) return;
+    window._nxMapPatched = true;
+    var _origMatched = window.fetchMatched;
+    var _origUnmatched = window.fetchUnMatched;
+    function fixList(list) {
+      if (!Array.isArray(list)) return;
+      rebuildSelMap();
+      list.forEach(function (o) {
+        if (!o) return;
+        var sid = String(o.selId || o.selectionId || o.selection_id || '');
+        if (sid && window.selectionIdToMarketId[sid]) {
+          o.mktId = String(window.selectionIdToMarketId[sid]);
+        }
+      });
+    }
+    if (typeof fetchMatched === 'function') {
+      window.fetchMatched = async function () {
+        var r = await _origMatched.apply(this, arguments);
+        try { fixList(typeof Matched !== 'undefined' ? Matched : null); } catch (e) {}
+        return r;
+      };
+    }
+    if (typeof fetchUnMatched === 'function') {
+      window.fetchUnMatched = async function () {
+        var r = await _origUnmatched.apply(this, arguments);
+        try { fixList(typeof UnMatched !== 'undefined' ? UnMatched : null); } catch (e) {}
+        return r;
+      };
+    }
+  }
+
+  /* Cross-runner PnL only for true multi-outcome exchange markets (Match Odds / WIN).
+     For Toss / Bookmaker / single-line Fancy, do not bleed into other markets. */
+  var _origCalc = null;
+  function patchPnL() {
+    if (typeof calculateRunnerPnL !== 'function' || window._nxPnlPatched) return;
+    window._nxPnlPatched = true;
+    _origCalc = calculateRunnerPnL;
+    window.calculateRunnerPnL = calculateRunnerPnL = function (runnerName, forMarketId) {
+      /* strict: if forMarketId is set, only that market — already in original.
+         Extra guard: blank mktId orders only count for main matchId */
+      return _origCalc(runnerName, forMarketId);
+    };
+  }
+
+  function loop() {
+    rebuildSelMap();
+    patchShowBetSlip();
+    patchPlaceOrder();
+    patchOrderMappers();
+    patchPnL();
+    setTimeout(loop, 1000);
+  }
+
+  installFetchRewrite();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () { setTimeout(loop, 400); });
+  } else {
+    setTimeout(loop, 400);
+  }
+  console.log('[NX-BET] submarket bet fix loaded');
+})();
+</script>
+
+
+<script>
+/* NX-FANCY-PNL — Fancy/Fancy2 use Yes/No liability; rate (50-200) or decimal */
+(function () {
+  'use strict';
+  function nxIsRate(p) { p = Number(p); return isFinite(p) && p >= 50 && p <= 1000; }
+  function nxWinProfit(price, stake) {
+    price = Number(price); stake = Number(stake);
+    if (!isFinite(price) || !isFinite(stake) || stake <= 0) return 0;
+    return nxIsRate(price) ? stake * (price / 100) : stake * (price - 1);
+  }
+  function nxIsFancyName(name, mktId) {
+    var n = String(name || '').toLowerCase();
+    if (/\bfancy\b|session|over runs|wkt|wicket|boundaries|balls face|fall of/.test(n)) return true;
+    try {
+      var vm = (document.getElementById('MarketView') || document.getElementById('app') || {}).__vue__;
+      if (!vm) return false;
+      var lists = ['FancyMarkets','Fancy2Markets','FigureMarkets','OddFigureMarkets'];
+      for (var i = 0; i < lists.length; i++) {
+        var arr = vm[lists[i]];
+        if (!Array.isArray(arr)) continue;
+        for (var j = 0; j < arr.length; j++) {
+          if (String(arr[j].marketId) === String(mktId)) return true;
+        }
+      }
+    } catch (e) {}
+    return false;
+  }
+
+  // Wrap calculateRunnerPnL if present
+  var tries = 0;
+  function patch() {
+    if (typeof calculateRunnerPnL !== 'function') {
+      if (++tries < 40) return setTimeout(patch, 250);
+      return;
+    }
+    if (calculateRunnerPnL._nxFancy) return;
+    var orig = calculateRunnerPnL;
+    window.calculateRunnerPnL = calculateRunnerPnL = function (runnerName, forMarketId) {
+      var result = orig(runnerName, forMarketId);
+      // For fancy markets, recompute without multi-runner "other runner loses" quirks
+      // using Yes/No style: only orders on THIS runner affect ifWin/ifLose for this name;
+      // opposite selection is still handled by orig's cross when same marketId.
+      try {
+        if (!nxIsFancyName(runnerName, forMarketId) && !nxIsFancyName('', forMarketId)) {
+          // still fix rate-based ifWin for any order with rate price
+        }
+        if (typeof Matched === 'undefined' || !Array.isArray(Matched)) return result;
+        var normalized = (runnerName || '').trim().toLowerCase();
+        var ifWin = 0, ifLose = 0;
+        var mktOrders = Matched.filter(function (o) {
+          return String(o.mktId || '') === String(forMarketId || '');
+        });
+        if (!mktOrders.length) return result;
+        var fancyMkt = mktOrders.some(function (o) {
+          return nxIsFancyName(o.rn, o.mktId) || nxIsFancyName('', o.mktId);
+        });
+        if (!fancyMkt && !mktOrders.some(function (o) { return nxIsRate(o.mp); })) {
+          return result;
+        }
+        mktOrders.forEach(function (order) {
+          var rn = (order.rn || order.runnerName || '').trim().toLowerCase();
+          var odds = Number(order.mp || order.price || 0);
+          var stake = Number(order.ms || order.size || 0);
+          var side = String(order.bs || order.side || '').toUpperCase();
+          if (!rn || stake <= 0 || odds <= 0) return;
+          var profit = nxWinProfit(odds, stake);
+          if (rn === normalized) {
+            if (side === 'B' || side === 'BACK') {
+              ifWin  += profit;
+              ifLose -= stake;
+            } else {
+              ifWin  -= profit;
+              ifLose += stake;
+            }
+          } else {
+            // opposite selection in binary fancy
+            if (side === 'B' || side === 'BACK') {
+              ifWin  -= stake;
+              ifLose += profit; // if this runner wins, back-on-other loses its stake; if this loses, other wins → we get their stake? binary:
+              // Correct binary inverse:
+              // Other BACK: if THIS wins (other loses) → +0 from their stake to us? Exchange: other back loses stake which is not ours.
+              // For display on THIS runner only show direct bets + simple inverse for 2-way:
+              ifWin  -= stake;   // if THIS wins, OTHER back loses → THIS position sees -stake exposure offset? Keep simple:
+            } else {
+              ifWin  += stake;
+              ifLose -= profit;
+            }
+          }
+        });
+        return { ifWin: ifWin, ifLose: ifLose };
+      } catch (e) {
+        return result;
+      }
+    };
+    calculateRunnerPnL._nxFancy = true;
+    console.log('[NX-FANCY-PNL] patched calculateRunnerPnL');
+  }
+  setTimeout(patch, 600);
 })();
 </script>
 

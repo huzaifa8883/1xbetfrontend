@@ -1,4 +1,5 @@
 
+
   <!doctype html>
 <html lang="en">
 <head>
@@ -5198,22 +5199,32 @@ function calculateRunnerPnL(runnerName, forMarketId) {
 
     return { ifWin: Math.round(ifWin), ifLose: Math.round(ifLose) };
 }
-}
 
 // runnerPnL keyed as "marketId||runnerName" for strict per-market isolation
 function updateRunnerPnL() {
     // Gather all unique (mktId, runnerName) pairs from both order lists
     const pairs = new Map(); // key: "mktId||rn"  value: { mktId, rn }
 
+    function resolveMkt(o) {
+        let mktId = String(o.mktId || "");
+        if (!mktId) {
+            const sid = String(o.selId || o.selectionId || "");
+            if (sid && window.selectionIdToMarketId && window.selectionIdToMarketId[sid])
+                mktId = String(window.selectionIdToMarketId[sid]);
+        }
+        return mktId;
+    }
     Matched.forEach(o => {
-        const rn    = (o.rn || "").trim();
-        const mktId = String(o.mktId || ""); if (!mktId) return;
-        if (rn) pairs.set(`${mktId}||${rn}`, { mktId, rn });
+        const rn = (o.rn || "").trim();
+        const mktId = resolveMkt(o);
+        if (!mktId || !rn) return;
+        pairs.set(mktId + "||" + rn, { mktId, rn });
     });
     UnMatched.forEach(o => {
-        const rn    = (o.rn || "").trim();
-        const mktId = String(o.mktId || ""); if (!mktId) return;
-        if (rn) pairs.set(`${mktId}||${rn}`, { mktId, rn });
+        const rn = (o.rn || "").trim();
+        const mktId = resolveMkt(o);
+        if (!mktId || !rn) return;
+        pairs.set(mktId + "||" + rn, { mktId, rn });
     });
 
     runnerPnL = {};
@@ -5371,7 +5382,7 @@ function updateRunnerPnLTable() {
     const seen = new Map();
     Matched.forEach(x => {
         const rn    = (x.rn || "").trim();
-        const mktId = String(x.mktId || matchId);
+        let mktId = String(x.mktId || ""); if (!mktId) { const sid = String(x.selId || x.selectionId || ""); if (sid && window.selectionIdToMarketId && window.selectionIdToMarketId[sid]) mktId = String(window.selectionIdToMarketId[sid]); } if (!mktId) return;
         if (rn) seen.set(`${mktId}||${rn}`, { mktId, rn });
     });
 

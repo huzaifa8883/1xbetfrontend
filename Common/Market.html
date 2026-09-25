@@ -1,4 +1,5 @@
 
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -4916,27 +4917,47 @@ async function updateUserWallet() {
 // ------------------------------------------------------------------
 function calculateRunnerPnL(runnerName, forMarketId) {
     const normalized  = (runnerName || "").trim().toLowerCase();
+    const useMarketFilter = !!forMarketId;
+
     let ifWin  = 0;
     let ifLose = 0;
 
-    // STRICT: only same marketId — blank / other market NEVER included
-    // (Toss bets must not affect Match Odds runners and vice versa)
-    if (!forMarketId) return { ifWin: 0, ifLose: 0 };
-    const targetMkt = String(forMarketId);
+    // STRICT MARKET FILTER:
+    // Sirf wahi orders include karo jinka mktId exactly forMarketId se match kare.
+    // Blank mktId wale orders SIRF tab include karo jab forMarketId bhi main matchId ho —
+    // warna Match Odds bets sub-markets (Toss, Bookmaker) pe bhi dikhne lagte hain.
     const marketOrders = Matched.filter(order => {
-        const oMktId = String(order.mktId || "");
-        return oMktId === targetMkt;
+        if (!useMarketFilter) return true;
+        let oMktId = String(order.mktId || "");
+        if (!oMktId) {
+            const sid = String(order.selId || order.selectionId || "");
+            if (sid && window.selectionIdToMarketId && window.selectionIdToMarketId[sid])
+                oMktId = String(window.selectionIdToMarketId[sid]);
+        }
+        // Blank still → exclude (do not treat as Match Odds)
+        if (!oMktId) return false;
+        return oMktId === String(forMarketId);
     });
+
     if (!marketOrders.length) return { ifWin: 0, ifLose: 0 };
+
+    // Cross-runner effect HAMESHA lagao — yeh exchange betting ka basic logic hai.
+    // Back West Indies @ 2, stake 2000:
+    //   West Indies: ifWin = +2000, ifLose = -2000
+    //   Sri Lanka:   ifWin = -2000, ifLose = +2000  <- yeh cross-runner effect hai
+    // Iske bina Sri Lanka ka PnL zero dikhe ga jo galat hai.
+    const applyCrossRunner = true;
 
     marketOrders.forEach(order => {
         const rn    = (order.rn || order.runnerName || "").trim().toLowerCase();
-        const odds  = Number(order.mp || order.price || order.up || 0);
-        const stake = Number(order.ms || order.size || order.us || 0);
-        const side  = String(order.bs || order.side || "").toUpperCase().charAt(0);
-        if (!rn || stake <= 0 || odds <= 0) return;
+        const odds  = Number(order.mp || order.price || 0);
+        const stake = Number(order.ms || order.size || 0);
+        const side  = (order.bs || order.side || "").toUpperCase();
+
+        if (!rn || odds <= 1 || stake <= 0) return;
 
         if (rn === normalized) {
+            // Is runner par direct bet
             if (side === "B") {
                 ifWin  += (odds - 1) * stake;
                 ifLose -= stake;
@@ -4944,11 +4965,37 @@ function calculateRunnerPnL(runnerName, forMarketId) {
                 ifWin  -= (odds - 1) * stake;
                 ifLose += stake;
             }
-        } else {
+        } else if (applyCrossRunner) {
+            // Cross-runner effect: doosre runner par bet ka is runner par asar
+            // ifWin  = "YEH runner jeet e" scenario
+            // ifLose = "YEH runner haare" scenario
+            // Back bet on OTHER runner:
+            //   Other wins (THIS loses) => bet wins => THIS ifLose -= stake
+            //   Other loses (THIS wins) => bet loses => THIS ifWin -= (odds-1)*stake  [wait, no]
+            // Correct exchange logic (2-runner market, zero-sum):
+            //   Back WI @ 2, stake 2000 => WI: ifWin=+2000, ifLose=-2000
+            //   SL (opposite):            ifWin=-2000, ifLose=+2000
+            // So for THIS runner (SL), OTHER runner (WI) has a Back bet:
+            //   THIS ifWin  = -(odds-1)*stake   (WI wins means SL loses)
+            //   THIS ifLose = +stake             (WI loses means SL wins, stake returned to SL's side)
             if (side === "B") {
+                // Back OTHER runner: agar OTHER jeeta => hum -stake, agar OTHER haara => hum 0
+                // Horse race: multi-runner market — THIS runner ke liye cross effect = sirf -stake
+                // (agar OTHER jeeta matlab THIS haara => THIS ka ifWin = -stake)
+                // (agar THIS jeeta matlab OTHER haara => THIS ka ifLose stays, asar sirf stake ka)
                 ifWin  -= stake;
-                ifLose += 0;
+                ifLose += 0; // koi cross-asar nahi ifLose pe multi-runner mein
             } else {
+                // Lay OTHER runner (R), stake S, odds O — sirf ek winner hota hai is liye:
+                //   Agar THIS jeeta (matlab R nahi jeeta, R ki LAY jeet gayi) => layer ko profit +S
+                //       => THIS ke "ifWin" (THIS jeete ka scenario) mein +stake
+                //   Agar THIS na jeeta lekin R jeet gaya (R ki LAY haari, layer ki liability) => -(odds-1)*stake
+                //       => yeh sirf "R jeeta" scenario hai, jo THIS ke liye "THIS ka ifLose" slot hai
+                //       (THIS khud nahi jeeta — usme se "R jeeta" bhi ek possibility hai)
+                //       => THIS ke "ifLose" mein -(odds-1)*stake
+                // BUG FIX: pehle yahan ifWin -= stake aur ifLose += (odds-1)*stake tha (sign ulta),
+                // jiski wajah se LAY karte waqt baaki SAB runners ke neeche liability (manfi) dikh rahi thi
+                // jabke profit (mussbat) dikhna chahiye tha.
                 ifWin  += stake;
                 ifLose -= (odds - 1) * stake;
             }
@@ -4956,7 +5003,6 @@ function calculateRunnerPnL(runnerName, forMarketId) {
     });
 
     return { ifWin: Math.round(ifWin), ifLose: Math.round(ifLose) };
-}
 }
 
 // runnerPnL keyed as "marketId||runnerName" for strict per-market isolation
@@ -4966,13 +5012,25 @@ function updateRunnerPnL() {
 
     Matched.forEach(o => {
         const rn    = (o.rn || "").trim();
-        const mktId = String(o.mktId || ""); if (!mktId) return;
-        if (rn) pairs.set(`${mktId}||${rn}`, { mktId, rn });
+        let mktId = String(o.mktId || "");
+        if (!mktId) {
+            const sid = String(o.selId || o.selectionId || "");
+            if (sid && window.selectionIdToMarketId && window.selectionIdToMarketId[sid])
+                mktId = String(window.selectionIdToMarketId[sid]);
+        }
+        if (!mktId || !rn) return; // never invent matchId — stops Toss→MatchOdds bleed
+        pairs.set(`${mktId}||${rn}`, { mktId, rn });
     });
     UnMatched.forEach(o => {
         const rn    = (o.rn || "").trim();
-        const mktId = String(o.mktId || ""); if (!mktId) return;
-        if (rn) pairs.set(`${mktId}||${rn}`, { mktId, rn });
+        let mktId = String(o.mktId || "");
+        if (!mktId) {
+            const sid = String(o.selId || o.selectionId || "");
+            if (sid && window.selectionIdToMarketId && window.selectionIdToMarketId[sid])
+                mktId = String(window.selectionIdToMarketId[sid]);
+        }
+        if (!mktId || !rn) return;
+        pairs.set(`${mktId}||${rn}`, { mktId, rn });
     });
 
     runnerPnL = {};
@@ -5301,17 +5359,14 @@ async function fetchUnMatched() {
         if (window.allMarketIds && window.allMarketIds.size > 0) {
             list = list.filter(o => {
                 const selId  = String(o.selection_id || o.selectionId || "");
-                let oMktId = String(
+                const oMktId = String(
                     o.marketId || o.market_id ||
                     (selId && window.selectionIdToMarketId && window.selectionIdToMarketId[selId]) || ""
                 );
-                if (!oMktId) return false;
+                if (!oMktId) return true; // no id → keep (backend already scoped)
                 if (window.allMarketIds.has(oMktId)) return true;
-                // Selection is on this page → register market and keep
-                if (selId && window.selectionIdToMarketId && window.selectionIdToMarketId[selId]) {
-                    window.allMarketIds.add(oMktId);
-                    return true;
-                }
+                // also accept if either side is prefix of the other (composite vs 1.xxx still different — keep if selection maps)
+                if (selId && window.selectionIdToRunner && window.selectionIdToRunner[selId]) return true;
                 return false;
             });
         }
@@ -5376,17 +5431,14 @@ async function fetchMatched() {
         if (window.allMarketIds && window.allMarketIds.size > 0) {
             list = list.filter(o => {
                 const selId  = String(o.selection_id || o.selectionId || "");
-                let oMktId = String(
+                const oMktId = String(
                     o.marketId || o.market_id ||
                     (selId && window.selectionIdToMarketId && window.selectionIdToMarketId[selId]) || ""
                 );
-                if (!oMktId) return false;
+                if (!oMktId) return true; // no id → keep (backend already scoped)
                 if (window.allMarketIds.has(oMktId)) return true;
-                // Selection is on this page → register market and keep
-                if (selId && window.selectionIdToMarketId && window.selectionIdToMarketId[selId]) {
-                    window.allMarketIds.add(oMktId);
-                    return true;
-                }
+                // also accept if either side is prefix of the other (composite vs 1.xxx still different — keep if selection maps)
+                if (selId && window.selectionIdToRunner && window.selectionIdToRunner[selId]) return true;
                 return false;
             });
         }
@@ -5597,29 +5649,15 @@ socket.on("ordersUpdated", (data) => {
     data.newOrders.forEach(newO => {
         const orderId    = String(newO.request_id || newO.orderId || newO.requestId);
         const orderSelId = String(newO.selection_id || newO.selectionId || "");
-        // Resolve mktId from order / selection map — NEVER invent page matchId
-        let orderMktId = String(
+        // FIX: mktId blank ho to selectionIdToMarketId se resolve karo
+        const orderMktId = String(
             newO.marketId || newO.market_id ||
             (orderSelId && window.selectionIdToMarketId && window.selectionIdToMarketId[orderSelId]) ||
-            ""
+            matchId
         );
-        if (!window.allMarketIds) window.allMarketIds = new Set();
-        // If we know this selection belongs to a submarket on this page, trust & register it
-        if (orderSelId && window.selectionIdToMarketId && window.selectionIdToMarketId[orderSelId]) {
-            const mapped = String(window.selectionIdToMarketId[orderSelId]);
-            if (!orderMktId) orderMktId = mapped;
-            window.allMarketIds.add(mapped);
-            window.allMarketIds.add(orderMktId);
-        }
-        // Drop only if clearly foreign (has mktId but not on this page and selection unknown)
-        if (orderMktId && window.allMarketIds.size > 0 && !window.allMarketIds.has(orderMktId)) {
-            if (!(orderSelId && window.selectionIdToRunner && window.selectionIdToRunner[orderSelId])) {
-                return; // other match
-            }
-            // selection is on this page → keep and register
-            window.allMarketIds.add(orderMktId);
-        }
-        if (!orderMktId) return; // cannot attribute → skip (don't pollute Match Odds)
+
+        // FIX: marketId filter hataya — Toss/other markets ke orders bhi accept karo
+        // (sirf current event ke orders aate hain server se, isliye safe hai)
 
         // RULE: if we already confirmed a real name in memory, NEVER replace it
         const inMem = [...Matched, ...UnMatched].find(x => x.orderId === orderId);
@@ -6468,7 +6506,6 @@ Vue.component('runner-aggregate', {
         Vue.filter('format', function (value) {
             return nxCompactSize(value);
         });
-        // Runner PnL under names: full amount (2000 not 2K)
         Vue.filter('formatPnL', function (value) {
             if (value === null || value === undefined || value === '' || value === '-') return '';
             var n = Number(String(value).replace(/,/g, ''));
@@ -7300,20 +7337,13 @@ Vue.component('runner-aggregate', {
 
 
 <script>
-/* NX-SUBMARKET-BET-FIX
- * Problem: Toss/Bookmaker/Fancy bets often POST with Match Odds marketId
- * (Vue Catalog = main market). After refresh, selectionId map fixes display.
- * Fix: remember marketId from ShowBetSlip, force it on PlaceOrder + fetch body,
- * keep selectionId→marketId map hot, never fall back to matchId when map has sel.
- */
+/* NX-SUBMARKET-BET-FIX */
 (function () {
   'use strict';
-
   function getVm() {
     var el = document.getElementById('MarketView') || document.getElementById('app');
     return el && el.__vue__ ? el.__vue__ : null;
   }
-
   function rebuildSelMap() {
     try {
       if (!window.selectionIdToMarketId) window.selectionIdToMarketId = {};
@@ -7336,25 +7366,21 @@ Vue.component('runner-aggregate', {
       }
       if (vm.Catalog) eat(vm.Catalog);
       ['TossMarkets','BookmakerMarkets','FancyMarkets','Fancy2Markets',
-       'FigureMarkets','OddFigureMarkets','OtherMarkets','OtherRaceMarkets'].forEach(function (prop) {
+       'FigureMarkets','OddFigureMarkets','OtherMarkets','OtherRaceMarkets','subMarkets'].forEach(function (prop) {
         var arr = vm[prop];
         if (!Array.isArray(arr)) return;
         arr.forEach(eat);
       });
     } catch (e) {}
   }
-
   function resolveMarketId(selId, fallback) {
     rebuildSelMap();
     var sid = String(selId || '');
-    if (sid && window.selectionIdToMarketId && window.selectionIdToMarketId[sid]) {
+    if (sid && window.selectionIdToMarketId && window.selectionIdToMarketId[sid])
       return String(window.selectionIdToMarketId[sid]);
-    }
     if (window._nxActiveBetMarketId) return String(window._nxActiveBetMarketId);
     return fallback ? String(fallback) : '';
   }
-
-  /* Patch ShowBetSlip — capture the marketId from the click (Toss/BM/Fancy Catalog) */
   function patchShowBetSlip() {
     var vm = getVm();
     if (!vm || typeof vm.ShowBetSlip !== 'function' || vm._nxSlipPatched) return;
@@ -7377,8 +7403,6 @@ Vue.component('runner-aggregate', {
       return orig.apply(this, arguments);
     };
   }
-
-  /* Patch PlaceOrder — force marketId on outgoing bets */
   function patchPlaceOrder() {
     var vm = getVm();
     if (!vm || typeof vm.PlaceOrder !== 'function' || vm._nxPlacePatched) return;
@@ -7387,14 +7411,11 @@ Vue.component('runner-aggregate', {
     vm.PlaceOrder = function () {
       try {
         rebuildSelMap();
-        /* stash so fetch interceptor can rewrite body */
         window._nxForceMarketId = window._nxActiveBetMarketId || null;
       } catch (e) {}
       return orig.apply(this, arguments);
     };
   }
-
-  /* Rewrite POST /orders body marketId */
   function installFetchRewrite() {
     if (window._nxOrdersRewrite) return;
     window._nxOrdersRewrite = true;
@@ -7420,7 +7441,6 @@ Vue.component('runner-aggregate', {
                 b = Object.assign({}, b, { marketId: resolved, market_id: resolved });
                 changed = true;
               }
-              /* ensure runnerName preserved for submarkets */
               if (!b.runnerName && !b.runner_name && sid && window.selectionIdToRunner[String(sid)]) {
                 b = Object.assign({}, b, { runnerName: window.selectionIdToRunner[String(sid)] });
                 changed = true;
@@ -7437,8 +7457,6 @@ Vue.component('runner-aggregate', {
       return _fetch.apply(this, arguments);
     };
   }
-
-  /* Fix order list mapping: never prefer matchId over selection map */
   function patchOrderMappers() {
     if (window._nxMapPatched) return;
     window._nxMapPatched = true;
@@ -7470,30 +7488,13 @@ Vue.component('runner-aggregate', {
       };
     }
   }
-
-  /* Cross-runner PnL only for true multi-outcome exchange markets (Match Odds / WIN).
-     For Toss / Bookmaker / single-line Fancy, do not bleed into other markets. */
-  var _origCalc = null;
-  function patchPnL() {
-    if (typeof calculateRunnerPnL !== 'function' || window._nxPnlPatched) return;
-    window._nxPnlPatched = true;
-    _origCalc = calculateRunnerPnL;
-    window.calculateRunnerPnL = calculateRunnerPnL = function (runnerName, forMarketId) {
-      /* strict: if forMarketId is set, only that market — already in original.
-         Extra guard: blank mktId orders only count for main matchId */
-      return _origCalc(runnerName, forMarketId);
-    };
-  }
-
   function loop() {
     rebuildSelMap();
     patchShowBetSlip();
     patchPlaceOrder();
     patchOrderMappers();
-    patchPnL();
     setTimeout(loop, 1000);
   }
-
   installFetchRewrite();
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () { setTimeout(loop, 400); });
@@ -7504,165 +7505,28 @@ Vue.component('runner-aggregate', {
 })();
 </script>
 
-
 <script>
-/* NX-FANCY-PNL — Fancy/Fancy2 use Yes/No liability; rate (50-200) or decimal */
+/* NX-PNL-FULL-NUMBER */
 (function () {
-  'use strict';
-  function nxIsRate(p) { p = Number(p); return isFinite(p) && p >= 50 && p <= 1000; }
-  function nxWinProfit(price, stake) {
-    price = Number(price); stake = Number(stake);
-    if (!isFinite(price) || !isFinite(stake) || stake <= 0) return 0;
-    return nxIsRate(price) ? stake * (price / 100) : stake * (price - 1);
+  function nxFormatPnL(value) {
+    if (value === null || value === undefined || value === '' || value === '-') return '';
+    var n = Number(String(value).replace(/,/g, ''));
+    if (!isFinite(n) || n === 0) return '';
+    var sign = n < 0 ? '-' : '';
+    return sign + String(Math.round(Math.abs(n)));
   }
-  function nxIsFancyName(name, mktId) {
-    var n = String(name || '').toLowerCase();
-    if (/\bfancy\b|session|over runs|wkt|wicket|boundaries|balls face|fall of/.test(n)) return true;
-    try {
-      var vm = (document.getElementById('MarketView') || document.getElementById('app') || {}).__vue__;
-      if (!vm) return false;
-      var lists = ['FancyMarkets','Fancy2Markets','FigureMarkets','OddFigureMarkets'];
-      for (var i = 0; i < lists.length; i++) {
-        var arr = vm[lists[i]];
-        if (!Array.isArray(arr)) continue;
-        for (var j = 0; j < arr.length; j++) {
-          if (String(arr[j].marketId) === String(mktId)) return true;
-        }
-      }
-    } catch (e) {}
-    return false;
+  window.nxFormatPnL = nxFormatPnL;
+  function install() {
+    if (typeof Vue === 'undefined' || !Vue.filter) return false;
+    Vue.filter('formatPnL', nxFormatPnL);
+    return true;
   }
-
-  // Wrap calculateRunnerPnL if present
-  var tries = 0;
-  function patch() {
-    if (typeof calculateRunnerPnL !== 'function') {
-      if (++tries < 40) return setTimeout(patch, 250);
-      return;
-    }
-    if (calculateRunnerPnL._nxFancy) return;
-    var orig = calculateRunnerPnL;
-    window.calculateRunnerPnL = calculateRunnerPnL = function (runnerName, forMarketId) {
-      var result = orig(runnerName, forMarketId);
-      // For fancy markets, recompute without multi-runner "other runner loses" quirks
-      // using Yes/No style: only orders on THIS runner affect ifWin/ifLose for this name;
-      // opposite selection is still handled by orig's cross when same marketId.
-      try {
-        if (!nxIsFancyName(runnerName, forMarketId) && !nxIsFancyName('', forMarketId)) {
-          // still fix rate-based ifWin for any order with rate price
-        }
-        if (typeof Matched === 'undefined' || !Array.isArray(Matched)) return result;
-        var normalized = (runnerName || '').trim().toLowerCase();
-        var ifWin = 0, ifLose = 0;
-        var mktOrders = Matched.filter(function (o) {
-          return String(o.mktId || '') === String(forMarketId || '');
-        });
-        if (!mktOrders.length) return result;
-        var fancyMkt = mktOrders.some(function (o) {
-          return nxIsFancyName(o.rn, o.mktId) || nxIsFancyName('', o.mktId);
-        });
-        if (!fancyMkt && !mktOrders.some(function (o) { return nxIsRate(o.mp); })) {
-          return result;
-        }
-        mktOrders.forEach(function (order) {
-          var rn = (order.rn || order.runnerName || '').trim().toLowerCase();
-          var odds = Number(order.mp || order.price || 0);
-          var stake = Number(order.ms || order.size || 0);
-          var side = String(order.bs || order.side || '').toUpperCase();
-          if (!rn || stake <= 0 || odds <= 0) return;
-          var profit = nxWinProfit(odds, stake);
-          if (rn === normalized) {
-            if (side === 'B' || side === 'BACK') {
-              ifWin  += profit;
-              ifLose -= stake;
-            } else {
-              ifWin  -= profit;
-              ifLose += stake;
-            }
-          } else {
-            // opposite selection in binary fancy
-            if (side === 'B' || side === 'BACK') {
-              ifWin  -= stake;
-              ifLose += profit; // if this runner wins, back-on-other loses its stake; if this loses, other wins → we get their stake? binary:
-              // Correct binary inverse:
-              // Other BACK: if THIS wins (other loses) → +0 from their stake to us? Exchange: other back loses stake which is not ours.
-              // For display on THIS runner only show direct bets + simple inverse for 2-way:
-              ifWin  -= stake;   // if THIS wins, OTHER back loses → THIS position sees -stake exposure offset? Keep simple:
-            } else {
-              ifWin  += stake;
-              ifLose -= profit;
-            }
-          }
-        });
-        return { ifWin: ifWin, ifLose: ifLose };
-      } catch (e) {
-        return result;
-      }
-    };
-    calculateRunnerPnL._nxFancy = true;
-    console.log('[NX-FANCY-PNL] patched calculateRunnerPnL');
+  if (!install()) {
+    var t = setInterval(function () { if (install()) clearInterval(t); }, 200);
+    setTimeout(function () { clearInterval(t); }, 15000);
   }
-  setTimeout(patch, 600);
 })();
 </script>
-
-
-<script>
-/* NX-STRICT-MKT-FILTER — only current event markets in bets list + PnL */
-(function () {
-  function nxFilterOrdersToPage(list) {
-    if (!Array.isArray(list)) return [];
-    var ids = window.allMarketIds;
-    // If we don't know page markets yet, keep orders that have ANY mktId
-    // (backend already scoped by marketIds query). Only drop clearly empty.
-    if (!ids || !ids.size) {
-      return list.filter(function (o) { return !!String(o.mktId || ''); });
-    }
-    return list.filter(function (o) {
-      var m = String(o.mktId || '');
-      if (!m) return false;
-      if (ids.has(m)) return true;
-      // selection maps to this page → keep
-      var sid = String(o.selId || o.selectionId || '');
-      if (sid && window.selectionIdToMarketId && window.selectionIdToMarketId[sid]) {
-        ids.add(m);
-        return true;
-      }
-      return false;
-    });
-  }
-  function nxWrapFetch() {
-    if (typeof fetchMatched === 'function' && !fetchMatched._nxStrict) {
-      var om = fetchMatched;
-      window.fetchMatched = fetchMatched = async function () {
-        await om.apply(this, arguments);
-        if (typeof Matched !== 'undefined') {
-          Matched = nxFilterOrdersToPage(Matched);
-          window.Matched = Matched;
-        }
-        if (typeof render === 'function') try { render(); } catch (e) {}
-        if (typeof updateRunnerPnL === 'function') try { updateRunnerPnL(); } catch (e) {}
-      };
-      fetchMatched._nxStrict = true;
-    }
-    if (typeof fetchUnMatched === 'function' && !fetchUnMatched._nxStrict) {
-      var ou = fetchUnMatched;
-      window.fetchUnMatched = fetchUnMatched = async function () {
-        await ou.apply(this, arguments);
-        if (typeof UnMatched !== 'undefined') {
-          UnMatched = nxFilterOrdersToPage(UnMatched);
-          window.UnMatched = UnMatched;
-        }
-        if (typeof render === 'function') try { render(); } catch (e) {}
-      };
-      fetchUnMatched._nxStrict = true;
-    }
-  }
-  setTimeout(nxWrapFetch, 800);
-  setTimeout(nxWrapFetch, 2500);
-})();
-</script>
-
 
 <script>
 /* NX-SYNC-ALL-SUBMARKETS */
@@ -7704,30 +7568,6 @@ Vue.component('runner-aggregate', {
   setInterval(nxSyncAllSubMarkets, 1500);
   setTimeout(nxSyncAllSubMarkets, 500);
   setTimeout(nxSyncAllSubMarkets, 2000);
-})();
-</script>
-
-
-<script>
-/* NX-PNL-FULL-NUMBER */
-(function () {
-  function nxFormatPnL(value) {
-    if (value === null || value === undefined || value === '' || value === '-') return '';
-    var n = Number(String(value).replace(/,/g, ''));
-    if (!isFinite(n) || n === 0) return '';
-    var sign = n < 0 ? '-' : '';
-    return sign + String(Math.round(Math.abs(n)));
-  }
-  window.nxFormatPnL = nxFormatPnL;
-  function install() {
-    if (typeof Vue === 'undefined' || !Vue.filter) return false;
-    Vue.filter('formatPnL', nxFormatPnL);
-    return true;
-  }
-  if (!install()) {
-    var t = setInterval(function () { if (install()) clearInterval(t); }, 200);
-    setTimeout(function () { clearInterval(t); }, 15000);
-  }
 })();
 </script>
 

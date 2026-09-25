@@ -1,5 +1,3 @@
-
-
 <!doctype html>
 <html lang="en">
 <head>
@@ -4917,26 +4915,21 @@ async function updateUserWallet() {
 // ------------------------------------------------------------------
 function calculateRunnerPnL(runnerName, forMarketId) {
     const normalized  = (runnerName || "").trim().toLowerCase();
-    const useMarketFilter = !!forMarketId;
 
     let ifWin  = 0;
     let ifLose = 0;
 
-    // STRICT MARKET FILTER:
-    // Sirf wahi orders include karo jinka mktId exactly forMarketId se match kare.
-    // Blank mktId wale orders SIRF tab include karo jab forMarketId bhi main matchId ho —
-    // warna Match Odds bets sub-markets (Toss, Bookmaker) pe bhi dikhne lagte hain.
+    // ✅ STRICT (Event.html jaisa): sirf EXACT mktId match — blank mktId
+    // wala koi bhi order KABHI count nahi hoga, kisi bhi market mein
+    // (na main, na sub-market). Pehle blank mktId ko "main market ka
+    // order maan lo" wala fallback tha — usi loophole ki wajah se kabhi
+    // kabhi Toss/Bookmaker ke bets Match Odds ke PnL mein bhi dikh jaate
+    // the. Ab wo fallback poori tarah hata diya.
+    if (!forMarketId) return { ifWin: 0, ifLose: 0 };
+    const targetMkt = String(forMarketId);
     const marketOrders = Matched.filter(order => {
-        if (!useMarketFilter) return true;
-        let oMktId = String(order.mktId || "");
-        if (!oMktId) {
-            const sid = String(order.selId || order.selectionId || "");
-            if (sid && window.selectionIdToMarketId && window.selectionIdToMarketId[sid])
-                oMktId = String(window.selectionIdToMarketId[sid]);
-        }
-        // Blank still → exclude (do not treat as Match Odds)
-        if (!oMktId) return false;
-        return oMktId === String(forMarketId);
+        const oMktId = String(order.mktId || "");
+        return oMktId === targetMkt;
     });
 
     if (!marketOrders.length) return { ifWin: 0, ifLose: 0 };
@@ -5012,25 +5005,13 @@ function updateRunnerPnL() {
 
     Matched.forEach(o => {
         const rn    = (o.rn || "").trim();
-        let mktId = String(o.mktId || "");
-        if (!mktId) {
-            const sid = String(o.selId || o.selectionId || "");
-            if (sid && window.selectionIdToMarketId && window.selectionIdToMarketId[sid])
-                mktId = String(window.selectionIdToMarketId[sid]);
-        }
-        if (!mktId || !rn) return; // never invent matchId — stops Toss→MatchOdds bleed
-        pairs.set(`${mktId}||${rn}`, { mktId, rn });
+        const mktId = String(o.mktId || matchId);
+        if (rn) pairs.set(`${mktId}||${rn}`, { mktId, rn });
     });
     UnMatched.forEach(o => {
         const rn    = (o.rn || "").trim();
-        let mktId = String(o.mktId || "");
-        if (!mktId) {
-            const sid = String(o.selId || o.selectionId || "");
-            if (sid && window.selectionIdToMarketId && window.selectionIdToMarketId[sid])
-                mktId = String(window.selectionIdToMarketId[sid]);
-        }
-        if (!mktId || !rn) return;
-        pairs.set(`${mktId}||${rn}`, { mktId, rn });
+        const mktId = String(o.mktId || matchId);
+        if (rn) pairs.set(`${mktId}||${rn}`, { mktId, rn });
     });
 
     runnerPnL = {};
@@ -5401,7 +5382,7 @@ async function fetchUnMatched() {
                 orderId,
                 rn,
                 selId,
-                mktId: String(o.marketId || o.market_id || (selId && window.selectionIdToMarketId && window.selectionIdToMarketId[selId]) || ""),
+                mktId: String(o.marketId || o.market_id || (selId && window.selectionIdToMarketId && window.selectionIdToMarketId[selId]) || matchId),
                 up: parseFloat(o.price) || 0,
                 us: parseFloat(o.size) || 0,
                 bs: (o.side || o.type || "").toUpperCase()
@@ -5479,7 +5460,7 @@ async function fetchMatched() {
                 orderId,
                 rn,
                 selId,
-                mktId: String(o.marketId || o.market_id || (selId && window.selectionIdToMarketId && window.selectionIdToMarketId[selId]) || ""),
+                mktId: String(o.marketId || o.market_id || (selId && window.selectionIdToMarketId && window.selectionIdToMarketId[selId]) || matchId),
                 mp: parseFloat(o.price) || 0,
                 ms: parseFloat(o.matched > 0 ? o.matched : o.size) || 0,
                 bs: (o.side || o.type || "").toUpperCase(),
@@ -6506,6 +6487,8 @@ Vue.component('runner-aggregate', {
         Vue.filter('format', function (value) {
             return nxCompactSize(value);
         });
+        // Runner PnL under names: full amount (2000 not 2K) — Event.html ke
+        // formatPnL ke bilkul saath consistent, sirf PnL ke liye alag filter
         Vue.filter('formatPnL', function (value) {
             if (value === null || value === undefined || value === '' || value === '-') return '';
             var n = Number(String(value).replace(/,/g, ''));
@@ -7335,178 +7318,9 @@ Vue.component('runner-aggregate', {
 })();
 </script>
 
-
 <script>
-/* NX-SUBMARKET-BET-FIX */
-(function () {
-  'use strict';
-  function getVm() {
-    var el = document.getElementById('MarketView') || document.getElementById('app');
-    return el && el.__vue__ ? el.__vue__ : null;
-  }
-  function rebuildSelMap() {
-    try {
-      if (!window.selectionIdToMarketId) window.selectionIdToMarketId = {};
-      if (!window.selectionIdToRunner) window.selectionIdToRunner = {};
-      if (!window.allMarketIds) window.allMarketIds = new Set();
-      var vm = getVm();
-      if (!vm) return;
-      function eat(cat) {
-        if (!cat) return;
-        var mid = String(cat.marketId || '');
-        if (mid) window.allMarketIds.add(mid);
-        (cat.runners || []).forEach(function (r) {
-          if (!r) return;
-          var sid = String(r.selectionId || r.id || '');
-          if (!sid) return;
-          if (mid) window.selectionIdToMarketId[sid] = mid;
-          var rn = (r.runnerName || r.name || '').trim();
-          if (rn) window.selectionIdToRunner[sid] = rn;
-        });
-      }
-      if (vm.Catalog) eat(vm.Catalog);
-      ['TossMarkets','BookmakerMarkets','FancyMarkets','Fancy2Markets',
-       'FigureMarkets','OddFigureMarkets','OtherMarkets','OtherRaceMarkets','subMarkets'].forEach(function (prop) {
-        var arr = vm[prop];
-        if (!Array.isArray(arr)) return;
-        arr.forEach(eat);
-      });
-    } catch (e) {}
-  }
-  function resolveMarketId(selId, fallback) {
-    rebuildSelMap();
-    var sid = String(selId || '');
-    if (sid && window.selectionIdToMarketId && window.selectionIdToMarketId[sid])
-      return String(window.selectionIdToMarketId[sid]);
-    if (window._nxActiveBetMarketId) return String(window._nxActiveBetMarketId);
-    return fallback ? String(fallback) : '';
-  }
-  function patchShowBetSlip() {
-    var vm = getVm();
-    if (!vm || typeof vm.ShowBetSlip !== 'function' || vm._nxSlipPatched) return;
-    vm._nxSlipPatched = true;
-    var orig = vm.ShowBetSlip.bind(vm);
-    vm.ShowBetSlip = function (runner, side, marketId, depth) {
-      try {
-        rebuildSelMap();
-        var mid = marketId != null ? String(marketId) : '';
-        var sid = runner && (runner.selectionId || runner.id);
-        if (sid && mid) window.selectionIdToMarketId[String(sid)] = mid;
-        if (mid) window._nxActiveBetMarketId = mid;
-        if (runner && runner.runnerName) {
-          window._nxActiveBetRunner = String(runner.runnerName);
-          if (sid) window.selectionIdToRunner[String(sid)] = String(runner.runnerName);
-        }
-        window._nxActiveBetSide = side;
-        console.log('[NX-BET] ShowBetSlip marketId=', mid, 'sel=', sid);
-      } catch (e) {}
-      return orig.apply(this, arguments);
-    };
-  }
-  function patchPlaceOrder() {
-    var vm = getVm();
-    if (!vm || typeof vm.PlaceOrder !== 'function' || vm._nxPlacePatched) return;
-    vm._nxPlacePatched = true;
-    var orig = vm.PlaceOrder.bind(vm);
-    vm.PlaceOrder = function () {
-      try {
-        rebuildSelMap();
-        window._nxForceMarketId = window._nxActiveBetMarketId || null;
-      } catch (e) {}
-      return orig.apply(this, arguments);
-    };
-  }
-  function installFetchRewrite() {
-    if (window._nxOrdersRewrite) return;
-    window._nxOrdersRewrite = true;
-    var _fetch = window.fetch;
-    if (!_fetch) return;
-    window.fetch = function (input, init) {
-      try {
-        var url = typeof input === 'string' ? input : (input && input.url) || '';
-        var method = ((init && init.method) || 'GET').toUpperCase();
-        if (method === 'POST' && /\/orders\/?(\?|$)/i.test(url) && !/cancel|settle|match/i.test(url) && init && typeof init.body === 'string') {
-          rebuildSelMap();
-          var bets = null;
-          try { bets = JSON.parse(init.body); } catch (e) {}
-          if (Array.isArray(bets) && bets.length) {
-            var changed = false;
-            bets = bets.map(function (b) {
-              if (!b || typeof b !== 'object') return b;
-              var sid = b.selectionId || b.selection_id || b.selId;
-              var mid = b.marketId || b.market_id;
-              var resolved = resolveMarketId(sid, mid || window._nxActiveBetMarketId);
-              if (resolved && String(mid || '') !== String(resolved)) {
-                console.log('[NX-BET] rewrite marketId', mid, '→', resolved, 'sel', sid);
-                b = Object.assign({}, b, { marketId: resolved, market_id: resolved });
-                changed = true;
-              }
-              if (!b.runnerName && !b.runner_name && sid && window.selectionIdToRunner[String(sid)]) {
-                b = Object.assign({}, b, { runnerName: window.selectionIdToRunner[String(sid)] });
-                changed = true;
-              }
-              return b;
-            });
-            if (changed) {
-              init = Object.assign({}, init, { body: JSON.stringify(bets) });
-              arguments[1] = init;
-            }
-          }
-        }
-      } catch (e) { console.warn('[NX-BET] fetch rewrite', e); }
-      return _fetch.apply(this, arguments);
-    };
-  }
-  function patchOrderMappers() {
-    if (window._nxMapPatched) return;
-    window._nxMapPatched = true;
-    var _origMatched = window.fetchMatched;
-    var _origUnmatched = window.fetchUnMatched;
-    function fixList(list) {
-      if (!Array.isArray(list)) return;
-      rebuildSelMap();
-      list.forEach(function (o) {
-        if (!o) return;
-        var sid = String(o.selId || o.selectionId || o.selection_id || '');
-        if (sid && window.selectionIdToMarketId[sid]) {
-          o.mktId = String(window.selectionIdToMarketId[sid]);
-        }
-      });
-    }
-    if (typeof fetchMatched === 'function') {
-      window.fetchMatched = async function () {
-        var r = await _origMatched.apply(this, arguments);
-        try { fixList(typeof Matched !== 'undefined' ? Matched : null); } catch (e) {}
-        return r;
-      };
-    }
-    if (typeof fetchUnMatched === 'function') {
-      window.fetchUnMatched = async function () {
-        var r = await _origUnmatched.apply(this, arguments);
-        try { fixList(typeof UnMatched !== 'undefined' ? UnMatched : null); } catch (e) {}
-        return r;
-      };
-    }
-  }
-  function loop() {
-    rebuildSelMap();
-    patchShowBetSlip();
-    patchPlaceOrder();
-    patchOrderMappers();
-    setTimeout(loop, 1000);
-  }
-  installFetchRewrite();
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function () { setTimeout(loop, 400); });
-  } else {
-    setTimeout(loop, 400);
-  }
-  console.log('[NX-BET] submarket bet fix loaded');
-})();
-</script>
-
-<script>
-/* NX-PNL-FULL-NUMBER */
+/* NX-PNL-FULL-NUMBER — market.html ke liye bhi Event.html jaisa robust
+   self-installing filter, taake mv2.min.js load-order kabhi override na kare */
 (function () {
   function nxFormatPnL(value) {
     if (value === null || value === undefined || value === '' || value === '-') return '';
@@ -7525,49 +7339,6 @@ Vue.component('runner-aggregate', {
     var t = setInterval(function () { if (install()) clearInterval(t); }, 200);
     setTimeout(function () { clearInterval(t); }, 15000);
   }
-})();
-</script>
-
-<script>
-/* NX-SYNC-ALL-SUBMARKETS */
-(function () {
-  function nxSyncAllSubMarkets() {
-    try {
-      if (!window.allMarketIds) window.allMarketIds = new Set();
-      if (!window.selectionIdToMarketId) window.selectionIdToMarketId = {};
-      if (!window.selectionIdToRunner) window.selectionIdToRunner = {};
-      if (typeof matchId !== 'undefined' && matchId) window.allMarketIds.add(String(matchId));
-      var el = document.getElementById('MarketView') || document.getElementById('app');
-      var vm = el && el.__vue__;
-      if (!vm) return;
-      function addMkt(m) {
-        if (!m) return;
-        var mid = String(m.marketId || m.id || '');
-        if (mid) window.allMarketIds.add(mid);
-        var runners = m.runners || [];
-        for (var i = 0; i < runners.length; i++) {
-          var r = runners[i];
-          var sid = String(r.selectionId || r.id || '');
-          if (sid && mid) {
-            window.selectionIdToMarketId[sid] = mid;
-            var nm = r.runnerName || r.name || '';
-            if (nm) window.selectionIdToRunner[sid] = nm;
-          }
-        }
-      }
-      addMkt(vm.Catalog);
-      var lists = ['TossMarkets','BookmakerMarkets','FancyMarkets','Fancy2Markets',
-                   'FigureMarkets','OddFigureMarkets','subMarkets','OtherMarkets','TiedMarkets'];
-      for (var li = 0; li < lists.length; li++) {
-        var arr = vm[lists[li]];
-        if (!Array.isArray(arr)) continue;
-        for (var j = 0; j < arr.length; j++) addMkt(arr[j]);
-      }
-    } catch (e) {}
-  }
-  setInterval(nxSyncAllSubMarkets, 1500);
-  setTimeout(nxSyncAllSubMarkets, 500);
-  setTimeout(nxSyncAllSubMarkets, 2000);
 })();
 </script>
 

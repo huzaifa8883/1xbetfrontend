@@ -4916,43 +4916,27 @@ async function updateUserWallet() {
 // ------------------------------------------------------------------
 function calculateRunnerPnL(runnerName, forMarketId) {
     const normalized  = (runnerName || "").trim().toLowerCase();
-    const useMarketFilter = !!forMarketId;
-
     let ifWin  = 0;
     let ifLose = 0;
 
-    // STRICT MARKET FILTER:
-    // Sirf wahi orders include karo jinka mktId exactly forMarketId se match kare.
-    // Blank mktId wale orders SIRF tab include karo jab forMarketId bhi main matchId ho —
-    // warna Match Odds bets sub-markets (Toss, Bookmaker) pe bhi dikhne lagte hain.
-    const isMainMarket = !forMarketId || String(forMarketId) === String(matchId);
+    // STRICT: only same marketId — blank / other market NEVER included
+    // (Toss bets must not affect Match Odds runners and vice versa)
+    if (!forMarketId) return { ifWin: 0, ifLose: 0 };
+    const targetMkt = String(forMarketId);
     const marketOrders = Matched.filter(order => {
-        if (!useMarketFilter) return true;
         const oMktId = String(order.mktId || "");
-        // Blank mktId = main market ka order — sirf main market filter mein include karo
-        if (!oMktId) return isMainMarket;
-        return oMktId === String(forMarketId);
+        return oMktId === targetMkt;
     });
-
     if (!marketOrders.length) return { ifWin: 0, ifLose: 0 };
-
-    // Cross-runner effect HAMESHA lagao — yeh exchange betting ka basic logic hai.
-    // Back West Indies @ 2, stake 2000:
-    //   West Indies: ifWin = +2000, ifLose = -2000
-    //   Sri Lanka:   ifWin = -2000, ifLose = +2000  <- yeh cross-runner effect hai
-    // Iske bina Sri Lanka ka PnL zero dikhe ga jo galat hai.
-    const applyCrossRunner = true;
 
     marketOrders.forEach(order => {
         const rn    = (order.rn || order.runnerName || "").trim().toLowerCase();
-        const odds  = Number(order.mp || order.price || 0);
-        const stake = Number(order.ms || order.size || 0);
-        const side  = (order.bs || order.side || "").toUpperCase();
-
-        if (!rn || odds <= 1 || stake <= 0) return;
+        const odds  = Number(order.mp || order.price || order.up || 0);
+        const stake = Number(order.ms || order.size || order.us || 0);
+        const side  = String(order.bs || order.side || "").toUpperCase().charAt(0);
+        if (!rn || stake <= 0 || odds <= 0) return;
 
         if (rn === normalized) {
-            // Is runner par direct bet
             if (side === "B") {
                 ifWin  += (odds - 1) * stake;
                 ifLose -= stake;
@@ -4960,37 +4944,11 @@ function calculateRunnerPnL(runnerName, forMarketId) {
                 ifWin  -= (odds - 1) * stake;
                 ifLose += stake;
             }
-        } else if (applyCrossRunner) {
-            // Cross-runner effect: doosre runner par bet ka is runner par asar
-            // ifWin  = "YEH runner jeet e" scenario
-            // ifLose = "YEH runner haare" scenario
-            // Back bet on OTHER runner:
-            //   Other wins (THIS loses) => bet wins => THIS ifLose -= stake
-            //   Other loses (THIS wins) => bet loses => THIS ifWin -= (odds-1)*stake  [wait, no]
-            // Correct exchange logic (2-runner market, zero-sum):
-            //   Back WI @ 2, stake 2000 => WI: ifWin=+2000, ifLose=-2000
-            //   SL (opposite):            ifWin=-2000, ifLose=+2000
-            // So for THIS runner (SL), OTHER runner (WI) has a Back bet:
-            //   THIS ifWin  = -(odds-1)*stake   (WI wins means SL loses)
-            //   THIS ifLose = +stake             (WI loses means SL wins, stake returned to SL's side)
+        } else {
             if (side === "B") {
-                // Back OTHER runner: agar OTHER jeeta => hum -stake, agar OTHER haara => hum 0
-                // Horse race: multi-runner market — THIS runner ke liye cross effect = sirf -stake
-                // (agar OTHER jeeta matlab THIS haara => THIS ka ifWin = -stake)
-                // (agar THIS jeeta matlab OTHER haara => THIS ka ifLose stays, asar sirf stake ka)
                 ifWin  -= stake;
-                ifLose += 0; // koi cross-asar nahi ifLose pe multi-runner mein
+                ifLose += 0;
             } else {
-                // Lay OTHER runner (R), stake S, odds O — sirf ek winner hota hai is liye:
-                //   Agar THIS jeeta (matlab R nahi jeeta, R ki LAY jeet gayi) => layer ko profit +S
-                //       => THIS ke "ifWin" (THIS jeete ka scenario) mein +stake
-                //   Agar THIS na jeeta lekin R jeet gaya (R ki LAY haari, layer ki liability) => -(odds-1)*stake
-                //       => yeh sirf "R jeeta" scenario hai, jo THIS ke liye "THIS ka ifLose" slot hai
-                //       (THIS khud nahi jeeta — usme se "R jeeta" bhi ek possibility hai)
-                //       => THIS ke "ifLose" mein -(odds-1)*stake
-                // BUG FIX: pehle yahan ifWin -= stake aur ifLose += (odds-1)*stake tha (sign ulta),
-                // jiski wajah se LAY karte waqt baaki SAB runners ke neeche liability (manfi) dikh rahi thi
-                // jabke profit (mussbat) dikhna chahiye tha.
                 ifWin  += stake;
                 ifLose -= (odds - 1) * stake;
             }
@@ -4998,6 +4956,7 @@ function calculateRunnerPnL(runnerName, forMarketId) {
     });
 
     return { ifWin: Math.round(ifWin), ifLose: Math.round(ifLose) };
+}
 }
 
 // runnerPnL keyed as "marketId||runnerName" for strict per-market isolation
@@ -5346,10 +5305,10 @@ async function fetchUnMatched() {
                     o.marketId || o.market_id ||
                     (selId && window.selectionIdToMarketId && window.selectionIdToMarketId[selId]) || ""
                 );
-                if (!oMktId) return true; // no id → keep (backend already scoped)
+                if (!oMktId) return false; // blank market → drop (prevents other-match bleed)
                 if (window.allMarketIds.has(oMktId)) return true;
                 // also accept if either side is prefix of the other (composite vs 1.xxx still different — keep if selection maps)
-                if (selId && window.selectionIdToRunner && window.selectionIdToRunner[selId]) return true;
+                // no selection-name fallback — was leaking other-match bets
                 return false;
             });
         }
@@ -5384,7 +5343,7 @@ async function fetchUnMatched() {
                 orderId,
                 rn,
                 selId,
-                mktId: String(o.marketId || o.market_id || (selId && window.selectionIdToMarketId && window.selectionIdToMarketId[selId]) || matchId),
+                mktId: String(o.marketId || o.market_id || (selId && window.selectionIdToMarketId && window.selectionIdToMarketId[selId]) || ""),
                 up: parseFloat(o.price) || 0,
                 us: parseFloat(o.size) || 0,
                 bs: (o.side || o.type || "").toUpperCase()
@@ -5418,10 +5377,10 @@ async function fetchMatched() {
                     o.marketId || o.market_id ||
                     (selId && window.selectionIdToMarketId && window.selectionIdToMarketId[selId]) || ""
                 );
-                if (!oMktId) return true; // no id → keep (backend already scoped)
+                if (!oMktId) return false; // blank market → drop (prevents other-match bleed)
                 if (window.allMarketIds.has(oMktId)) return true;
                 // also accept if either side is prefix of the other (composite vs 1.xxx still different — keep if selection maps)
-                if (selId && window.selectionIdToRunner && window.selectionIdToRunner[selId]) return true;
+                // no selection-name fallback — was leaking other-match bets
                 return false;
             });
         }
@@ -5462,7 +5421,7 @@ async function fetchMatched() {
                 orderId,
                 rn,
                 selId,
-                mktId: String(o.marketId || o.market_id || (selId && window.selectionIdToMarketId && window.selectionIdToMarketId[selId]) || matchId),
+                mktId: String(o.marketId || o.market_id || (selId && window.selectionIdToMarketId && window.selectionIdToMarketId[selId]) || ""),
                 mp: parseFloat(o.price) || 0,
                 ms: parseFloat(o.matched > 0 ? o.matched : o.size) || 0,
                 bs: (o.side || o.type || "").toUpperCase(),
@@ -5632,15 +5591,18 @@ socket.on("ordersUpdated", (data) => {
     data.newOrders.forEach(newO => {
         const orderId    = String(newO.request_id || newO.orderId || newO.requestId);
         const orderSelId = String(newO.selection_id || newO.selectionId || "");
-        // FIX: mktId blank ho to selectionIdToMarketId se resolve karo
+        // Resolve mktId — NEVER default to page matchId (that caused Toss→MatchOdds PnL bleed)
         const orderMktId = String(
             newO.marketId || newO.market_id ||
             (orderSelId && window.selectionIdToMarketId && window.selectionIdToMarketId[orderSelId]) ||
-            matchId
+            ""
         );
-
-        // FIX: marketId filter hataya — Toss/other markets ke orders bhi accept karo
-        // (sirf current event ke orders aate hain server se, isliye safe hai)
+        // Only accept orders for THIS event's markets
+        if (window.allMarketIds && window.allMarketIds.size > 0) {
+            if (!orderMktId || !window.allMarketIds.has(orderMktId)) return;
+        } else if (!orderMktId) {
+            return;
+        }
 
         // RULE: if we already confirmed a real name in memory, NEVER replace it
         const inMem = [...Matched, ...UnMatched].find(x => x.orderId === orderId);
@@ -7616,6 +7578,55 @@ Vue.component('runner-aggregate', {
     console.log('[NX-FANCY-PNL] patched calculateRunnerPnL');
   }
   setTimeout(patch, 600);
+})();
+</script>
+
+
+<script>
+/* NX-STRICT-MKT-FILTER — only current event markets in bets list + PnL */
+(function () {
+  function nxFilterOrdersToPage(list) {
+    if (!Array.isArray(list)) return [];
+    var ids = window.allMarketIds;
+    if (!ids || !ids.size) {
+      var mid = (typeof matchId !== 'undefined' && matchId) ? String(matchId) : '';
+      if (mid) return list.filter(function (o) { return String(o.mktId || '') === mid; });
+      return list;
+    }
+    return list.filter(function (o) {
+      var m = String(o.mktId || '');
+      return m && ids.has(m);
+    });
+  }
+  function nxWrapFetch() {
+    if (typeof fetchMatched === 'function' && !fetchMatched._nxStrict) {
+      var om = fetchMatched;
+      window.fetchMatched = fetchMatched = async function () {
+        await om.apply(this, arguments);
+        if (typeof Matched !== 'undefined') {
+          Matched = nxFilterOrdersToPage(Matched);
+          window.Matched = Matched;
+        }
+        if (typeof render === 'function') try { render(); } catch (e) {}
+        if (typeof updateRunnerPnL === 'function') try { updateRunnerPnL(); } catch (e) {}
+      };
+      fetchMatched._nxStrict = true;
+    }
+    if (typeof fetchUnMatched === 'function' && !fetchUnMatched._nxStrict) {
+      var ou = fetchUnMatched;
+      window.fetchUnMatched = fetchUnMatched = async function () {
+        await ou.apply(this, arguments);
+        if (typeof UnMatched !== 'undefined') {
+          UnMatched = nxFilterOrdersToPage(UnMatched);
+          window.UnMatched = UnMatched;
+        }
+        if (typeof render === 'function') try { render(); } catch (e) {}
+      };
+      fetchUnMatched._nxStrict = true;
+    }
+  }
+  setTimeout(nxWrapFetch, 800);
+  setTimeout(nxWrapFetch, 2500);
 })();
 </script>
 

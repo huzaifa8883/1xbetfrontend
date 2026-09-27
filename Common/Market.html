@@ -1,3 +1,5 @@
+
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -1947,18 +1949,18 @@
 <!-- <div class="runner-position">
   <span v-if="getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin >= 0">
     <span class="runner-position-pos">
-      <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin | formatPnL }}</strong>
+      <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin | format }}</strong>
     </span>
     <span class="position-minus" v-if="getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose != null && getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose != 0">
-      <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose | formatPnL }}</strong>
+      <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose | format }}</strong>
     </span>
   </span>
   <span v-else>
     <span class="position-minus">
-      <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin | formatPnL }}</strong>
+      <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin | format }}</strong>
     </span>
     <span class="runner-position-pos" v-if="getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose != null && getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose != 0">
-      <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose | formatPnL }}</strong>
+      <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose | format }}</strong>
     </span>
   </span>
   <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -1972,7 +1974,7 @@
 <div class="runner-position">
   <span v-if="getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin !== 0">
     <span :class="getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
-      <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin | formatPnL }}</strong>
+      <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin | format }}</strong>
     </span>
   </span>
   <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -2109,7 +2111,7 @@
             <div class="runner-position">
                 <template v-if="runner.ifWin !== 0">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
-                    <strong>{{ runner.ifWin | formatPnL }}</strong>
+                    <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -2240,7 +2242,7 @@
             <div class="runner-position">
                 <template v-if="runner.ifWin !== 0">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
-                    <strong>{{ runner.ifWin | formatPnL }}</strong>
+                    <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -2370,7 +2372,7 @@
             <div class="runner-position">
                 <template v-if="runner.ifWin !== 0">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
-                    <strong>{{ runner.ifWin | formatPnL }}</strong>
+                    <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -2501,7 +2503,7 @@
             <div class="runner-position">
                 <template v-if="runner.ifWin !== 0">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
-                    <strong>{{ runner.ifWin | formatPnL }}</strong>
+                    <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -2631,7 +2633,7 @@
             <div class="runner-position">
                 <template v-if="runner.ifWin !== 0">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
-                    <strong>{{ runner.ifWin | formatPnL }}</strong>
+                    <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -2729,8 +2731,8 @@
     <b><span class="priceodd">{{single.runnerName}}</span><br /></b>
     <span class="priceamount">{{single.price1}}</span><br /><hr style="margin:0px;" />
     <div style="background-color:#e9f6fc">
-        <span class="positioncustom" v-if="single.ifWin > 0" style=" color:forestgreen" ><strong>{{single.ifWin | formatPnL}}</strong></span>
-        <span class="positioncustom" v-else style=" color:red" ><strong>{{single.ifWin | formatPnL}}</strong></span>
+        <span class="positioncustom" v-if="single.ifWin > 0" style=" color:forestgreen" ><strong>{{single.ifWin | format}}</strong></span>
+        <span class="positioncustom" v-else style=" color:red" ><strong>{{single.ifWin | format}}</strong></span>
     </div>
 </div>
 
@@ -2752,8 +2754,8 @@
     <b><span class="priceodd">{{single.runnerName}}</span><br /></b>
     <span class="priceamount">{{single.price1}}</span><br /><hr style="margin:0px;" />
     <div style="background-color:#e9f6fc">
-        <span class="positioncustom" v-if="single.ifWin > 0" style=" color:forestgreen" ><strong>{{single.ifWin | formatPnL}}</strong></span>
-        <span class="positioncustom" v-else style=" color:red" ><strong>{{single.ifWin | formatPnL}}</strong></span>
+        <span class="positioncustom" v-if="single.ifWin > 0" style=" color:forestgreen" ><strong>{{single.ifWin | format}}</strong></span>
+        <span class="positioncustom" v-else style=" color:red" ><strong>{{single.ifWin | format}}</strong></span>
     </div>
 </div>
 
@@ -2838,7 +2840,7 @@
             <div class="runner-position">
                 <template v-if="runner.ifWin !== 0">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
-                    <strong>{{ runner.ifWin | formatPnL }}</strong>
+                    <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -2976,7 +2978,7 @@
             <div class="runner-position">
                 <template v-if="runner.ifWin !== 0">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
-                    <strong>{{ runner.ifWin | formatPnL }}</strong>
+                    <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -3108,7 +3110,7 @@
             <div class="runner-position">
                 <template v-if="runner.ifWin !== 0">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
-                    <strong>{{ runner.ifWin | formatPnL }}</strong>
+                    <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -3239,7 +3241,7 @@
             <div class="runner-position">
                 <template v-if="runner.ifWin !== 0">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
-                    <strong>{{ runner.ifWin | formatPnL }}</strong>
+                    <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -3371,7 +3373,7 @@
             <div class="runner-position">
                 <template v-if="runner.ifWin !== 0">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
-                    <strong>{{ runner.ifWin | formatPnL }}</strong>
+                    <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -3503,7 +3505,7 @@
             <div class="runner-position">
                 <template v-if="runner.ifWin !== 0">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
-                    <strong>{{ runner.ifWin | formatPnL }}</strong>
+                    <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -3603,8 +3605,8 @@
     <b><span class="priceodd">{{single.runnerName}}</span><br /></b>
     <span class="priceamount">{{single.price1}}</span><br /><hr style="margin:0px;" />
     <div style="background-color:#e9f6fc">
-        <span class="positioncustom" v-if="single.ifWin > 0" style=" color:forestgreen" ><strong>{{single.ifWin | formatPnL}}</strong></span>
-        <span class="positioncustom" v-else style=" color:red" ><strong>{{single.ifWin | formatPnL}}</strong></span>
+        <span class="positioncustom" v-if="single.ifWin > 0" style=" color:forestgreen" ><strong>{{single.ifWin | format}}</strong></span>
+        <span class="positioncustom" v-else style=" color:red" ><strong>{{single.ifWin | format}}</strong></span>
     </div>
 </div>
 
@@ -3626,8 +3628,8 @@
     <b><span class="priceodd">{{single.runnerName}}</span><br /></b>
     <span class="priceamount">{{single.price1}}</span><br /><hr style="margin:0px;" />
     <div style="background-color:#e9f6fc">
-        <span class="positioncustom" v-if="single.ifWin > 0" style=" color:forestgreen" ><strong>{{single.ifWin | formatPnL}}</strong></span>
-        <span class="positioncustom" v-else style=" color:red" ><strong>{{single.ifWin | formatPnL}}</strong></span>
+        <span class="positioncustom" v-if="single.ifWin > 0" style=" color:forestgreen" ><strong>{{single.ifWin | format}}</strong></span>
+        <span class="positioncustom" v-else style=" color:red" ><strong>{{single.ifWin | format}}</strong></span>
     </div>
 </div>
 
@@ -3713,7 +3715,7 @@
             <div class="runner-position">
                 <template v-if="runner.ifWin !== 0">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
-                    <strong>{{ runner.ifWin | formatPnL }}</strong>
+                    <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -3849,7 +3851,7 @@
             <div class="runner-position">
                 <template v-if="runner.ifWin !== 0">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
-                    <strong>{{ runner.ifWin | formatPnL }}</strong>
+                    <strong>{{ runner.ifWin | format }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -4915,21 +4917,22 @@ async function updateUserWallet() {
 // ------------------------------------------------------------------
 function calculateRunnerPnL(runnerName, forMarketId) {
     const normalized  = (runnerName || "").trim().toLowerCase();
+    const useMarketFilter = !!forMarketId;
 
     let ifWin  = 0;
     let ifLose = 0;
 
-    // ✅ STRICT (Event.html jaisa): sirf EXACT mktId match — blank mktId
-    // wala koi bhi order KABHI count nahi hoga, kisi bhi market mein
-    // (na main, na sub-market). Pehle blank mktId ko "main market ka
-    // order maan lo" wala fallback tha — usi loophole ki wajah se kabhi
-    // kabhi Toss/Bookmaker ke bets Match Odds ke PnL mein bhi dikh jaate
-    // the. Ab wo fallback poori tarah hata diya.
-    if (!forMarketId) return { ifWin: 0, ifLose: 0 };
-    const targetMkt = String(forMarketId);
+    // STRICT MARKET FILTER:
+    // Sirf wahi orders include karo jinka mktId exactly forMarketId se match kare.
+    // Blank mktId wale orders SIRF tab include karo jab forMarketId bhi main matchId ho —
+    // warna Match Odds bets sub-markets (Toss, Bookmaker) pe bhi dikhne lagte hain.
+    const isMainMarket = !forMarketId || String(forMarketId) === String(matchId);
     const marketOrders = Matched.filter(order => {
+        if (!useMarketFilter) return true;
         const oMktId = String(order.mktId || "");
-        return oMktId === targetMkt;
+        // Blank mktId = main market ka order — sirf main market filter mein include karo
+        if (!oMktId) return isMainMarket;
+        return oMktId === String(forMarketId);
     });
 
     if (!marketOrders.length) return { ifWin: 0, ifLose: 0 };
@@ -6487,15 +6490,6 @@ Vue.component('runner-aggregate', {
         Vue.filter('format', function (value) {
             return nxCompactSize(value);
         });
-        // Runner PnL under names: full amount (2000 not 2K) — Event.html ke
-        // formatPnL ke bilkul saath consistent, sirf PnL ke liye alag filter
-        Vue.filter('formatPnL', function (value) {
-            if (value === null || value === undefined || value === '' || value === '-') return '';
-            var n = Number(String(value).replace(/,/g, ''));
-            if (!isFinite(n) || n === 0) return '';
-            var sign = n < 0 ? '-' : '';
-            return sign + String(Math.round(Math.abs(n)));
-        });
 
         // Unreal component ko manually register karo (safety ke liye)
         if (typeof UnrealHTML5VideoPlayer !== 'undefined') {
@@ -7315,30 +7309,6 @@ Vue.component('runner-aggregate', {
     setTimeout(startLiveScorePoll, 1200);
   }
   window.startLiveScorePoll = startLiveScorePoll;
-})();
-</script>
-
-<script>
-/* NX-PNL-FULL-NUMBER — market.html ke liye bhi Event.html jaisa robust
-   self-installing filter, taake mv2.min.js load-order kabhi override na kare */
-(function () {
-  function nxFormatPnL(value) {
-    if (value === null || value === undefined || value === '' || value === '-') return '';
-    var n = Number(String(value).replace(/,/g, ''));
-    if (!isFinite(n) || n === 0) return '';
-    var sign = n < 0 ? '-' : '';
-    return sign + String(Math.round(Math.abs(n)));
-  }
-  window.nxFormatPnL = nxFormatPnL;
-  function install() {
-    if (typeof Vue === 'undefined' || !Vue.filter) return false;
-    Vue.filter('formatPnL', nxFormatPnL);
-    return true;
-  }
-  if (!install()) {
-    var t = setInterval(function () { if (install()) clearInterval(t); }, 200);
-    setTimeout(function () { clearInterval(t); }, 15000);
-  }
 })();
 </script>
 

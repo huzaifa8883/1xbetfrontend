@@ -1,5 +1,4 @@
 
-
 <!doctype html>
 <html lang="en">
 <head>
@@ -5204,6 +5203,13 @@ function render() {
     // Matched bets table — Runner, Price, Size
     const mb = document.getElementById("matched-body");
     if (mb) {
+        var _sig = Matched.map(function(o){ return String(o.orderId)+":"+String(o.mp)+":"+String(o.ms); }).join("|");
+        if (window._nxMatchedSig === _sig && mb.childElementCount === Matched.length) {
+            // identical — do not touch DOM (prevents flash)
+            const mcElSkip = document.getElementById("matched-count");
+            if (mcElSkip) mcElSkip.textContent = Matched.length;
+        } else {
+        window._nxMatchedSig = _sig;
         mb.innerHTML = "";
         Matched.forEach(o => {
             // Sanitize at the last possible point before DOM write
@@ -5223,6 +5229,8 @@ function render() {
         });
         const mcEl = document.getElementById("matched-count");
         if (mcEl) mcEl.textContent = Matched.length;
+        } // end nx matched sig else
+
     }
 
     // Runner PnL Summary Table — per-runner "If Win/If Lose" aggregate
@@ -5623,20 +5631,30 @@ async function fetchMatched() {
             };
         });
 
-        // NX-STICKY: merge — never drop a page-ok order just because this poll missed it.
-        // API sometimes returns partial lists → was causing Matched 1↔2 + PnL flash.
-        const apiIds = new Set(fromApi.map(function(x){ return x.orderId; }));
-        const sticky = [];
-        const STICKY_MS = 15000; // keep missing orders 15s before really dropping
-        Matched.forEach(function(old) {
-            if (apiIds.has(old.orderId)) return; // will come from fromApi
-            if (!old._nxPageOk) return; // foreign — allow drop
-            var seen = old._nxSeenAt || 0;
-            if (Date.now() - seen < STICKY_MS) {
-                sticky.push(old); // keep during grace
-            }
+        // NX-NEVER-SHRINK: API partial lists must NOT remove local matched rows.
+        // Only cancel/settle/void paths may remove. This stops Matched 1↔2 + PnL flash.
+        const byId = {};
+        Matched.forEach(function(o) {
+            if (o && o.orderId && String(o.orderId) !== "") byId[String(o.orderId)] = o;
         });
-        Matched = fromApi.concat(sticky);
+        fromApi.forEach(function(o) {
+            if (!o || !o.orderId || String(o.orderId) === "") return;
+            var id = String(o.orderId);
+            var prev = byId[id];
+            if (prev && prev.rn && prev.rn !== "Runner" && !String(prev.rn).startsWith("Runner ") && !_isMatchName(prev.rn)) {
+                o.rn = prev.rn;
+            }
+            if (prev && prev.mktId && !o.mktId) o.mktId = prev.mktId;
+            o._nxPageOk = true;
+            o._nxSeenAt = Date.now();
+            byId[id] = o;
+        });
+        // ALWAYS keep previous page-ok orders missing from this poll
+        Matched = Object.keys(byId).map(function(k){ return byId[k]; });
+        // Stable order: by orderId string so list doesn't jump
+        Matched.sort(function(a, b) {
+            return String(a.orderId || "").localeCompare(String(b.orderId || ""));
+        });
 
         render();
     } catch (e) {

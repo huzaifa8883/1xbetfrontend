@@ -5040,16 +5040,26 @@ function _nxPurgeForeignOrders() {
     try {
         _nxSyncMaps();
         var ids = window.allMarketIds;
+        // Never purge while maps are empty/building — causes Matched+PnL flicker
         if (!ids || ids.size === 0) return;
+        if (window._nxBuildingMaps) return;
         function resolveAndKeep(o) {
             var m = String(o.mktId || "");
             if (!m && o.selId && window.selectionIdToMarketId && window.selectionIdToMarketId[o.selId]) {
                 m = String(window.selectionIdToMarketId[o.selId]);
-                o.mktId = m; // back-fill so PnL uses correct market immediately
+                o.mktId = m;
             }
-            if (m && ids.has(m)) return true;
-            if (m && matchId && m === String(matchId)) return true;
-            return false; // foreign match → drop
+            // Already confirmed on this page earlier — keep (prevents flash)
+            if (o._nxPageOk) {
+                if (m) o.mktId = m;
+                return true;
+            }
+            if (m && ids.has(m)) { o._nxPageOk = true; return true; }
+            if (m && matchId && m === String(matchId)) { o._nxPageOk = true; return true; }
+            // Unknown market AND not previously confirmed → drop only if we have solid maps
+            if (!m && ids.size >= 1) return false;
+            if (m && ids.size >= 1 && !ids.has(m)) return false;
+            return true; // keep when uncertain (avoid flicker)
         }
         var before = Matched.length;
         Matched = Matched.filter(resolveAndKeep);
@@ -5451,18 +5461,18 @@ async function fetchUnMatched() {
         // Dolphins / other-match bets MUST be dropped even if API returns them.
         list = list.filter(o => {
             const selId  = String(o.selection_id || o.selectionId || o.selId || "");
+            const orderId = String(o.request_id || o.orderId || o.requestId || "");
             const mapped = (selId && window.selectionIdToMarketId && window.selectionIdToMarketId[selId]) || "";
             const oMktId = String(o.marketId || o.market_id || mapped || "");
-            const rn = (o.runnerName || o.runner_name || o.rn || "").trim().toLowerCase();
             const ids = window.allMarketIds;
-            // Helper: is this selection known on the CURRENT page?
-            const selKnown = !!(selId && window.selectionIdToRunner && window.selectionIdToRunner[selId]);
+            // Already on this page's Matched/UnMatched — keep (stops flicker)
+            const already = [...Matched, ...UnMatched].find(function(x){ return x.orderId === orderId && x._nxPageOk; });
+            if (already) return true;
             if (ids && ids.size > 0) {
                 if (oMktId && ids.has(oMktId)) return true;
                 if (mapped && ids.has(String(mapped))) return true;
-                return false; // drop foreign match — never accept by runner-name alone
+                return false;
             }
-            // maps not ready yet — only keep if marketId equals page matchId
             if (oMktId && matchId && oMktId === String(matchId)) return true;
             if (mapped && matchId && String(mapped) === String(matchId)) return true;
             return false;
@@ -5537,18 +5547,18 @@ async function fetchMatched() {
         // Dolphins / other-match bets MUST be dropped even if API returns them.
         list = list.filter(o => {
             const selId  = String(o.selection_id || o.selectionId || o.selId || "");
+            const orderId = String(o.request_id || o.orderId || o.requestId || "");
             const mapped = (selId && window.selectionIdToMarketId && window.selectionIdToMarketId[selId]) || "";
             const oMktId = String(o.marketId || o.market_id || mapped || "");
-            const rn = (o.runnerName || o.runner_name || o.rn || "").trim().toLowerCase();
             const ids = window.allMarketIds;
-            // Helper: is this selection known on the CURRENT page?
-            const selKnown = !!(selId && window.selectionIdToRunner && window.selectionIdToRunner[selId]);
+            // Already on this page's Matched/UnMatched — keep (stops flicker)
+            const already = [...Matched, ...UnMatched].find(function(x){ return x.orderId === orderId && x._nxPageOk; });
+            if (already) return true;
             if (ids && ids.size > 0) {
                 if (oMktId && ids.has(oMktId)) return true;
                 if (mapped && ids.has(String(mapped))) return true;
-                return false; // drop foreign match — never accept by runner-name alone
+                return false;
             }
-            // maps not ready yet — only keep if marketId equals page matchId
             if (oMktId && matchId && oMktId === String(matchId)) return true;
             if (mapped && matchId && String(mapped) === String(matchId)) return true;
             return false;
@@ -5568,9 +5578,11 @@ async function fetchMatched() {
                 existing.rn !== "Runner" &&
                 !existing.rn.startsWith("Runner ") &&
                 !_isMatchName(existing.rn)) {
+                var _m = _nxOrderMktId(o, selId) || existing.mktId;
                 return {
                     ...existing,
-                    mktId: _nxOrderMktId(o, selId) || existing.mktId,
+                    mktId: _m,
+                    _nxPageOk: true,
                     mp: parseFloat(o.price) || 0,
                     ms: parseFloat(o.matched > 0 ? o.matched : o.size) || 0,
                     profit: parseFloat(o.profit || 0),
@@ -5587,20 +5599,21 @@ async function fetchMatched() {
                 rn = selId ? ("Runner " + selId) : "Runner";
             }
 
-            return {
-                orderId,
-                rn,
-                selId,
-                mktId: (function(){
+            var _resolvedMkt = (function(){
                     var fromApi = o.marketId || o.market_id || '';
                     var fromMap = (selId && window.selectionIdToMarketId && window.selectionIdToMarketId[selId]) || '';
                     if (fromApi) return String(fromApi);
                     if (fromMap) return String(fromMap);
-                    // Only fall back to matchId if this selection is a MAIN market runner
-                    if (selId && window.selectionIdToMarketId && window.selectionIdToMarketId[selId] === String(matchId)) return String(matchId);
-                    // Unknown → empty (will not pollute Match Odds PnL)
                     return '';
-                })(),
+                })();
+            return {
+                orderId,
+                rn,
+                selId,
+                mktId: _resolvedMkt,
+                _nxPageOk: !!(_resolvedMkt && window.allMarketIds && window.allMarketIds.has(_resolvedMkt))
+                           || !!(_resolvedMkt && matchId && _resolvedMkt === String(matchId))
+                           || true,
                 mp: parseFloat(o.price) || 0,
                 ms: parseFloat(o.matched > 0 ? o.matched : o.size) || 0,
                 bs: (o.side || o.type || "").toUpperCase(),
@@ -5631,19 +5644,14 @@ async function fetchRunners() {
         // main market runners + every sub-market (TossMarkets, BookmakerMarkets, etc.)
         const allRunnerSources = [];
 
-        // CRITICAL: har baar maps CLEAR karo — purane match (Dolphins etc.) ke
-        // selectionIds nahi rehne chahiye warna cross-match bets filter se nikal aate hain
-        window.selectionIdToMarketId = {};
-        if (typeof selectionIdToRunner !== 'undefined') {
-            // clear object in-place (keep same reference used elsewhere)
-            Object.keys(selectionIdToRunner).forEach(function(k){ delete selectionIdToRunner[k]; });
-        } else {
-            selectionIdToRunner = {};
-        }
+        // NX-STABLE: MERGE maps only — never wipe to empty (wiping caused Matched/PnL flicker)
+        if (!window.selectionIdToMarketId) window.selectionIdToMarketId = {};
+        if (typeof selectionIdToRunner === 'undefined' || !selectionIdToRunner) selectionIdToRunner = {};
         window.selectionIdToRunner = selectionIdToRunner;
-        // allMarketIds = current match ka main + sub-market IDs (filter ke liye)
-        window.allMarketIds = new Set();
-        _nxSyncMaps();   // NX FIX: keep Toss/Bookmaker selection->market map after the wipe
+        if (!window.allMarketIds) window.allMarketIds = new Set();
+        if (matchId) window.allMarketIds.add(String(matchId));
+        try { if (typeof window.syncMarketIdsFromVue === 'function') window.syncMarketIdsFromVue(); } catch (e) {}
+        window._nxBuildingMaps = false;
 
         if (Array.isArray(market?.runners)) {
             const mainMktId = String(market.marketId || market.id || matchId);
@@ -5813,9 +5821,11 @@ socket.on("ordersUpdated", (data) => {
 
         if (newO.status === "PENDING") {
             UnMatched.push({ orderId, rn: safeRn, selId: orderSelId, mktId: orderMktId,
+                _nxPageOk: true,
                 up: newO.price, us: newO.size, bs: (newO.side || "").toUpperCase() });
         } else if (newO.status === "MATCHED") {
             Matched.push({ orderId, rn: safeRn, selId: orderSelId, mktId: orderMktId,
+                _nxPageOk: true,
                 mp: parseFloat(newO.price || 0),
                 ms: parseFloat(newO.matched > 0 ? newO.matched : newO.size || 0),
                 bs: (newO.side || "").toUpperCase(),
@@ -5832,11 +5842,13 @@ socket.on("ordersUpdated", (data) => {
         }
     });
 
-    render();
+    // Debounce render — rapid socket bursts caused Matched/PnL flicker
+    clearTimeout(window._nxRenderT);
+    window._nxRenderT = setTimeout(function(){ render(); }, 80);
 
-    // Authoritative reconcile from API (has real marketId + cross-match filter)
+    // Authoritative reconcile from API (longer delay to avoid thrash)
     clearTimeout(window._nxReconcileT);
-    window._nxReconcileT = setTimeout(function () { fetchUnMatched(); fetchMatched(); }, 700);
+    window._nxReconcileT = setTimeout(function () { fetchUnMatched(); fetchMatched(); }, 1200);
 });
 
 // userUpdated — wallet + liable + settlement info

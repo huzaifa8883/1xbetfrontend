@@ -1,5 +1,3 @@
-
-
 <!doctype html>
 <html lang="en">
 <head>
@@ -5355,6 +5353,29 @@ function _marketIdsQueryParam() {
     return `matchId=${encodeURIComponent(matchId)}`;
 }
 
+// ------------------------------------------------------------------
+// NX FIX: order -> market resolution WITHOUT falling back to matchId.
+// Old code defaulted unknown orders to matchId (= Match Odds), so a Toss
+// bet showed its P/L under Match Odds until refresh. Also the socket
+// broadcasts ALL of the user's orders, so other-match bets leaked in.
+// ------------------------------------------------------------------
+function _nxSyncMaps() {
+    try { if (typeof window.syncMarketIdsFromVue === 'function') window.syncMarketIdsFromVue(); } catch (e) {}
+}
+function _nxOrderMktId(o, selId) {
+    var fromApi = o.marketId || o.market_id || '';
+    var fromMap = (selId && window.selectionIdToMarketId && window.selectionIdToMarketId[selId]) || '';
+    return String(fromApi || fromMap || '');
+}
+// true only if the order belongs to a market / selection of THIS page
+function _nxOrderBelongsToPage(o, selId, mktId) {
+    var ids = window.allMarketIds;
+    if (mktId && ids && ids.has(String(mktId))) return true;
+    if (mktId && matchId && String(mktId) === String(matchId)) return true;
+    if (selId && window.selectionIdToRunner && window.selectionIdToRunner[selId]) return true;
+    return false;
+}
+
 async function fetchUnMatched() {
     if (!matchId) return;
     const tk = localStorage.getItem('token') || localStorage.getItem('wex3authtoken') || token;
@@ -5404,7 +5425,7 @@ async function fetchUnMatched() {
                 existing.rn !== "Runner" &&
                 !existing.rn.startsWith("Runner ") &&
                 !_isMatchName(existing.rn)) {
-                return { ...existing, up: parseFloat(o.price) || 0, us: parseFloat(o.size) || 0 };
+                return { ...existing, mktId: _nxOrderMktId(o, selId) || existing.mktId, up: parseFloat(o.price) || 0, us: parseFloat(o.size) || 0 };
             }
 
             // Fresh resolution: backend field first, then map, then fallback
@@ -5493,6 +5514,7 @@ async function fetchMatched() {
                 !_isMatchName(existing.rn)) {
                 return {
                     ...existing,
+                    mktId: _nxOrderMktId(o, selId) || existing.mktId,
                     mp: parseFloat(o.price) || 0,
                     ms: parseFloat(o.matched > 0 ? o.matched : o.size) || 0,
                     profit: parseFloat(o.profit || 0),
@@ -5565,6 +5587,7 @@ async function fetchRunners() {
         window.selectionIdToRunner = selectionIdToRunner;
         // allMarketIds = current match ka main + sub-market IDs (filter ke liye)
         window.allMarketIds = new Set();
+        _nxSyncMaps();   // NX FIX: keep Toss/Bookmaker selection->market map after the wipe
 
         if (Array.isArray(market?.runners)) {
             const mainMktId = String(market.marketId || market.id || matchId);
@@ -5701,11 +5724,10 @@ socket.on("ordersUpdated", (data) => {
         const orderId    = String(newO.request_id || newO.orderId || newO.requestId);
         const orderSelId = String(newO.selection_id || newO.selectionId || "");
         // FIX: mktId blank ho to selectionIdToMarketId se resolve karo
-        const orderMktId = String(
-            newO.marketId || newO.market_id ||
-            (orderSelId && window.selectionIdToMarketId && window.selectionIdToMarketId[orderSelId]) ||
-            matchId
-        );
+        _nxSyncMaps();
+        const orderMktId = _nxOrderMktId(newO, orderSelId);   // '' if unknown (never matchId)
+        // Cross-match guard: server pushes ALL of this user's orders, drop other matches
+        if (!_nxOrderBelongsToPage(newO, orderSelId, orderMktId)) return;
 
         // FIX: marketId filter hataya — Toss/other markets ke orders bhi accept karo
         // (sirf current event ke orders aate hain server se, isliye safe hai)
@@ -5755,6 +5777,10 @@ socket.on("ordersUpdated", (data) => {
     });
 
     render();
+
+    // Authoritative reconcile from API (has real marketId + cross-match filter)
+    clearTimeout(window._nxReconcileT);
+    window._nxReconcileT = setTimeout(function () { fetchUnMatched(); fetchMatched(); }, 700);
 });
 
 // userUpdated — wallet + liable + settlement info
@@ -6970,6 +6996,9 @@ Vue.component('runner-aggregate', {
       });
     } catch (e) {}
   }
+
+  // NX FIX: expose so ordersUpdated / fetchRunners can refresh maps first
+  window.syncMarketIdsFromVue = syncMarketIdsFromVue;
 
   // Patch _marketIdsQueryParam to always send every known id
   function installQueryPatch() {

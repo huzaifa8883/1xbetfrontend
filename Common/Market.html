@@ -1,8 +1,6 @@
 
 
 
-
-
 <!doctype html>
 <html lang="en">
 <head>
@@ -4569,8 +4567,10 @@ new Vue({
 
   filters: {
     format(v) {
-      if (!v) return "";
-      return Number(v).toLocaleString();
+      if (v === null || v === undefined || v === '' || Number(v) === 0) return "";
+      var n = Number(v);
+      if (!isFinite(n)) return "";
+      return String(Math.round(n));
     }
   },
 
@@ -4871,7 +4871,33 @@ window.runnerPnL   = runnerPnL;
 // Utilities
 // ---------------------------
 function format(n) {
-    return Number(n || 0).toLocaleString();
+    // Full integer for PnL / stake display (1800 not 1.8K)
+    var v = Number(n || 0);
+    if (!isFinite(v)) return '';
+    return String(Math.round(v));
+}
+
+function _nxStableSortMatched() {
+    try {
+        if (Array.isArray(Matched)) {
+            Matched.sort(function(a, b) {
+                var aid = String(a.orderId || a.request_id || '');
+                var bid = String(b.orderId || b.request_id || '');
+                if (aid < bid) return -1;
+                if (aid > bid) return 1;
+                return 0;
+            });
+        }
+        if (Array.isArray(UnMatched)) {
+            UnMatched.sort(function(a, b) {
+                var aid = String(a.orderId || a.request_id || '');
+                var bid = String(b.orderId || b.request_id || '');
+                if (aid < bid) return -1;
+                if (aid > bid) return 1;
+                return 0;
+            });
+        }
+    } catch (e) {}
 }
 
 // ---------------------------
@@ -5036,6 +5062,7 @@ function updateRunnerPnL() {
 // RENDER TABLES
 // ---------------------------
 function render() {
+    _nxStableSortMatched();
     updateRunnerPnL();
 
     // ------------------------------------------------------------------
@@ -5321,7 +5348,7 @@ function _marketIdsQueryParam() {
       var el = document.getElementById('MarketView') || document.getElementById('app');
       var vm = el && el.__vue__;
       if (vm && vm.Catalog && vm.Catalog.marketId) window.allMarketIds.add(String(vm.Catalog.marketId));
-      if (vm && vm.Catalog && vm.Catalog.eventId) window.allMarketIds.add(String(vm.Catalog.eventId));
+      // eventId is NOT a marketId — do not add to allMarketIds (causes cross-match leakage)
     } catch (e) {}
     if (window.allMarketIds && window.allMarketIds.size > 0) {
         return `marketIds=${encodeURIComponent([...window.allMarketIds].join(','))}`;
@@ -5342,21 +5369,25 @@ async function fetchUnMatched() {
         const json = await res.json();
         let list = json.data?.orders || json.orders || [];
 
-        // Soft filter: keep order if marketId unknown OR in set (don't drop resolved 1.xxx vs composite mismatch)
-        if (window.allMarketIds && window.allMarketIds.size > 0) {
-            list = list.filter(o => {
-                const selId  = String(o.selection_id || o.selectionId || "");
-                const oMktId = String(
-                    o.marketId || o.market_id ||
-                    (selId && window.selectionIdToMarketId && window.selectionIdToMarketId[selId]) || ""
-                );
-                if (!oMktId) return true; // no id → keep (backend already scoped)
-                if (window.allMarketIds.has(oMktId)) return true;
-                // also accept if either side is prefix of the other (composite vs 1.xxx still different — keep if selection maps)
+        // STRICT filter: sirf current match ke markets ke orders rakho (cross-match bets drop)
+        // Dolphins / other-match bets MUST be dropped even if API returns them.
+        list = list.filter(o => {
+            const selId  = String(o.selection_id || o.selectionId || o.selId || "");
+            const mapped = (selId && window.selectionIdToMarketId && window.selectionIdToMarketId[selId]) || "";
+            const oMktId = String(o.marketId || o.market_id || mapped || "");
+            const ids = window.allMarketIds;
+            if (ids && ids.size > 0) {
+                if (oMktId && ids.has(oMktId)) return true;
+                if (mapped && ids.has(String(mapped))) return true;
                 if (selId && window.selectionIdToRunner && window.selectionIdToRunner[selId]) return true;
                 return false;
-            });
-        }
+            }
+            // maps not ready yet — only keep if marketId equals page matchId
+            if (oMktId && matchId && oMktId === String(matchId)) return true;
+            if (selId && window.selectionIdToRunner && window.selectionIdToRunner[selId]) return true;
+            // no reliable identity → drop (prevents cross-match flash)
+            return false;
+        });
 
         // Build lookup: orderId -> existing object (to preserve confirmed names)
         const prev = {};
@@ -5414,21 +5445,25 @@ async function fetchMatched() {
         const json = await res.json();
         let list = json.data?.orders || json.orders || [];
 
-        // Soft filter: keep order if marketId unknown OR in set (don't drop resolved 1.xxx vs composite mismatch)
-        if (window.allMarketIds && window.allMarketIds.size > 0) {
-            list = list.filter(o => {
-                const selId  = String(o.selection_id || o.selectionId || "");
-                const oMktId = String(
-                    o.marketId || o.market_id ||
-                    (selId && window.selectionIdToMarketId && window.selectionIdToMarketId[selId]) || ""
-                );
-                if (!oMktId) return true; // no id → keep (backend already scoped)
-                if (window.allMarketIds.has(oMktId)) return true;
-                // also accept if either side is prefix of the other (composite vs 1.xxx still different — keep if selection maps)
+        // STRICT filter: sirf current match ke markets ke orders rakho (cross-match bets drop)
+        // Dolphins / other-match bets MUST be dropped even if API returns them.
+        list = list.filter(o => {
+            const selId  = String(o.selection_id || o.selectionId || o.selId || "");
+            const mapped = (selId && window.selectionIdToMarketId && window.selectionIdToMarketId[selId]) || "";
+            const oMktId = String(o.marketId || o.market_id || mapped || "");
+            const ids = window.allMarketIds;
+            if (ids && ids.size > 0) {
+                if (oMktId && ids.has(oMktId)) return true;
+                if (mapped && ids.has(String(mapped))) return true;
                 if (selId && window.selectionIdToRunner && window.selectionIdToRunner[selId]) return true;
                 return false;
-            });
-        }
+            }
+            // maps not ready yet — only keep if marketId equals page matchId
+            if (oMktId && matchId && oMktId === String(matchId)) return true;
+            if (selId && window.selectionIdToRunner && window.selectionIdToRunner[selId]) return true;
+            // no reliable identity → drop (prevents cross-match flash)
+            return false;
+        });
 
         // Build lookup: orderId -> existing object (to preserve confirmed names)
         const prev = {};
@@ -6491,7 +6526,11 @@ Vue.component('runner-aggregate', {
             return nxCompactSize(value);
         });
         Vue.filter('format', function (value) {
-            return nxCompactSize(value);
+            // Runner PnL — full amount (1800 not 1.8K)
+            if (value === null || value === undefined || value === '' || Number(value) === 0) return '';
+            var n = Number(String(value).replace(/,/g, ''));
+            if (!isFinite(n) || n === 0) return '';
+            return String(Math.round(n));
         });
 
         // Unreal component ko manually register karo (safety ke liye)
@@ -6511,7 +6550,7 @@ Vue.component('runner-aggregate', {
                 try {
                   Vue.filter('formatForiegn', nxCompactSize);
                   Vue.filter('formatForiegn2', nxCompactSize);
-                  Vue.filter('format', nxCompactSize);
+                  // format stays full numbers for runner PnL — do NOT rebind to nxCompactSize
                 } catch (e) {}
 
                 // ✅ Apna scorecard (#nx-scorecard) Vue se directly Catalog data se bind hai —

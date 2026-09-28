@@ -5049,17 +5049,17 @@ function _nxPurgeForeignOrders() {
                 m = String(window.selectionIdToMarketId[o.selId]);
                 o.mktId = m;
             }
-            // Already confirmed on this page earlier — keep (prevents flash)
+            // Sticky: once accepted on this page, NEVER purge (only fetchMatched sticky-expiry drops)
             if (o._nxPageOk) {
                 if (m) o.mktId = m;
                 return true;
             }
-            if (m && ids.has(m)) { o._nxPageOk = true; return true; }
-            if (m && matchId && m === String(matchId)) { o._nxPageOk = true; return true; }
-            // Unknown market AND not previously confirmed → drop only if we have solid maps
-            if (!m && ids.size >= 1) return false;
+            if (m && ids.has(m)) { o._nxPageOk = true; o._nxSeenAt = Date.now(); return true; }
+            if (m && matchId && m === String(matchId)) { o._nxPageOk = true; o._nxSeenAt = Date.now(); return true; }
+            // Not confirmed and market unknown/foreign
             if (m && ids.size >= 1 && !ids.has(m)) return false;
-            return true; // keep when uncertain (avoid flicker)
+            if (!m && ids.size >= 1) return false;
+            return true;
         }
         var before = Matched.length;
         Matched = Matched.filter(resolveAndKeep);
@@ -5568,7 +5568,8 @@ async function fetchMatched() {
         const prev = {};
         Matched.forEach(o => { prev[o.orderId] = o; });
 
-        Matched = list.map(o => {
+        // Map API rows
+        const fromApi = list.map(o => {
             const selId   = String(o.selection_id || o.selectionId || o.selId || "");
             const orderId = String(o.request_id || o.orderId || o.requestId || "");
             const existing = prev[orderId];
@@ -5583,6 +5584,7 @@ async function fetchMatched() {
                     ...existing,
                     mktId: _m,
                     _nxPageOk: true,
+                    _nxSeenAt: Date.now(),
                     mp: parseFloat(o.price) || 0,
                     ms: parseFloat(o.matched > 0 ? o.matched : o.size) || 0,
                     profit: parseFloat(o.profit || 0),
@@ -5611,9 +5613,8 @@ async function fetchMatched() {
                 rn,
                 selId,
                 mktId: _resolvedMkt,
-                _nxPageOk: !!(_resolvedMkt && window.allMarketIds && window.allMarketIds.has(_resolvedMkt))
-                           || !!(_resolvedMkt && matchId && _resolvedMkt === String(matchId))
-                           || true,
+                _nxPageOk: true,
+                _nxSeenAt: Date.now(),
                 mp: parseFloat(o.price) || 0,
                 ms: parseFloat(o.matched > 0 ? o.matched : o.size) || 0,
                 bs: (o.side || o.type || "").toUpperCase(),
@@ -5621,6 +5622,21 @@ async function fetchMatched() {
                 liable: parseFloat(o.liable || 0),
             };
         });
+
+        // NX-STICKY: merge — never drop a page-ok order just because this poll missed it.
+        // API sometimes returns partial lists → was causing Matched 1↔2 + PnL flash.
+        const apiIds = new Set(fromApi.map(function(x){ return x.orderId; }));
+        const sticky = [];
+        const STICKY_MS = 15000; // keep missing orders 15s before really dropping
+        Matched.forEach(function(old) {
+            if (apiIds.has(old.orderId)) return; // will come from fromApi
+            if (!old._nxPageOk) return; // foreign — allow drop
+            var seen = old._nxSeenAt || 0;
+            if (Date.now() - seen < STICKY_MS) {
+                sticky.push(old); // keep during grace
+            }
+        });
+        Matched = fromApi.concat(sticky);
 
         render();
     } catch (e) {
@@ -5848,7 +5864,7 @@ socket.on("ordersUpdated", (data) => {
 
     // Authoritative reconcile from API (longer delay to avoid thrash)
     clearTimeout(window._nxReconcileT);
-    window._nxReconcileT = setTimeout(function () { fetchUnMatched(); fetchMatched(); }, 1200);
+    window._nxReconcileT = setTimeout(function () { fetchUnMatched(); fetchMatched(); }, 2500);
 });
 
 // userUpdated — wallet + liable + settlement info

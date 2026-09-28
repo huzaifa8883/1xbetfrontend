@@ -1,3 +1,5 @@
+
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -1947,18 +1949,18 @@
 <!-- <div class="runner-position">
   <span v-if="getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin >= 0">
     <span class="runner-position-pos">
-      <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin | format }}</strong>
+      <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin | formatPnL }}</strong>
     </span>
     <span class="position-minus" v-if="getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose != null && getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose != 0">
-      <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose | format }}</strong>
+      <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose | formatPnL }}</strong>
     </span>
   </span>
   <span v-else>
     <span class="position-minus">
-      <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin | format }}</strong>
+      <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin | formatPnL }}</strong>
     </span>
     <span class="runner-position-pos" v-if="getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose != null && getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose != 0">
-      <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose | format }}</strong>
+      <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose | formatPnL }}</strong>
     </span>
   </span>
   <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -1972,7 +1974,7 @@
 <div class="runner-position">
   <span v-if="getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin !== 0">
     <span :class="getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
-      <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin | format }}</strong>
+      <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin | formatPnL }}</strong>
     </span>
   </span>
   <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -2109,7 +2111,7 @@
             <div class="runner-position">
                 <template v-if="runner.ifWin !== 0">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
-                    <strong>{{ runner.ifWin | format }}</strong>
+                    <strong>{{ runner.ifWin | formatPnL }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -2240,7 +2242,7 @@
             <div class="runner-position">
                 <template v-if="runner.ifWin !== 0">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
-                    <strong>{{ runner.ifWin | format }}</strong>
+                    <strong>{{ runner.ifWin | formatPnL }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -2370,7 +2372,7 @@
             <div class="runner-position">
                 <template v-if="runner.ifWin !== 0">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
-                    <strong>{{ runner.ifWin | format }}</strong>
+                    <strong>{{ runner.ifWin | formatPnL }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -2501,7 +2503,7 @@
             <div class="runner-position">
                 <template v-if="runner.ifWin !== 0">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
-                    <strong>{{ runner.ifWin | format }}</strong>
+                    <strong>{{ runner.ifWin | formatPnL }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -2631,7 +2633,7 @@
             <div class="runner-position">
                 <template v-if="runner.ifWin !== 0">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
-                    <strong>{{ runner.ifWin | format }}</strong>
+                    <strong>{{ runner.ifWin | formatPnL }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -2729,8 +2731,8 @@
     <b><span class="priceodd">{{single.runnerName}}</span><br /></b>
     <span class="priceamount">{{single.price1}}</span><br /><hr style="margin:0px;" />
     <div style="background-color:#e9f6fc">
-        <span class="positioncustom" v-if="single.ifWin > 0" style=" color:forestgreen" ><strong>{{single.ifWin | format}}</strong></span>
-        <span class="positioncustom" v-else style=" color:red" ><strong>{{single.ifWin | format}}</strong></span>
+        <span class="positioncustom" v-if="single.ifWin > 0" style=" color:forestgreen" ><strong>{{single.ifWin | formatPnL}}</strong></span>
+        <span class="positioncustom" v-else style=" color:red" ><strong>{{single.ifWin | formatPnL}}</strong></span>
     </div>
 </div>
 
@@ -2752,8 +2754,8 @@
     <b><span class="priceodd">{{single.runnerName}}</span><br /></b>
     <span class="priceamount">{{single.price1}}</span><br /><hr style="margin:0px;" />
     <div style="background-color:#e9f6fc">
-        <span class="positioncustom" v-if="single.ifWin > 0" style=" color:forestgreen" ><strong>{{single.ifWin | format}}</strong></span>
-        <span class="positioncustom" v-else style=" color:red" ><strong>{{single.ifWin | format}}</strong></span>
+        <span class="positioncustom" v-if="single.ifWin > 0" style=" color:forestgreen" ><strong>{{single.ifWin | formatPnL}}</strong></span>
+        <span class="positioncustom" v-else style=" color:red" ><strong>{{single.ifWin | formatPnL}}</strong></span>
     </div>
 </div>
 
@@ -2838,7 +2840,7 @@
             <div class="runner-position">
                 <template v-if="runner.ifWin !== 0">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
-                    <strong>{{ runner.ifWin | format }}</strong>
+                    <strong>{{ runner.ifWin | formatPnL }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -2976,7 +2978,7 @@
             <div class="runner-position">
                 <template v-if="runner.ifWin !== 0">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
-                    <strong>{{ runner.ifWin | format }}</strong>
+                    <strong>{{ runner.ifWin | formatPnL }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -3108,7 +3110,7 @@
             <div class="runner-position">
                 <template v-if="runner.ifWin !== 0">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
-                    <strong>{{ runner.ifWin | format }}</strong>
+                    <strong>{{ runner.ifWin | formatPnL }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -3239,7 +3241,7 @@
             <div class="runner-position">
                 <template v-if="runner.ifWin !== 0">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
-                    <strong>{{ runner.ifWin | format }}</strong>
+                    <strong>{{ runner.ifWin | formatPnL }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -3371,7 +3373,7 @@
             <div class="runner-position">
                 <template v-if="runner.ifWin !== 0">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
-                    <strong>{{ runner.ifWin | format }}</strong>
+                    <strong>{{ runner.ifWin | formatPnL }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -3503,7 +3505,7 @@
             <div class="runner-position">
                 <template v-if="runner.ifWin !== 0">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
-                    <strong>{{ runner.ifWin | format }}</strong>
+                    <strong>{{ runner.ifWin | formatPnL }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -3603,8 +3605,8 @@
     <b><span class="priceodd">{{single.runnerName}}</span><br /></b>
     <span class="priceamount">{{single.price1}}</span><br /><hr style="margin:0px;" />
     <div style="background-color:#e9f6fc">
-        <span class="positioncustom" v-if="single.ifWin > 0" style=" color:forestgreen" ><strong>{{single.ifWin | format}}</strong></span>
-        <span class="positioncustom" v-else style=" color:red" ><strong>{{single.ifWin | format}}</strong></span>
+        <span class="positioncustom" v-if="single.ifWin > 0" style=" color:forestgreen" ><strong>{{single.ifWin | formatPnL}}</strong></span>
+        <span class="positioncustom" v-else style=" color:red" ><strong>{{single.ifWin | formatPnL}}</strong></span>
     </div>
 </div>
 
@@ -3626,8 +3628,8 @@
     <b><span class="priceodd">{{single.runnerName}}</span><br /></b>
     <span class="priceamount">{{single.price1}}</span><br /><hr style="margin:0px;" />
     <div style="background-color:#e9f6fc">
-        <span class="positioncustom" v-if="single.ifWin > 0" style=" color:forestgreen" ><strong>{{single.ifWin | format}}</strong></span>
-        <span class="positioncustom" v-else style=" color:red" ><strong>{{single.ifWin | format}}</strong></span>
+        <span class="positioncustom" v-if="single.ifWin > 0" style=" color:forestgreen" ><strong>{{single.ifWin | formatPnL}}</strong></span>
+        <span class="positioncustom" v-else style=" color:red" ><strong>{{single.ifWin | formatPnL}}</strong></span>
     </div>
 </div>
 
@@ -3713,7 +3715,7 @@
             <div class="runner-position">
                 <template v-if="runner.ifWin !== 0">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
-                    <strong>{{ runner.ifWin | format }}</strong>
+                    <strong>{{ runner.ifWin | formatPnL }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -3849,7 +3851,7 @@
             <div class="runner-position">
                 <template v-if="runner.ifWin !== 0">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
-                    <strong>{{ runner.ifWin | format }}</strong>
+                    <strong>{{ runner.ifWin | formatPnL }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -4952,12 +4954,16 @@ function calculateRunnerPnL(runnerName, forMarketId) {
     // Sirf wahi orders include karo jinka mktId exactly forMarketId se match kare.
     // Blank mktId wale orders SIRF tab include karo jab forMarketId bhi main matchId ho —
     // warna Match Odds bets sub-markets (Toss, Bookmaker) pe bhi dikhne lagte hain.
-    const isMainMarket = !forMarketId || String(forMarketId) === String(matchId);
+    // NX-STRICT: blank mktId NEVER counts as any market (prevents Toss flash on Match Odds)
     const marketOrders = Matched.filter(order => {
         if (!useMarketFilter) return true;
-        const oMktId = String(order.mktId || "");
-        // Blank mktId = main market ka order — sirf main market filter mein include karo
-        if (!oMktId) return isMainMarket;
+        let oMktId = String(order.mktId || "");
+        if (!oMktId) {
+            const sid = String(order.selId || order.selectionId || "");
+            if (sid && window.selectionIdToMarketId && window.selectionIdToMarketId[sid])
+                oMktId = String(window.selectionIdToMarketId[sid]);
+        }
+        if (!oMktId) return false; // unknown → exclude from ALL markets
         return oMktId === String(forMarketId);
     });
 
@@ -5028,19 +5034,55 @@ function calculateRunnerPnL(runnerName, forMarketId) {
 }
 
 // runnerPnL keyed as "marketId||runnerName" for strict per-market isolation
+
+// NX: drop any Matched/UnMatched order that does not belong to this page
+function _nxPurgeForeignOrders() {
+    try {
+        _nxSyncMaps();
+        var ids = window.allMarketIds;
+        if (!ids || ids.size === 0) return;
+        function resolveAndKeep(o) {
+            var m = String(o.mktId || "");
+            if (!m && o.selId && window.selectionIdToMarketId && window.selectionIdToMarketId[o.selId]) {
+                m = String(window.selectionIdToMarketId[o.selId]);
+                o.mktId = m; // back-fill so PnL uses correct market immediately
+            }
+            if (m && ids.has(m)) return true;
+            if (m && matchId && m === String(matchId)) return true;
+            return false; // foreign match → drop
+        }
+        var before = Matched.length;
+        Matched = Matched.filter(resolveAndKeep);
+        UnMatched = UnMatched.filter(resolveAndKeep);
+        if (Matched.length !== before) console.log("[NX] purged foreign matched:", before - Matched.length);
+    } catch (e) {}
+}
+
 function updateRunnerPnL() {
     // Gather all unique (mktId, runnerName) pairs from both order lists
     const pairs = new Map(); // key: "mktId||rn"  value: { mktId, rn }
 
     Matched.forEach(o => {
-        const rn    = (o.rn || "").trim();
-        const mktId = String(o.mktId || matchId);
-        if (rn) pairs.set(`${mktId}||${rn}`, { mktId, rn });
+        const rn = (o.rn || "").trim();
+        let mktId = String(o.mktId || "");
+        if (!mktId) {
+            const sid = String(o.selId || o.selectionId || "");
+            if (sid && window.selectionIdToMarketId && window.selectionIdToMarketId[sid])
+                mktId = String(window.selectionIdToMarketId[sid]);
+        }
+        if (!rn || !mktId) return; // skip unknown market — never attribute to Match Odds
+        pairs.set(mktId + "||" + rn, { mktId: mktId, rn: rn });
     });
     UnMatched.forEach(o => {
-        const rn    = (o.rn || "").trim();
-        const mktId = String(o.mktId || matchId);
-        if (rn) pairs.set(`${mktId}||${rn}`, { mktId, rn });
+        const rn = (o.rn || "").trim();
+        let mktId = String(o.mktId || "");
+        if (!mktId) {
+            const sid = String(o.selId || o.selectionId || "");
+            if (sid && window.selectionIdToMarketId && window.selectionIdToMarketId[sid])
+                mktId = String(window.selectionIdToMarketId[sid]);
+        }
+        if (!rn || !mktId) return;
+        pairs.set(mktId + "||" + rn, { mktId: mktId, rn: rn });
     });
 
     runnerPnL = {};
@@ -5059,6 +5101,7 @@ function updateRunnerPnL() {
 // RENDER TABLES
 // ---------------------------
 function render() {
+    _nxPurgeForeignOrders();
     _nxStableSortMatched();
     updateRunnerPnL();
 
@@ -5198,9 +5241,15 @@ function updateRunnerPnLTable() {
     // Group by mktId||rn (BUG 2 FIX: show per-market rows, not cross-market)
     const seen = new Map();
     Matched.forEach(x => {
-        const rn    = (x.rn || "").trim();
-        const mktId = String(x.mktId || matchId);
-        if (rn) seen.set(`${mktId}||${rn}`, { mktId, rn });
+        const rn = (x.rn || "").trim();
+        let mktId = String(x.mktId || "");
+        if (!mktId) {
+            const sid = String(x.selId || x.selectionId || "");
+            if (sid && window.selectionIdToMarketId && window.selectionIdToMarketId[sid])
+                mktId = String(window.selectionIdToMarketId[sid]);
+        }
+        if (!rn || !mktId) return;
+        seen.set(mktId + "||" + rn, { mktId: mktId, rn: rn });
     });
 
     tbody.innerHTML = "";
@@ -5370,9 +5419,18 @@ function _nxOrderMktId(o, selId) {
 // true only if the order belongs to a market / selection of THIS page
 function _nxOrderBelongsToPage(o, selId, mktId) {
     var ids = window.allMarketIds;
+    // Resolve market from selection map if missing
+    if (!mktId && selId && window.selectionIdToMarketId && window.selectionIdToMarketId[selId])
+        mktId = String(window.selectionIdToMarketId[selId]);
+    // ONLY accept if marketId is known on THIS page (never by runner-name alone)
     if (mktId && ids && ids.has(String(mktId))) return true;
     if (mktId && matchId && String(mktId) === String(matchId)) return true;
-    if (selId && window.selectionIdToRunner && window.selectionIdToRunner[selId]) return true;
+    // selection mapped to a known page market
+    if (selId && window.selectionIdToMarketId && window.selectionIdToMarketId[selId]) {
+        var mapped = String(window.selectionIdToMarketId[selId]);
+        if (ids && ids.has(mapped)) return true;
+        if (matchId && mapped === String(matchId)) return true;
+    }
     return false;
 }
 
@@ -5402,12 +5460,11 @@ async function fetchUnMatched() {
             if (ids && ids.size > 0) {
                 if (oMktId && ids.has(oMktId)) return true;
                 if (mapped && ids.has(String(mapped))) return true;
-                if (selKnown) return true;
-                return false; // drop — e.g. Dolphins from another match
+                return false; // drop foreign match — never accept by runner-name alone
             }
-            // maps not ready yet — only keep if marketId equals page matchId OR selection known
+            // maps not ready yet — only keep if marketId equals page matchId
             if (oMktId && matchId && oMktId === String(matchId)) return true;
-            if (selKnown) return true;
+            if (mapped && matchId && String(mapped) === String(matchId)) return true;
             return false;
         });
 
@@ -5489,12 +5546,11 @@ async function fetchMatched() {
             if (ids && ids.size > 0) {
                 if (oMktId && ids.has(oMktId)) return true;
                 if (mapped && ids.has(String(mapped))) return true;
-                if (selKnown) return true;
-                return false; // drop — e.g. Dolphins from another match
+                return false; // drop foreign match — never accept by runner-name alone
             }
-            // maps not ready yet — only keep if marketId equals page matchId OR selection known
+            // maps not ready yet — only keep if marketId equals page matchId
             if (oMktId && matchId && oMktId === String(matchId)) return true;
-            if (selKnown) return true;
+            if (mapped && matchId && String(mapped) === String(matchId)) return true;
             return false;
         });
 
@@ -6586,6 +6642,11 @@ Vue.component('runner-aggregate', {
             var n = Number(String(value).replace(/,/g, ''));
             if (!isFinite(n) || n === 0) return '';
             return String(Math.round(n));
+        });
+        Vue.filter('formatPnL', function (value) {
+            var n = Number(value);
+            if (!isFinite(n) || n === 0) return '0';
+            return String(Math.round(Math.abs(n)));
         });
 
         // Unreal component ko manually register karo (safety ke liye)

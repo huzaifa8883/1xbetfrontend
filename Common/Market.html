@@ -1,4 +1,5 @@
 
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -5111,7 +5112,58 @@ function updateRunnerPnL() {
 // ---------------------------
 // RENDER TABLES
 // ---------------------------
+
+// NX-v3: page-local runner names + market ids — last line of defence against cross-match
+function _nxGetPageRunnerNames() {
+    var names = new Set();
+    try {
+        var map = window.selectionIdToRunner || {};
+        Object.keys(map).forEach(function(k) {
+            var n = String(map[k] || "").trim().toLowerCase();
+            if (n) names.add(n);
+        });
+        var el = document.getElementById('MarketView') || document.getElementById('app');
+        var vm = el && el.__vue__;
+        if (vm) {
+            function addRunners(runners) {
+                if (!Array.isArray(runners)) return;
+                runners.forEach(function(r) {
+                    var n = String(r.runnerName || r.runner_name || r.name || "").trim().toLowerCase();
+                    if (n) names.add(n);
+                });
+            }
+            if (vm.Catalog) addRunners(vm.Catalog.runners);
+            ['BookmakerMarkets','TossMarkets','FancyMarkets','Fancy2Markets','FigureMarkets','OddFigureMarkets','OtherMarkets','OtherRaceMarkets','subMarkets'].forEach(function(p) {
+                var arr = vm[p];
+                if (!Array.isArray(arr)) return;
+                arr.forEach(function(m) { if (m) addRunners(m.runners); });
+            });
+        }
+    } catch (e) {}
+    return names;
+}
+function _nxIsOrderVisibleOnPage(o) {
+    if (!o) return false;
+    var ids = window.allMarketIds;
+    var m = String(o.mktId || "");
+    if (m && ids && ids.size > 0 && ids.has(m)) return true;
+    if (m && typeof matchId !== 'undefined' && matchId && m === String(matchId)) return true;
+    // HARD: known foreign market
+    if (m && ids && ids.size > 0 && !ids.has(m)) return false;
+    // Fallback: runner name must exist on this page's markets
+    var rn = String(o.rn || "").trim().toLowerCase();
+    if (!rn || rn === "runner" || rn.indexOf("runner ") === 0) return false;
+    var pageNames = _nxGetPageRunnerNames();
+    if (pageNames.size === 0) {
+        // maps not ready — only allow if sticky page-ok
+        return !!o._nxPageOk;
+    }
+    return pageNames.has(rn);
+}
+
 function render() {
+    if (!window._nxV3Logged) { window._nxV3Logged = true; console.log("[NX-v3-DEPLOYED] cross-match + flash guard active"); }
+
     _nxPurgeForeignOrders();
     _nxStableSortMatched();
     updateRunnerPnL();
@@ -5205,18 +5257,19 @@ function render() {
     // Matched bets table — Runner, Price, Size
     const mb = document.getElementById("matched-body");
     if (mb) {
-        var _sig = Matched.map(function(o){ return String(o.orderId)+":"+String(o.mp)+":"+String(o.ms); }).join("|");
-        if (window._nxMatchedSig === _sig && mb.childElementCount === Matched.length) {
+        var _visForSig = Matched.filter(_nxIsOrderVisibleOnPage);
+        var _sig = _visForSig.map(function(o){ return String(o.orderId)+":"+String(o.mp)+":"+String(o.ms); }).join("|");
+        if (window._nxMatchedSig === _sig && mb.childElementCount === _visForSig.length) {
             // identical — do not touch DOM (prevents flash)
             const mcElSkip = document.getElementById("matched-count");
-            if (mcElSkip) mcElSkip.textContent = Matched.length;
+            if (mcElSkip) mcElSkip.textContent = _visForSig.length;
         } else {
         window._nxMatchedSig = _sig;
         mb.innerHTML = "";
-        Matched.forEach(o => {
-            // Sanitize at the last possible point before DOM write
+        // NX-v3: only paint page-local orders (blocks Dolphins etc. even if they slipped into Matched)
+        var _vis = Matched.filter(_nxIsOrderVisibleOnPage);
+        _vis.forEach(o => {
             const displayName = _safeDisplayName(o);
-
             const tr = document.createElement("tr");
             const side  = (o.bs || "").toUpperCase();
             tr.className = side === "B" ? "back" : "lay";
@@ -5230,7 +5283,7 @@ function render() {
             mb.appendChild(tr);
         });
         const mcEl = document.getElementById("matched-count");
-        if (mcEl) mcEl.textContent = Matched.length;
+        if (mcEl) mcEl.textContent = _vis.length;
         } // end nx matched sig else
 
     }
@@ -5642,8 +5695,7 @@ async function fetchMatched() {
             };
         });
 
-        // NX-NEVER-SHRINK: keep page-local matched rows even if this poll missed them.
-        // Foreign rows (other match marketIds) are NEVER kept.
+        // NX-v3 NEVER-SHRINK: keep page-local rows; drop foreign; secondary key rn|mp|ms
         const ids = window.allMarketIds;
         if (ids && matchId) ids.add(String(matchId));
         function _isPageLocal(o) {
@@ -5651,35 +5703,57 @@ async function fetchMatched() {
             var m = String(o.mktId || "");
             if (m && ids && ids.size > 0 && ids.has(m)) return true;
             if (m && matchId && m === String(matchId)) return true;
-            // blank mktId: only if already sticky AND was on this page
-            if (!m && o._nxPageOk) return true;
-            return false;
+            if (m && ids && ids.size > 0 && !ids.has(m)) return false;
+            // blank mkt: name must be on this page
+            return _nxIsOrderVisibleOnPage(o);
+        }
+        function _ck(o) {
+            return String(o.rn||"").toLowerCase() + "|" + String(o.mp||"") + "|" + String(o.ms||"") + "|" + String(o.bs||"");
         }
         const byId = {};
+        const byCk = {};
         Matched.forEach(function(o) {
-            if (!o || !o.orderId || String(o.orderId) === "") return;
-            if (!_isPageLocal(o)) return; // drop foreign (Dolphins etc.)
-            byId[String(o.orderId)] = o;
+            if (!o) return;
+            if (!_isPageLocal(o)) return;
+            if (o.orderId && String(o.orderId) !== "") byId[String(o.orderId)] = o;
+            byCk[_ck(o)] = o;
         });
         fromApi.forEach(function(o) {
-            if (!o || !o.orderId || String(o.orderId) === "") return;
-            if (!_isPageLocal(o) && o.mktId) return; // foreign from API
-            var id = String(o.orderId);
-            var prev = byId[id];
+            if (!o) return;
+            if (!_isPageLocal(o) && o.mktId) return;
+            var id = o.orderId ? String(o.orderId) : "";
+            var prev = (id && byId[id]) || byCk[_ck(o)];
             if (prev && prev.rn && prev.rn !== "Runner" && !String(prev.rn).startsWith("Runner ") && !_isMatchName(prev.rn)) {
                 o.rn = prev.rn;
             }
             if (prev && prev.mktId && !o.mktId) o.mktId = prev.mktId;
             o._nxPageOk = true;
             o._nxSeenAt = Date.now();
-            byId[id] = o;
+            if (id) byId[id] = o;
+            byCk[_ck(o)] = o;
         });
-        Matched = Object.keys(byId).map(function(k){ return byId[k]; });
+        // Merge byId + leftover byCk (for rows whose orderId vanished between polls)
+        var seen = {};
+        var merged = [];
+        Object.keys(byId).forEach(function(k) {
+            var o = byId[k];
+            var ck = _ck(o);
+            if (seen[ck]) return;
+            seen[ck] = true;
+            merged.push(o);
+        });
+        Object.keys(byCk).forEach(function(ck) {
+            if (seen[ck]) return;
+            seen[ck] = true;
+            merged.push(byCk[ck]);
+        });
+        Matched = merged.filter(_isPageLocal);
         Matched.sort(function(a, b) {
-            return String(a.orderId || "").localeCompare(String(b.orderId || ""));
+            return String(a.orderId || _ck(a)).localeCompare(String(b.orderId || _ck(b)));
         });
-        // final safety purge
         _nxPurgeForeignOrders();
+        // also strip foreign from Matched by visibility
+        Matched = Matched.filter(_nxIsOrderVisibleOnPage);
 
         render();
     } catch (e) {

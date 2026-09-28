@@ -1,6 +1,5 @@
 
 
-
 <!doctype html>
 <html lang="en">
 <head>
@@ -5616,17 +5615,19 @@ async function fetchUnMatched() {
             const selId  = String(o.selection_id || o.selectionId || o.selId || "");
             const mapped = (selId && window.selectionIdToMarketId && window.selectionIdToMarketId[selId]) || "";
             const oMktId = String(o.marketId || o.market_id || mapped || "");
+            const rn = (o.runnerName || o.runner_name || o.rn || "").trim().toLowerCase();
             const ids = window.allMarketIds;
+            // Helper: is this selection known on the CURRENT page?
+            const selKnown = !!(selId && window.selectionIdToRunner && window.selectionIdToRunner[selId]);
             if (ids && ids.size > 0) {
                 if (oMktId && ids.has(oMktId)) return true;
                 if (mapped && ids.has(String(mapped))) return true;
-                if (selId && window.selectionIdToRunner && window.selectionIdToRunner[selId]) return true;
-                return false;
+                if (selKnown) return true;
+                return false; // drop — e.g. Dolphins from another match
             }
-            // maps not ready yet — only keep if marketId equals page matchId
+            // maps not ready yet — only keep if marketId equals page matchId OR selection known
             if (oMktId && matchId && oMktId === String(matchId)) return true;
-            if (selId && window.selectionIdToRunner && window.selectionIdToRunner[selId]) return true;
-            // no reliable identity → drop (prevents cross-match flash)
+            if (selKnown) return true;
             return false;
         });
 
@@ -5660,7 +5661,16 @@ async function fetchUnMatched() {
                 orderId,
                 rn,
                 selId,
-                mktId: String(o.marketId || o.market_id || (selId && window.selectionIdToMarketId && window.selectionIdToMarketId[selId]) || matchId),
+                mktId: (function(){
+                    var fromApi = o.marketId || o.market_id || '';
+                    var fromMap = (selId && window.selectionIdToMarketId && window.selectionIdToMarketId[selId]) || '';
+                    if (fromApi) return String(fromApi);
+                    if (fromMap) return String(fromMap);
+                    // Only fall back to matchId if this selection is a MAIN market runner
+                    if (selId && window.selectionIdToMarketId && window.selectionIdToMarketId[selId] === String(matchId)) return String(matchId);
+                    // Unknown → empty (will not pollute Match Odds PnL)
+                    return '';
+                })(),
                 up: parseFloat(o.price) || 0,
                 us: parseFloat(o.size) || 0,
                 bs: (o.side || o.type || "").toUpperCase()
@@ -5692,17 +5702,19 @@ async function fetchMatched() {
             const selId  = String(o.selection_id || o.selectionId || o.selId || "");
             const mapped = (selId && window.selectionIdToMarketId && window.selectionIdToMarketId[selId]) || "";
             const oMktId = String(o.marketId || o.market_id || mapped || "");
+            const rn = (o.runnerName || o.runner_name || o.rn || "").trim().toLowerCase();
             const ids = window.allMarketIds;
+            // Helper: is this selection known on the CURRENT page?
+            const selKnown = !!(selId && window.selectionIdToRunner && window.selectionIdToRunner[selId]);
             if (ids && ids.size > 0) {
                 if (oMktId && ids.has(oMktId)) return true;
                 if (mapped && ids.has(String(mapped))) return true;
-                if (selId && window.selectionIdToRunner && window.selectionIdToRunner[selId]) return true;
-                return false;
+                if (selKnown) return true;
+                return false; // drop — e.g. Dolphins from another match
             }
-            // maps not ready yet — only keep if marketId equals page matchId
+            // maps not ready yet — only keep if marketId equals page matchId OR selection known
             if (oMktId && matchId && oMktId === String(matchId)) return true;
-            if (selId && window.selectionIdToRunner && window.selectionIdToRunner[selId]) return true;
-            // no reliable identity → drop (prevents cross-match flash)
+            if (selKnown) return true;
             return false;
         });
 
@@ -5742,7 +5754,16 @@ async function fetchMatched() {
                 orderId,
                 rn,
                 selId,
-                mktId: String(o.marketId || o.market_id || (selId && window.selectionIdToMarketId && window.selectionIdToMarketId[selId]) || matchId),
+                mktId: (function(){
+                    var fromApi = o.marketId || o.market_id || '';
+                    var fromMap = (selId && window.selectionIdToMarketId && window.selectionIdToMarketId[selId]) || '';
+                    if (fromApi) return String(fromApi);
+                    if (fromMap) return String(fromMap);
+                    // Only fall back to matchId if this selection is a MAIN market runner
+                    if (selId && window.selectionIdToMarketId && window.selectionIdToMarketId[selId] === String(matchId)) return String(matchId);
+                    // Unknown → empty (will not pollute Match Odds PnL)
+                    return '';
+                })(),
                 mp: parseFloat(o.price) || 0,
                 ms: parseFloat(o.matched > 0 ? o.matched : o.size) || 0,
                 bs: (o.side || o.type || "").toUpperCase(),
@@ -5773,8 +5794,16 @@ async function fetchRunners() {
         // main market runners + every sub-market (TossMarkets, BookmakerMarkets, etc.)
         const allRunnerSources = [];
 
-        // selectionId → marketId map + allMarketIds (current match ke saare markets)
-        if (!window.selectionIdToMarketId) window.selectionIdToMarketId = {};
+        // CRITICAL: har baar maps CLEAR karo — purane match (Dolphins etc.) ke
+        // selectionIds nahi rehne chahiye warna cross-match bets filter se nikal aate hain
+        window.selectionIdToMarketId = {};
+        if (typeof selectionIdToRunner !== 'undefined') {
+            // clear object in-place (keep same reference used elsewhere)
+            Object.keys(selectionIdToRunner).forEach(function(k){ delete selectionIdToRunner[k]; });
+        } else {
+            selectionIdToRunner = {};
+        }
+        window.selectionIdToRunner = selectionIdToRunner;
         // allMarketIds = current match ka main + sub-market IDs (filter ke liye)
         window.allMarketIds = new Set();
 
@@ -7126,17 +7155,33 @@ export default {
       var el = document.getElementById('MarketView') || document.getElementById('app');
       var vm = el && el.__vue__;
       if (!window.allMarketIds) window.allMarketIds = new Set();
+      if (!window.selectionIdToMarketId) window.selectionIdToMarketId = {};
+      if (!window.selectionIdToRunner) window.selectionIdToRunner = {};
       if (typeof matchId !== 'undefined' && matchId) window.allMarketIds.add(String(matchId));
-      if (!vm || !vm.Catalog) return;
+      if (!vm) return;
       var c = vm.Catalog;
-      if (c.marketId) window.allMarketIds.add(String(c.marketId));
-      if (c.eventId) window.allMarketIds.add(String(c.eventId));
-      // sub market arrays
-      ['BookmakerMarkets','TossMarkets','FancyMarkets','Fancy2Markets','FigureMarkets','OddFigureMarkets','OtherMarkets','OtherRaceMarkets'].forEach(function (prop) {
+      if (c && c.marketId) window.allMarketIds.add(String(c.marketId));
+      // NEVER add eventId — it is not a marketId and causes cross-match leakage
+      function mapRunners(mktId, runners) {
+        if (!mktId || !Array.isArray(runners)) return;
+        runners.forEach(function (r) {
+          var sid = String(r.selectionId || r.selection_id || '');
+          var rn = (r.runnerName || r.runner_name || r.name || '').trim();
+          if (sid) {
+            window.selectionIdToMarketId[sid] = String(mktId);
+            if (rn) window.selectionIdToRunner[sid] = rn;
+          }
+        });
+      }
+      if (c && c.marketId && Array.isArray(c.runners)) mapRunners(c.marketId, c.runners);
+      // sub market arrays — marketIds + selectionId maps (Bookmaker/Toss PnL isolation)
+      ['BookmakerMarkets','TossMarkets','FancyMarkets','Fancy2Markets','FigureMarkets','OddFigureMarkets','OtherMarkets','OtherRaceMarkets','subMarkets'].forEach(function (prop) {
         var arr = vm[prop];
         if (!Array.isArray(arr)) return;
         arr.forEach(function (m) {
-          if (m && m.marketId) window.allMarketIds.add(String(m.marketId));
+          if (!m || !m.marketId) return;
+          window.allMarketIds.add(String(m.marketId));
+          mapRunners(m.marketId, m.runners);
         });
       });
     } catch (e) {}

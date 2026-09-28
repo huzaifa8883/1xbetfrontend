@@ -5048,17 +5048,19 @@ function _nxPurgeForeignOrders() {
                 m = String(window.selectionIdToMarketId[o.selId]);
                 o.mktId = m;
             }
-            // Sticky: once accepted on this page, NEVER purge (only fetchMatched sticky-expiry drops)
-            if (o._nxPageOk) {
-                if (m) o.mktId = m;
+            // HARD: known market not on this page → always drop (even if sticky was set wrongly)
+            if (m && ids.size >= 1 && !ids.has(m) && !(matchId && m === String(matchId))) return false;
+            // Page-local market → keep + mark ok
+            if (m && (ids.has(m) || (matchId && m === String(matchId)))) {
+                o._nxPageOk = true;
+                o._nxSeenAt = Date.now();
                 return true;
             }
-            if (m && ids.has(m)) { o._nxPageOk = true; o._nxSeenAt = Date.now(); return true; }
-            if (m && matchId && m === String(matchId)) { o._nxPageOk = true; o._nxSeenAt = Date.now(); return true; }
-            // Not confirmed and market unknown/foreign
-            if (m && ids.size >= 1 && !ids.has(m)) return false;
+            // Blank market: keep only if already sticky (avoid flash of known-local bets)
+            if (!m && o._nxPageOk) return true;
+            // Blank + not sticky + maps ready → drop
             if (!m && ids.size >= 1) return false;
-            return true;
+            return false;
         }
         var before = Matched.length;
         Matched = Matched.filter(resolveAndKeep);
@@ -5437,18 +5439,17 @@ function _nxOrderMktId(o, selId) {
 // true only if the order belongs to a market / selection of THIS page
 function _nxOrderBelongsToPage(o, selId, mktId) {
     var ids = window.allMarketIds;
-    // Resolve market from selection map if missing
-    if (!mktId && selId && window.selectionIdToMarketId && window.selectionIdToMarketId[selId])
-        mktId = String(window.selectionIdToMarketId[selId]);
-    // ONLY accept if marketId is known on THIS page (never by runner-name alone)
-    if (mktId && ids && ids.has(String(mktId))) return true;
-    if (mktId && matchId && String(mktId) === String(matchId)) return true;
-    // selection mapped to a known page market
-    if (selId && window.selectionIdToMarketId && window.selectionIdToMarketId[selId]) {
-        var mapped = String(window.selectionIdToMarketId[selId]);
-        if (ids && ids.has(mapped)) return true;
-        if (matchId && mapped === String(matchId)) return true;
-    }
+    // API marketId is authoritative when present
+    var apiMkt = String((o && (o.marketId || o.market_id)) || mktId || "");
+    var mapped = "";
+    if (selId && window.selectionIdToMarketId && window.selectionIdToMarketId[selId])
+        mapped = String(window.selectionIdToMarketId[selId]);
+    var resolved = apiMkt || mapped || "";
+    // HARD REJECT: known marketId that is NOT on this page
+    if (resolved && ids && ids.size > 0 && !ids.has(resolved)) return false;
+    if (resolved && matchId && resolved === String(matchId)) return true;
+    if (resolved && ids && ids.has(resolved)) return true;
+    // No marketId at all — reject (do not guess Match Odds)
     return false;
 }
 
@@ -5470,19 +5471,23 @@ async function fetchUnMatched() {
         list = list.filter(o => {
             const selId  = String(o.selection_id || o.selectionId || o.selId || "");
             const orderId = String(o.request_id || o.orderId || o.requestId || "");
+            // API marketId is source of truth — never trust selection map over a foreign API marketId
+            const apiMkt = String(o.marketId || o.market_id || "");
             const mapped = (selId && window.selectionIdToMarketId && window.selectionIdToMarketId[selId]) || "";
-            const oMktId = String(o.marketId || o.market_id || mapped || "");
+            const oMktId = apiMkt || mapped || "";
             const ids = window.allMarketIds;
-            // Already on this page's Matched/UnMatched — keep (stops flicker)
-            const already = [...Matched, ...UnMatched].find(function(x){ return x.orderId === orderId && x._nxPageOk; });
-            if (already) return true;
-            if (ids && ids.size > 0) {
-                if (oMktId && ids.has(oMktId)) return true;
-                if (mapped && ids.has(String(mapped))) return true;
+            // HARD REJECT foreign market even if previously sticky (fixes Dolphins leak)
+            if (oMktId && ids && ids.size > 0 && !ids.has(oMktId) && !(matchId && oMktId === String(matchId))) {
                 return false;
             }
+            if (oMktId && ids && ids.has(oMktId)) return true;
             if (oMktId && matchId && oMktId === String(matchId)) return true;
-            if (mapped && matchId && String(mapped) === String(matchId)) return true;
+            // Blank marketId: only keep if already accepted on this page (anti-flash)
+            if (!oMktId) {
+                const already = [...Matched, ...UnMatched].find(function(x){ return x.orderId === orderId && x._nxPageOk; });
+                if (already) return true;
+                return false;
+            }
             return false;
         });
 
@@ -5540,9 +5545,11 @@ async function fetchUnMatched() {
 
 async function fetchMatched() {
     if (!matchId) return;
-    const tk = localStorage.getItem('token') || localStorage.getItem('wex3authtoken') || token;
-    if (!tk) return;
+    if (window._nxFetchMatchedBusy) return;
+    window._nxFetchMatchedBusy = true;
     try {
+        const tk = localStorage.getItem('token') || localStorage.getItem('wex3authtoken') || token;
+        if (!tk) return;
         // Current match ke markets ke saare matched orders (main + submarkets)
         const res = await fetch(`${ordersUrl}/orders/matched?${_marketIdsQueryParam()}`, {
             headers: { "Authorization": "Bearer " + tk }
@@ -5556,19 +5563,23 @@ async function fetchMatched() {
         list = list.filter(o => {
             const selId  = String(o.selection_id || o.selectionId || o.selId || "");
             const orderId = String(o.request_id || o.orderId || o.requestId || "");
+            // API marketId is source of truth — never trust selection map over a foreign API marketId
+            const apiMkt = String(o.marketId || o.market_id || "");
             const mapped = (selId && window.selectionIdToMarketId && window.selectionIdToMarketId[selId]) || "";
-            const oMktId = String(o.marketId || o.market_id || mapped || "");
+            const oMktId = apiMkt || mapped || "";
             const ids = window.allMarketIds;
-            // Already on this page's Matched/UnMatched — keep (stops flicker)
-            const already = [...Matched, ...UnMatched].find(function(x){ return x.orderId === orderId && x._nxPageOk; });
-            if (already) return true;
-            if (ids && ids.size > 0) {
-                if (oMktId && ids.has(oMktId)) return true;
-                if (mapped && ids.has(String(mapped))) return true;
+            // HARD REJECT foreign market even if previously sticky (fixes Dolphins leak)
+            if (oMktId && ids && ids.size > 0 && !ids.has(oMktId) && !(matchId && oMktId === String(matchId))) {
                 return false;
             }
+            if (oMktId && ids && ids.has(oMktId)) return true;
             if (oMktId && matchId && oMktId === String(matchId)) return true;
-            if (mapped && matchId && String(mapped) === String(matchId)) return true;
+            // Blank marketId: only keep if already accepted on this page (anti-flash)
+            if (!oMktId) {
+                const already = [...Matched, ...UnMatched].find(function(x){ return x.orderId === orderId && x._nxPageOk; });
+                if (already) return true;
+                return false;
+            }
             return false;
         });
 
@@ -5631,14 +5642,28 @@ async function fetchMatched() {
             };
         });
 
-        // NX-NEVER-SHRINK: API partial lists must NOT remove local matched rows.
-        // Only cancel/settle/void paths may remove. This stops Matched 1↔2 + PnL flash.
+        // NX-NEVER-SHRINK: keep page-local matched rows even if this poll missed them.
+        // Foreign rows (other match marketIds) are NEVER kept.
+        const ids = window.allMarketIds;
+        if (ids && matchId) ids.add(String(matchId));
+        function _isPageLocal(o) {
+            if (!o) return false;
+            var m = String(o.mktId || "");
+            if (m && ids && ids.size > 0 && ids.has(m)) return true;
+            if (m && matchId && m === String(matchId)) return true;
+            // blank mktId: only if already sticky AND was on this page
+            if (!m && o._nxPageOk) return true;
+            return false;
+        }
         const byId = {};
         Matched.forEach(function(o) {
-            if (o && o.orderId && String(o.orderId) !== "") byId[String(o.orderId)] = o;
+            if (!o || !o.orderId || String(o.orderId) === "") return;
+            if (!_isPageLocal(o)) return; // drop foreign (Dolphins etc.)
+            byId[String(o.orderId)] = o;
         });
         fromApi.forEach(function(o) {
             if (!o || !o.orderId || String(o.orderId) === "") return;
+            if (!_isPageLocal(o) && o.mktId) return; // foreign from API
             var id = String(o.orderId);
             var prev = byId[id];
             if (prev && prev.rn && prev.rn !== "Runner" && !String(prev.rn).startsWith("Runner ") && !_isMatchName(prev.rn)) {
@@ -5649,16 +5674,18 @@ async function fetchMatched() {
             o._nxSeenAt = Date.now();
             byId[id] = o;
         });
-        // ALWAYS keep previous page-ok orders missing from this poll
         Matched = Object.keys(byId).map(function(k){ return byId[k]; });
-        // Stable order: by orderId string so list doesn't jump
         Matched.sort(function(a, b) {
             return String(a.orderId || "").localeCompare(String(b.orderId || ""));
         });
+        // final safety purge
+        _nxPurgeForeignOrders();
 
         render();
     } catch (e) {
         console.error("fetchMatched error:", e);
+    } finally {
+        window._nxFetchMatchedBusy = false;
     }
 }
 

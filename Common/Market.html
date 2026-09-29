@@ -1,3 +1,6 @@
+
+
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -4684,8 +4687,23 @@ new Vue({
       console.log("📡 Socket update:", data);
       if (!data || !Array.isArray(data.newOrders)) return;
 
-      const unmatched = data.newOrders.filter(o => o.status === "PENDING");
-      const matched   = data.newOrders.filter(o => o.status === "MATCHED");
+      // NX: reject other users' orders (match room is shared)
+      var myId = window._nxMyUserId || (function(){ try { return localStorage.getItem('nx_user_id'); } catch(e){ return null; } })();
+      if (data.userId != null && myId != null && String(data.userId) !== String(myId)) {
+        console.log('[NX] Vue drop other-user ordersUpdated', data.userId);
+        return;
+      }
+
+      const unmatched = data.newOrders.filter(o => {
+        var oUid = o.user_id || o.userId || data.userId;
+        if (oUid != null && myId != null && String(oUid) !== String(myId)) return false;
+        return o.status === "PENDING";
+      });
+      const matched   = data.newOrders.filter(o => {
+        var oUid = o.user_id || o.userId || data.userId;
+        if (oUid != null && myId != null && String(oUid) !== String(myId)) return false;
+        return o.status === "MATCHED";
+      });
 
       this.UnMatched = this.upsertOrders(this.UnMatched, unmatched, "PENDING");
       this.Matched   = this.upsertOrders(this.Matched,   matched,   "MATCHED");
@@ -4900,32 +4918,6 @@ function _nxStableSortMatched() {
 // ---------------------------
 // WALLET UPDATE — dashboard.html jaise bilkul same
 // ---------------------------
-// ✅ BUG FIX (root cause of "dusre ke bets aa rahe hain"): server ka
-// 'ordersUpdated' socket event ek MARKET-scoped room (`match_<marketId>`)
-// ko broadcast hota hai — is room mein wahi SAARE users hote hain jo
-// abhi wahi match dekh rahe hain, na ke sirf jisne bet lagai. Client
-// pehle kabhi check hi nahi karta tha ke ye order MERA hai ya kisi
-// AUR user ka — sirf marketId check karta tha (jo hamesha match karega,
-// kyunki sab isi match ka page dekh rahe hain). Ab apna userId cache
-// karke har socket event par match karte hain.
-async function _nxGetMyUserId() {
-    if (window.myUserId) return window.myUserId;
-    if (window._nxUserIdPromise) return window._nxUserIdPromise;
-    const tk = localStorage.getItem('token') || localStorage.getItem('wex3authtoken') || getCookie('wexscktoken') || '';
-    if (!tk) return null;
-    window._nxUserIdPromise = fetch(`${ordersUrl}/users/me`, { headers: { "Authorization": "Bearer " + tk } })
-        .then(r => r.ok ? r.json() : null)
-        .then(json => {
-            const user = json?.data?.user || json?.data || json || {};
-            const id = user.id ?? user.user_id ?? user.userId ?? null;
-            if (id != null) window.myUserId = String(id);
-            return window.myUserId;
-        })
-        .catch(() => null);
-    return window._nxUserIdPromise;
-}
-_nxGetMyUserId(); // eager fetch on load, cached for socket handler
-
 async function updateUserWallet() {
     const tk = localStorage.getItem('token') || localStorage.getItem('wex3authtoken') || getCookie('wexscktoken') || '';
     if (!tk) { console.warn("updateUserWallet: no token"); return; }
@@ -4942,8 +4934,13 @@ async function updateUserWallet() {
         // Format 3: { wallet_balance, liable, username }
         const user = json?.data?.user || json?.data || json || {};
         if (!user || (user.wallet_balance === undefined && !user.username)) return;
-        const _uid = user.id ?? user.user_id ?? user.userId ?? null;
-        if (_uid != null && !window.myUserId) window.myUserId = String(_uid);
+
+        // NX: cache own userId so socket ordersUpdated can reject other users' bets
+        var _uid = user.id || user.userId || user.user_id || null;
+        if (_uid != null) {
+            window._nxMyUserId = String(_uid);
+            try { localStorage.setItem('nx_user_id', String(_uid)); } catch(e) {}
+        }
 
         const bal    = Math.floor(parseFloat(user.wallet_balance ?? user.balance ?? 0));
         const liable = Math.floor(parseFloat(user.liable ?? user.exposure ?? 0));
@@ -5138,7 +5135,101 @@ function updateRunnerPnL() {
 // ---------------------------
 // RENDER TABLES
 // ---------------------------
+
+// NX-v3: page-local runner names + market ids — last line of defence against cross-match
+function _nxGetPageRunnerNames() {
+    var names = new Set();
+    try {
+        var map = window.selectionIdToRunner || {};
+        Object.keys(map).forEach(function(k) {
+            var n = String(map[k] || "").trim().toLowerCase();
+            if (n) names.add(n);
+        });
+        var el = document.getElementById('MarketView') || document.getElementById('app');
+        var vm = el && el.__vue__;
+        if (vm) {
+            function addRunners(runners) {
+                if (!Array.isArray(runners)) return;
+                runners.forEach(function(r) {
+                    var n = String(r.runnerName || r.runner_name || r.name || "").trim().toLowerCase();
+                    if (n) names.add(n);
+                });
+            }
+            if (vm.Catalog) addRunners(vm.Catalog.runners);
+            ['BookmakerMarkets','TossMarkets','FancyMarkets','Fancy2Markets','FigureMarkets','OddFigureMarkets','OtherMarkets','OtherRaceMarkets','subMarkets'].forEach(function(p) {
+                var arr = vm[p];
+                if (!Array.isArray(arr)) return;
+                arr.forEach(function(m) { if (m) addRunners(m.runners); });
+            });
+        }
+    } catch (e) {}
+    return names;
+}
+function _nxIsOrderVisibleOnPage(o) {
+    if (!o) return false;
+    var rn = String(o.rn || "").trim().toLowerCase();
+    if (!rn || rn === "runner" || rn.indexOf("runner ") === 0) return false;
+
+    // PRIMARY GATE: runner name MUST be on THIS page's markets.
+    // Blocks Dolphins / South Africa on Boland v Knights etc.
+    var pageNames = _nxGetPageRunnerNames();
+    if (pageNames.size > 0 && !pageNames.has(rn)) {
+        return false;
+    }
+
+    // Event name gate (if order carries event_name)
+    try {
+        var oEv = String(o.event_name || o.eventName || "").trim().toLowerCase();
+        var pageEv = "";
+        var el = document.getElementById('MarketView') || document.getElementById('app');
+        var vm = el && el.__vue__;
+        if (vm && vm.Catalog) {
+            pageEv = String(vm.Catalog.eventName || vm.Catalog.event_name || vm.Catalog.name || "").trim().toLowerCase();
+        }
+        if (!pageEv) {
+            var h = document.querySelector(".event-name, .match-title, h1, .fixture-name");
+            if (h) pageEv = String(h.textContent || "").trim().toLowerCase();
+        }
+        // URL page title often "Boland v Knights | BetPro"
+        if (!pageEv && document.title) {
+            pageEv = String(document.title).split("|")[0].trim().toLowerCase();
+        }
+        if (oEv && pageEv && oEv.length > 3 && pageEv.length > 3) {
+            // allow if one contains the other (partial match ok)
+            if (oEv.indexOf(pageEv) === -1 && pageEv.indexOf(oEv) === -1) {
+                // also try without extra spaces
+                var o2 = oEv.replace(/\s+/g, " ");
+                var p2 = pageEv.replace(/\s+/g, " ");
+                if (o2.indexOf(p2) === -1 && p2.indexOf(o2) === -1) return false;
+            }
+        }
+    } catch (e) {}
+
+    var ids = window.allMarketIds;
+    var m = String(o.mktId || "");
+    // Known foreign marketId → drop
+    if (m && ids && ids.size > 0 && !ids.has(m) && !(typeof matchId !== "undefined" && matchId && m === String(matchId))) {
+        return false;
+    }
+    // Runner matched page list → show
+    if (pageNames.size > 0 && pageNames.has(rn)) return true;
+    // marketId on this page
+    if (m && typeof matchId !== "undefined" && matchId && m === String(matchId)) return true;
+    if (m && ids && ids.has(m)) return true;
+    // maps not ready and no evidence → hide (safer than showing foreign bets)
+    return false;
+}
+
 function render() {
+    if (!window._nxV3Logged) { window._nxV3Logged = true; console.log("[NX-v4-DEPLOYED] cross-match runner+event gate active"); }
+    // Nuclear: strip any order whose runner is not on this page
+    try {
+        Matched = (Matched || []).filter(_nxIsOrderVisibleOnPage);
+        UnMatched = (UnMatched || []).filter(_nxIsOrderVisibleOnPage);
+        window.Matched = Matched;
+        window.UnMatched = UnMatched;
+    } catch (e) {}
+    
     _nxPurgeForeignOrders();
     _nxStableSortMatched();
     updateRunnerPnL();
@@ -5232,18 +5323,19 @@ function render() {
     // Matched bets table — Runner, Price, Size
     const mb = document.getElementById("matched-body");
     if (mb) {
-        var _sig = Matched.map(function(o){ return String(o.orderId)+":"+String(o.mp)+":"+String(o.ms); }).join("|");
-        if (window._nxMatchedSig === _sig && mb.childElementCount === Matched.length) {
+        var _visForSig = Matched.filter(_nxIsOrderVisibleOnPage);
+        var _sig = _visForSig.map(function(o){ return String(o.orderId)+":"+String(o.mp)+":"+String(o.ms); }).join("|");
+        if (window._nxMatchedSig === _sig && mb.childElementCount === _visForSig.length) {
             // identical — do not touch DOM (prevents flash)
             const mcElSkip = document.getElementById("matched-count");
-            if (mcElSkip) mcElSkip.textContent = Matched.length;
+            if (mcElSkip) mcElSkip.textContent = _visForSig.length;
         } else {
         window._nxMatchedSig = _sig;
         mb.innerHTML = "";
-        Matched.forEach(o => {
-            // Sanitize at the last possible point before DOM write
+        // NX-v3: only paint page-local orders (blocks Dolphins etc. even if they slipped into Matched)
+        var _vis = Matched.filter(_nxIsOrderVisibleOnPage);
+        _vis.forEach(o => {
             const displayName = _safeDisplayName(o);
-
             const tr = document.createElement("tr");
             const side  = (o.bs || "").toUpperCase();
             tr.className = side === "B" ? "back" : "lay";
@@ -5257,7 +5349,7 @@ function render() {
             mb.appendChild(tr);
         });
         const mcEl = document.getElementById("matched-count");
-        if (mcEl) mcEl.textContent = Matched.length;
+        if (mcEl) mcEl.textContent = _vis.length;
         } // end nx matched sig else
 
     }
@@ -5669,8 +5761,7 @@ async function fetchMatched() {
             };
         });
 
-        // NX-NEVER-SHRINK: keep page-local matched rows even if this poll missed them.
-        // Foreign rows (other match marketIds) are NEVER kept.
+        // NX-v3 NEVER-SHRINK: keep page-local rows; drop foreign; secondary key rn|mp|ms
         const ids = window.allMarketIds;
         if (ids && matchId) ids.add(String(matchId));
         function _isPageLocal(o) {
@@ -5678,35 +5769,57 @@ async function fetchMatched() {
             var m = String(o.mktId || "");
             if (m && ids && ids.size > 0 && ids.has(m)) return true;
             if (m && matchId && m === String(matchId)) return true;
-            // blank mktId: only if already sticky AND was on this page
-            if (!m && o._nxPageOk) return true;
-            return false;
+            if (m && ids && ids.size > 0 && !ids.has(m)) return false;
+            // blank mkt: name must be on this page
+            return _nxIsOrderVisibleOnPage(o);
+        }
+        function _ck(o) {
+            return String(o.rn||"").toLowerCase() + "|" + String(o.mp||"") + "|" + String(o.ms||"") + "|" + String(o.bs||"");
         }
         const byId = {};
+        const byCk = {};
         Matched.forEach(function(o) {
-            if (!o || !o.orderId || String(o.orderId) === "") return;
-            if (!_isPageLocal(o)) return; // drop foreign (Dolphins etc.)
-            byId[String(o.orderId)] = o;
+            if (!o) return;
+            if (!_isPageLocal(o)) return;
+            if (o.orderId && String(o.orderId) !== "") byId[String(o.orderId)] = o;
+            byCk[_ck(o)] = o;
         });
         fromApi.forEach(function(o) {
-            if (!o || !o.orderId || String(o.orderId) === "") return;
-            if (!_isPageLocal(o) && o.mktId) return; // foreign from API
-            var id = String(o.orderId);
-            var prev = byId[id];
+            if (!o) return;
+            if (!_isPageLocal(o) && o.mktId) return;
+            var id = o.orderId ? String(o.orderId) : "";
+            var prev = (id && byId[id]) || byCk[_ck(o)];
             if (prev && prev.rn && prev.rn !== "Runner" && !String(prev.rn).startsWith("Runner ") && !_isMatchName(prev.rn)) {
                 o.rn = prev.rn;
             }
             if (prev && prev.mktId && !o.mktId) o.mktId = prev.mktId;
             o._nxPageOk = true;
             o._nxSeenAt = Date.now();
-            byId[id] = o;
+            if (id) byId[id] = o;
+            byCk[_ck(o)] = o;
         });
-        Matched = Object.keys(byId).map(function(k){ return byId[k]; });
+        // Merge byId + leftover byCk (for rows whose orderId vanished between polls)
+        var seen = {};
+        var merged = [];
+        Object.keys(byId).forEach(function(k) {
+            var o = byId[k];
+            var ck = _ck(o);
+            if (seen[ck]) return;
+            seen[ck] = true;
+            merged.push(o);
+        });
+        Object.keys(byCk).forEach(function(ck) {
+            if (seen[ck]) return;
+            seen[ck] = true;
+            merged.push(byCk[ck]);
+        });
+        Matched = merged.filter(_isPageLocal);
         Matched.sort(function(a, b) {
-            return String(a.orderId || "").localeCompare(String(b.orderId || ""));
+            return String(a.orderId || _ck(a)).localeCompare(String(b.orderId || _ck(b)));
         });
-        // final safety purge
         _nxPurgeForeignOrders();
+        // also strip foreign from Matched by visibility
+        Matched = Matched.filter(_nxIsOrderVisibleOnPage);
 
         render();
     } catch (e) {
@@ -5869,22 +5982,28 @@ socket.on("disconnect", () => {
     if (isConnectedEl) isConnectedEl.style.display = "none";
 });
 
-socket.on("ordersUpdated", async (data) => {
+socket.on("ordersUpdated", (data) => {
     if (!data?.newOrders?.length) return;
 
-    // ✅ ROOT-CAUSE FIX: room is per-MARKET, not per-user — every viewer of
-    // this match gets every OTHER viewer's order events too. Drop anything
-    // that isn't ours before it ever touches UnMatched/Matched.
-    const myId = await _nxGetMyUserId();
-    if (myId && data.userId != null && String(data.userId) !== String(myId)) return;
+    // NX ROOT FIX: match room is shared by ALL viewers of this match.
+    // Only accept events that belong to THIS logged-in user.
+    var myId = window._nxMyUserId || (function(){ try { return localStorage.getItem('nx_user_id'); } catch(e){ return null; } })();
+    if (data.userId != null && myId != null && String(data.userId) !== String(myId)) {
+        console.log('[NX] drop other-user ordersUpdated', data.userId, '!=', myId);
+        return;
+    }
 
     data.newOrders.forEach(newO => {
+        // Per-order user check (payload may mix)
+        var oUid = newO.user_id || newO.userId || data.userId;
+        if (oUid != null && myId != null && String(oUid) !== String(myId)) return;
+
         const orderId    = String(newO.request_id || newO.orderId || newO.requestId);
         const orderSelId = String(newO.selection_id || newO.selectionId || "");
         // FIX: mktId blank ho to selectionIdToMarketId se resolve karo
         _nxSyncMaps();
         const orderMktId = _nxOrderMktId(newO, orderSelId);   // '' if unknown (never matchId)
-        // Cross-match guard: server pushes ALL of this user's orders, drop other matches
+        // Cross-match guard: drop other matches' markets
         if (!_nxOrderBelongsToPage(newO, orderSelId, orderMktId)) return;
 
         // FIX: marketId filter hataya — Toss/other markets ke orders bhi accept karo

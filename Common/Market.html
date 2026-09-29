@@ -1,4 +1,5 @@
 
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -5196,6 +5197,13 @@ function _nxMarkGone(orderId) {
     window._nxStickyMatched = (window._nxStickyMatched || []).filter(function(o) {
         return String(o.orderId || "") !== String(orderId);
     });
+    if (window._nxStickyById) {
+        Object.keys(window._nxStickyById).forEach(function(k) {
+            var o = window._nxStickyById[k];
+            if (o && String(o.orderId || "") === String(orderId)) delete window._nxStickyById[k];
+            if (k === "id:" + String(orderId)) delete window._nxStickyById[k];
+        });
+    }
 }
 
 function _nxTitleTeams() {
@@ -5287,25 +5295,31 @@ function _nxIsOrderVisibleOnPage(o) {
 (function _nxMatchedDomGuard() { /* disabled */ })();
 
 function render() {
-    if (!window._nxV3Logged) { window._nxV3Logged = true; console.log("[NX-v9-DEPLOYED] force-sticky matched never clears"); }
-    // NX-v9: restore sticky BEFORE any filter so list never paints empty
+    if (!window._nxV3Logged) { window._nxV3Logged = true; console.log("[NX-v10-DEPLOYED] union sticky by id — matched never shrinks"); }
+    // NX-v10: always paint from stickyById union (never shrink on render)
     try {
-        if ((!Matched || Matched.length === 0) && window._nxStickyMatched && window._nxStickyMatched.length) {
-            Matched = window._nxStickyMatched.slice();
-        }
-        Matched = (Matched || []).filter(function(o) {
-            if (!o) return false;
-            var id = String(o.orderId || "");
-            if (id && window._nxGoneIds && window._nxGoneIds[id]) return false;
-            if (o._nxPageOk) {
-                var rn = String(o.rn || "").trim().toLowerCase();
-                var tt = (typeof _nxTitleTeams === "function") ? _nxTitleTeams() : new Set();
-                if (tt.has(rn)) return true;
+        if (window._nxStickyById && Object.keys(window._nxStickyById).length) {
+            var _fromSticky = [];
+            Object.keys(window._nxStickyById).forEach(function(k) {
+                var o = window._nxStickyById[k];
+                if (!o) return;
+                var id = String(o.orderId || "");
+                if (id && window._nxGoneIds && window._nxGoneIds[id]) {
+                    delete window._nxStickyById[k];
+                    return;
+                }
+                _fromSticky.push(o);
+            });
+            if (_fromSticky.length >= (Matched ? Matched.length : 0)) {
+                Matched = _fromSticky;
             }
-            return _nxIsOrderVisibleOnPage(o);
+        }
+        if (Matched && Matched.length > 0) {
+            window._nxStickyMatched = Matched.slice();
+        }
+        UnMatched = (UnMatched || []).filter(function(o) {
+            try { return _nxIsOrderVisibleOnPage(o); } catch (e) { return true; }
         });
-        if (Matched.length > 0) window._nxStickyMatched = Matched.slice();
-        UnMatched = (UnMatched || []).filter(_nxIsOrderVisibleOnPage);
         window.Matched = Matched;
         window.UnMatched = UnMatched;
     } catch (e) {}
@@ -5903,54 +5917,60 @@ async function fetchMatched() {
             seen[ck] = true;
             merged.push(byCk[ck]);
         });
-        // NX-v8 ABSOLUTE STICKY: previous page-local bets survive empty/partial API polls.
-        // Only drop when order is explicitly cancelled/settled (tracked in _nxGoneIds).
+        // NX-v10 UNION STICKY BY ID — never shrink matched list on partial API polls.
+        // Problem: API sometimes omits Match Odds Boland 1.79 while returning other bets;
+        // old code overwrote sticky with the smaller set → 3↔2 flash + PnL vanish.
         if (!window._nxGoneIds) window._nxGoneIds = {};
-        var prevKeep = (window._nxStickyMatched || []).filter(function(o) {
-            if (!o || !o._nxPageOk) return false;
+        if (!window._nxStickyById) window._nxStickyById = {};
+
+        function _nxStickyKey(o) {
+            var id = String((o && (o.orderId || o.request_id)) || "");
+            if (id && id !== "undefined" && id !== "null") return "id:" + id;
+            return "ck:" + String(o.rn||"").toLowerCase() + "|" + String(o.mp||"") + "|" + String(o.ms||"") + "|" + String(o.bs||"");
+        }
+        function _nxKeepSticky(o) {
+            if (!o) return false;
             var id = String(o.orderId || "");
             if (id && window._nxGoneIds[id]) return false;
             var rn = String(o.rn || "").trim().toLowerCase();
+            if (!rn || rn === "runner" || rn.indexOf("runner ") === 0) return false;
             var tt = (typeof _nxTitleTeams === "function") ? _nxTitleTeams() : new Set();
-            if (tt.size > 0 && tt.has(rn)) return true;
-            return _nxIsOrderVisibleOnPage(o);
-        });
-        prevKeep.forEach(function(o) {
-            var id = o.orderId ? String(o.orderId) : "";
-            if (id && byId[id]) return; // already present from API/merge
-            var ck = _ck(o);
-            if (byCk[ck]) return;
-            if (id) byId[id] = o;
-            byCk[ck] = o;
-            merged.push(o);
+            if (tt.has(rn)) return true;
+            // fancy / other page runners
+            try { return _nxIsOrderVisibleOnPage(o); } catch (e) { return !!o._nxPageOk; }
+        }
+
+        // 1) Upsert everything from this poll's merge into sticky map
+        merged.forEach(function(o) {
+            if (!_nxKeepSticky(o)) return;
+            o._nxPageOk = true;
+            o._nxSeenAt = Date.now();
+            window._nxStickyById[_nxStickyKey(o)] = o;
         });
 
-        Matched = merged.filter(function(o) {
-            var id = String(o.orderId || "");
-            if (id && window._nxGoneIds[id]) return false;
-            // Sticky title-team bets ALWAYS kept (no _isPageLocal drop)
-            if (o && o._nxPageOk) {
-                var rn = String(o.rn || "").trim().toLowerCase();
-                var tt = (typeof _nxTitleTeams === "function") ? _nxTitleTeams() : new Set();
-                if (tt.has(rn)) return true;
+        // 2) Also upsert any previous Matched that still valid
+        (Matched || []).forEach(function(o) {
+            if (!_nxKeepSticky(o)) return;
+            var k = _nxStickyKey(o);
+            if (!window._nxStickyById[k]) window._nxStickyById[k] = o;
+        });
+
+        // 3) Rebuild Matched ONLY from sticky map (union of all seen page-local bets)
+        Matched = [];
+        Object.keys(window._nxStickyById).forEach(function(k) {
+            var o = window._nxStickyById[k];
+            if (!_nxKeepSticky(o)) {
+                delete window._nxStickyById[k];
+                return;
             }
-            return _isPageLocal(o);
+            Matched.push(o);
         });
         Matched.sort(function(a, b) {
-            return String(a.orderId || _ck(a)).localeCompare(String(b.orderId || _ck(b)));
+            return String(a.orderId || _nxStickyKey(a)).localeCompare(String(b.orderId || _nxStickyKey(b)));
         });
-        // NX-v9: if result empty but sticky has page bets, FORCE restore
-        if (Matched.length === 0 && window._nxStickyMatched && window._nxStickyMatched.length > 0) {
-            Matched = window._nxStickyMatched.filter(function(o) {
-                var id = String(o.orderId || "");
-                return !(id && window._nxGoneIds && window._nxGoneIds[id]);
-            }).slice();
-            console.log("[NX-v9] restored sticky Matched:", Matched.length);
-        }
-        if (Matched.length > 0) {
-            window._nxStickyMatched = Matched.slice();
-        }
+        window._nxStickyMatched = Matched.slice();
         window.Matched = Matched;
+        console.log("[NX-v10] sticky Matched count:", Matched.length, Object.keys(window._nxStickyById));
 
         render();
     } catch (e) {

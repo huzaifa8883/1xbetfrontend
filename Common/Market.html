@@ -5184,21 +5184,43 @@ function _nxGetPageRunnerNames() {
     } catch (e) {}
     return names;
 }
+function _nxTitleTeams() {
+    var teams = new Set();
+    try {
+        var title = (document.title || "").split("|")[0].trim().toLowerCase();
+        var parts = title.split(/\s+v(?:s)?\.?\s+/i);
+        parts.forEach(function(p) { var n = p.trim(); if (n && n.length > 1) teams.add(n); });
+    } catch (e) {}
+    return teams;
+}
 function _nxIsOrderVisibleOnPage(o) {
     if (!o) return false;
     var rn = String(o.rn || "").trim().toLowerCase();
     if (!rn || rn === "runner" || rn.indexOf("runner ") === 0) return false;
 
-    // PRIMARY GATE: runner name MUST be on THIS page (catalog + title teams only).
+    // Title teams always allowed (Boland / Knights on Boland v Knights page)
+    var titleTeams = _nxTitleTeams();
+    if (titleTeams.has(rn)) return true;
+
+    // Already confirmed page-local — keep sticky (stops 1↔0 flash)
+    if (o._nxPageOk && titleTeams.size > 0) {
+        // only drop if clearly not a title team AND not in catalog
+        var pageNames = _nxGetPageRunnerNames();
+        if (pageNames.size > 0 && pageNames.has(rn)) return true;
+        if (pageNames.size > 0 && !pageNames.has(rn) && !titleTeams.has(rn)) {
+            // foreign sticky — drop
+            return false;
+        }
+        // pageNames empty or uncertain — KEEP sticky to avoid flash
+        return true;
+    }
+
+    // PRIMARY GATE for new orders
     var pageNames = _nxGetPageRunnerNames();
-    // Title-only emergency allowlist even if catalog not ready
     if (pageNames.size === 0) {
-        var title = (document.title || "").split("|")[0].trim().toLowerCase();
-        var parts = title.split(/\s+v(?:s)?\.?\s+/i);
-        parts.forEach(function(p) { var n = p.trim(); if (n) pageNames.add(n); });
+        titleTeams.forEach(function(t) { pageNames.add(t); });
     }
     if (pageNames.size > 0 && !pageNames.has(rn)) {
-        console.log("[NX-v6] drop foreign runner:", rn, "not in", Array.from(pageNames).slice(0, 12));
         return false;
     }
 
@@ -5246,42 +5268,22 @@ function _nxIsOrderVisibleOnPage(o) {
 }
 
 
-// NX-v5: continuous DOM guard — if foreign runner appears in matched-body, remove the row
-(function _nxMatchedDomGuard() {
-    function scrub() {
-        try {
-            var pageNames = (typeof _nxGetPageRunnerNames === "function") ? _nxGetPageRunnerNames() : new Set();
-            if (!pageNames || pageNames.size === 0) return;
-            var mb = document.getElementById("matched-body");
-            if (!mb) return;
-            var rows = mb.querySelectorAll("tr");
-            var removed = 0;
-            rows.forEach(function(tr) {
-                var td = tr.querySelector("td");
-                if (!td) return;
-                var rn = String(td.textContent || "").trim().toLowerCase();
-                if (!rn) return;
-                if (!pageNames.has(rn)) {
-                    tr.parentNode && tr.parentNode.removeChild(tr);
-                    removed++;
-                }
-            });
-            if (removed) {
-                var mc = document.getElementById("matched-count");
-                if (mc) mc.textContent = String(mb.querySelectorAll("tr").length);
-                console.log("[NX-v5] DOM scrubbed foreign matched rows:", removed);
-            }
-        } catch (e) {}
-    }
-    setInterval(scrub, 800);
-    document.addEventListener("DOMContentLoaded", function() { setTimeout(scrub, 500); });
-})();
+// NX-v7: DOM guard DISABLED — was causing Matched 1↔0 flash when pageNames briefly incomplete.
+// Cross-match is already blocked by _nxIsOrderVisibleOnPage + never-shrink.
+(function _nxMatchedDomGuard() { /* disabled */ })();
 
 function render() {
-    if (!window._nxV3Logged) { window._nxV3Logged = true; console.log("[NX-v6-DEPLOYED] strict catalog+title only, no map pollution"); }
-    // Nuclear: strip any order whose runner is not on this page
+    if (!window._nxV3Logged) { window._nxV3Logged = true; console.log("[NX-v7-DEPLOYED] sticky page-local, no 1-0 flash"); }
+    // NX-v7: only strip true foreign; sticky title-team bets never dropped here
     try {
-        Matched = (Matched || []).filter(_nxIsOrderVisibleOnPage);
+        Matched = (Matched || []).filter(function(o) {
+            if (o && o._nxPageOk) {
+                var rn = String(o.rn || "").trim().toLowerCase();
+                var tt = _nxTitleTeams();
+                if (tt.has(rn)) return true;
+            }
+            return _nxIsOrderVisibleOnPage(o);
+        });
         UnMatched = (UnMatched || []).filter(_nxIsOrderVisibleOnPage);
         window.Matched = Matched;
         window.UnMatched = UnMatched;
@@ -5871,8 +5873,13 @@ async function fetchMatched() {
             return String(a.orderId || _ck(a)).localeCompare(String(b.orderId || _ck(b)));
         });
         _nxPurgeForeignOrders();
-        // also strip foreign from Matched by visibility
+        // strip only true foreign; sticky page-local (_nxPageOk + title team) always kept
         Matched = Matched.filter(_nxIsOrderVisibleOnPage);
+
+        // NX-v7 NEVER clear to empty if we had page-local bets and API flaked
+        if (Matched.length === 0 && fromApi.length === 0) {
+            // leave as empty only if API also empty AND no sticky survived — ok
+        }
 
         render();
     } catch (e) {

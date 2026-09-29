@@ -1,6 +1,5 @@
 
 
-
 <!doctype html>
 <html lang="en">
 <head>
@@ -5138,13 +5137,10 @@ function updateRunnerPnL() {
 
 // NX-v3: page-local runner names + market ids — last line of defence against cross-match
 function _nxGetPageRunnerNames() {
+    // STRICT: only THIS page's catalog + title teams. NEVER global selectionIdToRunner
+    // (that map gets polluted with other matches and let Dolphins through).
     var names = new Set();
     try {
-        var map = window.selectionIdToRunner || {};
-        Object.keys(map).forEach(function(k) {
-            var n = String(map[k] || "").trim().toLowerCase();
-            if (n) names.add(n);
-        });
         var el = document.getElementById('MarketView') || document.getElementById('app');
         var vm = el && el.__vue__;
         if (vm) {
@@ -5152,7 +5148,7 @@ function _nxGetPageRunnerNames() {
                 if (!Array.isArray(runners)) return;
                 runners.forEach(function(r) {
                     var n = String(r.runnerName || r.runner_name || r.name || "").trim().toLowerCase();
-                    if (n) names.add(n);
+                    if (n && n !== "runner" && n.indexOf("runner ") !== 0) names.add(n);
                 });
             }
             if (vm.Catalog) addRunners(vm.Catalog.runners);
@@ -5162,6 +5158,29 @@ function _nxGetPageRunnerNames() {
                 arr.forEach(function(m) { if (m) addRunners(m.runners); });
             });
         }
+        // Title teams only (not Related Events)
+        var title = (document.title || "").split("|")[0].trim();
+        var parts = title.split(/\s+v(?:s)?\.?\s+/i);
+        if (parts.length >= 2) {
+            parts.forEach(function(p) {
+                var n = p.trim().toLowerCase();
+                if (n && n.length > 1) names.add(n);
+            });
+        }
+        // Match Odds / Bookmaker left-column labels ONLY (exclude Related Events panel)
+        var root = document.getElementById('MarketView') || document.body;
+        root.querySelectorAll(".bname, .runner-name").forEach(function(node) {
+            // skip if inside Related Events
+            var p = node;
+            for (var i = 0; i < 8 && p; i++) {
+                var cls = (p.className && String(p.className)) || "";
+                var id = (p.id && String(p.id)) || "";
+                if (/related/i.test(cls) || /related/i.test(id)) return;
+                p = p.parentElement;
+            }
+            var t = String(node.textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
+            if (t && t.length > 1 && t.length < 50 && !/^(back|lay|book|yes|no)$/i.test(t)) names.add(t);
+        });
     } catch (e) {}
     return names;
 }
@@ -5170,10 +5189,16 @@ function _nxIsOrderVisibleOnPage(o) {
     var rn = String(o.rn || "").trim().toLowerCase();
     if (!rn || rn === "runner" || rn.indexOf("runner ") === 0) return false;
 
-    // PRIMARY GATE: runner name MUST be on THIS page's markets.
-    // Blocks Dolphins / South Africa on Boland v Knights etc.
+    // PRIMARY GATE: runner name MUST be on THIS page (catalog + title teams only).
     var pageNames = _nxGetPageRunnerNames();
+    // Title-only emergency allowlist even if catalog not ready
+    if (pageNames.size === 0) {
+        var title = (document.title || "").split("|")[0].trim().toLowerCase();
+        var parts = title.split(/\s+v(?:s)?\.?\s+/i);
+        parts.forEach(function(p) { var n = p.trim(); if (n) pageNames.add(n); });
+    }
     if (pageNames.size > 0 && !pageNames.has(rn)) {
+        console.log("[NX-v6] drop foreign runner:", rn, "not in", Array.from(pageNames).slice(0, 12));
         return false;
     }
 
@@ -5220,8 +5245,40 @@ function _nxIsOrderVisibleOnPage(o) {
     return false;
 }
 
+
+// NX-v5: continuous DOM guard — if foreign runner appears in matched-body, remove the row
+(function _nxMatchedDomGuard() {
+    function scrub() {
+        try {
+            var pageNames = (typeof _nxGetPageRunnerNames === "function") ? _nxGetPageRunnerNames() : new Set();
+            if (!pageNames || pageNames.size === 0) return;
+            var mb = document.getElementById("matched-body");
+            if (!mb) return;
+            var rows = mb.querySelectorAll("tr");
+            var removed = 0;
+            rows.forEach(function(tr) {
+                var td = tr.querySelector("td");
+                if (!td) return;
+                var rn = String(td.textContent || "").trim().toLowerCase();
+                if (!rn) return;
+                if (!pageNames.has(rn)) {
+                    tr.parentNode && tr.parentNode.removeChild(tr);
+                    removed++;
+                }
+            });
+            if (removed) {
+                var mc = document.getElementById("matched-count");
+                if (mc) mc.textContent = String(mb.querySelectorAll("tr").length);
+                console.log("[NX-v5] DOM scrubbed foreign matched rows:", removed);
+            }
+        } catch (e) {}
+    }
+    setInterval(scrub, 800);
+    document.addEventListener("DOMContentLoaded", function() { setTimeout(scrub, 500); });
+})();
+
 function render() {
-    if (!window._nxV3Logged) { window._nxV3Logged = true; console.log("[NX-v4-DEPLOYED] cross-match runner+event gate active"); }
+    if (!window._nxV3Logged) { window._nxV3Logged = true; console.log("[NX-v6-DEPLOYED] strict catalog+title only, no map pollution"); }
     // Nuclear: strip any order whose runner is not on this page
     try {
         Matched = (Matched || []).filter(_nxIsOrderVisibleOnPage);
@@ -5765,12 +5822,8 @@ async function fetchMatched() {
         const ids = window.allMarketIds;
         if (ids && matchId) ids.add(String(matchId));
         function _isPageLocal(o) {
-            if (!o) return false;
-            var m = String(o.mktId || "");
-            if (m && ids && ids.size > 0 && ids.has(m)) return true;
-            if (m && matchId && m === String(matchId)) return true;
-            if (m && ids && ids.size > 0 && !ids.has(m)) return false;
-            // blank mkt: name must be on this page
+            // NX-v6: single gate — runner must be on THIS page catalog/title
+            // marketId-only pass removed (allMarketIds pollution was letting Dolphins through)
             return _nxIsOrderVisibleOnPage(o);
         }
         function _ck(o) {

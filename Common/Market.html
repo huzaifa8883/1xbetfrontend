@@ -4686,8 +4686,23 @@ new Vue({
       console.log("📡 Socket update:", data);
       if (!data || !Array.isArray(data.newOrders)) return;
 
-      const unmatched = data.newOrders.filter(o => o.status === "PENDING");
-      const matched   = data.newOrders.filter(o => o.status === "MATCHED");
+      // NX: reject other users' orders (match room is shared)
+      var myId = window._nxMyUserId || (function(){ try { return localStorage.getItem('nx_user_id'); } catch(e){ return null; } })();
+      if (data.userId != null && myId != null && String(data.userId) !== String(myId)) {
+        console.log('[NX] Vue drop other-user ordersUpdated', data.userId);
+        return;
+      }
+
+      const unmatched = data.newOrders.filter(o => {
+        var oUid = o.user_id || o.userId || data.userId;
+        if (oUid != null && myId != null && String(oUid) !== String(myId)) return false;
+        return o.status === "PENDING";
+      });
+      const matched   = data.newOrders.filter(o => {
+        var oUid = o.user_id || o.userId || data.userId;
+        if (oUid != null && myId != null && String(oUid) !== String(myId)) return false;
+        return o.status === "MATCHED";
+      });
 
       this.UnMatched = this.upsertOrders(this.UnMatched, unmatched, "PENDING");
       this.Matched   = this.upsertOrders(this.Matched,   matched,   "MATCHED");
@@ -4918,6 +4933,13 @@ async function updateUserWallet() {
         // Format 3: { wallet_balance, liable, username }
         const user = json?.data?.user || json?.data || json || {};
         if (!user || (user.wallet_balance === undefined && !user.username)) return;
+
+        // NX: cache own userId so socket ordersUpdated can reject other users' bets
+        var _uid = user.id || user.userId || user.user_id || null;
+        if (_uid != null) {
+            window._nxMyUserId = String(_uid);
+            try { localStorage.setItem('nx_user_id', String(_uid)); } catch(e) {}
+        }
 
         const bal    = Math.floor(parseFloat(user.wallet_balance ?? user.balance ?? 0));
         const liable = Math.floor(parseFloat(user.liable ?? user.exposure ?? 0));
@@ -5919,13 +5941,25 @@ socket.on("disconnect", () => {
 socket.on("ordersUpdated", (data) => {
     if (!data?.newOrders?.length) return;
 
+    // NX ROOT FIX: match room is shared by ALL viewers of this match.
+    // Only accept events that belong to THIS logged-in user.
+    var myId = window._nxMyUserId || (function(){ try { return localStorage.getItem('nx_user_id'); } catch(e){ return null; } })();
+    if (data.userId != null && myId != null && String(data.userId) !== String(myId)) {
+        console.log('[NX] drop other-user ordersUpdated', data.userId, '!=', myId);
+        return;
+    }
+
     data.newOrders.forEach(newO => {
+        // Per-order user check (payload may mix)
+        var oUid = newO.user_id || newO.userId || data.userId;
+        if (oUid != null && myId != null && String(oUid) !== String(myId)) return;
+
         const orderId    = String(newO.request_id || newO.orderId || newO.requestId);
         const orderSelId = String(newO.selection_id || newO.selectionId || "");
         // FIX: mktId blank ho to selectionIdToMarketId se resolve karo
         _nxSyncMaps();
         const orderMktId = _nxOrderMktId(newO, orderSelId);   // '' if unknown (never matchId)
-        // Cross-match guard: server pushes ALL of this user's orders, drop other matches
+        // Cross-match guard: drop other matches' markets
         if (!_nxOrderBelongsToPage(newO, orderSelId, orderMktId)) return;
 
         // FIX: marketId filter hataya — Toss/other markets ke orders bhi accept karo

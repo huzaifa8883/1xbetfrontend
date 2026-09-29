@@ -3371,9 +3371,13 @@
             </span>-->
             </div>
             <div class="runner-position">
-                <template v-if="runner.ifWin !== 0">
+                <!-- NX Fancy-2: BPEXCH style both profit AND loss e.g. 1,000 -1,000 -->
+                <template v-if="runner.ifWin !== 0 || runner.ifLose !== 0">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
                     <strong>{{ runner.ifWin | formatPnL }}</strong>
+                </span>
+                <span class="position-minus ml-1" v-if="runner.ifLose !== 0 && runner.ifLose !== null">
+                    <strong>{{ runner.ifLose | formatPnL }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -4965,6 +4969,34 @@ async function updateUserWallet() {
 // Only orders whose mktId matches the requested marketId are included.
 // This prevents "Match Odds" bets from bleeding into sub-market PnL.
 // ------------------------------------------------------------------
+// NX: detect Fancy / Fancy-2 / session markets (line+rate, NOT decimal odds)
+function _nxIsFancyMarketId(mktId) {
+    if (!mktId) return false;
+    var mid = String(mktId);
+    try {
+        var el = document.getElementById('MarketView') || document.getElementById('app');
+        var vm = el && el.__vue__;
+        if (vm) {
+            var lists = ['Fancy2Markets', 'FancyMarkets', 'FigureMarkets', 'OddFigureMarkets'];
+            for (var i = 0; i < lists.length; i++) {
+                var arr = vm[lists[i]];
+                if (!Array.isArray(arr)) continue;
+                for (var j = 0; j < arr.length; j++) {
+                    if (arr[j] && String(arr[j].marketId || arr[j].market_id || '') === mid) return true;
+                }
+            }
+        }
+    } catch (e) {}
+    // also check order market name hints stored on window
+    if (window._nxFancyMarketIds && window._nxFancyMarketIds.has(mid)) return true;
+    return false;
+}
+function _nxRegisterFancyMarket(mktId) {
+    if (!mktId) return;
+    if (!window._nxFancyMarketIds) window._nxFancyMarketIds = new Set();
+    window._nxFancyMarketIds.add(String(mktId));
+}
+
 function calculateRunnerPnL(runnerName, forMarketId) {
     const normalized  = (runnerName || "").trim().toLowerCase();
     const useMarketFilter = !!forMarketId;
@@ -4972,11 +5004,6 @@ function calculateRunnerPnL(runnerName, forMarketId) {
     let ifWin  = 0;
     let ifLose = 0;
 
-    // STRICT MARKET FILTER:
-    // Sirf wahi orders include karo jinka mktId exactly forMarketId se match kare.
-    // Blank mktId wale orders SIRF tab include karo jab forMarketId bhi main matchId ho —
-    // warna Match Odds bets sub-markets (Toss, Bookmaker) pe bhi dikhne lagte hain.
-    // NX-STRICT: blank mktId NEVER counts as any market (prevents Toss flash on Match Odds)
     const marketOrders = Matched.filter(order => {
         if (!useMarketFilter) return true;
         let oMktId = String(order.mktId || "");
@@ -4985,17 +5012,50 @@ function calculateRunnerPnL(runnerName, forMarketId) {
             if (sid && window.selectionIdToMarketId && window.selectionIdToMarketId[sid])
                 oMktId = String(window.selectionIdToMarketId[sid]);
         }
-        if (!oMktId) return false; // unknown → exclude from ALL markets
+        if (!oMktId) return false;
         return oMktId === String(forMarketId);
     });
 
     if (!marketOrders.length) return { ifWin: 0, ifLose: 0 };
 
-    // Cross-runner effect HAMESHA lagao — yeh exchange betting ka basic logic hai.
-    // Back West Indies @ 2, stake 2000:
-    //   West Indies: ifWin = +2000, ifLose = -2000
-    //   Sri Lanka:   ifWin = -2000, ifLose = +2000  <- yeh cross-runner effect hai
-    // Iske bina Sri Lanka ka PnL zero dikhe ga jo galat hai.
+    const isFancy = _nxIsFancyMarketId(forMarketId);
+
+    // Fancy-2 / session: BPEXCH style — rate-based (usually rate=100)
+    // Stake 1000 @ rate 100 → ifWin +1000, ifLose -1000
+    // NOT (line-1)*stake which wrongly gave 48000 for line 49
+    if (isFancy) {
+        marketOrders.forEach(order => {
+            const rn = (order.rn || order.runnerName || "").trim().toLowerCase();
+            // strip " - 100" suffix for name match
+            const rnBase = rn.replace(/\s*-\s*\d+(\.\d+)?\s*$/, "").trim();
+            const normBase = normalized.replace(/\s*-\s*\d+(\.\d+)?\s*$/, "").trim();
+            if (rnBase !== normBase && rn !== normalized) return;
+
+            const stake = Number(order.ms || order.size || 0);
+            if (stake <= 0) return;
+            // rate: explicit field, or parsed from "Name - 100", default 100
+            var rate = Number(order.rate || order.fancyRate || 0);
+            if (!rate || rate <= 0) {
+                var m = String(order.rn || "").match(/-\s*(\d+(?:\.\d+)?)\s*$/);
+                if (m) rate = Number(m[1]);
+            }
+            if (!rate || rate <= 0) rate = 100;
+
+            const side = (order.bs || order.side || "").toUpperCase();
+            // BACK/YES: win → +stake*(rate/100), lose → -stake
+            // LAY/NO:   win → +stake, lose → -stake*(rate/100)
+            if (side === "B" || side === "YES" || side === "Y") {
+                ifWin  += stake * (rate / 100);
+                ifLose -= stake;
+            } else {
+                ifWin  += stake;
+                ifLose -= stake * (rate / 100);
+            }
+        });
+        return { ifWin: Math.round(ifWin), ifLose: Math.round(ifLose) };
+    }
+
+    // Match Odds / Bookmaker — decimal odds formula
     const applyCrossRunner = true;
 
     marketOrders.forEach(order => {
@@ -5007,7 +5067,6 @@ function calculateRunnerPnL(runnerName, forMarketId) {
         if (!rn || odds <= 1 || stake <= 0) return;
 
         if (rn === normalized) {
-            // Is runner par direct bet
             if (side === "B") {
                 ifWin  += (odds - 1) * stake;
                 ifLose -= stake;
@@ -7233,6 +7292,8 @@ Vue.component('runner-aggregate', {
     inject('TossMarkets',      data.toss        || []);
     inject('FancyMarkets',     data.fancy       || []);
     inject('Fancy2Markets',    data.fancy2      || []);
+    (data.fancy2 || []).forEach(function(m){ if (m && m.marketId) _nxRegisterFancyMarket(m.marketId); });
+    (data.fancy || []).forEach(function(m){ if (m && m.marketId) _nxRegisterFancyMarket(m.marketId); });
     inject('FigureMarkets',    data.figure      || []);
     inject('OddFigureMarkets', data.oddFigure   || []);
     inject('OtherMarkets',     data.other       || []);

@@ -1,5 +1,6 @@
 
 
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -2182,18 +2183,18 @@
 <!-- <div class="runner-position">
   <span v-if="getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin >= 0">
     <span class="runner-position-pos">
-      <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin | format }}</strong>
+      <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin | formatPnL }}</strong>
     </span>
     <span class="position-minus" v-if="getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose != null && getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose != 0">
-      <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose | format }}</strong>
+      <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose | formatPnL }}</strong>
     </span>
   </span>
   <span v-else>
     <span class="position-minus">
-      <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin | format }}</strong>
+      <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin | formatPnL }}</strong>
     </span>
     <span class="runner-position-pos" v-if="getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose != null && getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose != 0">
-      <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose | format }}</strong>
+      <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifLose | formatPnL }}</strong>
     </span>
   </span>
   <span class="ml-1" v-if="runner.jockeyName || runner.trainerName" style="font-weight: normal;">
@@ -2207,7 +2208,7 @@
 <div class="runner-position">
   <span v-if="getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin !== 0">
     <span :class="getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
-      <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin | format }}</strong>
+      <strong>{{ getRunnerAmounts(runner.runnerName, Catalog.marketId).ifWin | formatPnL }}</strong>
     </span>
   </span>
   <span class="ml-1" v-if="runner.jockeyName || runner.trainerName" style="font-weight: normal;">
@@ -2344,7 +2345,7 @@
             <div class="runner-position">
                 <template v-if="runner.ifWin !== 0">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
-                    <strong>{{ runner.ifWin | format }}</strong>
+                    <strong>{{ runner.ifWin | formatPnL }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName || runner.trainerName" style="font-weight: normal;">
@@ -2475,7 +2476,7 @@
             <div class="runner-position">
                 <template v-if="runner.ifWin !== 0">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
-                    <strong>{{ runner.ifWin | format }}</strong>
+                    <strong>{{ runner.ifWin | formatPnL }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName || runner.trainerName" style="font-weight: normal;">
@@ -2605,7 +2606,7 @@
             <div class="runner-position">
                 <template v-if="runner.ifWin !== 0">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
-                    <strong>{{ runner.ifWin | format }}</strong>
+                    <strong>{{ runner.ifWin | formatPnL }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName || runner.trainerName" style="font-weight: normal;">
@@ -2736,7 +2737,7 @@
             <div class="runner-position">
                 <template v-if="runner.ifWin !== 0">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
-                    <strong>{{ runner.ifWin | format }}</strong>
+                    <strong>{{ runner.ifWin | formatPnL }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName || runner.trainerName" style="font-weight: normal;">
@@ -2866,7 +2867,7 @@
             <div class="runner-position">
                 <template v-if="runner.ifWin !== 0">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
-                    <strong>{{ runner.ifWin | format }}</strong>
+                    <strong>{{ runner.ifWin | formatPnL }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName || runner.trainerName" style="font-weight: normal;">
@@ -2964,8 +2965,8 @@
     <b><span class="priceodd">{{single.runnerName}}</span><br /></b>
     <span class="priceamount">{{single.price1}}</span><br /><hr style="margin:0px;" />
     <div style="background-color:#e9f6fc">
-        <span class="positioncustom" v-if="single.ifWin > 0" style=" color:forestgreen" ><strong>{{single.ifWin | format}}</strong></span>
-        <span class="positioncustom" v-else style=" color:red" ><strong>{{single.ifWin | format}}</strong></span>
+        <span class="positioncustom" v-if="single.ifWin > 0" style=" color:forestgreen" ><strong>{{single.ifWin | formatPnL}}</strong></span>
+        <span class="positioncustom" v-else style=" color:red" ><strong>{{single.ifWin | formatPnL}}</strong></span>
     </div>
 </div>
 
@@ -2987,8 +2988,8 @@
     <b><span class="priceodd">{{single.runnerName}}</span><br /></b>
     <span class="priceamount">{{single.price1}}</span><br /><hr style="margin:0px;" />
     <div style="background-color:#e9f6fc">
-        <span class="positioncustom" v-if="single.ifWin > 0" style=" color:forestgreen" ><strong>{{single.ifWin | format}}</strong></span>
-        <span class="positioncustom" v-else style=" color:red" ><strong>{{single.ifWin | format}}</strong></span>
+        <span class="positioncustom" v-if="single.ifWin > 0" style=" color:forestgreen" ><strong>{{single.ifWin | formatPnL}}</strong></span>
+        <span class="positioncustom" v-else style=" color:red" ><strong>{{single.ifWin | formatPnL}}</strong></span>
     </div>
 </div>
 
@@ -3073,7 +3074,7 @@
             <div class="runner-position">
                 <template v-if="runner.ifWin !== 0">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
-                    <strong>{{ runner.ifWin | format }}</strong>
+                    <strong>{{ runner.ifWin | formatPnL }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName || runner.trainerName" style="font-weight: normal;">
@@ -3211,7 +3212,7 @@
             <div class="runner-position">
                 <template v-if="runner.ifWin !== 0">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
-                    <strong>{{ runner.ifWin | format }}</strong>
+                    <strong>{{ runner.ifWin | formatPnL }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName || runner.trainerName" style="font-weight: normal;">
@@ -3343,7 +3344,7 @@
             <div class="runner-position">
                 <template v-if="runner.ifWin !== 0">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
-                    <strong>{{ runner.ifWin | format }}</strong>
+                    <strong>{{ runner.ifWin | formatPnL }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName || runner.trainerName" style="font-weight: normal;">
@@ -3474,7 +3475,7 @@
             <div class="runner-position">
                 <template v-if="runner.ifWin !== 0">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
-                    <strong>{{ runner.ifWin | format }}</strong>
+                    <strong>{{ runner.ifWin | formatPnL }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName || runner.trainerName" style="font-weight: normal;">
@@ -3606,7 +3607,7 @@
             <div class="runner-position">
                 <template v-if="runner.ifWin !== 0">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
-                    <strong>{{ runner.ifWin | format }}</strong>
+                    <strong>{{ runner.ifWin | formatPnL }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName || runner.trainerName" style="font-weight: normal;">
@@ -3738,7 +3739,7 @@
             <div class="runner-position">
                 <template v-if="runner.ifWin !== 0">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
-                    <strong>{{ runner.ifWin | format }}</strong>
+                    <strong>{{ runner.ifWin | formatPnL }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName || runner.trainerName" style="font-weight: normal;">
@@ -3838,8 +3839,8 @@
     <b><span class="priceodd">{{single.runnerName}}</span><br /></b>
     <span class="priceamount">{{single.price1}}</span><br /><hr style="margin:0px;" />
     <div style="background-color:#e9f6fc">
-        <span class="positioncustom" v-if="single.ifWin > 0" style=" color:forestgreen" ><strong>{{single.ifWin | format}}</strong></span>
-        <span class="positioncustom" v-else style=" color:red" ><strong>{{single.ifWin | format}}</strong></span>
+        <span class="positioncustom" v-if="single.ifWin > 0" style=" color:forestgreen" ><strong>{{single.ifWin | formatPnL}}</strong></span>
+        <span class="positioncustom" v-else style=" color:red" ><strong>{{single.ifWin | formatPnL}}</strong></span>
     </div>
 </div>
 
@@ -3861,8 +3862,8 @@
     <b><span class="priceodd">{{single.runnerName}}</span><br /></b>
     <span class="priceamount">{{single.price1}}</span><br /><hr style="margin:0px;" />
     <div style="background-color:#e9f6fc">
-        <span class="positioncustom" v-if="single.ifWin > 0" style=" color:forestgreen" ><strong>{{single.ifWin | format}}</strong></span>
-        <span class="positioncustom" v-else style=" color:red" ><strong>{{single.ifWin | format}}</strong></span>
+        <span class="positioncustom" v-if="single.ifWin > 0" style=" color:forestgreen" ><strong>{{single.ifWin | formatPnL}}</strong></span>
+        <span class="positioncustom" v-else style=" color:red" ><strong>{{single.ifWin | formatPnL}}</strong></span>
     </div>
 </div>
 
@@ -3948,7 +3949,7 @@
             <div class="runner-position">
                 <template v-if="runner.ifWin !== 0">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
-                    <strong>{{ runner.ifWin | format }}</strong>
+                    <strong>{{ runner.ifWin | formatPnL }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName || runner.trainerName" style="font-weight: normal;">
@@ -4083,7 +4084,7 @@
             <div class="runner-position">
                 <template v-if="runner.ifWin !== 0">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
-                    <strong>{{ runner.ifWin | format }}</strong>
+                    <strong>{{ runner.ifWin | formatPnL }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName || runner.trainerName" style="font-weight: normal;">
@@ -4915,8 +4916,23 @@ new Vue({
       console.log("📡 Socket update:", data);
       if (!data || !Array.isArray(data.newOrders)) return;
 
-      const unmatched = data.newOrders.filter(o => o.status === "PENDING");
-      const matched   = data.newOrders.filter(o => o.status === "MATCHED");
+      // NX: reject other users' orders (match room is shared)
+      var myId = window._nxMyUserId || (function(){ try { return localStorage.getItem('nx_user_id'); } catch(e){ return null; } })();
+      if (data.userId != null && myId != null && String(data.userId) !== String(myId)) {
+        console.log('[NX] Vue drop other-user ordersUpdated', data.userId);
+        return;
+      }
+
+      const unmatched = data.newOrders.filter(o => {
+        var oUid = o.user_id || o.userId || data.userId;
+        if (oUid != null && myId != null && String(oUid) !== String(myId)) return false;
+        return o.status === "PENDING";
+      });
+      const matched   = data.newOrders.filter(o => {
+        var oUid = o.user_id || o.userId || data.userId;
+        if (oUid != null && myId != null && String(oUid) !== String(myId)) return false;
+        return o.status === "MATCHED";
+      });
 
       this.UnMatched = this.upsertOrders(this.UnMatched, unmatched, "PENDING");
       this.Matched   = this.upsertOrders(this.Matched,   matched,   "MATCHED");
@@ -5160,6 +5176,13 @@ async function updateUserWallet() {
         const user = json?.data?.user || json?.data || json || {};
         if (!user || (user.wallet_balance === undefined && !user.username)) return;
 
+        // NX: cache own userId so socket ordersUpdated can reject other users' bets
+        var _uid = user.id || user.userId || user.user_id || null;
+        if (_uid != null) {
+            window._nxMyUserId = String(_uid);
+            try { localStorage.setItem('nx_user_id', String(_uid)); } catch(e) {}
+        }
+
         const bal    = Math.floor(parseFloat(user.wallet_balance ?? user.balance ?? 0));
         const liable = Math.floor(parseFloat(user.liable ?? user.exposure ?? 0));
 
@@ -5195,12 +5218,16 @@ function calculateRunnerPnL(runnerName, forMarketId) {
     // Sirf wahi orders include karo jinka mktId exactly forMarketId se match kare.
     // Blank mktId wale orders SIRF tab include karo jab forMarketId bhi main matchId ho —
     // warna Match Odds bets sub-markets (Toss, Bookmaker) pe bhi dikhne lagte hain.
-    const isMainMarket = !forMarketId || String(forMarketId) === String(matchId);
+    // NX-STRICT: blank mktId NEVER counts as any market (prevents Toss flash on Match Odds)
     const marketOrders = Matched.filter(order => {
         if (!useMarketFilter) return true;
-        const oMktId = String(order.mktId || "");
-        // Blank mktId = main market ka order — sirf main market filter mein include karo
-        if (!oMktId) return isMainMarket;
+        let oMktId = String(order.mktId || "");
+        if (!oMktId) {
+            const sid = String(order.selId || order.selectionId || "");
+            if (sid && window.selectionIdToMarketId && window.selectionIdToMarketId[sid])
+                oMktId = String(window.selectionIdToMarketId[sid]);
+        }
+        if (!oMktId) return false; // unknown → exclude from ALL markets
         return oMktId === String(forMarketId);
     });
 
@@ -5271,25 +5298,79 @@ function calculateRunnerPnL(runnerName, forMarketId) {
 }
 
 // runnerPnL keyed as "marketId||runnerName" for strict per-market isolation
+
+// NX: drop any Matched/UnMatched order that does not belong to this page
+function _nxPurgeForeignOrders() {
+    try {
+        _nxSyncMaps();
+        var ids = window.allMarketIds;
+        // Never purge while maps are empty/building — causes Matched+PnL flicker
+        if (!ids || ids.size === 0) return;
+        if (window._nxBuildingMaps) return;
+        function resolveAndKeep(o) {
+            var m = String(o.mktId || "");
+            if (!m && o.selId && window.selectionIdToMarketId && window.selectionIdToMarketId[o.selId]) {
+                m = String(window.selectionIdToMarketId[o.selId]);
+                o.mktId = m;
+            }
+            // HARD: known market not on this page → always drop (even if sticky was set wrongly)
+            if (m && ids.size >= 1 && !ids.has(m) && !(matchId && m === String(matchId))) return false;
+            // Page-local market → keep + mark ok
+            if (m && (ids.has(m) || (matchId && m === String(matchId)))) {
+                o._nxPageOk = true;
+                o._nxSeenAt = Date.now();
+                return true;
+            }
+            // Blank market: keep only if already sticky (avoid flash of known-local bets)
+            if (!m && o._nxPageOk) return true;
+            // Blank + not sticky + maps ready → drop
+            if (!m && ids.size >= 1) return false;
+            return false;
+        }
+        var before = Matched.length;
+        Matched = Matched.filter(resolveAndKeep);
+        UnMatched = UnMatched.filter(resolveAndKeep);
+        if (Matched.length !== before) console.log("[NX] purged foreign matched:", before - Matched.length);
+    } catch (e) {}
+}
+
 function updateRunnerPnL() {
     // Gather all unique (mktId, runnerName) pairs from both order lists
     const pairs = new Map(); // key: "mktId||rn"  value: { mktId, rn }
 
     Matched.forEach(o => {
-        const rn    = (o.rn || "").trim();
-        const mktId = String(o.mktId || matchId);
-        if (rn) pairs.set(`${mktId}||${rn}`, { mktId, rn });
+        const rn = (o.rn || "").trim();
+        let mktId = String(o.mktId || "");
+        if (!mktId) {
+            const sid = String(o.selId || o.selectionId || "");
+            if (sid && window.selectionIdToMarketId && window.selectionIdToMarketId[sid])
+                mktId = String(window.selectionIdToMarketId[sid]);
+        }
+        if (!rn || !mktId) return; // skip unknown market — never attribute to Match Odds
+        pairs.set(mktId + "||" + rn, { mktId: mktId, rn: rn });
     });
     UnMatched.forEach(o => {
-        const rn    = (o.rn || "").trim();
-        const mktId = String(o.mktId || matchId);
-        if (rn) pairs.set(`${mktId}||${rn}`, { mktId, rn });
+        const rn = (o.rn || "").trim();
+        let mktId = String(o.mktId || "");
+        if (!mktId) {
+            const sid = String(o.selId || o.selectionId || "");
+            if (sid && window.selectionIdToMarketId && window.selectionIdToMarketId[sid])
+                mktId = String(window.selectionIdToMarketId[sid]);
+        }
+        if (!rn || !mktId) return;
+        pairs.set(mktId + "||" + rn, { mktId: mktId, rn: rn });
     });
 
-    runnerPnL = {};
+    // NX-v8: rebuild PnL; if no pairs but we had PnL before, keep last (no flash to zero)
+    var _newPnL = {};
     pairs.forEach(({ mktId, rn }, key) => {
-        runnerPnL[key] = calculateRunnerPnL(rn, mktId);
+        _newPnL[key] = calculateRunnerPnL(rn, mktId);
     });
+    if (Object.keys(_newPnL).length === 0 && window.runnerPnL && Object.keys(window.runnerPnL).length > 0) {
+        // keep previous
+    } else {
+        runnerPnL = _newPnL;
+    }
 
     // Keep plain runner list for legacy allRunners usage
     allRunners = [...new Set([...pairs.values()].map(p => p.rn))];
@@ -5301,7 +5382,190 @@ function updateRunnerPnL() {
 // ---------------------------
 // RENDER TABLES
 // ---------------------------
+
+// NX-v3: page-local runner names + market ids — last line of defence against cross-match
+function _nxGetPageRunnerNames() {
+    // STRICT: only THIS page's catalog + title teams. NEVER global selectionIdToRunner
+    // (that map gets polluted with other matches and let Dolphins through).
+    var names = new Set();
+    try {
+        var el = document.getElementById('MarketView') || document.getElementById('app');
+        var vm = el && el.__vue__;
+        if (vm) {
+            function addRunners(runners) {
+                if (!Array.isArray(runners)) return;
+                runners.forEach(function(r) {
+                    var n = String(r.runnerName || r.runner_name || r.name || "").trim().toLowerCase();
+                    if (n && n !== "runner" && n.indexOf("runner ") !== 0) names.add(n);
+                });
+            }
+            if (vm.Catalog) addRunners(vm.Catalog.runners);
+            ['BookmakerMarkets','TossMarkets','FancyMarkets','Fancy2Markets','FigureMarkets','OddFigureMarkets','OtherMarkets','OtherRaceMarkets','subMarkets'].forEach(function(p) {
+                var arr = vm[p];
+                if (!Array.isArray(arr)) return;
+                arr.forEach(function(m) { if (m) addRunners(m.runners); });
+            });
+        }
+        // Title teams only (not Related Events)
+        var title = (document.title || "").split("|")[0].trim();
+        var parts = title.split(/\s+v(?:s)?\.?\s+/i);
+        if (parts.length >= 2) {
+            parts.forEach(function(p) {
+                var n = p.trim().toLowerCase();
+                if (n && n.length > 1) names.add(n);
+            });
+        }
+        // Match Odds / Bookmaker left-column labels ONLY (exclude Related Events panel)
+        var root = document.getElementById('MarketView') || document.body;
+        root.querySelectorAll(".bname, .runner-name").forEach(function(node) {
+            // skip if inside Related Events
+            var p = node;
+            for (var i = 0; i < 8 && p; i++) {
+                var cls = (p.className && String(p.className)) || "";
+                var id = (p.id && String(p.id)) || "";
+                if (/related/i.test(cls) || /related/i.test(id)) return;
+                p = p.parentElement;
+            }
+            var t = String(node.textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
+            if (t && t.length > 1 && t.length < 50 && !/^(back|lay|book|yes|no)$/i.test(t)) names.add(t);
+        });
+    } catch (e) {}
+    return names;
+}
+
+function _nxMarkGone(orderId) {
+    if (!window._nxGoneIds) window._nxGoneIds = {};
+    if (orderId) window._nxGoneIds[String(orderId)] = Date.now();
+    window._nxStickyMatched = (window._nxStickyMatched || []).filter(function(o) {
+        return String(o.orderId || "") !== String(orderId);
+    });
+    if (window._nxStickyById) {
+        Object.keys(window._nxStickyById).forEach(function(k) {
+            var o = window._nxStickyById[k];
+            if (o && String(o.orderId || "") === String(orderId)) delete window._nxStickyById[k];
+            if (k === "id:" + String(orderId)) delete window._nxStickyById[k];
+        });
+    }
+}
+
+function _nxTitleTeams() {
+    var teams = new Set();
+    try {
+        var title = (document.title || "").split("|")[0].trim().toLowerCase();
+        var parts = title.split(/\s+v(?:s)?\.?\s+/i);
+        parts.forEach(function(p) { var n = p.trim(); if (n && n.length > 1) teams.add(n); });
+    } catch (e) {}
+    return teams;
+}
+function _nxIsOrderVisibleOnPage(o) {
+    if (!o) return false;
+    var rn = String(o.rn || "").trim().toLowerCase();
+    if (!rn || rn === "runner" || rn.indexOf("runner ") === 0) return false;
+
+    // Title teams always allowed (Boland / Knights on Boland v Knights page)
+    var titleTeams = _nxTitleTeams();
+    if (titleTeams.has(rn)) return true;
+
+    // Already confirmed page-local — keep sticky (stops 1↔0 flash)
+    if (o._nxPageOk && titleTeams.size > 0) {
+        // only drop if clearly not a title team AND not in catalog
+        var pageNames = _nxGetPageRunnerNames();
+        if (pageNames.size > 0 && pageNames.has(rn)) return true;
+        if (pageNames.size > 0 && !pageNames.has(rn) && !titleTeams.has(rn)) {
+            // foreign sticky — drop
+            return false;
+        }
+        // pageNames empty or uncertain — KEEP sticky to avoid flash
+        return true;
+    }
+
+    // PRIMARY GATE for new orders
+    var pageNames = _nxGetPageRunnerNames();
+    if (pageNames.size === 0) {
+        titleTeams.forEach(function(t) { pageNames.add(t); });
+    }
+    if (pageNames.size > 0 && !pageNames.has(rn)) {
+        return false;
+    }
+
+    // Event name gate (if order carries event_name)
+    try {
+        var oEv = String(o.event_name || o.eventName || "").trim().toLowerCase();
+        var pageEv = "";
+        var el = document.getElementById('MarketView') || document.getElementById('app');
+        var vm = el && el.__vue__;
+        if (vm && vm.Catalog) {
+            pageEv = String(vm.Catalog.eventName || vm.Catalog.event_name || vm.Catalog.name || "").trim().toLowerCase();
+        }
+        if (!pageEv) {
+            var h = document.querySelector(".event-name, .match-title, h1, .fixture-name");
+            if (h) pageEv = String(h.textContent || "").trim().toLowerCase();
+        }
+        // URL page title often "Boland v Knights | BetPro"
+        if (!pageEv && document.title) {
+            pageEv = String(document.title).split("|")[0].trim().toLowerCase();
+        }
+        if (oEv && pageEv && oEv.length > 3 && pageEv.length > 3) {
+            // allow if one contains the other (partial match ok)
+            if (oEv.indexOf(pageEv) === -1 && pageEv.indexOf(oEv) === -1) {
+                // also try without extra spaces
+                var o2 = oEv.replace(/\s+/g, " ");
+                var p2 = pageEv.replace(/\s+/g, " ");
+                if (o2.indexOf(p2) === -1 && p2.indexOf(o2) === -1) return false;
+            }
+        }
+    } catch (e) {}
+
+    var ids = window.allMarketIds;
+    var m = String(o.mktId || "");
+    // Known foreign marketId → drop
+    if (m && ids && ids.size > 0 && !ids.has(m) && !(typeof matchId !== "undefined" && matchId && m === String(matchId))) {
+        return false;
+    }
+    // Runner matched page list → show
+    if (pageNames.size > 0 && pageNames.has(rn)) return true;
+    // marketId on this page
+    if (m && typeof matchId !== "undefined" && matchId && m === String(matchId)) return true;
+    if (m && ids && ids.has(m)) return true;
+    // maps not ready and no evidence → hide (safer than showing foreign bets)
+    return false;
+}
+
+
+// NX-v7: DOM guard DISABLED
+(function _nxMatchedDomGuard() { /* disabled */ })();
+
 function render() {
+    if (!window._nxV3Logged) { window._nxV3Logged = true; console.log("[NX-v10-DEPLOYED] union sticky by id — matched never shrinks"); }
+    // NX-v10: always paint from stickyById union (never shrink on render)
+    try {
+        if (window._nxStickyById && Object.keys(window._nxStickyById).length) {
+            var _fromSticky = [];
+            Object.keys(window._nxStickyById).forEach(function(k) {
+                var o = window._nxStickyById[k];
+                if (!o) return;
+                var id = String(o.orderId || "");
+                if (id && window._nxGoneIds && window._nxGoneIds[id]) {
+                    delete window._nxStickyById[k];
+                    return;
+                }
+                _fromSticky.push(o);
+            });
+            if (_fromSticky.length >= (Matched ? Matched.length : 0)) {
+                Matched = _fromSticky;
+            }
+        }
+        if (Matched && Matched.length > 0) {
+            window._nxStickyMatched = Matched.slice();
+        }
+        UnMatched = (UnMatched || []).filter(function(o) {
+            try { return _nxIsOrderVisibleOnPage(o); } catch (e) { return true; }
+        });
+        window.Matched = Matched;
+        window.UnMatched = UnMatched;
+    } catch (e) {}
+    
+    _nxPurgeForeignOrders();
     _nxStableSortMatched();
     updateRunnerPnL();
 
@@ -5392,27 +5656,33 @@ function render() {
     }
 
     // Matched bets table — Runner, Price, Size
+    // NX-v8: paint Matched as-is (already filtered upstream). Signature must be stable
+    // so we never wipe DOM when data is unchanged — that wipe was the flash.
     const mb = document.getElementById("matched-body");
     if (mb) {
-        mb.innerHTML = "";
-        Matched.forEach(o => {
-            // Sanitize at the last possible point before DOM write
-            const displayName = _safeDisplayName(o);
-
-            const tr = document.createElement("tr");
-            const side  = (o.bs || "").toUpperCase();
-            tr.className = side === "B" ? "back" : "lay";
-            const price  = parseFloat(o.mp || o.price || 0);
-            const size   = parseFloat(o.ms || o.size || 0);
-            tr.innerHTML = `
-                <td>${displayName}</td>
-                <td>${price.toFixed(2)}</td>
-                <td>${format(size)}</td>
-            `;
-            mb.appendChild(tr);
-        });
-        const mcEl = document.getElementById("matched-count");
-        if (mcEl) mcEl.textContent = Matched.length;
+        var _vis = (Matched || []).slice();
+        var _sig = _vis.map(function(o){
+            return String(o.orderId||"")+":"+String(o.mp||o.price||"")+":"+String(o.ms||o.size||"")+":"+String(o.rn||"");
+        }).join("|");
+        if (window._nxMatchedSig === _sig && mb.childElementCount === _vis.length) {
+            const mcElSkip = document.getElementById("matched-count");
+            if (mcElSkip) mcElSkip.textContent = _vis.length;
+        } else {
+            window._nxMatchedSig = _sig;
+            mb.innerHTML = "";
+            _vis.forEach(function(o) {
+                const displayName = _safeDisplayName(o);
+                const tr = document.createElement("tr");
+                const side  = (o.bs || "").toUpperCase();
+                tr.className = side === "B" ? "back" : "lay";
+                const price  = parseFloat(o.mp || o.price || 0);
+                const size   = parseFloat(o.ms || o.size || 0);
+                tr.innerHTML = "<td>"+displayName+"</td><td>"+price.toFixed(2)+"</td><td>"+format(size)+"</td>";
+                mb.appendChild(tr);
+            });
+            const mcEl = document.getElementById("matched-count");
+            if (mcEl) mcEl.textContent = _vis.length;
+        }
     }
 
     // Runner PnL Summary Table — per-runner "If Win/If Lose" aggregate
@@ -5441,9 +5711,15 @@ function updateRunnerPnLTable() {
     // Group by mktId||rn (BUG 2 FIX: show per-market rows, not cross-market)
     const seen = new Map();
     Matched.forEach(x => {
-        const rn    = (x.rn || "").trim();
-        const mktId = String(x.mktId || matchId);
-        if (rn) seen.set(`${mktId}||${rn}`, { mktId, rn });
+        const rn = (x.rn || "").trim();
+        let mktId = String(x.mktId || "");
+        if (!mktId) {
+            const sid = String(x.selId || x.selectionId || "");
+            if (sid && window.selectionIdToMarketId && window.selectionIdToMarketId[sid])
+                mktId = String(window.selectionIdToMarketId[sid]);
+        }
+        if (!rn || !mktId) return;
+        seen.set(mktId + "||" + rn, { mktId: mktId, rn: rn });
     });
 
     tbody.innerHTML = "";
@@ -5474,6 +5750,13 @@ function updateRunnerPnLTable() {
 // ---------------------------
 function updateVueRunnerPnL() {
     try {
+        // NX-v8: if Matched temporarily empty, do NOT zero runner ifWin/ifLose (stops PnL flash)
+        var _mLen = (typeof Matched !== 'undefined' && Matched) ? Matched.length : 0;
+        if (_mLen === 0 && window._nxHadMatchedPnL) {
+            return;
+        }
+        if (_mLen > 0) window._nxHadMatchedPnL = true;
+
         let vmEl = document.getElementById('app') || document.getElementById('MarketView');
         let vm = vmEl && vmEl.__vue__;
 
@@ -5558,15 +5841,26 @@ window.getRunnerAmounts = function(runnerName, forMarketId) {
 
     const mktId      = String(forMarketId || matchId || "");
     const rn         = runnerName.trim();
-    const compoundKey = `${mktId}||${rn}`;
+    const compoundKey = mktId + "||" + rn;
 
-    // If this runner+market combo is not yet tracked, register it
-    if (!runnerPnL[compoundKey]) {
-        const pnl = calculateRunnerPnL(rn, mktId);
-        runnerPnL[compoundKey] = pnl;
+    if (!window._nxPnlCache) window._nxPnlCache = {};
+
+    // NX-v9: when Matched temporarily empty, return LAST good PnL (stops loss flash)
+    var mLen = (typeof Matched !== "undefined" && Matched) ? Matched.length : 0;
+    if (mLen === 0 && window._nxPnlCache[compoundKey]) {
+        var c = window._nxPnlCache[compoundKey];
+        return { ifWin: c.ifWin || 0, ifLose: c.ifLose || 0, net: c.ifWin || 0 };
     }
 
-    const pnl    = runnerPnL[compoundKey] || { ifWin: 0, ifLose: 0 };
+    if (!runnerPnL[compoundKey] || mLen > 0) {
+        const pnl = calculateRunnerPnL(rn, mktId);
+        runnerPnL[compoundKey] = pnl;
+        if (pnl && (pnl.ifWin || pnl.ifLose)) {
+            window._nxPnlCache[compoundKey] = { ifWin: pnl.ifWin || 0, ifLose: pnl.ifLose || 0 };
+        }
+    }
+
+    const pnl    = runnerPnL[compoundKey] || window._nxPnlCache[compoundKey] || { ifWin: 0, ifLose: 0 };
     const ifWin  = pnl.ifWin  ?? 0;
     const ifLose = pnl.ifLose ?? 0;
 
@@ -5596,6 +5890,37 @@ function _marketIdsQueryParam() {
     return `matchId=${encodeURIComponent(matchId)}`;
 }
 
+// ------------------------------------------------------------------
+// NX FIX: order -> market resolution WITHOUT falling back to matchId.
+// Old code defaulted unknown orders to matchId (= Match Odds), so a Toss
+// bet showed its P/L under Match Odds until refresh. Also the socket
+// broadcasts ALL of the user's orders, so other-match bets leaked in.
+// ------------------------------------------------------------------
+function _nxSyncMaps() {
+    try { if (typeof window.syncMarketIdsFromVue === 'function') window.syncMarketIdsFromVue(); } catch (e) {}
+}
+function _nxOrderMktId(o, selId) {
+    var fromApi = o.marketId || o.market_id || '';
+    var fromMap = (selId && window.selectionIdToMarketId && window.selectionIdToMarketId[selId]) || '';
+    return String(fromApi || fromMap || '');
+}
+// true only if the order belongs to a market / selection of THIS page
+function _nxOrderBelongsToPage(o, selId, mktId) {
+    var ids = window.allMarketIds;
+    // API marketId is authoritative when present
+    var apiMkt = String((o && (o.marketId || o.market_id)) || mktId || "");
+    var mapped = "";
+    if (selId && window.selectionIdToMarketId && window.selectionIdToMarketId[selId])
+        mapped = String(window.selectionIdToMarketId[selId]);
+    var resolved = apiMkt || mapped || "";
+    // HARD REJECT: known marketId that is NOT on this page
+    if (resolved && ids && ids.size > 0 && !ids.has(resolved)) return false;
+    if (resolved && matchId && resolved === String(matchId)) return true;
+    if (resolved && ids && ids.has(resolved)) return true;
+    // No marketId at all — reject (do not guess Match Odds)
+    return false;
+}
+
 async function fetchUnMatched() {
     if (!matchId) return;
     const tk = localStorage.getItem('token') || localStorage.getItem('wex3authtoken') || token;
@@ -5613,21 +5938,24 @@ async function fetchUnMatched() {
         // Dolphins / other-match bets MUST be dropped even if API returns them.
         list = list.filter(o => {
             const selId  = String(o.selection_id || o.selectionId || o.selId || "");
+            const orderId = String(o.request_id || o.orderId || o.requestId || "");
+            // API marketId is source of truth — never trust selection map over a foreign API marketId
+            const apiMkt = String(o.marketId || o.market_id || "");
             const mapped = (selId && window.selectionIdToMarketId && window.selectionIdToMarketId[selId]) || "";
-            const oMktId = String(o.marketId || o.market_id || mapped || "");
-            const rn = (o.runnerName || o.runner_name || o.rn || "").trim().toLowerCase();
+            const oMktId = apiMkt || mapped || "";
             const ids = window.allMarketIds;
-            // Helper: is this selection known on the CURRENT page?
-            const selKnown = !!(selId && window.selectionIdToRunner && window.selectionIdToRunner[selId]);
-            if (ids && ids.size > 0) {
-                if (oMktId && ids.has(oMktId)) return true;
-                if (mapped && ids.has(String(mapped))) return true;
-                if (selKnown) return true;
-                return false; // drop — e.g. Dolphins from another match
+            // HARD REJECT foreign market even if previously sticky (fixes Dolphins leak)
+            if (oMktId && ids && ids.size > 0 && !ids.has(oMktId) && !(matchId && oMktId === String(matchId))) {
+                return false;
             }
-            // maps not ready yet — only keep if marketId equals page matchId OR selection known
+            if (oMktId && ids && ids.has(oMktId)) return true;
             if (oMktId && matchId && oMktId === String(matchId)) return true;
-            if (selKnown) return true;
+            // Blank marketId: only keep if already accepted on this page (anti-flash)
+            if (!oMktId) {
+                const already = [...Matched, ...UnMatched].find(function(x){ return x.orderId === orderId && x._nxPageOk; });
+                if (already) return true;
+                return false;
+            }
             return false;
         });
 
@@ -5645,7 +5973,7 @@ async function fetchUnMatched() {
                 existing.rn !== "Runner" &&
                 !existing.rn.startsWith("Runner ") &&
                 !_isMatchName(existing.rn)) {
-                return { ...existing, up: parseFloat(o.price) || 0, us: parseFloat(o.size) || 0 };
+                return { ...existing, mktId: _nxOrderMktId(o, selId) || existing.mktId, up: parseFloat(o.price) || 0, us: parseFloat(o.size) || 0 };
             }
 
             // Fresh resolution: backend field first, then map, then fallback
@@ -5685,9 +6013,11 @@ async function fetchUnMatched() {
 
 async function fetchMatched() {
     if (!matchId) return;
-    const tk = localStorage.getItem('token') || localStorage.getItem('wex3authtoken') || token;
-    if (!tk) return;
+    if (window._nxFetchMatchedBusy) return;
+    window._nxFetchMatchedBusy = true;
     try {
+        const tk = localStorage.getItem('token') || localStorage.getItem('wex3authtoken') || token;
+        if (!tk) return;
         // Current match ke markets ke saare matched orders (main + submarkets)
         const res = await fetch(`${ordersUrl}/orders/matched?${_marketIdsQueryParam()}`, {
             headers: { "Authorization": "Bearer " + tk }
@@ -5700,21 +6030,24 @@ async function fetchMatched() {
         // Dolphins / other-match bets MUST be dropped even if API returns them.
         list = list.filter(o => {
             const selId  = String(o.selection_id || o.selectionId || o.selId || "");
+            const orderId = String(o.request_id || o.orderId || o.requestId || "");
+            // API marketId is source of truth — never trust selection map over a foreign API marketId
+            const apiMkt = String(o.marketId || o.market_id || "");
             const mapped = (selId && window.selectionIdToMarketId && window.selectionIdToMarketId[selId]) || "";
-            const oMktId = String(o.marketId || o.market_id || mapped || "");
-            const rn = (o.runnerName || o.runner_name || o.rn || "").trim().toLowerCase();
+            const oMktId = apiMkt || mapped || "";
             const ids = window.allMarketIds;
-            // Helper: is this selection known on the CURRENT page?
-            const selKnown = !!(selId && window.selectionIdToRunner && window.selectionIdToRunner[selId]);
-            if (ids && ids.size > 0) {
-                if (oMktId && ids.has(oMktId)) return true;
-                if (mapped && ids.has(String(mapped))) return true;
-                if (selKnown) return true;
-                return false; // drop — e.g. Dolphins from another match
+            // HARD REJECT foreign market even if previously sticky (fixes Dolphins leak)
+            if (oMktId && ids && ids.size > 0 && !ids.has(oMktId) && !(matchId && oMktId === String(matchId))) {
+                return false;
             }
-            // maps not ready yet — only keep if marketId equals page matchId OR selection known
+            if (oMktId && ids && ids.has(oMktId)) return true;
             if (oMktId && matchId && oMktId === String(matchId)) return true;
-            if (selKnown) return true;
+            // Blank marketId: only keep if already accepted on this page (anti-flash)
+            if (!oMktId) {
+                const already = [...Matched, ...UnMatched].find(function(x){ return x.orderId === orderId && x._nxPageOk; });
+                if (already) return true;
+                return false;
+            }
             return false;
         });
 
@@ -5722,7 +6055,8 @@ async function fetchMatched() {
         const prev = {};
         Matched.forEach(o => { prev[o.orderId] = o; });
 
-        Matched = list.map(o => {
+        // Map API rows
+        const fromApi = list.map(o => {
             const selId   = String(o.selection_id || o.selectionId || o.selId || "");
             const orderId = String(o.request_id || o.orderId || o.requestId || "");
             const existing = prev[orderId];
@@ -5732,8 +6066,12 @@ async function fetchMatched() {
                 existing.rn !== "Runner" &&
                 !existing.rn.startsWith("Runner ") &&
                 !_isMatchName(existing.rn)) {
+                var _m = _nxOrderMktId(o, selId) || existing.mktId;
                 return {
                     ...existing,
+                    mktId: _m,
+                    _nxPageOk: true,
+                    _nxSeenAt: Date.now(),
                     mp: parseFloat(o.price) || 0,
                     ms: parseFloat(o.matched > 0 ? o.matched : o.size) || 0,
                     profit: parseFloat(o.profit || 0),
@@ -5750,20 +6088,20 @@ async function fetchMatched() {
                 rn = selId ? ("Runner " + selId) : "Runner";
             }
 
-            return {
-                orderId,
-                rn,
-                selId,
-                mktId: (function(){
+            var _resolvedMkt = (function(){
                     var fromApi = o.marketId || o.market_id || '';
                     var fromMap = (selId && window.selectionIdToMarketId && window.selectionIdToMarketId[selId]) || '';
                     if (fromApi) return String(fromApi);
                     if (fromMap) return String(fromMap);
-                    // Only fall back to matchId if this selection is a MAIN market runner
-                    if (selId && window.selectionIdToMarketId && window.selectionIdToMarketId[selId] === String(matchId)) return String(matchId);
-                    // Unknown → empty (will not pollute Match Odds PnL)
                     return '';
-                })(),
+                })();
+            return {
+                orderId,
+                rn,
+                selId,
+                mktId: _resolvedMkt,
+                _nxPageOk: true,
+                _nxSeenAt: Date.now(),
                 mp: parseFloat(o.price) || 0,
                 ms: parseFloat(o.matched > 0 ? o.matched : o.size) || 0,
                 bs: (o.side || o.type || "").toUpperCase(),
@@ -5772,9 +6110,114 @@ async function fetchMatched() {
             };
         });
 
+        // NX-v3 NEVER-SHRINK: keep page-local rows; drop foreign; secondary key rn|mp|ms
+        const ids = window.allMarketIds;
+        if (ids && matchId) ids.add(String(matchId));
+        function _isPageLocal(o) {
+            // NX-v6: single gate — runner must be on THIS page catalog/title
+            // marketId-only pass removed (allMarketIds pollution was letting Dolphins through)
+            return _nxIsOrderVisibleOnPage(o);
+        }
+        function _ck(o) {
+            return String(o.rn||"").toLowerCase() + "|" + String(o.mp||"") + "|" + String(o.ms||"") + "|" + String(o.bs||"");
+        }
+        const byId = {};
+        const byCk = {};
+        Matched.forEach(function(o) {
+            if (!o) return;
+            if (!_isPageLocal(o)) return;
+            if (o.orderId && String(o.orderId) !== "") byId[String(o.orderId)] = o;
+            byCk[_ck(o)] = o;
+        });
+        fromApi.forEach(function(o) {
+            if (!o) return;
+            if (!_isPageLocal(o) && o.mktId) return;
+            var id = o.orderId ? String(o.orderId) : "";
+            var prev = (id && byId[id]) || byCk[_ck(o)];
+            if (prev && prev.rn && prev.rn !== "Runner" && !String(prev.rn).startsWith("Runner ") && !_isMatchName(prev.rn)) {
+                o.rn = prev.rn;
+            }
+            if (prev && prev.mktId && !o.mktId) o.mktId = prev.mktId;
+            o._nxPageOk = true;
+            o._nxSeenAt = Date.now();
+            if (id) byId[id] = o;
+            byCk[_ck(o)] = o;
+        });
+        // Merge byId + leftover byCk (for rows whose orderId vanished between polls)
+        var seen = {};
+        var merged = [];
+        Object.keys(byId).forEach(function(k) {
+            var o = byId[k];
+            var ck = _ck(o);
+            if (seen[ck]) return;
+            seen[ck] = true;
+            merged.push(o);
+        });
+        Object.keys(byCk).forEach(function(ck) {
+            if (seen[ck]) return;
+            seen[ck] = true;
+            merged.push(byCk[ck]);
+        });
+        // NX-v10 UNION STICKY BY ID — never shrink matched list on partial API polls.
+        // Problem: API sometimes omits Match Odds Boland 1.79 while returning other bets;
+        // old code overwrote sticky with the smaller set → 3↔2 flash + PnL vanish.
+        if (!window._nxGoneIds) window._nxGoneIds = {};
+        if (!window._nxStickyById) window._nxStickyById = {};
+
+        function _nxStickyKey(o) {
+            var id = String((o && (o.orderId || o.request_id)) || "");
+            if (id && id !== "undefined" && id !== "null") return "id:" + id;
+            return "ck:" + String(o.rn||"").toLowerCase() + "|" + String(o.mp||"") + "|" + String(o.ms||"") + "|" + String(o.bs||"");
+        }
+        function _nxKeepSticky(o) {
+            if (!o) return false;
+            var id = String(o.orderId || "");
+            if (id && window._nxGoneIds[id]) return false;
+            var rn = String(o.rn || "").trim().toLowerCase();
+            if (!rn || rn === "runner" || rn.indexOf("runner ") === 0) return false;
+            var tt = (typeof _nxTitleTeams === "function") ? _nxTitleTeams() : new Set();
+            if (tt.has(rn)) return true;
+            // fancy / other page runners
+            try { return _nxIsOrderVisibleOnPage(o); } catch (e) { return !!o._nxPageOk; }
+        }
+
+        // 1) Upsert everything from this poll's merge into sticky map
+        merged.forEach(function(o) {
+            if (!_nxKeepSticky(o)) return;
+            o._nxPageOk = true;
+            o._nxSeenAt = Date.now();
+            window._nxStickyById[_nxStickyKey(o)] = o;
+        });
+
+        // 2) Also upsert any previous Matched that still valid
+        (Matched || []).forEach(function(o) {
+            if (!_nxKeepSticky(o)) return;
+            var k = _nxStickyKey(o);
+            if (!window._nxStickyById[k]) window._nxStickyById[k] = o;
+        });
+
+        // 3) Rebuild Matched ONLY from sticky map (union of all seen page-local bets)
+        Matched = [];
+        Object.keys(window._nxStickyById).forEach(function(k) {
+            var o = window._nxStickyById[k];
+            if (!_nxKeepSticky(o)) {
+                delete window._nxStickyById[k];
+                return;
+            }
+            Matched.push(o);
+        });
+        Matched.sort(function(a, b) {
+            return String(a.orderId || _nxStickyKey(a)).localeCompare(String(b.orderId || _nxStickyKey(b)));
+        });
+        window._nxStickyMatched = Matched.slice();
+        window.Matched = Matched;
+        console.log("[NX-v10] sticky Matched count:", Matched.length, Object.keys(window._nxStickyById));
+
         render();
     } catch (e) {
         console.error("fetchMatched error:", e);
+    } finally {
+        window._nxFetchMatchedBusy = false;
     }
 }
 
@@ -5794,18 +6237,14 @@ async function fetchRunners() {
         // main market runners + every sub-market (TossMarkets, BookmakerMarkets, etc.)
         const allRunnerSources = [];
 
-        // CRITICAL: har baar maps CLEAR karo — purane match (Dolphins etc.) ke
-        // selectionIds nahi rehne chahiye warna cross-match bets filter se nikal aate hain
-        window.selectionIdToMarketId = {};
-        if (typeof selectionIdToRunner !== 'undefined') {
-            // clear object in-place (keep same reference used elsewhere)
-            Object.keys(selectionIdToRunner).forEach(function(k){ delete selectionIdToRunner[k]; });
-        } else {
-            selectionIdToRunner = {};
-        }
+        // NX-STABLE: MERGE maps only — never wipe to empty (wiping caused Matched/PnL flicker)
+        if (!window.selectionIdToMarketId) window.selectionIdToMarketId = {};
+        if (typeof selectionIdToRunner === 'undefined' || !selectionIdToRunner) selectionIdToRunner = {};
         window.selectionIdToRunner = selectionIdToRunner;
-        // allMarketIds = current match ka main + sub-market IDs (filter ke liye)
-        window.allMarketIds = new Set();
+        if (!window.allMarketIds) window.allMarketIds = new Set();
+        if (matchId) window.allMarketIds.add(String(matchId));
+        try { if (typeof window.syncMarketIdsFromVue === 'function') window.syncMarketIdsFromVue(); } catch (e) {}
+        window._nxBuildingMaps = false;
 
         if (Array.isArray(market?.runners)) {
             const mainMktId = String(market.marketId || market.id || matchId);
@@ -5938,15 +6377,26 @@ socket.on("disconnect", () => {
 socket.on("ordersUpdated", (data) => {
     if (!data?.newOrders?.length) return;
 
+    // NX ROOT FIX: match room is shared by ALL viewers of this match.
+    // Only accept events that belong to THIS logged-in user.
+    var myId = window._nxMyUserId || (function(){ try { return localStorage.getItem('nx_user_id'); } catch(e){ return null; } })();
+    if (data.userId != null && myId != null && String(data.userId) !== String(myId)) {
+        console.log('[NX] drop other-user ordersUpdated', data.userId, '!=', myId);
+        return;
+    }
+
     data.newOrders.forEach(newO => {
+        // Per-order user check (payload may mix)
+        var oUid = newO.user_id || newO.userId || data.userId;
+        if (oUid != null && myId != null && String(oUid) !== String(myId)) return;
+
         const orderId    = String(newO.request_id || newO.orderId || newO.requestId);
         const orderSelId = String(newO.selection_id || newO.selectionId || "");
         // FIX: mktId blank ho to selectionIdToMarketId se resolve karo
-        const orderMktId = String(
-            newO.marketId || newO.market_id ||
-            (orderSelId && window.selectionIdToMarketId && window.selectionIdToMarketId[orderSelId]) ||
-            matchId
-        );
+        _nxSyncMaps();
+        const orderMktId = _nxOrderMktId(newO, orderSelId);   // '' if unknown (never matchId)
+        // Cross-match guard: drop other matches' markets
+        if (!_nxOrderBelongsToPage(newO, orderSelId, orderMktId)) return;
 
         // FIX: marketId filter hataya — Toss/other markets ke orders bhi accept karo
         // (sirf current event ke orders aate hain server se, isliye safe hai)
@@ -5972,13 +6422,15 @@ socket.on("ordersUpdated", (data) => {
         }
 
         UnMatched = UnMatched.filter(o => o.orderId !== orderId);
-        Matched   = Matched.filter(o => o.orderId !== orderId);
+        _nxMarkGone(orderId); Matched = Matched.filter(o => o.orderId !== orderId);
 
         if (newO.status === "PENDING") {
             UnMatched.push({ orderId, rn: safeRn, selId: orderSelId, mktId: orderMktId,
+                _nxPageOk: true,
                 up: newO.price, us: newO.size, bs: (newO.side || "").toUpperCase() });
         } else if (newO.status === "MATCHED") {
             Matched.push({ orderId, rn: safeRn, selId: orderSelId, mktId: orderMktId,
+                _nxPageOk: true,
                 mp: parseFloat(newO.price || 0),
                 ms: parseFloat(newO.matched > 0 ? newO.matched : newO.size || 0),
                 bs: (newO.side || "").toUpperCase(),
@@ -5995,7 +6447,13 @@ socket.on("ordersUpdated", (data) => {
         }
     });
 
-    render();
+    // Debounce render — rapid socket bursts caused Matched/PnL flicker
+    clearTimeout(window._nxRenderT);
+    window._nxRenderT = setTimeout(function(){ render(); }, 80);
+
+    // Authoritative reconcile from API (longer delay to avoid thrash)
+    clearTimeout(window._nxReconcileT);
+    window._nxReconcileT = setTimeout(function () { fetchUnMatched(); fetchMatched(); }, 2500);
 });
 
 // userUpdated — wallet + liable + settlement info
@@ -6673,6 +7131,11 @@ export default {
             if (!isFinite(n) || n === 0) return '';
             return String(Math.round(n));
         });
+        Vue.filter('formatPnL', function (value) {
+            var n = Number(value);
+            if (!isFinite(n) || n === 0) return '0';
+            return String(Math.round(Math.abs(n)));
+        });
 
         // Unreal component ko manually register karo (safety ke liye)
         if (typeof UnrealHTML5VideoPlayer !== 'undefined') {
@@ -7186,6 +7649,9 @@ export default {
       });
     } catch (e) {}
   }
+
+  // NX FIX: expose so ordersUpdated / fetchRunners can refresh maps first
+  window.syncMarketIdsFromVue = syncMarketIdsFromVue;
 
   // Patch _marketIdsQueryParam to always send every known id
   function installQueryPatch() {

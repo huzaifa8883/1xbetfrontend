@@ -1,5 +1,6 @@
 
 
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -4997,6 +4998,12 @@ function _nxRegisterFancyMarket(mktId) {
     window._nxFancyMarketIds.add(String(mktId));
 }
 
+function _nxExtractRate(o) {
+    var r = parseFloat((o && (o.rate || o.fancyPrice || o.fancyRate)) || 0);
+    if (r > 0) return r;
+    var m = String((o && (o.runnerName || o.runner_name || o.rn)) || '').match(/-\s*(\d+(?:\.\d+)?)\s*$/);
+    return m ? parseFloat(m[1]) : 0;
+}
 function calculateRunnerPnL(runnerName, forMarketId) {
     const normalized  = (runnerName || "").trim().toLowerCase();
     const useMarketFilter = !!forMarketId;
@@ -5018,11 +5025,15 @@ function calculateRunnerPnL(runnerName, forMarketId) {
 
     if (!marketOrders.length) return { ifWin: 0, ifLose: 0 };
 
-    const isFancy = _nxIsFancyMarketId(forMarketId);
+    let isFancy = _nxIsFancyMarketId(forMarketId);
+    if (!isFancy) {
+        isFancy = marketOrders.some(function(order) {
+            var r = _nxExtractRate(order);
+            return r >= 50 && r <= 200;
+        });
+    }
 
-    // Fancy-2 / session: BPEXCH style — rate-based (usually rate=100)
-    // Stake 1000 @ rate 100 → ifWin +1000, ifLose -1000
-    // NOT (line-1)*stake which wrongly gave 48000 for line 49
+    // Fancy-2: stake 5000 @ rate 90 → ifWin +4500, ifLose -5000
     if (isFancy) {
         marketOrders.forEach(order => {
             const rn = (order.rn || order.runnerName || "").trim().toLowerCase();
@@ -5034,11 +5045,7 @@ function calculateRunnerPnL(runnerName, forMarketId) {
             const stake = Number(order.ms || order.size || 0);
             if (stake <= 0) return;
             // rate: explicit field, or parsed from "Name - 100", default 100
-            var rate = Number(order.rate || order.fancyRate || 0);
-            if (!rate || rate <= 0) {
-                var m = String(order.rn || "").match(/-\s*(\d+(?:\.\d+)?)\s*$/);
-                if (m) rate = Number(m[1]);
-            }
+            var rate = _nxExtractRate(order);
             if (!rate || rate <= 0) rate = 100;
 
             const side = (order.bs || order.side || "").toUpperCase();
@@ -5495,7 +5502,14 @@ function render() {
                 tr.className = side === "B" ? "back" : "lay";
                 const price  = parseFloat(o.mp || o.price || 0);
                 const size   = parseFloat(o.ms || o.size || 0);
-                tr.innerHTML = "<td>"+displayName+"</td><td>"+price.toFixed(2)+"</td><td>"+format(size)+"</td>";
+                // NX Fancy-2: Price column shows RATE (90), not the run line (27)
+                var rate = parseFloat(o.rate || 0);
+                if (!(rate > 0)) {
+                  var _rm = String(o.rn || displayName || "").match(/-\s*(\d+(?:\.\d+)?)\s*$/);
+                  if (_rm) rate = parseFloat(_rm[1]);
+                }
+                var displayPrice = (rate >= 50 && rate <= 200) ? rate : price;
+                tr.innerHTML = "<td>"+displayName+"</td><td>"+displayPrice.toFixed(2)+"</td><td>"+format(size)+"</td>";
                 mb.appendChild(tr);
             });
             const mcEl = document.getElementById("matched-count");
@@ -5891,6 +5905,7 @@ async function fetchMatched() {
                     _nxPageOk: true,
                     _nxSeenAt: Date.now(),
                     mp: parseFloat(o.price) || 0,
+                    rate: (function(){ var r=parseFloat(o.rate||0); if(r>0)return r; var m=String(o.runnerName||o.runner_name||"").match(/-\s*(\d+(?:\.\d+)?)\s*$/); return m?parseFloat(m[1]):0; })(),
                     ms: parseFloat(o.matched > 0 ? o.matched : o.size) || 0,
                     profit: parseFloat(o.profit || 0),
                     liable: parseFloat(o.liable || 0),
@@ -5921,6 +5936,7 @@ async function fetchMatched() {
                 _nxPageOk: true,
                 _nxSeenAt: Date.now(),
                 mp: parseFloat(o.price) || 0,
+                    rate: (function(){ var r=parseFloat(o.rate||0); if(r>0)return r; var m=String(o.runnerName||o.runner_name||"").match(/-\s*(\d+(?:\.\d+)?)\s*$/); return m?parseFloat(m[1]):0; })(),
                 ms: parseFloat(o.matched > 0 ? o.matched : o.size) || 0,
                 bs: (o.side || o.type || "").toUpperCase(),
                 profit: parseFloat(o.profit || 0),
@@ -6250,6 +6266,7 @@ socket.on("ordersUpdated", (data) => {
             Matched.push({ orderId, rn: safeRn, selId: orderSelId, mktId: orderMktId,
                 _nxPageOk: true,
                 mp: parseFloat(newO.price || 0),
+                rate: (function(){ var r=parseFloat(newO.rate||0); if(r>0)return r; var m=String(newO.runnerName||newO.runner_name||"").match(/-\s*(\d+(?:\.\d+)?)\s*$/); return m?parseFloat(m[1]):0; })(),
                 ms: parseFloat(newO.matched > 0 ? newO.matched : newO.size || 0),
                 bs: (newO.side || "").toUpperCase(),
                 profit: parseFloat(newO.profit || 0),

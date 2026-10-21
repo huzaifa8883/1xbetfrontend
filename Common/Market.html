@@ -2108,10 +2108,14 @@
                 {{ Catalog.status2 }}
             </span>-->
             </div>
-            <div class="runner-position">
-                <template v-if="runner.ifWin !== 0">
+                        <div class="runner-position">
+                <!-- BPEXCH: both profit and loss under runner -->
+                <template v-if="runner.ifWin !== 0 || (runner.ifLose !== 0 && runner.ifLose != null)">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
                     <strong>{{ runner.ifWin | formatPnL }}</strong>
+                </span>
+                <span class="position-minus ml-1" v-if="runner.ifLose !== 0 && runner.ifLose != null">
+                    <strong>{{ runner.ifLose | formatPnL }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -2239,10 +2243,14 @@
                 {{ Catalog.status2 }}
             </span>-->
             </div>
-            <div class="runner-position">
-                <template v-if="runner.ifWin !== 0">
+                        <div class="runner-position">
+                <!-- BPEXCH: both profit and loss under runner -->
+                <template v-if="runner.ifWin !== 0 || (runner.ifLose !== 0 && runner.ifLose != null)">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
                     <strong>{{ runner.ifWin | formatPnL }}</strong>
+                </span>
+                <span class="position-minus ml-1" v-if="runner.ifLose !== 0 && runner.ifLose != null">
+                    <strong>{{ runner.ifLose | formatPnL }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -2369,10 +2377,14 @@
                 {{ Catalog.status2 }}
             </span>-->
             </div>
-            <div class="runner-position">
-                <template v-if="runner.ifWin !== 0">
+                        <div class="runner-position">
+                <!-- BPEXCH: both profit and loss under runner -->
+                <template v-if="runner.ifWin !== 0 || (runner.ifLose !== 0 && runner.ifLose != null)">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
                     <strong>{{ runner.ifWin | formatPnL }}</strong>
+                </span>
+                <span class="position-minus ml-1" v-if="runner.ifLose !== 0 && runner.ifLose != null">
+                    <strong>{{ runner.ifLose | formatPnL }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -2500,10 +2512,14 @@
                 {{ Catalog.status2 }}
             </span>-->
             </div>
-            <div class="runner-position">
-                <template v-if="runner.ifWin !== 0">
+                        <div class="runner-position">
+                <!-- BPEXCH: both profit and loss under runner -->
+                <template v-if="runner.ifWin !== 0 || (runner.ifLose !== 0 && runner.ifLose != null)">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
                     <strong>{{ runner.ifWin | formatPnL }}</strong>
+                </span>
+                <span class="position-minus ml-1" v-if="runner.ifLose !== 0 && runner.ifLose != null">
+                    <strong>{{ runner.ifLose | formatPnL }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -2630,10 +2646,14 @@
                 {{ Catalog.status2 }}
             </span>-->
             </div>
-            <div class="runner-position">
-                <template v-if="runner.ifWin !== 0">
+                        <div class="runner-position">
+                <!-- BPEXCH: both profit and loss under runner -->
+                <template v-if="runner.ifWin !== 0 || (runner.ifLose !== 0 && runner.ifLose != null)">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
                     <strong>{{ runner.ifWin | formatPnL }}</strong>
+                </span>
+                <span class="position-minus ml-1" v-if="runner.ifLose !== 0 && runner.ifLose != null">
+                    <strong>{{ runner.ifLose | formatPnL }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -2837,10 +2857,14 @@
                 {{ Catalog.status2 }}
             </span>-->
             </div>
-            <div class="runner-position">
-                <template v-if="runner.ifWin !== 0">
+                        <div class="runner-position">
+                <!-- BPEXCH: both profit and loss under runner -->
+                <template v-if="runner.ifWin !== 0 || (runner.ifLose !== 0 && runner.ifLose != null)">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
                     <strong>{{ runner.ifWin | formatPnL }}</strong>
+                </span>
+                <span class="position-minus ml-1" v-if="runner.ifLose !== 0 && runner.ifLose != null">
+                    <strong>{{ runner.ifLose | formatPnL }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -2975,10 +2999,14 @@
                 {{ Catalog.status2 }}
             </span>-->
             </div>
-            <div class="runner-position">
-                <template v-if="runner.ifWin !== 0">
+                        <div class="runner-position">
+                <!-- BPEXCH: both profit and loss under runner -->
+                <template v-if="runner.ifWin !== 0 || (runner.ifLose !== 0 && runner.ifLose != null)">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
                     <strong>{{ runner.ifWin | formatPnL }}</strong>
+                </span>
+                <span class="position-minus ml-1" v-if="runner.ifLose !== 0 && runner.ifLose != null">
+                    <strong>{{ runner.ifLose | formatPnL }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -3107,10 +3135,14 @@
                 {{ Catalog.status2 }}
             </span>-->
             </div>
-            <div class="runner-position">
-                <template v-if="runner.ifWin !== 0">
+                        <div class="runner-position">
+                <!-- BPEXCH: both profit and loss under runner -->
+                <template v-if="runner.ifWin !== 0 || (runner.ifLose !== 0 && runner.ifLose != null)">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
                     <strong>{{ runner.ifWin | formatPnL }}</strong>
+                </span>
+                <span class="position-minus ml-1" v-if="runner.ifLose !== 0 && runner.ifLose != null">
+                    <strong>{{ runner.ifLose | formatPnL }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -3238,10 +3270,14 @@
                 {{ Catalog.status2 }}
             </span>-->
             </div>
-            <div class="runner-position">
-                <template v-if="runner.ifWin !== 0">
+                        <div class="runner-position">
+                <!-- BPEXCH: both profit and loss under runner -->
+                <template v-if="runner.ifWin !== 0 || (runner.ifLose !== 0 && runner.ifLose != null)">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
                     <strong>{{ runner.ifWin | formatPnL }}</strong>
+                </span>
+                <span class="position-minus ml-1" v-if="runner.ifLose !== 0 && runner.ifLose != null">
+                    <strong>{{ runner.ifLose | formatPnL }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -3506,10 +3542,14 @@
                 {{ Catalog.status2 }}
             </span>-->
             </div>
-            <div class="runner-position">
-                <template v-if="runner.ifWin !== 0">
+                        <div class="runner-position">
+                <!-- BPEXCH: both profit and loss under runner -->
+                <template v-if="runner.ifWin !== 0 || (runner.ifLose !== 0 && runner.ifLose != null)">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
                     <strong>{{ runner.ifWin | formatPnL }}</strong>
+                </span>
+                <span class="position-minus ml-1" v-if="runner.ifLose !== 0 && runner.ifLose != null">
+                    <strong>{{ runner.ifLose | formatPnL }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -3716,10 +3756,14 @@
                 {{ Catalog.status2 }}
             </span>-->
             </div>
-            <div class="runner-position">
-                <template v-if="runner.ifWin !== 0">
+                        <div class="runner-position">
+                <!-- BPEXCH: both profit and loss under runner -->
+                <template v-if="runner.ifWin !== 0 || (runner.ifLose !== 0 && runner.ifLose != null)">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
                     <strong>{{ runner.ifWin | formatPnL }}</strong>
+                </span>
+                <span class="position-minus ml-1" v-if="runner.ifLose !== 0 && runner.ifLose != null">
+                    <strong>{{ runner.ifLose | formatPnL }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -3852,10 +3896,14 @@
                 {{ Catalog.status2 }}
             </span>-->
             </div>
-            <div class="runner-position">
-                <template v-if="runner.ifWin !== 0">
+                        <div class="runner-position">
+                <!-- BPEXCH: both profit and loss under runner -->
+                <template v-if="runner.ifWin !== 0 || (runner.ifLose !== 0 && runner.ifLose != null)">
                 <span :class="runner.ifWin >= 0 ? 'runner-position-pos' : 'position-minus'">
                     <strong>{{ runner.ifWin | formatPnL }}</strong>
+                </span>
+                <span class="position-minus ml-1" v-if="runner.ifLose !== 0 && runner.ifLose != null">
+                    <strong>{{ runner.ifLose | formatPnL }}</strong>
                 </span>
                 </template>
                 <span class="ml-1" v-if="runner.jockeyName != null" style="font-weight: normal;">
@@ -5670,6 +5718,62 @@ function updateVueRunnerPnL() {
             if (!Array.isArray(markets)) return;
             markets.forEach(function(catalog) { updateRunnersInCatalog(catalog); });
         });
+
+        // NX Fancy-2 BPEXCH: force PnL under runner name by name-match
+        // (marketId often mismatches for Fancy2 / Odd / Figure — name is reliable)
+        try {
+            if (typeof Matched !== "undefined" && Matched && Matched.length) {
+                var fancyLists = ["Fancy2Markets", "FancyMarkets", "FigureMarkets", "OddFigureMarkets"];
+                // Build map: baseRunnerName -> {ifWin, ifLose} from all fancy-rate orders
+                var byName = {};
+                Matched.forEach(function(order) {
+                    var rate = (typeof _nxExtractRate === "function") ? _nxExtractRate(order) : 0;
+                    // Fancy-style if rate 50-200 OR name has " - NNN"
+                    var rnRaw = String(order.rn || order.runnerName || "");
+                    if (!(rate >= 50 && rate <= 200)) {
+                        var m = rnRaw.match(/-\s*(\d+(?:\.\d+)?)\s*$/);
+                        if (m) rate = parseFloat(m[1]);
+                    }
+                    if (!(rate >= 50 && rate <= 200)) return; // not fancy
+                    var base = rnRaw.trim().toLowerCase().replace(/\s*-\s*\d+(?:\.\d+)?\s*$/, "").trim();
+                    if (!base) return;
+                    var stake = Number(order.ms || order.size || 0);
+                    if (stake <= 0) return;
+                    if (!rate || rate <= 0) rate = 100;
+                    var side = String(order.bs || order.side || "").toUpperCase();
+                    var w = 0, l = 0;
+                    if (side === "B" || side === "YES" || side === "Y") {
+                        w = stake * (rate / 100);
+                        l = -stake;
+                    } else {
+                        w = stake;
+                        l = -stake * (rate / 100);
+                    }
+                    if (!byName[base]) byName[base] = { ifWin: 0, ifLose: 0 };
+                    byName[base].ifWin  += w;
+                    byName[base].ifLose += l;
+                });
+                fancyLists.forEach(function(listName) {
+                    var markets = vm[listName];
+                    if (!Array.isArray(markets)) return;
+                    markets.forEach(function(catalog) {
+                        if (!catalog || !Array.isArray(catalog.runners)) return;
+                        catalog.runners.forEach(function(runner, idx) {
+                            var rName = String(runner.runnerName || "").trim().toLowerCase()
+                                .replace(/\s*-\s*\d+(?:\.\d+)?\s*$/, "").trim();
+                            if (!rName || !byName[rName]) return;
+                            var ifWin  = Math.round(byName[rName].ifWin);
+                            var ifLose = Math.round(byName[rName].ifLose);
+                            if (runner.ifWin !== ifWin || runner.ifLose !== ifLose) {
+                                Vue.set(catalog.runners, idx, Object.assign({}, runner, {
+                                    ifWin: ifWin, ifLose: ifLose
+                                }));
+                            }
+                        });
+                    });
+                });
+            }
+        } catch (e2) { console.warn("[PnL] fancy name pass:", e2.message); }
     } catch(e) {
         console.warn("[PnL] Vue update error:", e.message);
     }

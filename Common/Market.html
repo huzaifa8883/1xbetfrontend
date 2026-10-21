@@ -1,5 +1,6 @@
 
 
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -4877,9 +4878,14 @@ var runnersReady = false;       // fetchRunners complete ho gaya?
 // ------------------------------------------------------------------
 function _isMatchName(str) {
     if (!str) return false;
-    const s = str.toLowerCase();
-    // Common match-name separators used by Betfair
-    return s.includes(' v ') || s.includes(' vs ') || /\s-\s/.test(s);
+    const s = str.toLowerCase().trim();
+    // True match titles only: "Team A v Team B" / "Team A vs Team B"
+    // DO NOT treat fancy "6 Over Run NC - 85" as match name (that broke Matched titles + PnL)
+    if (s.includes(' v ') || s.includes(' vs ')) return true;
+    // Bare " - " without trailing rate number can still be a match-style title
+    // but "something - 85" or "something - 100" is Fancy rate suffix — NOT a match name
+    if (/\s-\s\d+(\.\d+)?\s*$/.test(s)) return false;
+    return false;
 }
 
 // Returns true when a name is a temporary placeholder written before
@@ -4898,9 +4904,16 @@ function _isPlaceholderName(str) {
 function resolveRunnerName(o) {
     const selId = String(o.selection_id || o.selectionId || o.selId || "");
 
-    // 1. selectionId → runnerName map — MOST RELIABLE (populated from catalog2)
+    // 0. Fancy-2: if order already has "Name - 85", trust it over any map
+    const ownRn = (o.runner_name || o.rn || o.runnerName || "").trim();
+    if (ownRn && /\s-\s\d+(\.\d+)?\s*$/.test(ownRn) && !_isPlaceholderName(ownRn)) {
+        return ownRn;
+    }
+
+    // 1. selectionId → runnerName map (catalog) — only if not a polluted match title
     if (selId && selectionIdToRunner[selId]) {
-        return selectionIdToRunner[selId];
+        var mapped = selectionIdToRunner[selId];
+        if (mapped && !_isMatchName(mapped) && !_isPlaceholderName(mapped)) return mapped;
     }
 
     // 2. runner_name field (dedicated backend field, usually correct)
@@ -5464,7 +5477,12 @@ function render() {
         const liveMap = window.selectionIdToRunner || selectionIdToRunner || {};
 
         // Layer 1 -- use whatever is stored on the object
-        let name = (o.rn || "").trim();
+        let name = (o.rn || o.runnerName || o.runner_name || "").trim();
+
+        // Fancy-2: name already has " - 85" rate suffix → TRUST IT, never overwrite from map
+        if (name && /\s-\s\d+(\.\d+)?\s*$/.test(name) && !_isPlaceholderName(name)) {
+            return name;
+        }
 
         // Layer 2 -- LAZY UPGRADE: if the stored value is a placeholder
         // ("Runner" / "Runner 123") but the live map now has the real name,
@@ -5932,11 +5950,13 @@ async function fetchUnMatched() {
 
             // Fresh resolution: backend field first, then map, then fallback
             let rn = (o.runnerName || o.runner_name || "").trim();
-            if (!rn || rn === "Runner" || rn.startsWith("Runner ") || _isMatchName(rn)) {
+            // Fancy "Name - 85": never replace with selectionId map (that was wiping 6 Over → Odd Kalli)
+            var isFancyRn = /\s-\s\d+(\.\d+)?\s*$/.test(rn);
+            if (!isFancyRn && (!rn || rn === "Runner" || rn.startsWith("Runner ") || _isMatchName(rn))) {
                 rn = (selId && selectionIdToRunner[selId]) ? selectionIdToRunner[selId] : "";
             }
-            if (!rn || _isMatchName(rn)) {
-                rn = selId ? ("Runner " + selId) : "Runner";
+            if (!rn || (!isFancyRn && _isMatchName(rn))) {
+                rn = isFancyRn ? rn : (selId ? ("Runner " + selId) : "Runner");
             }
 
             return {
@@ -6036,11 +6056,13 @@ async function fetchMatched() {
 
             // Fresh resolution: backend field first, then map, then fallback
             let rn = (o.runnerName || o.runner_name || "").trim();
-            if (!rn || rn === "Runner" || rn.startsWith("Runner ") || _isMatchName(rn)) {
+            // Fancy "Name - 85": never replace with selectionId map (that was wiping 6 Over → Odd Kalli)
+            var isFancyRn = /\s-\s\d+(\.\d+)?\s*$/.test(rn);
+            if (!isFancyRn && (!rn || rn === "Runner" || rn.startsWith("Runner ") || _isMatchName(rn))) {
                 rn = (selId && selectionIdToRunner[selId]) ? selectionIdToRunner[selId] : "";
             }
-            if (!rn || _isMatchName(rn)) {
-                rn = selId ? ("Runner " + selId) : "Runner";
+            if (!rn || (!isFancyRn && _isMatchName(rn))) {
+                rn = isFancyRn ? rn : (selId ? ("Runner " + selId) : "Runner");
             }
 
             var _resolvedMkt = (function(){

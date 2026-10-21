@@ -5356,17 +5356,19 @@ function _nxIsOrderVisibleOnPage(o) {
     if (!o) return false;
     var rn = String(o.rn || "").trim().toLowerCase();
     if (!rn || rn === "runner" || rn.indexOf("runner ") === 0) return false;
+    // Fancy "6 over run nc - 100" → base "6 over run nc" for catalog match
+    var rnBase = rn.replace(/\s*-\s*\d+(?:\.\d+)?\s*$/, "").trim();
 
     // Title teams always allowed (Boland / Knights on Boland v Knights page)
     var titleTeams = _nxTitleTeams();
-    if (titleTeams.has(rn)) return true;
+    if (titleTeams.has(rn) || titleTeams.has(rnBase)) return true;
 
     // Already confirmed page-local — keep sticky (stops 1↔0 flash)
     if (o._nxPageOk && titleTeams.size > 0) {
         // only drop if clearly not a title team AND not in catalog
         var pageNames = _nxGetPageRunnerNames();
-        if (pageNames.size > 0 && pageNames.has(rn)) return true;
-        if (pageNames.size > 0 && !pageNames.has(rn) && !titleTeams.has(rn)) {
+        if (pageNames.size > 0 && (pageNames.has(rn) || pageNames.has(rnBase))) return true;
+        if (pageNames.size > 0 && !pageNames.has(rn) && !pageNames.has(rnBase) && !titleTeams.has(rn) && !titleTeams.has(rnBase)) {
             // foreign sticky — drop
             return false;
         }
@@ -5379,7 +5381,12 @@ function _nxIsOrderVisibleOnPage(o) {
     if (pageNames.size === 0) {
         titleTeams.forEach(function(t) { pageNames.add(t); });
     }
-    if (pageNames.size > 0 && !pageNames.has(rn)) {
+    // marketId on this page → always allow (Fancy2 marketIds belong here)
+    var oMkt = String(o.mktId || o.marketId || o.market_id || "");
+    if (oMkt && window.allMarketIds && window.allMarketIds.has(oMkt)) {
+        return true;
+    }
+    if (pageNames.size > 0 && !pageNames.has(rn) && !pageNames.has(rnBase)) {
         return false;
     }
 

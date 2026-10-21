@@ -1,6 +1,5 @@
 
 
-
 <!doctype html>
 <html lang="en">
 <head>
@@ -5011,7 +5010,7 @@ function calculateRunnerPnL(runnerName, forMarketId) {
     let ifWin  = 0;
     let ifLose = 0;
 
-    const marketOrders = Matched.filter(order => {
+    let marketOrders = Matched.filter(order => {
         if (!useMarketFilter) return true;
         let oMktId = String(order.mktId || "");
         if (!oMktId) {
@@ -5022,6 +5021,17 @@ function calculateRunnerPnL(runnerName, forMarketId) {
         if (!oMktId) return false;
         return oMktId === String(forMarketId);
     });
+
+    // Fancy fallback: if no marketId match but runner name matches a fancy-rate order, include it
+    if (!marketOrders.length && useMarketFilter) {
+        var want = (runnerName || "").trim().toLowerCase().replace(/\s*-\s*\d+(?:\.\d+)?\s*$/, "").trim();
+        marketOrders = Matched.filter(function(order) {
+            var r = (typeof _nxExtractRate === "function") ? _nxExtractRate(order) : 0;
+            if (!(r >= 50 && r <= 200)) return false;
+            var rn = String(order.rn || order.runnerName || "").toLowerCase().replace(/\s*-\s*\d+(?:\.\d+)?\s*$/, "").trim();
+            return rn && want && rn === want;
+        });
+    }
 
     if (!marketOrders.length) return { ifWin: 0, ifLose: 0 };
 
@@ -5502,14 +5512,22 @@ function render() {
                 tr.className = side === "B" ? "back" : "lay";
                 const price  = parseFloat(o.mp || o.price || 0);
                 const size   = parseFloat(o.ms || o.size || 0);
-                // NX Fancy-2: Price column shows RATE (90), not the run line (27)
+                // BPEXCH format: Runner = "Name - 100" (rate), Price = LINE (74/172), Size = stake
                 var rate = parseFloat(o.rate || 0);
                 if (!(rate > 0)) {
                   var _rm = String(o.rn || displayName || "").match(/-\s*(\d+(?:\.\d+)?)\s*$/);
                   if (_rm) rate = parseFloat(_rm[1]);
                 }
-                var displayPrice = (rate >= 50 && rate <= 200) ? rate : price;
-                tr.innerHTML = "<td>"+displayName+"</td><td>"+displayPrice.toFixed(2)+"</td><td>"+format(size)+"</td>";
+                var showName = displayName;
+                // If fancy rate and name does not already end with " - rate", append it
+                if (rate >= 50 && rate <= 200) {
+                  var rateStr = (rate % 1 === 0) ? String(Math.round(rate)) : String(rate);
+                  if (!new RegExp("-\\s*" + rateStr + "\\s*$").test(showName)) {
+                    // strip any existing trailing - number then append correct rate
+                    showName = showName.replace(/\s*-\s*\d+(?:\.\d+)?\s*$/, "").trim() + " - " + rateStr;
+                  }
+                }
+                tr.innerHTML = "<td>"+showName+"</td><td>"+price.toFixed(2)+"</td><td>"+format(size)+"</td>";
                 mb.appendChild(tr);
             });
             const mcEl = document.getElementById("matched-count");

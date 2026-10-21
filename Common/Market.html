@@ -5097,8 +5097,10 @@ function calculateRunnerPnL(runnerName, forMarketId) {
     if (!marketOrders.length) return { ifWin: 0, ifLose: 0 };
 
     let isFancy = _nxIsFancyMarketId(forMarketId);
-    if (!isFancy) {
-        isFancy = marketOrders.some(function(order) {
+    // Only treat as fancy if market is Fancy2/Fancy OR *every* order looks fancy-rate
+    // (don't let one Fancy order in Matched flip Match Odds calculation)
+    if (!isFancy && marketOrders.length > 0) {
+        isFancy = marketOrders.every(function(order) {
             var r = _nxExtractRate(order);
             return r >= 50 && r <= 200;
         });
@@ -5135,16 +5137,19 @@ function calculateRunnerPnL(runnerName, forMarketId) {
 
     // Match Odds / Bookmaker — decimal odds formula
     const applyCrossRunner = true;
+    const normBase = normalized.replace(/\s*-\s*\d+(?:\.\d+)?\s*$/, "").trim();
 
     marketOrders.forEach(order => {
-        const rn    = (order.rn || order.runnerName || "").trim().toLowerCase();
+        const rnRaw = (order.rn || order.runnerName || "").trim().toLowerCase();
+        const rn    = rnRaw.replace(/\s*-\s*\d+(?:\.\d+)?\s*$/, "").trim(); // strip " - 63063" / " - 100"
         const odds  = Number(order.mp || order.price || 0);
         const stake = Number(order.ms || order.size || 0);
         const side  = (order.bs || order.side || "").toUpperCase();
 
         if (!rn || odds <= 1 || stake <= 0) return;
 
-        if (rn === normalized) {
+        // Same runner (ignore fancy/selection suffix on name)
+        if (rn === normalized || rn === normBase || rnRaw === normalized) {
             if (side === "B") {
                 ifWin  += (odds - 1) * stake;
                 ifLose -= stake;
@@ -5592,13 +5597,15 @@ function render() {
                   if (_rm) rate = parseFloat(_rm[1]);
                 }
                 var showName = displayName;
-                // If fancy rate and name does not already end with " - rate", append it
+                // Fancy-2 only: show "Name - 100". Match Odds: strip bogus " - 63063" selection ids
                 if (rate >= 50 && rate <= 200) {
                   var rateStr = (rate % 1 === 0) ? String(Math.round(rate)) : String(rate);
-                  if (!new RegExp("-\\s*" + rateStr + "\\s*$").test(showName)) {
-                    // strip any existing trailing - number then append correct rate
+                  if (!new RegExp("-\\s*" + rateStr.replace(".", "\\.") + "\\s*$").test(showName)) {
                     showName = showName.replace(/\s*-\s*\d+(?:\.\d+)?\s*$/, "").trim() + " - " + rateStr;
                   }
+                } else {
+                  // Match Odds / Bookmaker: never show "South Africa - 63063"
+                  showName = showName.replace(/\s*-\s*\d{3,}\s*$/, "").trim();
                 }
                 tr.innerHTML = "<td>"+showName+"</td><td>"+price.toFixed(2)+"</td><td>"+format(size)+"</td>";
                 mb.appendChild(tr);

@@ -114,6 +114,40 @@
         const SsocketUrl = "https://1xbetbackend.work.gd/signalr";
         const uwsUrl = "https://orders-ws2.bfexch.com/usershub";
 
+        // NX CRITICAL: without these, FetchCatalog URL = "undefinedmarkets/..." → Unknown match
+        var svc_prefix = "https://1xbetbackend.work.gd/api/v1/";
+        var CatalogSignalR = 0;
+        var SsocketEnable = 0;
+        var CommentrySignalR = 0;
+        var timeCode = null;
+        var eventId = null;
+        var marketId = (function () {
+            try {
+                var qs = new URLSearchParams(window.location.search || '');
+                var id = qs.get('id') || qs.get('marketId');
+                if (id) return String(id);
+                var m = (window.location.pathname || '').match(/\/Event\/([^\/\?#]+)/i);
+                if (m) {
+                    var pe = decodeURIComponent(m[1]);
+                    try {
+                        var raw = sessionStorage.getItem('evtMap:' + pe);
+                        if (raw) {
+                            var o = JSON.parse(raw);
+                            if (o && o.marketId) {
+                                eventId = pe;
+                                return String(o.marketId);
+                            }
+                        }
+                    } catch (e) {}
+                    eventId = pe;
+                    return pe;
+                }
+            } catch (e) {}
+            return '';
+        })();
+        window.marketId = marketId;
+        window.eventId = eventId;
+        window.svc_prefix = svc_prefix;
 
         const genSck = 1;
         const CasSck = 1;
@@ -8825,91 +8859,35 @@ export default {
 })();
 </script>
 
-<!-- NX: fix blank odds on Event page (path eventId / missing price poll) -->
+<!-- NX: only ensure price poll is running — do NOT re-FetchCatalog (causes Unknown match) -->
 <script>
 (function () {
   'use strict';
-  function pathEventId() {
-    var m = (location.pathname || '').match(/\/Event\/([^\/\?#]+)/i);
-    return m ? decodeURIComponent(m[1]) : null;
-  }
-  function resolveMarketId() {
-    var qs = new URLSearchParams(location.search || '');
-    var fromQs = qs.get('id') || qs.get('marketId');
-    if (fromQs) return fromQs;
-    var pe = pathEventId();
-    if (pe) {
-      try {
-        var raw = sessionStorage.getItem('evtMap:' + pe);
-        if (raw) {
-          var o = JSON.parse(raw);
-          if (o && o.marketId) return String(o.marketId);
-        }
-      } catch (e) {}
-      return pe;
-    }
-    return (typeof marketId !== 'undefined' && marketId) ? marketId : null;
-  }
   function forcePricePoll() {
     try {
       var el = document.getElementById('MarketView') || document.getElementById('app');
       var vm = el && el.__vue__;
-      if (!vm) return false;
-      if (typeof vm.ListMarketData === 'function') {
+      if (!vm || typeof vm.ListMarketData !== 'function') return false;
+      if (!vm.BookIntervalId) {
         vm.ListMarketData();
-        if (!vm.BookIntervalId) {
-          vm.BookIntervalId = setInterval(function () {
-            try { vm.ListMarketData(); } catch (e) {}
-          }, 1500);
-        }
-        return true;
+        vm.BookIntervalId = setInterval(function () {
+          try { vm.ListMarketData(); } catch (e) {}
+        }, 1500);
       }
-    } catch (e) {}
-    return false;
-  }
-  function ensureCatalog() {
-    var mid = resolveMarketId();
-    if (!mid) return;
-    try {
-      if (typeof marketId === 'undefined' || !marketId) {
-        window.marketId = mid;
-      }
-    } catch (e) { window.marketId = mid; }
-    try {
-      var el = document.getElementById('MarketView') || document.getElementById('app');
-      var vm = el && el.__vue__;
-      if (vm && typeof vm.FetchCatalog === 'function') {
-        var cur = vm.Catalog && vm.Catalog.marketId;
-        // If no real prices after load, re-fetch with resolved marketId
-        var hasPrice = false;
-        try {
-          var rs = (vm.Catalog && vm.Catalog.runners) || [];
-          hasPrice = rs.some(function (r) {
-            return (r.price1 && r.price1 !== '-' && r.price1 !== '') ||
-                   (r.lay1 && r.lay1 !== '-' && r.lay1 !== '');
-          });
-        } catch (e2) {}
-        if (!hasPrice) {
-          vm.FetchCatalog(mid);
-        }
-      }
-    } catch (e) {}
-    forcePricePoll();
+      return true;
+    } catch (e) { return false; }
   }
   function boot() {
-    ensureCatalog();
     var n = 0;
     var t = setInterval(function () {
       n++;
-      forcePricePoll();
-      if (n === 2 || n === 5) ensureCatalog();
-      if (n > 12) clearInterval(t);
-    }, 1500);
+      if (forcePricePoll() || n > 20) clearInterval(t);
+    }, 500);
   }
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function () { setTimeout(boot, 800); });
+    document.addEventListener('DOMContentLoaded', function () { setTimeout(boot, 600); });
   } else {
-    setTimeout(boot, 800);
+    setTimeout(boot, 600);
   }
 })();
 </script>

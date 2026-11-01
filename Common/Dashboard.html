@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="en">
 <head>
@@ -1092,7 +1091,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   async function goToMatch(sport, matchOrMarketId, maybeEventId) {
     const sportKey = (sport || '').toString().toLowerCase();
     const isCricket = sportKey === 'cricket';
-    const isRacing = sportKey === 'horse' || sportKey === 'greyhound';
     const isObj = matchOrMarketId && typeof matchOrMarketId === 'object';
     const marketId = isObj ? (matchOrMarketId.marketId || matchOrMarketId.eventId) : matchOrMarketId;
     const existingEventId = isObj ? matchOrMarketId.eventId : maybeEventId;
@@ -1102,29 +1100,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
-    // Horse/Greyhound composite ids like "35965742.0131" — path /Event/35965742.0131
-    // breaks (dot treated as extension) → always use query string with marketId
-    if (isRacing) {
-      const raceId = marketId || existingEventId;
-      if (raceId) rememberMarketId(raceId, raceId, sportKey);
-      window.location.href = `/Common/Event?id=${encodeURIComponent(raceId)}`;
-      return;
-    }
-
-    // Soccer/Tennis: prefer path-style eventId (no dots)
-    if (existingEventId && !String(existingEventId).includes('.')) {
-      rememberMarketId(existingEventId, marketId, sportKey);
-      window.location.href = `/Common/Event/${existingEventId}`;
-      return;
-    }
-
-    const realEventId = await resolveRealEventId(marketId);
-    if (realEventId && !String(realEventId).includes('.')) {
-      rememberMarketId(realEventId, marketId, sportKey);
-      window.location.href = `/Common/Event/${realEventId}`;
-    } else {
-      window.location.href = `/Common/Event?id=${encodeURIComponent(marketId)}`;
-    }
+    // NX FIX: ALWAYS use ?id=MARKET_ID so Event page can load odds.
+    // Path /Event/<eventId> caused blank BACK/LAY (data API needs marketId).
+    const idForPage = marketId || existingEventId;
+    if (!idForPage) return;
+    if (existingEventId) rememberMarketId(String(existingEventId), marketId || existingEventId, sportKey);
+    if (marketId) rememberMarketId(String(marketId), marketId, sportKey);
+    window.location.href = `/Common/Event?id=${encodeURIComponent(idForPage)}`;
   }
 </script>
 

@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -1664,23 +1665,27 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 <!-- ✅ Cricket Sidebar List -->
 <script>
+  var _lastCricketSidebar = null;
   async function loadCricketSidebarMatches() {
     try {
       const [response, filter] = await Promise.all([
         fetch('https://1xbetbackend.work.gd/api/v1/markets/live/cricket'),
         getLeagueFilter('cricket')
       ]);
+      if (!response.ok) return;
       const result = await response.json();
 
       const ul = document.querySelector('.cricketEventList');
-      ul.innerHTML = '';
+      if (!ul) return;
 
-      if (result.success && result.data) {
+      if (result.success && result.data && result.data.length) {
         const filtered = applyLeagueFilter(result.data, filter);
         if (filtered.length === 0) {
-          ul.innerHTML = '<li>No live or upcoming cricket matches found</li>';
+          if (!_lastCricketSidebar) ul.innerHTML = '<li>No live or upcoming cricket matches found</li>';
           return;
         }
+        _lastCricketSidebar = filtered;
+        ul.innerHTML = '';
         filtered.forEach(event => {
           const li = document.createElement('li');
           li.classList.add('match-card');
@@ -1691,12 +1696,12 @@ document.addEventListener("DOMContentLoaded", async () => {
           });
           ul.appendChild(li);
         });
-      } else {
+      } else if (!_lastCricketSidebar) {
         ul.innerHTML = '<li>Error loading matches</li>';
       }
     } catch (error) {
       console.error('API Error:', error);
-      document.querySelector('.cricketEventList').innerHTML =
+      if (!_lastCricketSidebar) document.querySelector('.cricketEventList').innerHTML =
         '<li>API Error: ' + error.message + '</li>';
     }
   }
@@ -1727,22 +1732,28 @@ document.addEventListener("DOMContentLoaded", async () => {
     return sign + (Math.round(abs * 10) / 10).toString();
   }
 
+  // NX: last good snapshot — API fail/empty pe odds gayab na hon
+  var _lastCricketMatches = null;
+
   async function loadCricketMatches() {
     try {
       const [response, filter] = await Promise.all([
         fetch('https://1xbetbackend.work.gd/api/v1/markets/live/cricket'),
         getLeagueFilter('cricket')
       ]);
+      if (!response.ok) return; // keep previous rows
       const result = await response.json();
 
       const tbody = document.getElementById('cricketMatchContainer');
       if (!tbody) return;
-      tbody.innerHTML = '';
 
       const matchCountElement = document.getElementById('cricketMatchCount');
 
-      if (result.success && Array.isArray(result.data)) {
+      if (result.success && Array.isArray(result.data) && result.data.length > 0) {
         const filtered = applyLeagueFilter(result.data, filter);
+        _lastCricketMatches = filtered;
+        // Only clear AFTER we have good data (stops odds flash/disappear)
+        tbody.innerHTML = '';
         // InPlay + non-InPlay dono section mein, label ke sath
         if (matchCountElement) matchCountElement.textContent = filtered.length;
 
@@ -1823,33 +1834,37 @@ document.addEventListener("DOMContentLoaded", async () => {
 
           tbody.appendChild(row);
         });
-      } else {
+      } else if (!_lastCricketMatches) {
+        // First load empty only — never wipe existing odds on API blip
         if (matchCountElement) matchCountElement.textContent = '0';
         tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color:white;">No live matches found.</td></tr>`;
       }
     } catch (err) {
       console.error('Error loading cricket matches:', err);
+      // keep previous odds visible
     }
   }
 
   document.addEventListener('DOMContentLoaded', () => {
     loadCricketMatches();
+    setInterval(loadCricketMatches, 8000);
   });
 </script>
 
 <!-- ✅ Cricket InPlay Table -->
 <script>
+  var _lastInPlayCricket = null;
   async function loadInPlayCricketMatches() {
     try {
       const [response, filter] = await Promise.all([
         fetch('https://1xbetbackend.work.gd/api/v1/markets/live/cricket'),
         getLeagueFilter('cricket')
       ]);
+      if (!response.ok) return;
       const result = await response.json();
 
       const tbody = document.getElementById('inPlayMatchesContainer');
       if (!tbody) return;
-      tbody.innerHTML = '';
 
       if (result.success && Array.isArray(result.data)) {
         const allFiltered = applyLeagueFilter(result.data, filter);
@@ -1861,7 +1876,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         const _cb = document.getElementById('inplayTotalCount');
         if (_cb) _cb.textContent = (window._inplayCounts.cricket + window._inplayCounts.football + window._inplayCounts.tennis) || '';
 
-        if (inPlayMatches.length === 0) { tbody.innerHTML = ''; return; }
+        if (inPlayMatches.length === 0) {
+          if (!_lastInPlayCricket) tbody.innerHTML = '';
+          return;
+        }
+        _lastInPlayCricket = inPlayMatches;
+        tbody.innerHTML = '';
 
         inPlayMatches.forEach(match => {
           const startTime = new Date(match.startTime);
@@ -1928,26 +1948,30 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.addEventListener('DOMContentLoaded', () => {
     loadInPlayCricketMatches();
+    setInterval(loadInPlayCricketMatches, 8000);
   });
 </script>
 
 <!-- ✅ Football Main Table (All Matches) -->
 <script>
+  var _lastFootballMatches = null;
   async function loadfootballoddsMatches() {
     try {
       const [response, filter] = await Promise.all([
         fetch('https://1xbetbackend.work.gd/api/v1/markets/live/football'),
         getLeagueFilter('football')
       ]);
+      if (!response.ok) return;
       const result = await response.json();
 
       const tbody = document.getElementById('footballMatchContainer');
       const matchCountElement = document.getElementById('footballMatchCount');
       if (!tbody) return;
-      tbody.innerHTML = '';
 
-      if (result.success && Array.isArray(result.data)) {
+      if (result.success && Array.isArray(result.data) && result.data.length > 0) {
         const filtered = applyLeagueFilter(result.data, filter);
+        _lastFootballMatches = filtered;
+        tbody.innerHTML = '';
         // InPlay + non-InPlay dono section mein, label ke sath
         if (matchCountElement) matchCountElement.textContent = filtered.length;
 
@@ -2033,7 +2057,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
           tbody.appendChild(row);
         });
-      } else {
+      } else if (!_lastFootballMatches) {
         if (matchCountElement) matchCountElement.textContent = '0';
         tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color:white;">No live matches found.</td></tr>`;
       }
@@ -2044,22 +2068,24 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.addEventListener('DOMContentLoaded', () => {
     loadfootballoddsMatches();
+    setInterval(loadfootballoddsMatches, 8000);
   });
 </script>
 
 <!-- ✅ Football InPlay Table -->
 <script>
+  var _lastInPlayFootball = null;
   async function loadInPlayfootballMatches() {
     try {
       const [response, filter] = await Promise.all([
         fetch('https://1xbetbackend.work.gd/api/v1/markets/live/football'),
         getLeagueFilter('football')
       ]);
+      if (!response.ok) return;
       const result = await response.json();
 
       const tbody = document.getElementById('inPlayfootballContainer');
       if (!tbody) return;
-      tbody.innerHTML = '';
 
       if (result.success && Array.isArray(result.data)) {
         const allFiltered = applyLeagueFilter(result.data, filter);
@@ -2071,7 +2097,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         const _fb = document.getElementById('inplayTotalCount');
         if (_fb) _fb.textContent = (window._inplayCounts.cricket + window._inplayCounts.football + window._inplayCounts.tennis) || '';
 
-        if (inPlayMatches.length === 0) { tbody.innerHTML = ''; return; }
+        if (inPlayMatches.length === 0) {
+          if (!_lastInPlayFootball) tbody.innerHTML = '';
+          return;
+        }
+        _lastInPlayFootball = inPlayMatches;
+        tbody.innerHTML = '';
 
         inPlayMatches.forEach(match => {
           const startTime = new Date(match.startTime);
@@ -2134,26 +2165,30 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.addEventListener('DOMContentLoaded', () => {
     loadInPlayfootballMatches();
+    setInterval(loadInPlayfootballMatches, 8000);
   });
 </script>
 
 <!-- ✅ Tennis Main Table -->
 <script>
+  var _lastTennisOdds = null;
   async function loadtennisoddsMatches() {
     try {
       const [response, filter] = await Promise.all([
         fetch('https://1xbetbackend.work.gd/api/v1/markets/live/tennis'),
         getLeagueFilter('tennis')
       ]);
+      if (!response.ok) return;
       const result = await response.json();
 
       const tbody = document.getElementById('tennisMatchContainer');
       const countElement = document.getElementById('tennisMatchCount');
       if (!tbody) return;
-      tbody.innerHTML = '';
 
-      if (result.success && Array.isArray(result.data)) {
+      if (result.success && Array.isArray(result.data) && result.data.length > 0) {
         const filtered = applyLeagueFilter(result.data, filter);
+        _lastTennisOdds = filtered;
+        tbody.innerHTML = '';
         // ✅ InPlay + upcoming dono Tennis section mein
         if (countElement) countElement.textContent = filtered.length;
 
@@ -2240,7 +2275,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
           tbody.appendChild(row);
         });
-      } else {
+      } else if (!_lastTennisOdds) {
         if (countElement) countElement.textContent = '0';
         tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color:white;">No live matches found.</td></tr>`;
       }
@@ -2251,21 +2286,23 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.addEventListener('DOMContentLoaded', () => {
     loadtennisoddsMatches();
+    setInterval(loadtennisoddsMatches, 8000);
   });
 </script>
 
 <!-- ✅ Tennis InPlay Table -->
 <script>
+  var _lastInPlayTennis = null;
   async function loadInPlayTennisMatches() {
     try {
       const [response, filter] = await Promise.all([
         fetch('https://1xbetbackend.work.gd/api/v1/markets/live/tennis'),
         getLeagueFilter('tennis')
       ]);
+      if (!response.ok) return;
       const result = await response.json();
       const tbody = document.getElementById('inPlayTennisContainer');
       if (!tbody) return;
-      tbody.innerHTML = '';
       if (result.success && Array.isArray(result.data)) {
         const inPlayMatches = applyLeagueFilter(result.data, filter).filter(m => isMatchInPlay(m));
 
@@ -2274,7 +2311,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         const _tb = document.getElementById('inplayTotalCount');
         if (_tb) _tb.textContent = (window._inplayCounts.cricket + window._inplayCounts.football + window._inplayCounts.tennis) || '';
 
-        if (inPlayMatches.length === 0) { tbody.innerHTML = ''; return; }
+        if (inPlayMatches.length === 0) {
+          if (!_lastInPlayTennis) tbody.innerHTML = '';
+          return;
+        }
+        _lastInPlayTennis = inPlayMatches;
+        tbody.innerHTML = '';
 
         inPlayMatches.forEach(match => {
           const localTime = new Date(match.startTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
@@ -2305,7 +2347,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     } catch (err) { console.error('InPlay tennis error:', err); }
   }
-  document.addEventListener('DOMContentLoaded', () => { loadInPlayTennisMatches(); });
+  document.addEventListener('DOMContentLoaded', () => {
+    loadInPlayTennisMatches();
+    setInterval(loadInPlayTennisMatches, 8000);
+  });
 </script>
 
             </center>

@@ -1716,6 +1716,35 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // NX: last good snapshot — API fail/empty pe odds gayab na hon
   var _lastCricketMatches = null;
+  var _lastCricketSig = '';
+
+  // Update only price cells for existing rows (no full wipe = no flash)
+  // HTML order: back1, lay1, back2, lay2, backX, layX  → runners 0,0,1,1,2,2
+  function nxPatchOddsRow(row, match) {
+    if (!row || !match) return;
+    var r = match.runners || [];
+    function cell(ri, side) {
+      var rn = r[ri];
+      if (!rn) return { price: '-', size: '-' };
+      var arr = side === 'b' ? (rn.back || []) : (rn.lay || []);
+      return arr[0] || { price: '-', size: '-' };
+    }
+    var cells = [cell(0,'b'), cell(0,'l'), cell(1,'b'), cell(1,'l'), cell(2,'b'), cell(2,'l')];
+    var boxes = row.querySelectorAll('td .box strong');
+    var sizes = row.querySelectorAll('td .box span');
+    for (var i = 0; i < cells.length && i < boxes.length; i++) {
+      boxes[i].textContent = (cells[i].price != null && cells[i].price !== '') ? cells[i].price : '-';
+      if (sizes[i]) sizes[i].textContent = (cells[i].size != null && cells[i].size !== '') ? cells[i].size : '-';
+    }
+    if (typeof nxCompactSize === 'function') {
+      var v = nxCompactSize(match.totalMatched);
+      row.querySelectorAll('.TMFORDESK, .TMFORMOB').forEach(function (el) { el.textContent = v; });
+    }
+  }
+
+  function nxMatchesSig(list) {
+    return (list || []).map(function (m) { return String(m.marketId || ''); }).join('|');
+  }
 
   async function loadCricketMatches() {
     try {
@@ -1734,10 +1763,19 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (result.success && Array.isArray(result.data) && result.data.length > 0) {
         const filtered = applyLeagueFilter(result.data, filter);
         _lastCricketMatches = filtered;
-        // Only clear AFTER we have good data (stops odds flash/disappear)
-        tbody.innerHTML = '';
-        // InPlay + non-InPlay dono section mein, label ke sath
         if (matchCountElement) matchCountElement.textContent = filtered.length;
+
+        var sig = nxMatchesSig(filtered);
+        // Same match list → only patch odds (no flash)
+        if (sig === _lastCricketSig && tbody.children.length > 0) {
+          filtered.forEach(function (match) {
+            var row = document.getElementById('m_' + match.marketId) || tbody.querySelector('.m_' + match.marketId);
+            if (row) nxPatchOddsRow(row, match);
+          });
+          return;
+        }
+        _lastCricketSig = sig;
+        tbody.innerHTML = '';
 
         filtered.forEach(match => {
           const startTime = new Date(match.startTime);
@@ -1937,6 +1975,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 <!-- ✅ Football Main Table (All Matches) -->
 <script>
   var _lastFootballMatches = null;
+  var _lastFootballSig = '';
   async function loadfootballoddsMatches() {
     try {
       const [response, filter] = await Promise.all([
@@ -1953,9 +1992,17 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (result.success && Array.isArray(result.data) && result.data.length > 0) {
         const filtered = applyLeagueFilter(result.data, filter);
         _lastFootballMatches = filtered;
-        tbody.innerHTML = '';
-        // InPlay + non-InPlay dono section mein, label ke sath
         if (matchCountElement) matchCountElement.textContent = filtered.length;
+        var sig = nxMatchesSig(filtered);
+        if (sig === _lastFootballSig && tbody.children.length > 0) {
+          filtered.forEach(function (match) {
+            var row = document.getElementById('m_' + match.marketId) || tbody.querySelector('.m_' + match.marketId);
+            if (row) nxPatchOddsRow(row, match);
+          });
+          return;
+        }
+        _lastFootballSig = sig;
+        tbody.innerHTML = '';
 
         filtered.forEach(match => {
           const startTime = new Date(match.startTime);
@@ -2154,6 +2201,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 <!-- ✅ Tennis Main Table -->
 <script>
   var _lastTennisOdds = null;
+  var _lastTennisSig = '';
   async function loadtennisoddsMatches() {
     try {
       const [response, filter] = await Promise.all([
@@ -2170,9 +2218,17 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (result.success && Array.isArray(result.data) && result.data.length > 0) {
         const filtered = applyLeagueFilter(result.data, filter);
         _lastTennisOdds = filtered;
-        tbody.innerHTML = '';
-        // ✅ InPlay + upcoming dono Tennis section mein
         if (countElement) countElement.textContent = filtered.length;
+        var sig = nxMatchesSig(filtered);
+        if (sig === _lastTennisSig && tbody.children.length > 0) {
+          filtered.forEach(function (match) {
+            var row = document.getElementById('m_' + match.marketId) || tbody.querySelector('.m_' + match.marketId);
+            if (row) nxPatchOddsRow(row, match);
+          });
+          return;
+        }
+        _lastTennisSig = sig;
+        tbody.innerHTML = '';
 
         filtered.forEach(match => {
           const startTime = new Date(match.startTime);
